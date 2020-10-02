@@ -1,0 +1,5 @@
+FROM node:13.6.0-alpine
+
+RUN apk update && apk add python2 g++ make
+
+RUN npm i -g @vue/cli-service
