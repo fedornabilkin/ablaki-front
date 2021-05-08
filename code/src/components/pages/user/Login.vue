@@ -8,40 +8,42 @@
                 <b-card>
                     <h2 class="col-12 text-center">Вход</h2>
                     <b-form @submit.prevent="login">
-                        <b-form-group>
-                            <label for="login" class="control-label">
-                                Логин
-                            </label>
-                            <b-form-input
-                                    id="login"
-                                    v-model="auth.login"
-                                    type="text"
-                                    required
-                            />
-                        </b-form-group>
+                      <b-form-group
+                          class="position-relative"
+                          label="Логин"
+                          label-for="login"
+                          :description="valid.text.login">
+                        <b-form-input
+                            id="login"
+                            v-model="auth.login"
+                            type="text"
+                            required/>
+                      </b-form-group>
 
-                        <b-form-group
-                                class="position-relative"
-                                label="Пароль"
-                                label-for="password"
-                                :description="response.infoText"
-                        >
-                            <b-form-input
-                                    id="password"
-                                    type="password"
-                                    v-model="auth.password"
-                                    required
-                            />
-                        </b-form-group>
+                      <b-form-group
+                          class="position-relative"
+                          label="Пароль"
+                          label-for="password"
+                          :description="valid.text.password">
+                        <b-form-input
+                            id="password"
+                            type="password"
+                            v-model="auth.password"
+                            required
+                        />
+                      </b-form-group>
+                      <b-form-group
+                          class="position-relative"
+                          :description="response.text">
                         <b-button
-                                v-if="!loading"
-                                type="submit"
-                                variant="primary"
-                        >
-                            Войти
+                            v-if="!loading"
+                            type="submit"
+                            variant="primary">
+                          Войти
                         </b-button>
-                        <span v-else
-                              class="loading-text">Выполняется вход...</span>
+                      </b-form-group>
+                      <span v-if="loading"
+                            class="loading-text">Выполняется вход...</span>
                     </b-form>
                     <div
                             v-if="loading"
@@ -69,42 +71,65 @@
         },
         data() {
             return {
-                loading: false,
-                auth: {
-                    login: '',
-                    password: ''
-                },
-                response: {
-                    infoText: ''
-                },
+              loading: false,
+              auth: {
+                login: '',
+                password: ''
+              },
+              valid: {
+                text: {
+                  login: '',
+                  password: ''
+                }
+              },
+              response: {
+                text: ''
+              },
             }
         },
         methods: {
-            loader: function (loading) {
-                this.loading = loading;
-                this.response.infoText = '';
-            },
-            login: function () {
-                this.loader(true);
-                let login = this.auth.login;
-                let password = this.auth.password;
-                if (this.$store != null) {
-                    this.$store.dispatch('login', {login, password, loader: this.loader})
-                        .then(() => {
-                            this.loader(false);
-                            this.$store.dispatch('menuClear')
-                                .then(
-                                    () => this.$router.push('/')
-                                );
-                        })
-                        .catch(err => {
-                            this.errorAuth(err)
-                        })
-                }
-            },
+          loader: function (loading) {
+            this.loading = loading;
+          },
+          validClear: function () {
+            for (const textKey in this.valid.text) {
+              this.valid.text[textKey] = '';
+            }
+          },
+          login: function () {
+            if (this.$store === null) {
+              return;
+            }
+
+            this.validClear();
+            this.loader(true);
+            let login = this.auth.login;
+            let password = this.auth.password;
+
+            this.$store.dispatch('login', {
+              login,
+              password,
+              loader: this.loader
+            })
+                .then((resp) => {
+                  this.loader(false);
+
+                  if (resp.data.errors !== undefined) {
+                    for (let respKey in resp.data.errors) {
+                      this.valid.text[respKey] = resp.data.errors[respKey];
+                    }
+                    return;
+                  }
+
+                  this.$store.dispatch('menuClear')
+                      .then(() => this.$router.push('/'));
+                })
+                .catch((err) => this.errorAuth(err))
+
+          },
             errorAuth: function (err) {
-                this.response.infoText = err;
-                this.loader(false);
+              this.response.text = err;
+              this.loader(false);
             },
         }
     }

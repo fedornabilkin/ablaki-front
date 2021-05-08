@@ -38,7 +38,7 @@ export default {
         },
     },
     actions: {
-        login({commit}, user, loader) {
+        login({commit}, user) {
             return new Promise((resolve, reject) => {
                 commit('auth_request');
 
@@ -49,18 +49,42 @@ export default {
                     // headers: {'TZ': Intl.DateTimeFormat().resolvedOptions().timeZone}
                 })
                     .then(resp => {
-                        const token = resp.data.token;
-                        localStorage.setItem('token', token);
-                        localStorage.setItem('username', resp.data.user.username);
-                        localStorage.setItem('user', resp.data.user);
-                        axios.defaults.headers.common['Authorization'] = token;
-                        commit('auth_success', resp.data.user);
+                        if (resp.data.token !== undefined && resp.data.user !== undefined) {
+                            const token = resp.data.token;
+                            localStorage.setItem('token', token);
+                            localStorage.setItem('username', resp.data.user.username);
+                            localStorage.setItem('user', resp.data.user);
+                            axios.defaults.headers.common['Authorization'] = token;
+                            commit('auth_success', resp.data.user);
+                        }
                         resolve(resp);
                     })
                     .catch(err => {
                         user.loader(false);
                         commit('auth_error');
                         localStorage.removeItem('token');
+                        reject(err)
+                    })
+            })
+        },
+        registration({commit}, user) {
+            return new Promise((resolve, reject) => {
+                commit('auth_request');
+
+                axios({
+                    url: (urlMain + 'registration'),
+                    data: user,
+                    method: 'POST',
+                })
+                    .then(resp => {
+                        user.submit.loader(false);
+                        resolve(resp);
+                    })
+                    .catch(err => {
+                        console.log(err);
+                        // user.loader(false);
+                        // commit('auth_error');
+                        // localStorage.removeItem('token');
                         reject(err)
                     })
             })

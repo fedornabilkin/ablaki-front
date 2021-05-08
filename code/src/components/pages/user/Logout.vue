@@ -13,14 +13,10 @@
         methods: {
             logout: function () {
                 this.$store.dispatch('logout')
-                    .then(() => {
-                        this.$router.push('/users/login')
-                    })
+                    .then(() => this.$router.push('/'))
             },
         },
     }
 </script>
 
-<style scoped>
-
-</style>
+<style scoped></style>

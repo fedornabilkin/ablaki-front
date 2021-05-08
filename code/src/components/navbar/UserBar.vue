@@ -11,6 +11,7 @@
         </span>
         <span class="">
             <span class="fa fa-star" aria-hidden="true"></span>
+          <font-awesome-icon :icon="'star'"/>
             <span class="amount">{{ user.rating }}</span>
         </span>
     </div>

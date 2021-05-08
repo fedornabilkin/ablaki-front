@@ -1,4 +1,5 @@
 import {library} from '@fortawesome/fontawesome-svg-core'
+import * as icons from '@fortawesome/free-solid-svg-icons'
 
 let myIcons = [
     'faUser',
@@ -6,6 +7,8 @@ let myIcons = [
     'faSignInAlt',
     'faSignOutAlt',
     'faPlus',
+
+    'faStar',
 
     'faComments',
     'faQuestionCircle',
@@ -38,8 +41,6 @@ let myIcons = [
     'faBox',
     'faTimes'
 ];
-
-import * as icons from '@fortawesome/free-solid-svg-icons'
 
 myIcons.forEach(function(item) {
     library.add(icons[item]);

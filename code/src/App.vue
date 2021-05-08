@@ -21,20 +21,20 @@
 </template>
 
 <script>
-    import UserBar from "./components/navbar/UserBar";
-    import NavBar from "./components/navbar/NavBar";
+import UserBar from "./components/navbar/UserBar";
+import NavBar from "./components/navbar/NavBar";
 
-    export default {
-        name: 'App',
-        components: {
-            NavBar,
-            UserBar
-        },
-        // provide: function () {
-        //     return {
-        //         logout: this.logout
-        //     }
-        // },
+export default {
+  name: 'App',
+  components: {
+    NavBar,
+    UserBar
+  },
+  // provide: function () {
+  //     return {
+  //         logout: this.logout
+  //     }
+  // },
         // watch: {
         //     '$route': function () {
         //         this.pageNotFound = false;
@@ -63,7 +63,10 @@
             },
             user: function () {
                 return {
-                    username: this.isLoggedIn ? this.$store.getters.username : null,
+                  username: this.isLoggedIn ? this.$store.getters.username : null,
+                  credit: 0,
+                  balance: 0,
+                  rating: 0
                 };
             },
         },
