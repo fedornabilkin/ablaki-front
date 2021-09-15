@@ -1,22 +1,30 @@
 <template>
     <div id="app">
 
-        <nav-bar :user="user" :menu-list="menuList"/>
+        <nav-bar :menu-top="menuTop"/>
 
         <div v-if="isLoggedIn">
             <user-bar :user="user"/>
         </div>
 
-        <b-container fluid>
-            <div v-if="loading" class="text-center">
-                <b-spinner class="align-middle"/>
-            </div>
-            <b-row v-else>
-                <b-col md="12" class="pt-3">
-                    <router-view></router-view>
-                </b-col>
-            </b-row>
-        </b-container>
+      <b-container fluid>
+        <div v-if="loading" class="text-center">
+          <b-spinner class="align-middle"/>
+        </div>
+        <b-row v-else>
+          <b-col md="12" class="pt-3">
+            <router-view></router-view>
+          </b-col>
+        </b-row>
+        <b-row>
+          <b-col>
+            <router-link class="pr-2" v-for="item in menuList" :key="item.url" :to="item.url">
+              <font-awesome-icon class="pr-1" :icon="item.icon"/>
+              <span class="hidden-sm-down">{{ item.anchor }}</span>
+            </router-link>
+          </b-col>
+        </b-row>
+      </b-container>
     </div>
 </template>
 
@@ -43,9 +51,9 @@ export default {
         created: function () {
             let that = this;
             this.$http.interceptors.request.use(function (request) {
-                if (that.$store.state.auth.token != '') {
-                    request.headers.Authorization = that.$store.getters.headerToken;
-                }
+              if (that.$store.state.auth.token !== '') {
+                request.headers.Authorization = that.$store.getters.headerToken;
+              }
                 return request;
             }, undefined);
         },
@@ -59,7 +67,7 @@ export default {
         // },
         computed: {
             isLoggedIn: function () {
-                return this.$store.getters.isLoggedIn;
+              return this.$store.getters.isAuthenticated;
             },
             user: function () {
                 return {
@@ -72,34 +80,65 @@ export default {
         },
 
         mounted() {
-            // if (this.$store.getters.username) {
-            //     this.user.login = this.$store.getters.username;
-            // }
+          const isLoggedIn = this.$store.getters.isAuthenticated;
+          // if (this.$store.getters.username) {
+          //     this.user.login = this.$store.getters.username;
+          // }
+          this.menuTop = [
+            {anchor: 'Форум', url: '/forum', title: 'Форум', icon: 'comments'},
+            {anchor: 'Wiki', url: '/wiki', title: 'wiki', icon: 'question-circle'},
+          ];
+          if (!this.isLoggedIn) {
+            this.menuTop.push({anchor: 'Регистрация', url: '/users/registration', title: 'Регистрация', icon: 'plus'});
+            this.menuTop.push({anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'});
+          } else {
+            this.menuTop.push({anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'sign-out-alt'});
+          }
 
-            this.menuList = [
-                {anchor:'Ablaki', url: '/games/ablaki', title: 'Игра Ablaki', icon: 'apple-alt'},
-                {anchor:'Орел-решка', url: '/games/orel', title: 'Игра Орел-решка', icon: 'adjust'},
-                {anchor:'Дуэль', url: '/games/duel', title: 'Игра дуэль', icon: 'crosshairs'},
-                {anchor:'5 яблок', url: '/games/fiveapple', title: 'Игра 5 яблок', icon: 'graduation-cap'},
+          this.menuList = [
+            {anchor: 'Ablaki', url: '/games/ablaki', title: 'Игра Ablaki', icon: 'apple-alt'},
+            {anchor: 'Орел-решка', url: '/games/orel', title: 'Игра Орел-решка', icon: 'adjust'},
+            {anchor: 'Дуэль', url: '/games/duel', title: 'Игра дуэль', icon: 'crosshairs'},
+            {anchor: '5 яблок', url: '/games/fiveapple', title: 'Игра 5 яблок', icon: 'graduation-cap'},
+          ];
 
-                {anchor:'Пополнить', url: 'balance/pay', title: 'Пополнить баланс', icon: 'plus'},
-                {anchor:'Заказать выплату', url: 'balance/zakaz', title: 'Заказать выплату', icon: 'dollar-sign'},
-            ];
+          if (!this.isLoggedIn) {
+            this.menuList.unshift({anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'});
+          } else {
+            this.menuList.push({anchor: 'Пополнить', url: 'balance/pay', title: 'Пополнить баланс', icon: 'plus'});
+            this.menuList.push({
+              anchor: 'Заказать выплату',
+              url: 'balance/zakaz',
+              title: 'Заказать выплату',
+              icon: 'dollar-sign'
+            });
 
-            if (!this.isLoggedIn) {
-                this.menuList.unshift({anchor:'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'});
-            } else {
-                this.menuList.push({anchor:'Кабинет', url: '/users/profile', title: 'Кабинет', icon: 'user'});
-                this.menuList.push({anchor:'Выход', url: '/users/logout', title: 'Выход', icon: 'sign-out-alt'});
-            }
+            this.menuList.push({anchor: 'Кабинет', url: '/users/profile', title: 'Кабинет', icon: 'user'});
+            this.menuList.push({anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'sign-out-alt'});
+          }
+
+          if (this.loading) {
+            this.menuList.push({anchor: 'Статистика', url: '/statistic', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Биржа кредитов', url: '/exchange', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Перевод кредитов', url: '/transfer', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'История баланса', url: '/balance', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Комментарии', url: '/forum/lastcomments', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Выплаты', url: '/payments/zakaz', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Платежи', url: '/payments', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Слайды', url: '/slider', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Задачи', url: '/todo', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Битые ссылки', url: '/link', title: '', icon: 'user'});
+            this.menuList.push({anchor: 'Факты о сайте', url: '/fact', title: '', icon: 'user'});
+          }
         },
         data() {
             return {
-                pageNotFound: false,
-                menuList: [],
-                loading: false,
-                foo: 'qwerty',
-                bar: true,
+              pageNotFound: false,
+              menuList: [],
+              menuTop: [],
+              loading: false,
+              foo: 'qwerty',
+              bar: true,
             }
         }
     }

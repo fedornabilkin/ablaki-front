@@ -104,8 +104,8 @@
             }
         },
         created() {
-            if (this.$store.getters.isLoggedIn) {
-                this.$router.push('/');
+            if (this.$store.getters.isAuthenticated) {
+              this.$router.push('/');
             }
         },
         data() {

@@ -43,7 +43,7 @@
                         </b-button>
                       </b-form-group>
                       <span v-if="loading"
-                            class="loading-text">Выполняется вход...</span>
+                            class="loading-text">Выполняется запрос...</span>
                     </b-form>
                     <div
                             v-if="loading"
@@ -65,9 +65,9 @@
             }
         },
         created() {
-            if (this.$store.getters.isLoggedIn) {
-                this.$router.push('/');
-            }
+          if (this.$store.getters.isAuthenticated) {
+            this.$router.push('/');
+          }
         },
         data() {
             return {
@@ -108,8 +108,7 @@
 
             this.$store.dispatch('login', {
               login,
-              password,
-              loader: this.loader
+              password
             })
                 .then((resp) => {
                   this.loader(false);

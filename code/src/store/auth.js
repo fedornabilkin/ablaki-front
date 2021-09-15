@@ -1,15 +1,22 @@
 import axios from "axios";
 import config from "../config/config";
 
+const AUTH_REQUEST = 'auth_request';
+const AUTH_SUCCESS = 'auth_success';
+const AUTH_ERROR = 'auth_error';
+const LOGOUT = 'logout';
+
 let urlMain = config.getParam('apiDomain');
 
 export default {
     getters: {
-        isLoggedIn: state => !!state.token,
+        isAuthenticated: state => !!state.token,
         authStatus: state => state.status,
         headerToken: state => 'Bearer ' + state.token,
         username: state => state.username,
-        user: state => state.user,
+        user: state => {
+            return state.user;
+        },
     },
     state: {
         status: '',
@@ -18,19 +25,20 @@ export default {
         user: localStorage.getItem('user') || {},
     },
     mutations: {
-        auth_request(state) {
+        [AUTH_REQUEST]: (state) => {
             state.status = 'loading'
         },
-        auth_success(state, user) {
+        [AUTH_SUCCESS]: (state, user) => {
+            console.log(user);
             state.status = 'success';
             state.token = user.token;
             state.username = user.username;
             state.user = user;
         },
-        auth_error(state) {
+        [AUTH_ERROR]: (state) => {
             state.status = 'error';
         },
-        logout(state) {
+        [LOGOUT]: (state) => {
             state.status = '';
             state.token = '';
             state.username = '';
@@ -40,28 +48,26 @@ export default {
     actions: {
         login({commit}, user) {
             return new Promise((resolve, reject) => {
-                commit('auth_request');
+                commit(AUTH_REQUEST);
 
                 axios({
-                    url: (urlMain + 'login'),
-                    data: user,
-                    method: 'POST',
+                    url: (urlMain + 'login'), data: user, method: 'POST',
                     // headers: {'TZ': Intl.DateTimeFormat().resolvedOptions().timeZone}
                 })
                     .then(resp => {
                         if (resp.data.token !== undefined && resp.data.user !== undefined) {
                             const token = resp.data.token;
+                            // resp.data.user.token = token;
                             localStorage.setItem('token', token);
                             localStorage.setItem('username', resp.data.user.username);
                             localStorage.setItem('user', resp.data.user);
                             axios.defaults.headers.common['Authorization'] = token;
-                            commit('auth_success', resp.data.user);
+                            commit(AUTH_SUCCESS, resp.data.user);
                         }
                         resolve(resp);
                     })
                     .catch(err => {
-                        user.loader(false);
-                        commit('auth_error');
+                        commit(AUTH_ERROR);
                         localStorage.removeItem('token');
                         reject(err)
                     })
@@ -69,7 +75,7 @@ export default {
         },
         registration({commit}, user) {
             return new Promise((resolve, reject) => {
-                commit('auth_request');
+                commit(AUTH_REQUEST);
 
                 axios({
                     url: (urlMain + 'registration'),
@@ -83,14 +89,14 @@ export default {
                     .catch(err => {
                         console.log(err);
                         // user.loader(false);
-                        // commit('auth_error');
+                        commit(AUTH_ERROR);
                         // localStorage.removeItem('token');
                         reject(err)
                     })
             })
         },
         clearData({commit}) {
-            commit('logout');
+            commit(LOGOUT);
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('user');
@@ -98,10 +104,7 @@ export default {
         },
         logout({commit}) {
             return new Promise((resolve, reject) => {
-                axios({
-                    url: (urlMain + 'logout'),
-                    method: 'POST'
-                })
+                axios({url: (urlMain + 'logout'), method: 'POST'})
                     .then(resp => {
                         this.dispatch('clearData');
                         resolve(resp);

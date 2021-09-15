@@ -14,6 +14,7 @@
             logout: function () {
                 this.$store.dispatch('logout')
                     .then(() => this.$router.push('/'))
+                    .catch(() => this.$router.push('/'))
             },
         },
     }

@@ -1,12 +1,9 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
-
-Vue.use(VueRouter);
-
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
 import Main from './components/pages/Main';
-import Forum from './components/pages/Forum';
+import Forum from './components/pages/forum/Forum';
 import PageNotFound from './components/pages/PageNotFound';
 import Wiki from './components/pages/Wiki';
 
@@ -17,6 +14,9 @@ import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
 
 import Ablaki from './components/pages/games/Ablaki';
+import Orel from "./components/pages/games/Orel";
+
+Vue.use(VueRouter);
 
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
@@ -40,16 +40,17 @@ const routes = [
         }
     },
 
-    { path: '/forum', component: Forum },
-    { path: '/wiki', component: Wiki },
+    {path: '/forum', component: Forum},
+    {path: '/wiki', component: Wiki},
 
-    { path: '/users/wall/:login', component: Wall },
-    { path: '/users/registration', component: Registration },
-    { path: '/users/login', component: Login },
-    { path: '/users/logout', component: Logout },
-    { path: '/users/profile', component: Profile },
+    {path: '/users/wall/:login', component: Wall},
+    {path: '/users/registration', component: Registration},
+    {path: '/users/login', component: Login},
+    {path: '/users/logout', component: Logout},
+    {path: '/users/profile', component: Profile},
 
-    { path: '/games/ablaki', component: Ablaki }
+    {path: '/games/ablaki', component: Ablaki},
+    {path: '/games/orel', component: Orel},
 ];
 
 export default new VueRouter({

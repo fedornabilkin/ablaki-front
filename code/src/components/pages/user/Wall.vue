@@ -33,9 +33,6 @@ export default {
   mounted() {
     this.wall();
   },
-  updated() {
-    this.wall();
-  },
   methods: {
     getLogin: function () {
       return this.$route.params.login;
