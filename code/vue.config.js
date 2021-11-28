@@ -1,9 +1,19 @@
 module.exports = {
-    configureWebpack: {
-        devtool: 'source-map',
-        devServer: {
-            host: 'vue.Ablaki.local'
-        }
-    // Сюда пишем конфигурацию Webpack, но Vue CLI, см.: https://cli.vuejs.org/ru/config/#vue-config-js
+    chainWebpack: config => {
+        config.resolve.alias.set('vue', '@vue/compat')
+
+        config.module
+            .rule('vue')
+            .use('vue-loader')
+            .tap(options => {
+                return {
+                    ...options,
+                    compilerOptions: {
+                        compatConfig: {
+                            MODE: 2
+                        }
+                    }
+                }
+            })
     }
 }
