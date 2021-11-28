@@ -1,14 +1,12 @@
-import Vue from 'vue';
-import Vuex from 'vuex';
-import config from '../config/config';
-import auth from './auth';
-import menu from './menu';
+import { createStore } from 'vuex';
+import { auth } from './auth';
+import { menu } from './menu';
 
-Vue.use(Vuex);
-Vue.prototype.$config = config;
-export default new Vuex.Store({
+const store = createStore({
     modules: {
         auth,
         menu
     }
 });
+
+export { store };

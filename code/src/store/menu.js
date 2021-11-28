@@ -1,13 +1,13 @@
 import axios from "axios";
-import router from "../router";
+import { router } from "../router";
 import config from "../config/config";
 
 let urlMain = config.makeApiUrl('menu-list');
 
-export default {
-    state: {
+const menu = {
+    state: () => ({
         list: []
-    },
+    }),
     getters: {
         menuList: state => state.list || [],
     },
@@ -44,3 +44,5 @@ export default {
         }
     }
 }
+
+export { menu };

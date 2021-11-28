@@ -8,7 +8,13 @@ const LOGOUT = 'logout';
 
 let urlMain = config.getParam('apiDomain');
 
-export default {
+const auth = {
+    state: () => ({
+        status: '',
+        token: localStorage.getItem('token') || '',
+        username: localStorage.getItem('username') || '',
+        user: localStorage.getItem('user') || {},
+    }),
     getters: {
         isAuthenticated: state => !!state.token,
         authStatus: state => state.status,
@@ -17,12 +23,6 @@ export default {
         user: state => {
             return state.user;
         },
-    },
-    state: {
-        status: '',
-        token: localStorage.getItem('token') || '',
-        username: localStorage.getItem('username') || '',
-        user: localStorage.getItem('user') || {},
     },
     mutations: {
         [AUTH_REQUEST]: (state) => {
@@ -116,4 +116,6 @@ export default {
             })
         }
     }
-}
+};
+
+export { auth };
