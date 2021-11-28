@@ -1,11 +1,15 @@
 <template>
     <div id="app">
 
-        <nav-bar :menu-top="menuTop"/>
+      <nav-bar :menu-top="menuTop"/>
 
-        <div v-if="isLoggedIn">
-            <user-bar :user="user"/>
-        </div>
+      <div v-if="isLoggedIn">
+        <user-bar :user="user"/>
+      </div>
+      <router-link class="pr-2" v-for="item in menuList" :key="item.url" :to="item.url">
+        <font-awesome-icon class="pr-1" :icon="item.icon"/>
+        <span class="hidden-sm-down">{{ item.anchor }}</span>
+      </router-link>
 
       <b-container fluid>
         <div v-if="loading" class="text-center">
@@ -18,10 +22,7 @@
         </b-row>
         <b-row>
           <b-col>
-            <router-link class="pr-2" v-for="item in menuList" :key="item.url" :to="item.url">
-              <font-awesome-icon class="pr-1" :icon="item.icon"/>
-              <span class="hidden-sm-down">{{ item.anchor }}</span>
-            </router-link>
+
           </b-col>
         </b-row>
       </b-container>

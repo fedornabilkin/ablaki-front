@@ -1,7 +1,46 @@
 <template>
   <div>
-    Orel
+    <h1>Orel</h1>
+
+    <b-button v-on:click="" variant="primary">All</b-button>
+    <b-button v-on:click="" variant="primary">My</b-button>
+    <b-button v-on:click="" variant="primary">History</b-button>
+    <b-button v-on:click="remove()" variant="danger">Remove all</b-button>
+
     <b-col md="3">
+      <div v-for="item in gameList" :key="item.id">
+        {{ item.id }}
+        <router-link :to="'/users/wall/' + item.username">
+          {{ item.username }}
+        </router-link>
+        {{ item.kon }}
+        <b-button v-on:click="play(item.id, 1)" variant="success">O</b-button>
+        <b-button v-on:click="play(item.id, 2)" variant="success">R</b-button>
+        <b-button v-on:click="del(item.id)" variant="warning">D</b-button>
+      </div>
+    </b-col>
+    <b-col md="3">
+      <div v-for="item in gameListMy" :key="item.id">
+        {{ item.id }}
+        <router-link :to="'/users/wall/' + item.username">
+          {{ item.username }}
+        </router-link>
+        {{ item.kon }}
+        <b-button v-on:click="del(item.id)" variant="warning">D</b-button>
+      </div>
+    </b-col>
+    <b-col md="3">
+      <div v-for="item in gameListHistory" :key="item.id">
+        {{ item.id }}
+        <router-link :to="'/users/wall/' + item.username">
+          {{ item.username }}
+        </router-link>
+        {{ item.kon }}
+      </div>
+    </b-col>
+
+
+    <b-col md="6">
       <b-card>
         <h4 class="col-12 text-center">Создать</h4>
         <b-form @submit.prevent="create">
@@ -14,9 +53,9 @@
                 v-model="game.kon"
                 required/>
             <div class="simple-kon">
-              <span v-for="item in simple.kon" :key="item.valueOf()">
-                {{ item.valueOf() }}
-              </span>
+                <span v-for="item in simple.kon" :key="item.valueOf()">
+                  {{ item.valueOf() }}
+                </span>
             </div>
           </b-form-group>
 
@@ -30,9 +69,9 @@
                 required
             />
             <div class="count">
-              <span v-for="item in simple.count" :key="item.valueOf()">
-                {{ item.valueOf() }}
-              </span>
+                <span v-for="item in simple.count" :key="item.valueOf()">
+                  {{ item.valueOf() }}
+                </span>
             </div>
           </b-form-group>
           <b-form-group
@@ -50,16 +89,6 @@
 
       </b-card>
     </b-col>
-
-    <div v-for="item in gameList" :key="item.id">
-      {{ item.id }}
-      <router-link :to="'/users/wall/' + item.username">
-        {{ item.username }}
-      </router-link>
-      {{ item.kon }}
-      <button v-on:click="play(item.id, 1)">O</button>
-      <button v-on:click="play(item.id, 2)">R</button>
-    </div>
   </div>
 </template>
 
@@ -74,6 +103,8 @@ export default {
     return {
       loading: false,
       gameList: [],
+      gameListMy: [{id: 1, username: 'bot', kon: 23}],
+      gameListHistory: [{id: 2, username: 'bot', kon: 23}],
       game: {
         kon: 5,
         count: 10
@@ -87,16 +118,33 @@ export default {
   },
   mounted() {
     this.requestList();
+    this.requestMy();
+    this.requestHistory();
   },
   methods: {
+    gameUrl: function () {
+      return 'v1/orel';
+    },
     urlList: function () {
-      return config.makeApiUrl('v1/orel');
+      return config.makeApiUrl(this.gameUrl());
     },
     urlPlay: function (id) {
-      return config.makeApiUrl('v1/orel/play/' + id);
+      return config.makeApiUrl(this.gameUrl() + '/play/' + id);
+    },
+    urlDel: function (id) {
+      return config.makeApiUrl(this.gameUrl() + id);
+    },
+    urlRemove: function () {
+      return config.makeApiUrl(this.gameUrl() + '/remove');
     },
     urlCreate: function () {
-      return config.makeApiUrl('v1/orel');
+      return config.makeApiUrl(this.gameUrl());
+    },
+    urlMy: function () {
+      return config.makeApiUrl(this.gameUrl() + '/my');
+    },
+    urlHistory: function () {
+      return config.makeApiUrl(this.gameUrl() + '/history');
     },
     create: function () {
       this.loading = true;
@@ -128,11 +176,61 @@ export default {
             }
           })
     },
+    del: function (id) {
+      axios.delete(this.urlDel(id))
+          .then(resp => {
+            console.log(resp);
+            if (resp.data !== undefined) {
+            }
+          })
+          .catch(err => {
+            console.log(err.response);
+            if (err.response) {
+              this.exception = err.response.data;
+            }
+          })
+    },
+    remove: function () {
+      axios.get(this.urlRemove())
+          .then(resp => {
+          })
+          .catch(err => {
+            if (err.response) {
+              this.exception = err.response.data;
+            }
+          })
+    },
     requestList: function () {
       axios.get(this.urlList())
           .then(resp => {
             if (resp.data !== undefined) {
               this.gameList = resp.data;
+            }
+          })
+          .catch(err => {
+            if (err.response) {
+              this.exception = err.response.data;
+            }
+          })
+    },
+    requestMy: function () {
+      axios.get(this.urlMy())
+          .then(resp => {
+            if (resp.data !== undefined) {
+              this.gameListMy = resp.data;
+            }
+          })
+          .catch(err => {
+            if (err.response) {
+              this.exception = err.response.data;
+            }
+          })
+    },
+    requestHistory: function () {
+      axios.get(this.urlHistory())
+          .then(resp => {
+            if (resp.data !== undefined) {
+              this.gameListHistory = resp.data;
             }
           })
           .catch(err => {
