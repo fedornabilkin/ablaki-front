@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import VueRouter from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
 import Main from './components/pages/Main';
@@ -16,8 +16,6 @@ import Profile from './components/pages/user/Profile';
 import Ablaki from './components/pages/games/Ablaki';
 import Orel from "./components/pages/games/Orel";
 
-Vue.use(VueRouter);
-
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
 // "Компонентом" может быть как конструктор компонента, созданный
@@ -25,7 +23,7 @@ Vue.use(VueRouter);
 
 const routes = [
     {
-        path: "*",
+        path: "/:pathMatch(.*)*'",
         name: 'Error',
         component: PageNotFound,
         meta: {
@@ -53,7 +51,9 @@ const routes = [
     {path: '/games/orel', component: Orel},
 ];
 
-export default new VueRouter({
-    mode: 'history',
-    routes: routes
+const router = createRouter({
+    history: createWebHistory(),
+    routes: routes,
 });
+
+export { router };
