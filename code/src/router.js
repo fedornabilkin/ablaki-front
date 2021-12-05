@@ -8,6 +8,7 @@ import PageNotFound from './components/pages/PageNotFound';
 import Wiki from './components/pages/Wiki';
 
 import Registration from './components/pages/user/Registration';
+import Registration2 from './components/pages/user/Registration2';
 import Login from './components/pages/user/Login';
 import Logout from './components/pages/user/Logout';
 import Wall from './components/pages/user/Wall';
@@ -43,6 +44,7 @@ const routes = [
 
     {path: '/users/wall/:login', component: Wall},
     {path: '/users/registration', component: Registration},
+    {path: '/users/registration2', component: Registration2},
     {path: '/users/login', component: Login},
     {path: '/users/logout', component: Logout},
     {path: '/users/profile', component: Profile},
