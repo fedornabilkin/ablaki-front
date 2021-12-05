@@ -32,6 +32,7 @@
 <script>
 import UserBar from "./components/navbar/UserBar";
 import NavBar from "./components/navbar/NavBar";
+import axios from 'axios';
 
 export default {
   name: 'App',
@@ -50,13 +51,15 @@ export default {
         //     }
         // },
         created: function () {
-            let that = this;
-            this.$http.interceptors.request.use(function (request) {
+            axios.defaults.headers.common['Authorization'] = this.$store.getters.headerToken;
+
+            /*this.$http.interceptors.request.use(function (request) {
               if (that.$store.state.auth.token !== '') {
-                request.headers.Authorization = that.$store.getters.headerToken;
+                request.headers.Authorization = that.;
               }
-                return request;
+              return request;
             }, undefined);
+            console.log("this.$http", this.$http.interceptors.request.headers);*/
         },
         // mounted() {
         //     this.$root.$on(
