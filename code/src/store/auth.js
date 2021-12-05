@@ -13,7 +13,7 @@ const auth = {
         status: '',
         token: localStorage.getItem('token') || '',
         username: localStorage.getItem('username') || '',
-        user: localStorage.getItem('user') || {},
+        user: JSON.parse(localStorage.getItem('user')) || {},
     }),
     getters: {
         isAuthenticated: state => !!state.token,
@@ -59,8 +59,7 @@ const auth = {
                             // resp.data.user.token = token;
                             localStorage.setItem('token', token);
                             localStorage.setItem('username', resp.data.user.username);
-                            localStorage.setItem('user', resp.data.user);
-                            axios.defaults.headers.common['Authorization'] = token;
+                            localStorage.setItem('user', JSON.stringify(resp.data.user));
                             commit(AUTH_SUCCESS, resp.data);
                         }
                         resolve(resp);
