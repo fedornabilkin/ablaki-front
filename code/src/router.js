@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import VueRouter from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
 import Main from './components/pages/Main';
@@ -8,6 +8,7 @@ import PageNotFound from './components/pages/PageNotFound';
 import Wiki from './components/pages/Wiki';
 
 import Registration from './components/pages/user/Registration';
+import Registration2 from './components/pages/user/Registration2';
 import Login from './components/pages/user/Login';
 import Logout from './components/pages/user/Logout';
 import Wall from './components/pages/user/Wall';
@@ -16,8 +17,6 @@ import Profile from './components/pages/user/Profile';
 import Ablaki from './components/pages/games/Ablaki';
 import Orel from "./components/pages/games/Orel";
 
-Vue.use(VueRouter);
-
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
 // "Компонентом" может быть как конструктор компонента, созданный
@@ -25,7 +24,7 @@ Vue.use(VueRouter);
 
 const routes = [
     {
-        path: "*",
+        path: "/:pathMatch(.*)*'",
         name: 'Error',
         component: PageNotFound,
         meta: {
@@ -45,6 +44,7 @@ const routes = [
 
     {path: '/users/wall/:login', component: Wall},
     {path: '/users/registration', component: Registration},
+    {path: '/users/registration2', component: Registration2},
     {path: '/users/login', component: Login},
     {path: '/users/logout', component: Logout},
     {path: '/users/profile', component: Profile},
@@ -53,7 +53,9 @@ const routes = [
     {path: '/games/orel', component: Orel},
 ];
 
-export default new VueRouter({
-    mode: 'history',
-    routes: routes
+const router = createRouter({
+    history: createWebHistory(),
+    routes: routes,
 });
+
+export { router };
