@@ -1,32 +1,30 @@
 <template>
-    <div id="app">
 
-      <nav-bar :menu-top="menuTop"/>
+  <nav-bar/>
 
-      <div v-if="isLoggedIn">
-        <user-bar :user="user"/>
-      </div>
-      <router-link class="pr-2" v-for="item in menuList" :key="item.url" :to="item.url">
-        <font-awesome-icon class="pr-1" :icon="item.icon"/>
-        <span class="hidden-sm-down">{{ item.anchor }}</span>
-      </router-link>
+  <div v-if="isLoggedIn">
+    <user-bar :user="user"/>
+  </div>
+  <router-link class="pr-2" v-for="item in menuList" :key="item.url" :to="item.url">
+    <font-awesome-icon class="pr-1" :icon="item.icon"/>
+    <span class="hidden-sm-down">{{ item.anchor }}</span>
+  </router-link>
 
-      <b-container fluid>
-        <div v-if="loading" class="text-center">
-          <b-spinner class="align-middle"/>
-        </div>
-        <b-row v-else>
-          <b-col md="12" class="pt-3">
-            <router-view></router-view>
-          </b-col>
-        </b-row>
-        <b-row>
-          <b-col>
-
-          </b-col>
-        </b-row>
-      </b-container>
+  <div class="container-fluid">
+    <div v-if="loading" class="text-center">
+      <b-spinner class="align-middle"/>
     </div>
+    <b-row v-else>
+      <b-col md="12" class="pt-3">
+        <router-view></router-view>
+      </b-col>
+    </b-row>
+    <b-row>
+      <b-col>
+
+      </b-col>
+    </b-row>
+  </div>
 </template>
 
 <script>
@@ -51,7 +49,10 @@ export default {
         //     }
         // },
         created: function () {
+          if (this.$store.state.auth.token) {
             axios.defaults.headers.common['Authorization'] = this.$store.getters.headerToken;
+          }
+          
 
             /*this.$http.interceptors.request.use(function (request) {
               if (that.$store.state.auth.token !== '') {
@@ -88,16 +89,6 @@ export default {
           // if (this.$store.getters.username) {
           //     this.user.login = this.$store.getters.username;
           // }
-          this.menuTop = [
-            {anchor: 'Форум', url: '/forum', title: 'Форум', icon: 'comments'},
-            {anchor: 'Wiki', url: '/wiki', title: 'wiki', icon: 'question-circle'},
-          ];
-          if (!this.isLoggedIn) {
-            this.menuTop.push({anchor: 'Регистрация', url: '/users/registration', title: 'Регистрация', icon: 'plus'});
-            this.menuTop.push({anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'});
-          } else {
-            this.menuTop.push({anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'sign-out-alt'});
-          }
 
           this.menuList = [
             {anchor: 'Ablaki', url: '/games/ablaki', title: 'Игра Ablaki', icon: 'apple-alt'},
