@@ -1,31 +1,28 @@
 <template>
 	<div>
         <h2 class="col-12 text-center">Вход</h2>
-            <form @submit.prevent="login">
+        <form @submit.prevent="login">
 
-                <input
-                    id="login"
-                    v-model="auth.login"
-                    type="text"
-                    required
-                />
-                <input
-                    id="password"
-                    type="password"
-                    v-model="auth.password"
-                    required
-                />
+            <input
+                id="login"
+                v-model="auth.login"
+                type="text"
+                required
+            />
+            <input
+                id="password"
+                type="password"
+                v-model="auth.password"
+                required
+            />
 
-                <button
-                    type="submit"
-                    variant="primary"
-                >
-                    Войти
-                </button>
-
-                <div>{{response.text}}</div>
-	
-            </form>
+            <button
+                type="submit"
+                variant="primary"
+            >
+                Войти
+            </button>
+        </form>
 	</div>
 </template>
 
@@ -34,7 +31,7 @@ export default {
 	name: "Login",
 	created() {
 		if (this.$store.getters.isAuthenticated) {
-			// this.$router.push("/");
+			this.$router.push("/");
 		}
 	},
 	data() {
@@ -48,10 +45,7 @@ export default {
 					login: "",
 					password: "",
 				},
-			},
-			response: {
-				text: "",
-			},
+			}
 		};
 	},
 	methods: {
@@ -65,25 +59,22 @@ export default {
 					login,
 					password,
 				})
-				.then((resp) => {
-
-					if (resp.data.errors !== undefined) {
-						for (let respKey in resp.data.errors) {
-							this.errors.text[respKey] =
-								resp.data.errors[respKey];
-						}
-						return;
-					}
-
+				.then((res) => {
+                    console.log("router push");
+                    this.$router.push("/")
 					// this.$store
 					// 	.dispatch("menuClear")
 					// 	.then(() => this.$router.push("/"));
 				})
-				.catch((err) => this.errorAuth(err));
-		},
-		errorAuth: function (err) {
-			this.response.text = err;
-		},
+				.catch((err) => {
+                    if (err.errors !== undefined) {
+						for (let resKey in err.errors) {
+							this.errors.text[resKey] = err.errors[resKey];
+						}
+						return;
+					}
+                });
+		}
 	},
 };
 </script>

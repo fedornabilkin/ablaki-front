@@ -1,5 +1,6 @@
 import axios from "axios";
 import config from "../config/config";
+import { login as apiLogin } from "../services/api";
 
 const AUTH_REQUEST = 'auth_request';
 const AUTH_SUCCESS = 'auth_success';
@@ -49,26 +50,17 @@ const auth = {
             return new Promise((resolve, reject) => {
                 commit(AUTH_REQUEST);
 
-                axios({
-                    url: (urlMain + 'login'), data: user, method: 'POST',
-                    // headers: {'TZ': Intl.DateTimeFormat().resolvedOptions().timeZone}
-                })
-                    .then(resp => {
-                        if (resp.data.token !== undefined && resp.data.user !== undefined) {
-                            const token = resp.data.token;
-                            // resp.data.user.token = token;
-                            localStorage.setItem('token', token);
-                            localStorage.setItem('username', resp.data.user.username);
-                            localStorage.setItem('user', JSON.stringify(resp.data.user));
-                            commit(AUTH_SUCCESS, resp.data);
-                        }
-                        resolve(resp);
-                    })
-                    .catch(err => {
-                        commit(AUTH_ERROR);
-                        localStorage.removeItem('token');
-                        reject(err)
-                    })
+                apiLogin(user.login, user.password).then(res => {
+                    localStorage.setItem('token', res.token);
+                    localStorage.setItem('username', res.user.username);
+                    localStorage.setItem('user', JSON.stringify(res.user));
+                    commit(AUTH_SUCCESS, res);
+                    resolve(res);
+                }).catch(e => {
+                    commit(AUTH_ERROR);
+                    localStorage.removeItem('token');
+                    reject(e);
+                });
             })
         },
         registration({commit}, user) {
