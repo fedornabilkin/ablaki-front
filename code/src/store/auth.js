@@ -28,12 +28,11 @@ const auth = {
         [AUTH_REQUEST]: (state) => {
             state.status = 'loading'
         },
-        [AUTH_SUCCESS]: (state, user) => {
-            console.log(user);
+        [AUTH_SUCCESS]: (state, payload) => {
             state.status = 'success';
-            state.token = user.token;
-            state.username = user.username;
-            state.user = user;
+            state.token = payload.token;
+            state.username = payload.user.username;
+            state.user = payload.user;
         },
         [AUTH_ERROR]: (state) => {
             state.status = 'error';
@@ -62,7 +61,7 @@ const auth = {
                             localStorage.setItem('username', resp.data.user.username);
                             localStorage.setItem('user', resp.data.user);
                             axios.defaults.headers.common['Authorization'] = token;
-                            commit(AUTH_SUCCESS, resp.data.user);
+                            commit(AUTH_SUCCESS, resp.data);
                         }
                         resolve(resp);
                     })
