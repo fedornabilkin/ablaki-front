@@ -1,14 +1,16 @@
 <template>
 
-    <nav-bar/>
+    
 
-    <div v-if="isAuthenticated">
-        <user-bar/>
-    </div>
+    <div class="container">
+        <nav-bar/>
 
-    <side-bar />
+        <div v-if="isAuthenticated">
+            <user-bar/>
+        </div>
 
-    <div class="container-fluid">
+        <side-bar />
+
         <Suspense>
             <template #default>
                 <router-view></router-view>
