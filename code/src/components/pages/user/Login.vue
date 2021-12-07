@@ -1,163 +1,126 @@
 <template>
-    <div>
-        <div
-                class="row justify-content-md-center"
-                :style="{ opacity: loading ? '0.5' : '1' }"
-        >
-            <b-col md="3">
-                <b-card>
-                    <h2 class="col-12 text-center">Вход</h2>
-                    <b-form @submit.prevent="login">
-                      <b-form-group
-                          class="position-relative"
-                          label="Логин"
-                          label-for="login"
-                          :description="valid.text.login">
-                        <b-form-input
-                            id="login"
-                            v-model="auth.login"
-                            type="text"
-                            required/>
-                      </b-form-group>
+	<div class="container">
+        <h1>Вход</h1>
 
-                      <b-form-group
-                          class="position-relative"
-                          label="Пароль"
-                          label-for="password"
-                          :description="valid.text.password">
-                        <b-form-input
-                            id="password"
-                            type="password"
-                            v-model="auth.password"
-                            required
-                        />
-                      </b-form-group>
-                      <b-form-group
-                          class="position-relative"
-                          :description="response.text">
-                        <b-button
-                            v-if="!loading"
-                            type="submit"
-                            variant="primary">
-                          Войти
-                        </b-button>
-                      </b-form-group>
-                      <span v-if="loading"
-                            class="loading-text">Выполняется запрос...</span>
-                    </b-form>
-                    <div
-                            v-if="loading"
-                            class="spinner-border loading"
-                            role="status"
-                    />
-                </b-card>
-            </b-col>
-        </div>
-    </div>
+        <el-form
+			v-loading="isLoading"
+			:model="auth"
+			ref="formRef"
+			:rules="validationRules"
+			label-position="top"
+			class="mt-3"
+			@submit.prevent="login"
+		>
+            <el-form-item label="Логин" prop="login">
+				<el-input v-model="auth.login" name="email" autocomplete="on"></el-input>
+			</el-form-item>
+
+            <el-form-item label="Пароль" prop="password">
+				<el-input v-model="auth.password" type="password"></el-input>
+			</el-form-item>
+
+            <el-form-item size="medium">
+				<el-button type="primary" native-type="submit" :disabled="disabled">Войти</el-button>
+			</el-form-item>
+        </el-form>
+	</div>
 </template>
 
 <script>
-    export default {
-        name: "Login",
-        head: {
-            title: {
-                inner: 'Авторизация'
-            }
-        },
-        created() {
-          if (this.$store.getters.isAuthenticated) {
-            this.$router.push('/');
-          }
-        },
-        data() {
-            return {
-              loading: false,
-              auth: {
-                login: '',
-                password: ''
-              },
-              valid: {
-                text: {
-                  login: '',
-                  password: ''
-                }
-              },
-              response: {
-                text: ''
-              },
-            }
-        },
-        methods: {
-          loader: function (loading) {
-            this.loading = loading;
-          },
-          validClear: function () {
-            for (const textKey in this.valid.text) {
-              this.valid.text[textKey] = '';
-            }
-          },
-          login: function () {
-            if (this.$store === null) {
-              return;
-            }
-
-            this.validClear();
-            this.loader(true);
-            let login = this.auth.login;
-            let password = this.auth.password;
-
-            this.$store.dispatch('login', {
-              login,
-              password
-            })
-                .then((resp) => {
-                  this.loader(false);
-
-                  if (resp.data.errors !== undefined) {
-                    for (let respKey in resp.data.errors) {
-                      this.valid.text[respKey] = resp.data.errors[respKey];
+import { ElNotification } from 'element-plus';
+export default {
+	name: "Login",
+	created() {
+		if (this.$store.getters.isAuthenticated) {
+			this.$router.push("/");
+		}
+	},
+	data() {
+		return {
+			auth: {
+				login: "",
+				password: "",
+			},
+            validationRules: {
+                login: [{
+					required: true,
+					message: "Введите логин",
+					trigger: "blur",
+				}, {
+					validator: (rule, value, callback) => {
+						if (this.errors.text.login) {
+							callback(new Error(this.errors.text.login));
+							this.errors.text.login = "";
+						} else {
+							callback();
+						}
+					},
+				}],
+                password: [
+                    {
+                        required: true,
+                        message: "Введите пароль",
+                        trigger: "blur",
+                    }, {
+                        validator: (rule, value, callback) => {
+                            if (this.errors.text.password) {
+                                callback(new Error(this.errors.text.password));
+								this.errors.text.password = "";
+                            } else {
+                                callback();
+                            }
+                        },
                     }
-                    return;
-                  }
-
-                  this.$store.dispatch('menuClear')
-                      .then(() => this.$router.push('/'));
-                })
-                .catch((err) => this.errorAuth(err))
-
-          },
-            errorAuth: function (err) {
-              this.response.text = err;
-              this.loader(false);
+                ]
             },
-        }
-    }
+			errors: {
+				text: {
+					login: "",
+					password: "",
+				},
+			}
+		};
+	},
+    computed: {
+        disabled() {
+            return !(this.auth.login && this.auth.password);
+        },
+		isLoading() {
+			return this.$store.getters.authStatus === "loading"
+		}
+    },
+	methods: {
+		login: function () {
+
+			let login = this.auth.login;
+			let password = this.auth.password;
+
+			this.$store
+				.dispatch("login", {
+					login,
+					password,
+				})
+				.then((res) => {
+					ElNotification({
+						title: 'Ура',
+						message: 'Вы вошли в аккаунт',
+						type: 'success',
+					});
+                    this.$router.push("/");
+				})
+				.catch((err) => {
+                    if (err.errors !== undefined) {
+						for (let resKey in err.errors) {
+							this.errors.text[resKey] = err.errors[resKey];
+						}
+
+                        this.$refs.formRef.validate();
+					}
+                });
+		}
+	},
+};
 </script>
 
 <style scoped>
-    .loading {
-        position: absolute;
-        top: 48%;
-        left: 46%;
-    }
-
-    form {
-        & button {
-          margin-top: 24px;
-          width: 100%;
-        }
-
-        & .loading-text {
-          width: 100%;
-          display: block;
-          margin-top: 32px;
-          padding: 11px 0;
-        }
-    }
-
-    .card {
-        & .card-body {
-          padding: 2.25rem;
-        }
-    }
 </style>

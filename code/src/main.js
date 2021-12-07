@@ -1,20 +1,20 @@
-import "core-js/stable";
-import "regenerator-runtime/runtime";
-import Vue from 'vue'
-import './plugins/bootstrap-vue'
-import './plugins/axios'
-import App from './App.vue'
-import store from './store/store'
-import router from './router'
-import './fontawesome'
-import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome'
+import { createApp } from 'vue';
+import ElementPlus from 'element-plus';
 
-Vue.component('font-awesome-icon', FontAwesomeIcon);
+// import 'element-plus/dist/index.css';
+import './index.scss';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import App from './App.vue';
+import { router } from './router';
+import { store } from './store/store';
+import { setupElementPlusIcons } from './plugins/element-plus-icons';
 
-Vue.config.productionTip = false;
+const app = createApp(App);
 
-new Vue({
-    router,
-    store,
-    render: h => h(App)
-}).$mount('#app');
+app.use(ElementPlus);
+app.use(store);
+app.use(router);
+
+setupElementPlusIcons(app);
+
+app.mount('#app');

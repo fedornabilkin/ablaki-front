@@ -1,9 +1,9 @@
 module.exports = {
-    configureWebpack: {
-        devtool: 'source-map',
-        devServer: {
-            host: 'vue.Ablaki.local'
-        }
-    // Сюда пишем конфигурацию Webpack, но Vue CLI, см.: https://cli.vuejs.org/ru/config/#vue-config-js
+    devServer: {
+        proxy: 'http://94.250.251.94:3180/'
+    },
+    chainWebpack: config => {
+        // config.resolve.alias.set('@', resolve('src'));
+        config.resolve.extensions.add('.vue');
     }
 }

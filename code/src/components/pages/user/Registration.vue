@@ -1,201 +1,206 @@
 <template>
-    <div>
+	<div class="container">
+		<h1>Регистрация</h1>
+		<el-alert
+			title="Получив халявные кредиты и Кг, потрать их с максимальной выгодой, а не как закалялась сталь."
+			type="info"
+			:closable="false"
+		/>
 
-        <h1>Регистрация лучшего в мире пользователя</h1>
+		<el-form
+			v-loading="isLoading"
+			:model="form"
+			ref="formRef"
+			:rules="rules"
+			label-position="top"
+			class="mt-3"
+			@submit.prevent="submit"
+		>
+			<el-form-item label="Логин" prop="username">
+				<el-input v-model="form.username"></el-input>
+			</el-form-item>
+			<el-form-item label="Email" prop="email">
+				<el-input v-model="form.email"></el-input>
+			</el-form-item>
+			<el-form-item label="Пароль" prop="password">
+				<el-input type="password" v-model="form.password"></el-input>
+			</el-form-item>
+			<el-form-item label="Пароль еще раз" prop="passwordRepeat">
+				<el-input type="password" v-model="form.passwordRepeat"></el-input>
+			</el-form-item>
+			<el-form-item label="" prop="rules">
+				<el-checkbox v-model="form.rules">Согласен со всем, что вы там понаписали</el-checkbox>
+			</el-form-item>
 
-        <div class="row" :style="{ opacity: loading ? '0.5' : '1' }">
-          <div class="col-xs-12 col-sm-10 col-md-9">
-            <div class="alert alert-info">
-                    <span class="hidden-xs-down">
-                        Получив халявные кредиты и Кг, потрать их с максимальной выгодой, а не как закалялась сталь.
-                    </span>
-            </div>
-          </div>
-          <div class="col-xs-12 col-sm-10 col-md-9">
-
-            <b-form @submit.prevent="registration">
-              <b-form-group
-                  class="position-relative"
-                  label="Логин"
-                  label-for="username"
-                  :description="valid.text.username">
-                <b-form-input
-                    id="username"
-                    v-model="user.username"
-                    type="text"
-                    required
-                />
-              </b-form-group>
-
-              <b-form-group
-                  class="position-relative"
-                  label="Email"
-                  label-for="email"
-                  :description="valid.text.email">
-                <b-form-input
-                    id="email"
-                    v-model="user.email"
-                    type="text"
-                    required/>
-              </b-form-group>
-
-              <b-form-group
-                  class="position-relative"
-                  label="Пароль"
-                  label-for="password"
-                  :description="valid.text.password">
-                <b-form-input
-                    id="password"
-                    type="password"
-                    v-model="user.password"
-                    required
-                />
-              </b-form-group>
-
-              <b-form-group
-                  class="position-relative"
-                  v-bind:class="{ 'text-danger': !validate()}"
-                  label="Пароль еще раз"
-                  label-for="password-repeat"
-                  :description="valid.text.password_repeat">
-                <b-form-input
-                    id="password-repeat"
-                    type="password"
-                    v-model="user.password_repeat"
-                    required
-                />
-              </b-form-group>
-
-              <div class="form-check disabled col-xs-12 col-sm-6">
-                <label class="form-check-label">
-                  <input type="checkbox" class="form-check-input" name="rules" checked="" disabled="">
-                  Бесполезная галочка
-                </label>
-              </div>
-              <b-form-group
-                  class="position-relative"
-                  :description="response.text">
-                <b-button
-                    type="submit"
-                    variant="primary" v-bind:disabled="!submitEnable">
-                  Жмак и в аккаунт
-                </b-button>
-              </b-form-group>
-              <span v-if="loading"
-                    class="loading-text">Выполняется запрос...</span>
-            </b-form>
-            <div
-                v-if="loading"
-                class="spinner-border loading"
-                role="status"
-            />
-
-          </div>
-        </div>
-    </div>
+			<el-form-item size="medium">
+				<el-button type="primary" native-type="submit" :disabled="!btnEnabled">Регистрация</el-button>
+			</el-form-item>
+		</el-form>
+	</div>
 </template>
 
 <script>
-    export default {
-        name: "Registration",
-        head: {
-            title: {
-                inner: 'Регистрация'
-            }
-        },
-        created() {
-            if (this.$store.getters.isAuthenticated) {
-              this.$router.push('/');
-            }
-        },
-        data() {
-            return {
-              loading: false,
-              submitEnable: true,
-              user: {
-                username: '',
-                email: '',
-                password: '',
-                password_repeat: ''
-              },
-              valid: {
-                text: {
-                  username: '',
-                  email: '',
-                  password: '',
-                  password_repeat: ''
-                }
-              },
-              response: {
-                text: '',
-                temp: {}
-              },
-            }
-        },
-        methods: {
-          loader: function (loading) {
-            this.loading = loading;
-            this.submitEnable = !loading;
-          },
-          validClear: function () {
-            for (const textKey in this.valid.text) {
-              this.valid.text[textKey] = '';
-            }
-          },
-          setResponse: function (text) {
-            this.response.text = text;
-          },
-          validate: function () {
-            let flag = this.user.password === this.user.password_repeat;
-            if (!flag) {
-              this.submitEnable = false;
-              this.valid.text.password_repeat = 'Пароли не совпадают';
-            } else {
-              this.submitEnable = true;
-              this.valid.text.password_repeat = '';
-            }
-            return flag;
-          },
-          registration: function () {
-            if (this.$store === null) {
-              return;
-            }
+import { computed, ref } from "vue";
+import { ElNotification } from 'element-plus'
+import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
 
-            this.validClear();
-            this.loader(true);
-            this.setResponse('');
+export default {
+	setup() {
+		const store = useStore();
+		const router = useRouter();
 
-            let username = this.user.username;
-            let email = this.user.email;
-            let password = this.user.password;
-            this.$store.dispatch('registration', {
-              username,
-              password,
-              email,
-              submit: {loader: this.loader, response: this.response}
-            })
-                .then(resp => {
-                  if (resp.data.errors !== undefined) {
-                    for (let respKey in resp.data.errors) {
-                      this.valid.text[respKey] = resp.data.errors[respKey];
-                    }
-                    return;
-                  }
+		const formRef = ref();
+		const form = ref({
+			username: "",
+			email: "",
+			password: "",
+			passwordRepeat: "",
+			rules: false,
+		});
 
-                  this.$store.dispatch('menuClear')
-                      .then(() => this.$router.push('/'));
-                })
-                .catch(err => this.errorAuth(err))
+		const errors = {};
 
-          },
-            errorAuth: function (err) {
-              console.log(err);
-              // this.response.text = err;
-              // this.loader(false);
-            },
-        }
-    }
+		const isLoading = computed(() => store.getters.authStatus === "loading");
+
+		const rules = {
+			username: [
+				{
+					required: true,
+					message: "Введите логин",
+					trigger: "blur",
+				}, {
+					min: 3,
+					max: 100,
+					message: "Логин должен быть не менее 3х символов",
+					trigger: "blur",
+				}, {
+					validator: (rule, value, callback) => {
+						if (errors.username) {
+							callback(new Error(errors?.username));
+							errors.username = "";
+						} else {
+							callback();
+						}
+					}
+				}
+			],
+			email: [
+				{
+					required: true,
+					type: "email",
+					message: "Введите корректный Email",
+					trigger: "blur",
+				}, {
+					message: "Введите Email",
+					trigger: "blur",
+				}, {
+					validator: (rule, value, callback) => {
+						if (errors.email) {
+							callback(new Error(errors?.email));
+							errors.email = "";
+						} else {
+							callback();
+						}
+					}
+				}
+			],
+			password: [
+				{
+					required: true,
+					message: "Введите пароль",
+					trigger: "blur",
+				}, {
+					validator: (rule, value, callback) => {
+						if (errors.password) {
+							callback(new Error(errors?.password));
+							errors.password = "";
+						} else {
+							callback();
+						}
+					}
+				}
+			],
+			passwordRepeat: [
+				{
+					required: true,
+					message: "Введите пароль повторно",
+					trigger: "blur",
+				}, {
+					validator: (rule, value, callback) => {
+						if (value !== form.value.password) {
+							callback(new Error('Пароли должны совпадать'));
+						} else {
+							callback();
+						}
+					}, 
+				}
+			],
+			rules: [
+				{
+					required: true
+				}, {
+					validator: (rule, value, callback) => {
+						if (value === false) {
+							callback(new Error('С этим придеться согласиться'));
+						} else {
+							callback();
+						}
+					}
+				}
+			]
+		};
+
+		const isAuthenticated = computed(() => store.getters.isAuthenticated);
+		if (isAuthenticated.value) {
+			router.push('/');
+		}
+
+		const submit = () => {
+			formRef.value.validate(async (valid) => {
+				if (valid === true) {
+					let username = form.value.username;
+					let email = form.value.email;
+					let password = form.value.password;
+
+					store.dispatch('registration', {
+						username,
+						email,
+						password,
+					}).then((res) => {
+						ElNotification({
+							title: 'Успешно',
+							message: 'Письмо с подтверждением отправлено на Email',
+							type: 'success',
+						});
+
+						this.$router.push("/");
+					}).catch(e => {
+						for (const errorKey in e.errors) {
+							errors[errorKey] = e.errors[errorKey]
+						}
+
+						console.log("errors", errors);
+						formRef.value.validate();
+					})
+				}
+			});
+		};
+
+		const btnEnabled = computed(() => form.value.username && form.value.email && form.value.password && form.value.passwordRepeat && form.value.rules);
+
+		return {
+			formRef,
+			form,
+			rules,
+			isLoading,
+			btnEnabled,
+			submit,
+		};
+	},
+};
 </script>
 
-<style scoped>
+<style>
+
 </style>
