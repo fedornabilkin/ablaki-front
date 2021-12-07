@@ -37,7 +37,6 @@ export default {
     watch: {
         'headerToken': function() {
             axios.defaults.headers.common['Authorization'] = this.headerToken;
-            console.log("set new token", this.headerToken);
         }
     },
     computed: {
