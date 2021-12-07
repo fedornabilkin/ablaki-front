@@ -1,7 +1,6 @@
 import axios from "axios";
 import config from "../config/config";
-import { login as apiLogin } from "../services/api";
-import { registration as apiRegistration } from "../services/api";
+import { login as apiLogin, registration as apiRegistration, logout as apiLogout } from "../services/api";
 
 const AUTH_REQUEST = 'auth_request';
 const AUTH_SUCCESS = 'auth_success';
@@ -87,19 +86,16 @@ const auth = {
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('user');
-            delete axios.defaults.headers.common['Authorization'];
         },
         logout({commit}) {
             return new Promise((resolve, reject) => {
-                axios({url: (urlMain + 'logout'), method: 'POST'})
-                    .then(resp => {
-                        this.dispatch('clearData');
-                        resolve(resp);
-                    })
-                    .catch(err => {
-                        this.dispatch('clearData');
-                        reject(err)
-                    })
+                apiLogout().then(res => {
+                    this.dispatch('clearData');
+                    resolve(resp);
+                }).catch(err => {
+                    this.dispatch('clearData');
+                    reject(err)
+                })
             })
         }
     }
