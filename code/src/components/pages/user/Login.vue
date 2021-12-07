@@ -1,28 +1,28 @@
 <template>
-	<div>
-        <h2 class="col-12 text-center">Вход</h2>
-        <form @submit.prevent="login">
+	<div class="container">
+        <h1>Вход</h1>
 
-            <input
-                id="login"
-                v-model="auth.login"
-                type="text"
-                required
-            />
-            <input
-                id="password"
-                type="password"
-                v-model="auth.password"
-                required
-            />
+        <el-form
+			v-loading="isLoading"
+			:model="auth"
+			ref="formRef"
+			:rules="validationRules"
+			label-position="top"
+			class="mt-3"
+			@submit.prevent="login"
+		>
+            <el-form-item label="Логин" prop="login">
+				<el-input v-model="auth.login" name="email"></el-input>
+			</el-form-item>
 
-            <button
-                type="submit"
-                variant="primary"
-            >
-                Войти
-            </button>
-        </form>
+            <el-form-item label="Пароль" prop="password">
+				<el-input v-model="auth.password" type="password"></el-input>
+			</el-form-item>
+
+            <el-form-item size="medium">
+				<el-button type="primary" native-type="submit" :disabled="disabled">Войти</el-button>
+			</el-form-item>
+        </el-form>
 	</div>
 </template>
 
@@ -36,10 +36,43 @@ export default {
 	},
 	data() {
 		return {
+            isLoading: false,
 			auth: {
 				login: "",
 				password: "",
 			},
+            validationRules: {
+                login: [{
+					required: true,
+					message: "Введите логин",
+					trigger: "blur",
+				}, {
+					validator: (rule, value, callback) => {
+						if (this.errors.text.login) {
+							callback(new Error(this.errors.text.login));
+							this.errors.text.login = "";
+						} else {
+							callback();
+						}
+					},
+				}],
+                password: [
+                    {
+                        required: true,
+                        message: "Введите пароль",
+                        trigger: "blur",
+                    }, {
+                        validator: (rule, value, callback) => {
+                            if (this.errors.text.password) {
+                                callback(new Error(this.errors.text.password));
+								this.errors.text.password = "";
+                            } else {
+                                callback();
+                            }
+                        },
+                    }
+                ]
+            },
 			errors: {
 				text: {
 					login: "",
@@ -48,30 +81,40 @@ export default {
 			}
 		};
 	},
+    computed: {
+        disabled() {
+            return !(this.auth.login && this.auth.password);
+        }
+    },
 	methods: {
 		login: function () {
 
 			let login = this.auth.login;
 			let password = this.auth.password;
 
+            this.isLoading = true;
 			this.$store
 				.dispatch("login", {
 					login,
 					password,
 				})
 				.then((res) => {
-                    console.log("router push");
-                    this.$router.push("/")
-					// this.$store
-					// 	.dispatch("menuClear")
-					// 	.then(() => this.$router.push("/"));
+					ElNotification({
+						title: 'Ура',
+						message: 'Вы вошли в аккаунт',
+						type: 'success',
+					});
+					this.isLoading = false;
+                    this.$router.push("/");
 				})
 				.catch((err) => {
+                    this.isLoading = false;
                     if (err.errors !== undefined) {
 						for (let resKey in err.errors) {
 							this.errors.text[resKey] = err.errors[resKey];
 						}
-						return;
+
+                        this.$refs.formRef.validate();
 					}
                 });
 		}
@@ -80,29 +123,4 @@ export default {
 </script>
 
 <style scoped>
-.loading {
-	position: absolute;
-	top: 48%;
-	left: 46%;
-}
-
-form {
-	& button {
-		margin-top: 24px;
-		width: 100%;
-	}
-
-	& .loading-text {
-		width: 100%;
-		display: block;
-		margin-top: 32px;
-		padding: 11px 0;
-	}
-}
-
-.card {
-	& .card-body {
-		padding: 2.25rem;
-	}
-}
 </style>
