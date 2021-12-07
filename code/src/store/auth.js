@@ -7,8 +7,6 @@ const AUTH_SUCCESS = 'auth_success';
 const AUTH_ERROR = 'auth_error';
 const LOGOUT = 'logout';
 
-let urlMain = config.getParam('apiDomain');
-
 const auth = {
     state: () => ({
         status: '',

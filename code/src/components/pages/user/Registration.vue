@@ -183,8 +183,6 @@ export default {
 						console.log("errors", errors);
 						formRef.value.validate();
 					})
-				} else {
-					console.log("invalid");
 				}
 			});
 		};

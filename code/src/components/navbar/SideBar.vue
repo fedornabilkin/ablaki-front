@@ -5,8 +5,6 @@ import { useStore } from "vuex";
 const store = useStore();
 const isAuthenticated = computed(() => store.getters.isAuthenticated);
 
-console.log("isAuthenticated", isAuthenticated);
-
 const menuItems = computed(() => {
     if (isAuthenticated.value) {
         return [
