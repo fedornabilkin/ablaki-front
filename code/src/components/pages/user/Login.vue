@@ -12,7 +12,7 @@
 			@submit.prevent="login"
 		>
             <el-form-item label="Логин" prop="login">
-				<el-input v-model="auth.login" name="email"></el-input>
+				<el-input v-model="auth.login" name="email" autocomplete="on"></el-input>
 			</el-form-item>
 
             <el-form-item label="Пароль" prop="password">
@@ -27,6 +27,7 @@
 </template>
 
 <script>
+import { ElNotification } from 'element-plus';
 export default {
 	name: "Login",
 	created() {
@@ -36,7 +37,6 @@ export default {
 	},
 	data() {
 		return {
-            isLoading: false,
 			auth: {
 				login: "",
 				password: "",
@@ -84,7 +84,10 @@ export default {
     computed: {
         disabled() {
             return !(this.auth.login && this.auth.password);
-        }
+        },
+		isLoading() {
+			return this.$store.getters.authStatus === "loading"
+		}
     },
 	methods: {
 		login: function () {
@@ -92,7 +95,6 @@ export default {
 			let login = this.auth.login;
 			let password = this.auth.password;
 
-            this.isLoading = true;
 			this.$store
 				.dispatch("login", {
 					login,
@@ -104,11 +106,9 @@ export default {
 						message: 'Вы вошли в аккаунт',
 						type: 'success',
 					});
-					this.isLoading = false;
                     this.$router.push("/");
 				})
 				.catch((err) => {
-                    this.isLoading = false;
                     if (err.errors !== undefined) {
 						for (let resKey in err.errors) {
 							this.errors.text[resKey] = err.errors[resKey];
