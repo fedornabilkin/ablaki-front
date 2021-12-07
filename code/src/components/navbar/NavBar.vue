@@ -20,9 +20,7 @@ import { mapGetters } from 'vuex';
 export default {
 	name: "NavBar",
 	data: function () {
-		return {
-            menuItems: []
-        };
+		return {};
 	},
     created: function () {
 
