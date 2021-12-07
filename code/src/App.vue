@@ -31,12 +31,19 @@ export default {
 
     created: function () {
         if (this.$store.state.auth.token) {
-            axios.defaults.headers.common['Authorization'] = this.$store.getters.headerToken;
+            axios.defaults.headers.common['Authorization'] = this.headerToken;
+        }
+    },
+    watch: {
+        'headerToken': function() {
+            axios.defaults.headers.common['Authorization'] = this.headerToken;
+            console.log("set new token", this.headerToken);
         }
     },
     computed: {
         ...mapGetters([
             'isAuthenticated',
+            'headerToken'
         ]),
     },
 
