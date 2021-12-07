@@ -1,9 +1,8 @@
 <template>
 	<div class="">
 		<span class="pe-1">
-			Стена
 			<router-link :to="'/users/wall/' + user.username">
-                {{ user.username }}
+				<el-button type="text" icon="postcard">Стена {{ user.username }}</el-button>
             </router-link>
 		</span>
 		<span class="pe-1">
@@ -15,8 +14,7 @@
 			<span>Cr</span>
 		</span>
 		<span class="pe-1">
-			<span class="fa fa-star" aria-hidden="true"></span>
-			<font-awesome-icon :icon="'star'" />
+			<el-icon style="vertical-align: text-top;"><star /></el-icon>
 			<span class="amount">{{ user.person.rating }}</span>
 		</span>
 	</div>
