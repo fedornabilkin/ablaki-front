@@ -1,6 +1,8 @@
 <template>
-    <div>
-        <router-link class="pe-2" :to="'/'">Ablaki</router-link>
+    <div class="nav">
+        <router-link class="pe-2 logo" :to="'/'">
+            <el-button type="text">Ablaki</el-button>
+        </router-link>
 
         <router-link
             class="pe-2"
@@ -8,8 +10,11 @@
             :key="item.url"
             :to="item.url"
         >
-            <font-awesome-icon :icon="item.icon" />
-            <span class="hidden-sm-down">{{ item.anchor }}</span>
+            <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
+            <!-- <el-link :icon="item.icon">{{ item.anchor }}</el-link> -->
+            <!-- <el-icon><component :is="item.icon"/></el-icon> -->
+            <!-- <font-awesome-icon :icon="item.icon" /> -->
+            <!-- <span class="hidden-sm-down">{{ item.anchor }}</span> -->
         </router-link>
     </div>
 </template>
@@ -31,15 +36,15 @@ export default {
         ]),
         menuItems() {
             let items = [
-                {anchor: 'Форум', url: '/forum', title: 'Форум', icon: 'comments'},
-                {anchor: 'Wiki', url: '/wiki', title: 'wiki', icon: 'question-circle'},
+                {anchor: 'Форум', url: '/forum', title: 'Форум', icon: 'comment'},
+                {anchor: 'Wiki', url: '/wiki', title: 'wiki', icon: 'question-filled'},
             ];
             
             if (!this.isAuthenticated) {
-                items.push({anchor: 'Регистрация', url: '/users/registration', title: 'Регистрация', icon: 'plus'});
-                items.push({anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'});
+                items.push({anchor: 'Регистрация', url: '/users/registration', title: 'Регистрация', icon: 'circle-plus-filled'});
+                items.push({anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'user-filled'});
             } else {
-                items.push({anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'sign-out-alt'});
+                items.push({anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'circle-close-filled'});
             }
 
             return items;
@@ -48,5 +53,18 @@ export default {
 };
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+.logo {
+    .el-button {
+        font-size: 1.2rem;
+    }
+}
+
+// .nav {
+//     position: sticky;
+//     width: 100%;
+//     top: 0;
+//     left: 0;
+//     border-bottom: 1px solid var(--border-color);
+// }
 </style>
