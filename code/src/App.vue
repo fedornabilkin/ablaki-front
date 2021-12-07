@@ -9,7 +9,15 @@
     <side-bar />
 
     <div class="container-fluid">
-        <router-view></router-view>
+        <Suspense>
+            <template #default>
+                <router-view></router-view>
+            </template>
+            <template #fallback>
+                <div>Loading...</div>
+            </template>
+        </Suspense>
+        
     </div>
 </template>
 
