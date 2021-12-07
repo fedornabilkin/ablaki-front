@@ -16,3 +16,15 @@ export const login = async (login, password) => {
         }).catch(e => reject(e));
     });
 }
+
+export const registration = async (username, email, password) => {
+    return new Promise((resolve, reject) => {
+        axios.post(`${baseUrl}registration`, { username, email, password }).then(res => {
+            if (!res.data.errors) {
+                resolve(res.data)
+            } else {
+                reject(res.data)
+            }
+        }).catch(e => reject(e));
+    });
+}

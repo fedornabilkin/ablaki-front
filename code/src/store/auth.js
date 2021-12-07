@@ -1,6 +1,7 @@
 import axios from "axios";
 import config from "../config/config";
 import { login as apiLogin } from "../services/api";
+import { registration as apiRegistration } from "../services/api";
 
 const AUTH_REQUEST = 'auth_request';
 const AUTH_SUCCESS = 'auth_success';
@@ -30,6 +31,7 @@ const auth = {
             state.status = 'loading'
         },
         [AUTH_SUCCESS]: (state, payload) => {
+            console.log("payload", payload);
             state.status = 'success';
             state.token = payload.token;
             state.username = payload.user.username;
@@ -46,43 +48,38 @@ const auth = {
         },
     },
     actions: {
-        login({commit}, user) {
+        login({commit}, {login, password}) {
             return new Promise((resolve, reject) => {
                 commit(AUTH_REQUEST);
 
-                apiLogin(user.login, user.password).then(res => {
+                apiLogin(login, password).then(res => {
                     localStorage.setItem('token', res.token);
                     localStorage.setItem('username', res.user.username);
                     localStorage.setItem('user', JSON.stringify(res.user));
                     commit(AUTH_SUCCESS, res);
                     resolve(res);
                 }).catch(e => {
-                    commit(AUTH_ERROR);
                     localStorage.removeItem('token');
+                    commit(AUTH_ERROR);
                     reject(e);
                 });
             })
         },
-        registration({commit}, user) {
+        registration({commit}, {username, email, password}) {
             return new Promise((resolve, reject) => {
                 commit(AUTH_REQUEST);
 
-                axios({
-                    url: (urlMain + 'registration'),
-                    data: user,
-                    method: 'POST',
-                })
-                    .then(resp => {
-                        user.submit.loader(false);
-                        resolve(resp);
-                    })
-                    .catch(err => {
-                        console.log(err);
-                        // user.loader(false);
-                        commit(AUTH_ERROR);
-                        // localStorage.removeItem('token');
-                        reject(err)
-                    })
+                apiRegistration(username, email, password).then(res => {
+                    commit(AUTH_SUCCESS, {
+                        token: '',
+                        username: '',
+                        user: ''
+                    });
+                    resolve(res);
+                }).catch(e => {
+                    commit(AUTH_ERROR);
+                    reject(e);
+                });
             })
         },
         clearData({commit}) {
