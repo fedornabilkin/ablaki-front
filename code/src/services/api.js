@@ -28,3 +28,15 @@ export const registration = async (username, email, password) => {
         }).catch(e => reject(e));
     });
 }
+
+export const logout = async () => {
+    return new Promise((resolve, reject) => {
+        axios.post(`${baseUrl}logout`, {}).then(res => {
+            if (!res.data.errors) {
+                resolve(res.data)
+            } else {
+                reject(res.data)
+            }
+        }).catch(e => reject(e));
+    });
+}
