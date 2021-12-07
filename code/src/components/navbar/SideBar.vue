@@ -32,7 +32,7 @@ const menuItems = computed(() => {
 </script>
 
 <template>
-    <router-link class="pr-2" v-for="item in menuItems" :key="item.url" :to="item.url">
+    <router-link class="pe-2" v-for="item in menuItems" :key="item.url" :to="item.url">
         <font-awesome-icon class="pr-1" :icon="item.icon"/>
         <span class="hidden-sm-down">{{ item.anchor }}</span>
     </router-link>
