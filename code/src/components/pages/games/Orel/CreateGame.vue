@@ -45,6 +45,7 @@ export default {
     <el-dialog
 		:model-value="props.isOpen"
 		title="Создать игры"
+        :destroy-on-close="true"
         @close="closeDialog">
         <form action="" class="form-newgame">
             <div class="row">
