@@ -17,7 +17,7 @@ export default {
         const count = ref(1);
 
         const createGame = () => {
-            orel.create(kon, count)
+            orel.create(kon.value, count.value)
                 .then((res) => {
                     gamesList.value = res;
                 })
@@ -30,12 +30,15 @@ export default {
             props.onClose();
         }
 
+        const btnActive = kon.value && kon.value > 0 && count.value && count.value > 0;
+
         return {
             kon,
             count,
             createGame,
             closeDialog,
             props,
+            btnActive,
         };
 	},
 };
@@ -45,15 +48,15 @@ export default {
     <el-dialog
 		:model-value="props.isOpen"
 		title="Создать игры"
-        :destroy-on-close="true"
+        destroy-on-close
         @close="closeDialog">
         <form action="" class="form-newgame">
             <div class="row">
-                <div class="col label">
+                <div class="col-sm label">
                     Ставка
                 </div>
 
-                <div class="col-auto">
+                <div class="col-sm-auto">
                     <el-input-number
                         v-model="kon"
                         :min="1"
@@ -63,21 +66,21 @@ export default {
             </div>
             
             <div class="fast-kon mt-2">
-                <el-button type="info" size="small" @click="kon = 10">10</el-button>
-                <el-button type="info" size="small" @click="kon = 20">20</el-button>
-                <el-button type="info" size="small" @click="kon = 50">50</el-button>
-                <el-button type="info" size="small" @click="kon = 100">100</el-button>
-                <el-button type="info" size="small" @click="kon = 200">200</el-button>
-                <el-button type="info" size="small" @click="kon = 500">500</el-button>
-                <el-button type="info" size="small" @click="kon = 1000">1000</el-button>
+                <div><el-button type="info" size="small" @click="kon = 10">10</el-button></div>
+                <div><el-button type="info" size="small" @click="kon = 20">20</el-button></div>
+                <div><el-button type="info" size="small" @click="kon = 50">50</el-button></div>
+                <div><el-button type="info" size="small" @click="kon = 100">100</el-button></div>
+                <div><el-button type="info" size="small" @click="kon = 200">200</el-button></div>
+                <div><el-button type="info" size="small" @click="kon = 500">500</el-button></div>
+                <div><el-button type="info" size="small" @click="kon = 1000">1000</el-button></div>
             </div>
             
             
             <div class="row mt-4">
-                <div class="col">
+                <div class="col-sm">
                     Кол-во игр
                 </div>
-                <div class="col-auto">
+                <div class="col-sm-auto">
                     <el-input-number
                         v-model="count"
                         :min="1"
@@ -87,17 +90,17 @@ export default {
             </div>
 
             <div class="fast-kon mt-2">
-                <el-button type="info" size="small" @click="count = 3">3</el-button>
-                <el-button type="info" size="small" @click="count = 5">5</el-button>
-                <el-button type="info" size="small" @click="count = 10">10</el-button>
-                <el-button type="info" size="small" @click="count = 20">20</el-button>
-                <el-button type="info" size="small" @click="count = 30">30</el-button>
-                <el-button type="info" size="small" @click="count = 50">50</el-button>
-                <el-button type="info" size="small" @click="count = 100">100</el-button>
+                <div><el-button type="info" size="small" @click="count = 3">3</el-button></div>
+                <div><el-button type="info" size="small" @click="count = 5">5</el-button></div>
+                <div><el-button type="info" size="small" @click="count = 10">10</el-button></div>
+                <div><el-button type="info" size="small" @click="count = 20">20</el-button></div>
+                <div><el-button type="info" size="small" @click="count = 30">30</el-button></div>
+                <div><el-button type="info" size="small" @click="count = 50">50</el-button></div>
+                <div><el-button type="info" size="small" @click="count = 100">100</el-button></div>
             </div>
 
             <div class="mt-3">
-                <el-button type="primary" @click="createGame">Создать</el-button>
+                <el-button type="primary" @click="createGame" :disabled="!btnActive">Создать</el-button>
             </div>
         </form>
 	</el-dialog>
@@ -112,7 +115,9 @@ export default {
 
     .fast-kon {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 }
 </style>

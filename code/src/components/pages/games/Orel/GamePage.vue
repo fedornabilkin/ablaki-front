@@ -1,33 +1,29 @@
 <script>
 import { ref } from "@vue/reactivity";
 import { orel } from "../../../../services/api";
-import CreateGame from "./CreateGame";
+import CreateGame from "./CreateGame.vue";
+import GamesList from './GamesList.vue';
 
 export default {
-	components: { CreateGame },
+	components: {
+		CreateGame,
+		GamesList
+	},
 	setup() {
-		const gamesList = ref([]);
 		const dialogCreate = ref(false);
-		const isGamesLoading = ref(true);
 
-		const dialogCreateClose = () => {
+		const openDialogCreate = () => {
+			dialogCreate.value = true;
+		};
+
+		const closeDialogCreate = () => {
 			dialogCreate.value = false;
 		};
 
-		orel.get()
-			.then((res) => {
-				gamesList.value = res;
-				isGamesLoading.value = false;
-			})
-			.catch((err) => {
-				console.log(err);
-			});
-
 		return {
-			gamesList,
 			dialogCreate,
-            isGamesLoading,
-			dialogCreateClose,
+			openDialogCreate,
+			closeDialogCreate,
 		};
 	},
 };
@@ -60,11 +56,11 @@ urlHistory: function () {
 
 <template>
 	<div class="row mt-2">
-		<div class="col">
+		<div class="col-sm">
 			<div class="display-6">Игра Орел-решка</div>
 		</div>
 
-		<div class="col-auto">
+		<div class="col-sm-auto mt-3 mt-sm-0">
 			<el-button
 				type="primary"
 				@click="dialogCreate = true"
@@ -77,28 +73,8 @@ urlHistory: function () {
 
 	<create-game
         :isOpen="dialogCreate"
-        :onClose="dialogCreateClose" />
+        :onClose="closeDialogCreate" />
 
-	<el-table
-		:data="gamesList"
-		v-loading="isGamesLoading"
-		class="mt-2"
-	>
-		<el-table-column prop="date" label="Игрок" />
-		<el-table-column prop="name" label="Ставка" />
-		<el-table-column prop="address" label="Address" />
-
-        <template #empty>
-            <span class="d-inline-block me-3">Игр нет :(</span>
-            <span>
-                <el-button
-                    type="primary"
-                    @click="dialogCreate = true"
-                    round
-                    icon="Plus"
-                    >Создать</el-button
-                >
-            </span>
-        </template>
-	</el-table>
+	<games-list 
+		:newGameClick="openDialogCreate" />
 </template>

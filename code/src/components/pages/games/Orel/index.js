@@ -1,2 +1,2 @@
-import Orel from './Page.vue';
+import Orel from './GamePage.vue';
 export default Orel;
