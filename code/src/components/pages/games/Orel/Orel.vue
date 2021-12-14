@@ -1,13 +1,11 @@
 <script>
 import { ref } from "@vue/reactivity";
-import { orel } from "../../../../services/api";
+import { watch } from '@vue/runtime-core';
 import CreateGame from "./CreateGame.vue";
-import GamesList from './GamesList.vue';
 
 export default {
 	components: {
 		CreateGame,
-		GamesList
 	},
 	setup() {
 		const dialogCreate = ref(false);
@@ -19,6 +17,10 @@ export default {
 		const closeDialogCreate = () => {
 			dialogCreate.value = false;
 		};
+
+		watch(dialogCreate, (v, ov) => {
+			console.log("watch(dialogCreate", ov, v);
+		})
 
 		return {
 			dialogCreate,
@@ -87,11 +89,9 @@ urlHistory: function () {
 		</el-breadcrumb>
 	</div>
 
-
 	<create-game
         :isOpen="dialogCreate"
-        :onClose="closeDialogCreate" />
+        @close="closeDialogCreate" />
 
-	<games-list 
-		:newGameClick="openDialogCreate" />
+	<router-view @newGameClick="openDialogCreate"></router-view>
 </template>

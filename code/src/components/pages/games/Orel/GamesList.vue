@@ -3,12 +3,8 @@ import { ref } from '@vue/reactivity';
 import { orel } from '../../../../services/api';
 
 export default {
-    props: {
-        newGameClick: {
-            type: Function,
-        }
-    },
-    setup(props) {
+    emits: ['newGameClick'],
+    setup(props, { emit }) {
         const gamesList = ref([]);
         const isGamesLoading = ref(true);
 
@@ -22,7 +18,7 @@ export default {
 			});
 
         const createNewGame = () => {
-            props.newGameClick();
+            emit('newGameClick');
         }
 
         const gameListReady = isGamesLoading.value === false && gamesList.value.length > 0;

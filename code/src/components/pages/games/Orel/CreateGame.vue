@@ -1,51 +1,50 @@
 <script>
 import { ref } from "@vue/reactivity";
-import { orel } from "../../../../services/api";
 import { ElNotification } from 'element-plus';
 
-    export default {
-        props: {
-            isOpen: {
-                type: Boolean,
-                default: true,
-            },
-            onClose: {
-                type: Function,
-            },
-        },
-        setup(props) {
-            const kon = ref(5);
-            const count = ref(1);
+import { orel } from "../../../../services/api";
 
-            const createGame = () => {
-                orel.create(kon.value, count.value)
-                    .then((res) => {
-                        ElNotification({
-                            message: 'Игры созданы',
-                            type: 'success',
-                        });
-                    })
-                    .catch((err) => {
-                        console.log(err);
+export default {
+    props: {
+        isOpen: {
+            type: Boolean,
+            default: true,
+        },
+    },
+    emits: ['close'],
+    setup(props, { emit }) {
+        const kon = ref(5);
+        const count = ref(1);
+
+        const createGame = () => {
+            orel.create(kon.value, count.value)
+                .then((res) => {
+                    ElNotification({
+                        message: 'Игры созданы',
+                        type: 'success',
                     });
-            };
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
+        };
 
-            const closeDialog = () => {
-                props.onClose();
-            };
+        const closeDialog = () => {
+            emit('close');
+        };
 
-            const btnActive = kon.value && kon.value > 0 && count.value && count.value > 0;
+        const btnActive = kon.value && kon.value > 0 && count.value && count.value > 0;
 
-            return {
-                kon,
-                count,
-                createGame,
-                closeDialog,
-                props,
-                btnActive,
-            };
-        },
-    };
+        return {
+            kon,
+            count,
+            createGame,
+            closeDialog,
+            props,
+            btnActive,
+        };
+    },
+};
 </script>
 
 <template>
