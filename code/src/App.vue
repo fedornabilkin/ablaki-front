@@ -1,7 +1,4 @@
 <template>
-
-    
-
     <div class="container">
         <nav-bar/>
 

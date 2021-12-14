@@ -1,6 +1,7 @@
 <script>
-    import { ref } from "@vue/reactivity";
-    import { orel } from "../../../../services/api";
+import { ref } from "@vue/reactivity";
+import { orel } from "../../../../services/api";
+import { ElNotification } from 'element-plus';
 
     export default {
         props: {
@@ -19,7 +20,10 @@
             const createGame = () => {
                 orel.create(kon.value, count.value)
                     .then((res) => {
-                        gamesList.value = res;
+                        ElNotification({
+                            message: 'Игры созданы',
+                            type: 'success',
+                        });
                     })
                     .catch((err) => {
                         console.log(err);

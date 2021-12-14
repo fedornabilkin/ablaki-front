@@ -71,6 +71,23 @@ urlHistory: function () {
 		</div>
 	</div>
 
+	<div>
+		<el-breadcrumb separator="/">
+			<el-breadcrumb-item to="/games/orel">
+				<el-button type="text" icon="apple">Все игры</el-button>
+			</el-breadcrumb-item>
+
+			<el-breadcrumb-item to="/games/orel/my">
+				<el-button type="text" icon="apple">Мои игры</el-button>
+			</el-breadcrumb-item>
+			
+			<el-breadcrumb-item to="/games/orel/history">
+				<el-button type="text" icon="apple">История</el-button>
+			</el-breadcrumb-item>
+		</el-breadcrumb>
+	</div>
+
+
 	<create-game
         :isOpen="dialogCreate"
         :onClose="closeDialogCreate" />
