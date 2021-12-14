@@ -1,6 +1,11 @@
 @forward 'element-plus/theme-chalk/src/common/var.scss' with (
     $alert: (
         'title-font-size': '15px',
+    ),
+    $colors: (
+        'primary': (
+            'base': #33a004,
+        ),
     )
 );
 
@@ -9,6 +14,16 @@
 .el-notification__content {
     text-align: left;
 }
-.el-form-item__label {
-	line-height: unset;
+.el-form--label-top {
+    .el-form-item__label {
+        line-height: unset;
+    }
+}
+.el-input-number {
+    width: auto;
+    max-width: 180px;
+}
+.el-dialog {
+    max-width: 500px;
+    width: 98%;
 }
