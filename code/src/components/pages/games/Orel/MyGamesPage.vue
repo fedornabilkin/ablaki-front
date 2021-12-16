@@ -1,6 +1,7 @@
 <script>
 import { ref } from '@vue/reactivity';
 import { orel } from '../../../../services/api';
+import { ElNotification } from 'element-plus';
 export default {
 	emits: ['newGameClick'],
 	setup(props, { emit }) {
@@ -20,10 +21,22 @@ export default {
 			emit('newGameClick');
 		}
 
+		const deleteGame = (id) => {
+			orel.delete(id).then((res) => {
+				gamesList.value = gamesList.value.filter(game => game.id !== id);
+
+				ElNotification({
+					message: 'Игра удалена',
+					type: 'info',
+				})
+			})
+		}
+
 		return {
 			gamesList,
 			isGamesLoading,
 			createNewGame,
+			deleteGame,
 		}
 	}
 };
@@ -48,7 +61,7 @@ export default {
                     content="Отменить игру"
                     placement="top"
                 >
-                    <el-button icon="delete" type="danger" circle />
+                    <el-button icon="delete" type="danger" circle @click="deleteGame(scope.row.id)"/>
                 </el-tooltip>
             </template>
         </el-table-column>

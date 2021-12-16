@@ -87,4 +87,16 @@ export const orel = {
             }).catch(e => reject(e));
         });
     },
+
+    delete: async (id) => {
+        return new Promise((resolve, reject) => {
+            axios.delete(`${baseUrl}v1/orel/${id}`).then(res => {
+                if (!res.data.errors) {
+                    resolve(res.data);
+                } else {
+                    reject(res.data);
+                }
+            }).catch(e => reject(e));
+        });
+    },
 }
