@@ -74,5 +74,17 @@ export const orel = {
                 }
             }).catch(e => reject(e));
         });
-    }
+    },
+
+    getMy: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/orel/my`).then(res => {
+                if (!res.data.errors) {
+                    resolve(res.data);
+                } else {
+                    reject(res.data);
+                }
+            }).catch(e => reject(e));
+        });
+    },
 }
