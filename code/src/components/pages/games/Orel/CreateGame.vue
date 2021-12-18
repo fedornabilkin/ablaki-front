@@ -11,18 +11,23 @@ export default {
             default: true,
         },
     },
-    emits: ['close'],
+    emits: ['close', 'gameCreated'],
     setup(props, { emit }) {
         const kon = ref(5);
         const count = ref(1);
+        const isLoading = ref(false);
 
         const createGame = () => {
+            isLoading.value = true;
             orel.create(kon.value, count.value)
                 .then((res) => {
                     ElNotification({
                         message: 'Игры созданы',
                         type: 'success',
                     });
+                    isLoading.value = false;
+
+                    emit("gameCreated");
                 })
                 .catch((err) => {
                     console.log(err);
@@ -42,6 +47,7 @@ export default {
             closeDialog,
             props,
             btnActive,
+            isLoading,
         };
     },
 };
@@ -88,7 +94,8 @@ export default {
             </div>
 
             <div class="row mt-4">
-                <div class="col-sm">Кол-во игр</div>
+                <div class="col-sm label">Кол-во игр</div>
+                
                 <div class="col-sm-auto">
                     <el-input-number v-model="count" :min="1" controls-position="right" />
                 </div>
@@ -119,9 +126,11 @@ export default {
             </div>
 
             <div class="mt-3">
-                <el-button type="primary" @click="createGame" :disabled="!btnActive"
-                    >Создать</el-button
-                >
+                <el-button type="primary"
+                    @click="createGame"
+                    :disabled="!btnActive"
+                    :loading="isLoading"
+                >Создать</el-button>
             </div>
         </form>
     </el-dialog>
