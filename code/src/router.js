@@ -37,11 +37,11 @@ const routes = [
     { path: '/users/logout', component: Logout },
     { path: '/users/profile', component: Profile },
 
-    { path: '/games/ablaki', component: Ablaki },
+    { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
     { path: '/games/orel', component: Orel, children: [
         { path: '', component: OrelGames },
         { path: 'my', component: MyOrelGames },
-    ] },
+    ], meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
