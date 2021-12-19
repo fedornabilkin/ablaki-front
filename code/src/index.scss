@@ -27,3 +27,19 @@
     max-width: 500px;
     width: 98%;
 }
+
+.list-group {
+    .list-group-item-title {
+        color: rgb(144, 147, 153);
+        font-weight: bold;
+    }
+}
+
+// list animation
+.list-enter-active, .list-leave-active {
+	transition: all .3s;
+}
+.list-enter, .list-leave-to {
+	opacity: 0;
+	transform: translateX(10px);
+}

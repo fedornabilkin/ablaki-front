@@ -18,7 +18,7 @@ export default {
 
 		const fetchGames = () => {
 			isGamesLoading.value = true;
-			orel.getMy()
+			orel.getHistory()
 				.then((res) => {
 					res = res.map((game) => ({
 						...game,
@@ -35,22 +35,9 @@ export default {
 				});
 		};
 
-		const deleteGame = (id) => {
-			orel.delete(id).then((res) => {
-				gamesList.value = gamesList.value.filter(
-					(game) => game.id !== id
-				);
-
-				ElNotification({
-					message: "Игра удалена",
-					type: "info",
-				});
-			});
-		};
-
-		watch(() => props.reloadListTrigger, () => {
-			fetchGames();
-		});
+		// watch(() => props.reloadListTrigger, () => {
+		// 	fetchGames();
+		// });
 
 		const onCreateGameClicked = () => {
 			emit("newGameClick");
@@ -62,7 +49,6 @@ export default {
 			gamesList,
 			isGamesLoading,
 			onCreateGameClicked,
-			deleteGame,
 		};
 	},
 };
@@ -112,28 +98,19 @@ export default {
 	<div class="list-group list-group-flush" v-loading="isGamesLoading">
 		<div class="list-group-item list-group-item-title">
 			<div class="row">
-				<div class="col">Игрок</div>
+				<div class="col">Игрок 1</div>
+				<div class="col">Игрок 2</div>
 				<div class="col">Ставка</div>
 				<div class="col">Дата создания</div>
-				<div class="col">Действия</div>
 			</div>
 		</div>
 		<transition-group name="list" mode="out-in">
 			<div class="list-group-item list-group-item-action" v-for="game in gamesList" :key="game.id">
 				<div class="row align-items-center">
 					<div class="col">{{ game.username }}</div>
+					<div class="col">{{ game.username }}</div>
 					<div class="col">{{ game.kon }} кр.</div>
 					<div class="col">{{ game.created_date }}</div>
-					<div class="col">
-						<el-tooltip effect="dark" content="Отменить игру" placement="top">
-							<el-button
-								icon="delete"
-								type="danger"
-								circle
-								@click="deleteGame(game.id)"
-							/>
-						</el-tooltip>
-					</div>
 				</div>
 			</div>
 
@@ -155,6 +132,7 @@ export default {
 </template>
 
 <style lang="scss" scoped>
+
 .no-games-placeholder {
 	display: flex;
 	align-items: center;

@@ -14,7 +14,7 @@ import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
 
 import Ablaki from './components/pages/games/Ablaki';
-import Orel, { MyOrelGames, OrelGames } from "./components/pages/games/Orel";
+import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pages/games/Orel";
 
 import { store } from './store/store';
 
@@ -41,6 +41,7 @@ const routes = [
     { path: '/games/orel', component: Orel, children: [
         { path: '', component: OrelGames },
         { path: 'my', component: MyOrelGames },
+        { path: 'history', component: GamesHistoryPage },
     ], meta: { requiresAuth: true } },
 ];
 

@@ -99,4 +99,16 @@ export const orel = {
             }).catch(e => reject(e));
         });
     },
+
+    getHistory: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/orel/history`).then(res => {
+                if (!res.data.errors) {
+                    resolve(res.data);
+                } else {
+                    reject(res.data);
+                }
+            }).catch(e => reject(e));
+        });
+    },
 }
