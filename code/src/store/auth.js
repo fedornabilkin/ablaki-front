@@ -16,6 +16,7 @@ const auth = {
     }),
     getters: {
         isAuthenticated: state => state.user !== null,
+        isAuthorized: state => state.token.length > 0,
         authStatus: state => state.status,
         token: state => state.token,
         headerToken: state => 'Bearer ' + state.token,
@@ -78,9 +79,12 @@ const auth = {
             })
         },
         fetchData({commit, getters}) {
-            if (getters.user === null && getters.token.length > 0) {
+            if (getters.token.length > 0) {
                 return new Promise((resolve, reject) => {
-                    commit(AUTH_REQUEST);
+
+                    if (getters.authStatus === null) {
+                        commit(AUTH_REQUEST);
+                    }
 
                     apiGetProfile().then(res => {
                         commit(FETCH_USER_SUCCESS, res);
