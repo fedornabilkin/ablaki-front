@@ -25,6 +25,7 @@ export default {
 						created_date: moment
 							.unix(game.created_at)
 							.format("HH:mm:SS DD.MM.YYYY"),
+						isLoading: false
 					}));
 
 					gamesList.value = res;
@@ -36,10 +37,16 @@ export default {
 		};
 
 		const deleteGame = (id) => {
+			let gameIndex = gamesList.value.findIndex((game) => game.id === id);
+
+			gamesList.value[gameIndex].isLoading = true;
+			
 			orel.delete(id).then((res) => {
-				gamesList.value = gamesList.value.filter(
-					(game) => game.id !== id
-				);
+				// gamesList.value = gamesList.value.filter(
+				// 	(game) => game.id !== id
+				// );
+
+				gamesList.value.splice(gameIndex, 1);
 
 				ElNotification({
 					message: "Игра удалена",
@@ -130,6 +137,7 @@ export default {
 								icon="delete"
 								type="danger"
 								circle
+								:loading="game.isLoading"
 								@click="deleteGame(game.id)"
 							/>
 						</el-tooltip>
