@@ -21,7 +21,7 @@ const menuItems = computed(() => {
         ]
     } else {
         return [
-            {anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'},
+            {anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'user'},
             ...games
         ]
     }

@@ -1,5 +1,5 @@
 <template>
-    <div class="container">
+    <div class="container" v-if="dataFetched">
         <nav-bar/>
 
         <div v-if="isAuthenticated">
@@ -26,6 +26,7 @@ import NavBar from "./components/navbar/NavBar";
 import SideBar from "./components/navbar/SideBar";
 
 import axios from 'axios';
+import { getProfile } from './services/api.js';
 import { mapGetters } from 'vuex';
 
 export default {
@@ -40,6 +41,15 @@ export default {
         if (this.$store.state.auth.token) {
             axios.defaults.headers.common['Authorization'] = this.headerToken;
         }
+
+        this.$store.dispatch('fetchData').then(res => {
+
+        }).catch(e => {
+            console.log(JSON.stringify(this.$store.state));
+            this.$store.dispatch('logout')
+                .then(() => this.$router.push('/'))
+                .catch(() => this.$router.push('/'))
+        });
     },
     watch: {
         'headerToken': function() {
@@ -49,8 +59,13 @@ export default {
     computed: {
         ...mapGetters([
             'isAuthenticated',
-            'headerToken'
+            'headerToken',
+            'user',
+            'authStatus',
         ]),
+        dataFetched() {
+            return this.authStatus !== null && this.authStatus !== 'loading'
+        },
     },
 
     mounted() {

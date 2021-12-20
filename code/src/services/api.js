@@ -51,6 +51,18 @@ export const getWall = async (username) => {
     });
 }
 
+export const getProfile = async () => {
+    return new Promise((resolve, reject) => {
+        axios.get(`${baseUrl}v1/users/profile`).then(res => {
+            if (!res.data.errors) {
+                resolve(res.data);
+            } else {
+                reject(res.data);
+            }
+        }).catch(e => reject(e));
+    });
+}
+
 export const orel = {
     get: async () => {
         return new Promise((resolve, reject) => {
