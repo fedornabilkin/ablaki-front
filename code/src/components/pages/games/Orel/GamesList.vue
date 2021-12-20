@@ -8,6 +8,20 @@ export default {
         const gamesList = ref([]);
         const isGamesLoading = ref(true);
 
+        const createNewGame = () => {
+            emit('newGameClick');
+        }
+
+        const onClickPlay = (id, hod) => {
+            orel.play(id, hod).then(res => {
+                gamesList.value = gamesList.value.filter(
+					(game) => game.id !== id
+				);
+            })
+        }
+
+        const gameListReady = isGamesLoading.value === false && gamesList.value.length > 0;
+
         orel.get()
 			.then((res) => {
 				gamesList.value = res;
@@ -17,17 +31,12 @@ export default {
 				console.log(err);
 			});
 
-        const createNewGame = () => {
-            emit('newGameClick');
-        }
-
-        const gameListReady = isGamesLoading.value === false && gamesList.value.length > 0;
-
         return {
             gamesList,
             isGamesLoading,
-            gameListReady,
             createNewGame,
+            onClickPlay,
+            gameListReady,
         }
     },
 }
@@ -52,14 +61,23 @@ export default {
                     content="Играть"
                     placement="top"
                 >
-                    <el-button icon="sunny" type="primary" circle />
+                    <el-button
+                        icon="sunny"
+                        type="primary"
+                        circle
+                        @click="onClickPlay(scope.row.id, 0)"
+                    />
                 </el-tooltip>
                 <el-tooltip
                     effect="dark"
                     content="Играть"
                     placement="top"
                 >
-                    <el-button icon="moon" circle></el-button>
+                    <el-button
+                        icon="moon"
+                        circle
+                        @click="onClickPlay(scope.row.id, 0)"
+                    />
                 </el-tooltip>
             </template>
         </el-table-column>

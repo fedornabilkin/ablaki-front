@@ -76,6 +76,20 @@ export const orel = {
         });
     },
 
+    play: async (id, hod) => {
+        return new Promise((resolve, reject) => {
+            axios.post(`${baseUrl}v1/orel/play/${id}`, {
+                hod
+            }).then(res => {
+                if (!(res.data?.errors ?? null)) {
+                    resolve(res.data);
+                } else {
+                    reject(res.data);
+                }
+            }).catch(e => reject(e));
+        });
+    },
+
     getMy: async () => {
         return new Promise((resolve, reject) => {
             axios.get(`${baseUrl}v1/orel/my`).then(res => {

@@ -41,31 +41,6 @@ export default {
 		};
 	},
 };
-
-/*gameUrl: function () {
-        return 'v1/orel';
-},
-urlList: function () {
-        return config.makeApiUrl(this.gameUrl());
-},
-urlPlay: function (id) {
-        return config.makeApiUrl(this.gameUrl() + '/play/' + id);
-},
-urlDel: function (id) {
-        return config.makeApiUrl(this.gameUrl() + id);
-},
-urlRemove: function () {
-        return config.makeApiUrl(this.gameUrl() + '/remove');
-},
-urlCreate: function () {
-        return config.makeApiUrl(this.gameUrl());
-},
-urlMy: function () {
-        return config.makeApiUrl(this.gameUrl() + '/my');
-},
-urlHistory: function () {
-        return config.makeApiUrl(this.gameUrl() + '/history');
-},*/
 </script>
 
 <template>

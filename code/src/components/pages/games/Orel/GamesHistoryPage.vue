@@ -108,7 +108,7 @@ export default {
 			<div class="list-group-item list-group-item-action" v-for="game in gamesList" :key="game.id">
 				<div class="row align-items-center">
 					<div class="col">{{ game.username }}</div>
-					<div class="col">{{ game.username }}</div>
+					<div class="col">{{ game.username_gamer }}</div>
 					<div class="col">{{ game.kon }} кр.</div>
 					<div class="col">{{ game.created_date }}</div>
 				</div>
