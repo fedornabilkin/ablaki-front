@@ -26,12 +26,16 @@ const auth = {
     },
     mutations: {
         [AUTH_REQUEST]: (state) => {
-            state.status = 'loading'
+            if (state.status === null) {
+                state.status = 'loading';
+            }
         },
         [AUTH_SUCCESS]: (state, payload) => {
             state.status = 'success';
-            state.token = payload.token;
-            state.user = {...payload.user, username: payload.user.username};
+            if (payload !== undefined) {
+                state.token = payload.token;
+                state.user = {...payload.user, username: payload.user.username};
+            }
         },
         [FETCH_USER_SUCCESS]: (state, payload) => {
             state.status = 'success';
@@ -67,10 +71,7 @@ const auth = {
                 commit(AUTH_REQUEST);
 
                 apiRegistration(username, email, password).then(res => {
-                    // commit(AUTH_SUCCESS, {
-                    //     token: '',
-                    //     user: ''
-                    // });
+                    commit(AUTH_SUCCESS);
                     resolve(res);
                 }).catch(e => {
                     commit(AUTH_ERROR);
@@ -82,16 +83,13 @@ const auth = {
             if (getters.token.length > 0) {
                 return new Promise((resolve, reject) => {
 
-                    if (getters.authStatus === null) {
-                        commit(AUTH_REQUEST);
-                    }
+                    commit(AUTH_REQUEST);
 
                     apiGetProfile().then(res => {
                         commit(FETCH_USER_SUCCESS, res);
                         resolve(res);
                     }).catch(e => {
-                        localStorage.removeItem('token');
-                        commit(AUTH_ERROR);
+                        this.dispatch('clearData');
                         reject(e);
                     });
                 

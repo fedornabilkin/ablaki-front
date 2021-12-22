@@ -42,13 +42,8 @@ export default {
             axios.defaults.headers.common['Authorization'] = this.headerToken;
         }
 
-        this.$store.dispatch('fetchData').then(res => {
-
-        }).catch(e => {
-            console.log(JSON.stringify(this.$store.state));
-            this.$store.dispatch('logout')
-                .then(() => this.$router.push('/'))
-                .catch(() => this.$router.push('/'))
+        this.$store.dispatch('fetchData').catch(e => {
+            this.$router.push('/')
         });
     },
     watch: {

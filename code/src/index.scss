@@ -32,6 +32,10 @@
     .list-group-item-title {
         color: rgb(144, 147, 153);
         font-weight: bold;
+
+        & > * {
+            width: 100%;
+        }
     }
 }
 
