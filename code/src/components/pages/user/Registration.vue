@@ -61,7 +61,7 @@ export default {
 
 		const errors = {};
 
-		const isLoading = computed(() => store.getters.authStatus === "loading");
+		const isLoading = computed(() => store.getters['auth/authStatus'] === "loading");
 
 		const rules = {
 			username: [
@@ -151,7 +151,7 @@ export default {
 			]
 		};
 
-		const isAuthenticated = computed(() => store.getters.isAuthenticated);
+		const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 		if (isAuthenticated.value) {
 			router.push('/');
 		}
@@ -163,7 +163,7 @@ export default {
 					let email = form.value.email;
 					let password = form.value.password;
 
-					store.dispatch('registration', {
+					store.dispatch('auth/registration', {
 						username,
 						email,
 						password,

@@ -3,7 +3,7 @@ import { computed } from "@vue/reactivity";
 import { useStore } from "vuex";
 
 const store = useStore();
-const isAuthenticated = computed(() => store.getters.isAuthenticated);
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 
 const menuItems = computed(() => {
     let games = [

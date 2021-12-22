@@ -104,7 +104,7 @@
             }
         },
         created() {
-            if (this.$store.getters.isAuthenticated) {
+            if (this.$store.getters['auth/isAuthenticated']) {
               this.$router.push('/');
             }
         },
@@ -168,7 +168,7 @@
             let username = this.user.username;
             let email = this.user.email;
             let password = this.user.password;
-            this.$store.dispatch('registration', {
+            this.$store.dispatch('auth/registration', {
               username,
               password,
               email,

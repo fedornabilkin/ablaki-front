@@ -28,7 +28,7 @@ export default {
 		return {};
 	},
     computed: {
-        ...mapGetters([
+        ...mapGetters('auth', [
             'user',
         ]),
     }

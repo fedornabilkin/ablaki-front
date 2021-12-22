@@ -42,7 +42,7 @@ export default {
             axios.defaults.headers.common['Authorization'] = this.headerToken;
         }
 
-        this.$store.dispatch('fetchData').catch(e => {
+        this.$store.dispatch('auth/fetchData').catch(e => {
             this.$router.push('/')
         });
     },
@@ -52,7 +52,7 @@ export default {
         }
     },
     computed: {
-        ...mapGetters([
+        ...mapGetters('auth', [
             'isAuthenticated',
             'headerToken',
             'user',

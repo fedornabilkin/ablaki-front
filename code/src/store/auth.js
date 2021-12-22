@@ -9,6 +9,7 @@ const AUTH_ERROR = 'auth_error';
 const LOGOUT = 'logout';
 
 const auth = {
+    namespaced: true,
     state: () => ({
         status: null,
         token: localStorage.getItem('token') || '',
@@ -89,7 +90,7 @@ const auth = {
                         commit(FETCH_USER_SUCCESS, res);
                         resolve(res);
                     }).catch(e => {
-                        this.dispatch('clearData');
+                        this.dispatch('auth/clearData');
                         reject(e);
                     });
                 
@@ -102,13 +103,17 @@ const auth = {
             commit(LOGOUT);
             localStorage.removeItem('token');
         },
+        setData({commit}) {
+            commit(LOGOUT);
+            localStorage.removeItem('token');
+        },
         logout({commit}) {
             return new Promise((resolve, reject) => {
                 apiLogout().then(res => {
-                    this.dispatch('clearData');
+                    this.dispatch('auth/clearData');
                     resolve(resp);
                 }).catch(err => {
-                    this.dispatch('clearData');
+                    this.dispatch('auth/clearData');
                     reject(err)
                 })
             })

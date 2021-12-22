@@ -2,12 +2,14 @@
     import { ref } from "@vue/reactivity";
     import { orel } from "../../../../services/api";
     import moment from "moment";
+    import { useStore } from 'vuex';
 
     export default {
         emits: ["newGameClick"],
         setup(props, { emit }) {
             const gamesList = ref([]);
             const isGamesLoading = ref(true);
+            const store = useStore();
 
             const createNewGame = () => {
                 emit("newGameClick");
@@ -25,6 +27,8 @@
 
                     gamesList.value[gameIndex].isLoading = false;
                     gamesList.value[gameIndex].isWin = res.game.win;
+
+                    //store.commit('fetch_user_success', res.gamer);
                 });
             };
 

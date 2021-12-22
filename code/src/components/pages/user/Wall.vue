@@ -5,7 +5,7 @@ import { getWall } from "../../../services/api";
 export default {
 	async setup() {
 		const store = useStore();
-		const userData = computed(() => store.getters.user);
+		const userData = computed(() => store.getters['auth/user']);
 
 		const userWall = ref(await getWall(userData.value.username));
 

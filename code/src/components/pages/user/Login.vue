@@ -31,7 +31,7 @@ import { ElNotification } from 'element-plus';
 export default {
 	name: "Login",
 	created() {
-		if (this.$store.getters.isAuthenticated) {
+		if (this.$store.getters['auth/isAuthenticated']) {
 			this.$router.push("/");
 		}
 	},
@@ -86,7 +86,7 @@ export default {
             return !(this.auth.login && this.auth.password);
         },
 		isLoading() {
-			return this.$store.getters.authStatus === "loading"
+			return this.$store.getters['auth/authStatus'] === "loading"
 		}
     },
 	methods: {
@@ -96,7 +96,7 @@ export default {
 			let password = this.auth.password;
 
 			this.$store
-				.dispatch("login", {
+				.dispatch("auth/login", {
 					login,
 					password,
 				})
