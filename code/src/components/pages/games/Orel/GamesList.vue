@@ -28,7 +28,7 @@
                     gamesList.value[gameIndex].isLoading = false;
                     gamesList.value[gameIndex].isWin = res.game.win;
 
-                    //store.commit('fetch_user_success', res.gamer);
+                    store.dispatch('auth/setData', res.gamer);
                 });
             };
 

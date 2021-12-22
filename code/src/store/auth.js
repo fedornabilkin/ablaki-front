@@ -103,9 +103,8 @@ const auth = {
             commit(LOGOUT);
             localStorage.removeItem('token');
         },
-        setData({commit}) {
-            commit(LOGOUT);
-            localStorage.removeItem('token');
+        setData({commit}, userData) {
+            commit(FETCH_USER_SUCCESS, userData);
         },
         logout({commit}) {
             return new Promise((resolve, reject) => {
