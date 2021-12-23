@@ -47,7 +47,7 @@ export default {
 
 		const creditsTooltipAnimationTimeout = ref();
 
-		watch(() => user.value.person.credit, (value, oldValue) => {
+		watch(() => user.value?.person?.credit, (value, oldValue) => {
 			let diff = roundCredits(value - oldValue);
 			let displayedDiff = `${diff < 0 ? '-' : '+'}${Math.abs(diff)}`;
 

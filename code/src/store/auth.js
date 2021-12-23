@@ -110,7 +110,7 @@ const auth = {
             return new Promise((resolve, reject) => {
                 apiLogout().then(res => {
                     this.dispatch('auth/clearData');
-                    resolve(resp);
+                    resolve(res);
                 }).catch(err => {
                     this.dispatch('auth/clearData');
                     reject(err)
