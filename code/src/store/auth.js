@@ -35,12 +35,12 @@ const auth = {
             state.status = 'success';
             if (payload !== undefined) {
                 state.token = payload.token;
-                state.user = {...payload.user, username: payload.user.username};
+                state.user = {...payload.user};
             }
         },
         [FETCH_USER_SUCCESS]: (state, payload) => {
             state.status = 'success';
-            state.user = {...payload, username: payload.username};
+            state.user = {...payload};
         },
         [AUTH_ERROR]: (state) => {
             state.status = 'error';
