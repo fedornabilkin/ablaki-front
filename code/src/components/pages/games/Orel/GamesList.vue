@@ -1,6 +1,6 @@
 <script>
     import { ref } from "@vue/reactivity";
-    import { orel } from "../../../../services/api";
+    import { errorHandler, orel } from "../../../../services/api";
     import moment from "moment";
     import { useStore } from 'vuex';
 
@@ -15,40 +15,62 @@
                 emit("newGameClick");
             };
 
+            const fetchGames = () => {
+                isGamesLoading.value = true;
+                orel.get()
+                    .then((res) => {
+                        res = res.map((game) => ({
+                            ...game,
+                            created_date: moment.unix(game.created_at).format("HH:mm:SS DD.MM.YYYY"),
+                            isLoading: false,
+                            isWin: null,
+                            error: null,
+                        }));
+
+                        gamesList.value = res;
+                        isGamesLoading.value = false;
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                    });
+            }
+
             const onClickPlay = (id, hod) => {
                 let gameIndex = gamesList.value.findIndex((game) => game.id === id);
 
                 gamesList.value[gameIndex].isLoading = true;
 
                 orel.play(id, hod).then((res) => {
-                    // gamesList.value = gamesList.value.filter(
-                    // 	(game) => game.id !== id
-                    // );
 
                     gamesList.value[gameIndex].isLoading = false;
                     gamesList.value[gameIndex].isWin = res.game.win;
 
                     store.dispatch('auth/setData', res.gamer);
-                });
+                }).catch(e => {
+                    gamesList.value[gameIndex].isLoading = false;
+                    errorHandler(e, {
+                        "The requested model does not exist.": () => {
+                            gamesList.value[gameIndex].error = "Игра удалена";
+                        },
+                        "No free game": () => {
+                            gamesList.value[gameIndex].error = "Игра сыграна";
+                            // gamesList.value.splice(gameIndex, 1);
+                        }
+                    });
+                }).finally(onfinally => {
+                    let freeGames = gamesList.value.filter(game => {
+                        return game.isWin === null && game.error === null;
+                    });
+
+                    if (freeGames.length === 0) {
+                        fetchGames();
+                    }
+                })
             };
 
             const gameListReady = isGamesLoading.value === false && gamesList.value.length > 0;
 
-            orel.get()
-                .then((res) => {
-                    res = res.map((game) => ({
-                        ...game,
-                        created_date: moment.unix(game.created_at).format("HH:mm:SS DD.MM.YYYY"),
-                        isLoading: false,
-                        isWin: null,
-                    }));
-
-                    gamesList.value = res;
-                    isGamesLoading.value = false;
-                })
-                .catch((err) => {
-                    console.log(err);
-                });
+            fetchGames();
 
             return {
                 gamesList,
@@ -82,13 +104,17 @@
                 ]"
                 v-for="game in gamesList"
                 :key="game.id"
+                v-loading="game.isLoading"
             >
-                <div class="row align-items-center game-row" v-loading="game.isLoading">
+                <div class="row align-items-center game-row">
                     <div class="col">{{ game.username }}</div>
                     <div class="col">{{ game.kon }} кр.</div>
                     <div class="col">{{ game.created_date }}</div>
                     <div class="col">
-                        <div v-if="game.isWin === null">
+                        <div v-if="game.error !== null">
+                            {{game.error}}
+                        </div>
+                        <div v-else-if="game.isWin === null">
                             <el-tooltip effect="dark" content="Играть" placement="top">
                                 <el-button
                                     icon="sunny"
