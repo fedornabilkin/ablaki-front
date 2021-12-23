@@ -2,9 +2,7 @@
     <div class="container" v-if="dataFetched">
         <nav-bar/>
 
-        <div v-if="isAuthenticated">
-            <user-bar/>
-        </div>
+        <user-bar v-if="isAuthenticated"/>
 
         <side-bar />
 
