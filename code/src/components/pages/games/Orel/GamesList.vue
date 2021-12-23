@@ -115,18 +115,23 @@
                             {{game.error}}
                         </div>
                         <div v-else-if="game.isWin === null">
-                            <el-tooltip effect="dark" content="Играть" placement="top">
+                            <!-- <el-tooltip effect="dark" content="Играть" placement="top" :append-to-body="false"> -->
                                 <el-button
                                     icon="sunny"
                                     type="primary"
                                     circle
                                     @click="onClickPlay(game.id, 2)"
                                 />
-                            </el-tooltip>
+                            <!-- </el-tooltip> -->
 
-                            <el-tooltip effect="dark" content="Играть" placement="top">
-                                <el-button icon="moon" circle @click="onClickPlay(game.id, 2)" />
-                            </el-tooltip>
+                            <!-- <el-tooltip effect="dark" content="Играть" placement="top" :append-to-body="false"> -->
+                                <el-button
+                                    icon="moon"
+                                    class="ms-3"
+                                    circle
+                                    @click="onClickPlay(game.id, 2)"
+                                />
+                            <!-- </el-tooltip> -->
                         </div>
                         <div v-else-if="game.isWin === true">
                             Победа
