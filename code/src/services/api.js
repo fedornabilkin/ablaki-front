@@ -66,7 +66,7 @@ export const getProfile = async () => {
 export const orel = {
     get: async () => {
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrl}v1/orel`).then(res => {
+            axios.get(`${baseUrl}v1/orel?per-page=1000`).then(res => {
                 if (!res.data.errors) {
                     resolve(res.data);
                 } else {

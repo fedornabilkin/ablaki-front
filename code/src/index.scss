@@ -37,14 +37,34 @@
             width: 100%;
         }
     }
+
+    &.list-group-flush {
+        & > .list-group-item:last-child {
+            border-bottom-width: 1px !important;
+            border-bottom-color: transparent;
+        }
+    }
 }
 
 // list animation
 .list-enter-active, .list-leave-active {
-	transition: all .3s;
+    transition: all .3s;
 }
-.list-enter, .list-leave-to {
-	opacity: 0;
-	// transform: translateX(10px);
+.list-enter-from {
+    opacity: 0;
     margin-bottom: -57px;
+}
+.list-leave-to {
+    margin-bottom: -57px;
+    z-index: unset !important;
+}
+
+.none-enter-active, .none-leave-active {
+    transition: all .2s;
+}
+.none-enter-from {
+    opacity: 0;
+}
+.none-leave-active {
+    display: none !important;
 }
