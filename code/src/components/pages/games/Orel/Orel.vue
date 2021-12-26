@@ -28,10 +28,6 @@ export default {
             reloadListTrigger.value = !reloadListTrigger.value;
         };
 
-        watch(dialogCreate, (v, ov) => {
-            console.log("watch(dialogCreate", ov, v);
-        });
-
         return {
             dialogCreate,
             openDialogCreate,

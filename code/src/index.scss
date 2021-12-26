@@ -55,12 +55,25 @@
     margin-bottom: -57px;
 }
 .list-leave-to {
+    opacity: 0;
     margin-bottom: -57px;
     z-index: unset !important;
 }
 
+.out-list-enter-active, .out-list-leave-active {
+    transition: all .3s;
+}
+.out-list-enter-from {
+    opacity: 0;
+}
+.out-list-leave-to {
+    margin-bottom: -57px;
+    opacity: 0;
+    z-index: unset !important;
+}
+
 .none-enter-active, .none-leave-active {
-    transition: all .2s;
+    transition: all .3s;
 }
 .none-enter-from {
     opacity: 0;
