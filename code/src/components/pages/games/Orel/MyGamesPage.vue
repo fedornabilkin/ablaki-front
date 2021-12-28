@@ -125,7 +125,7 @@ export default {
                 <div class="col">Действия</div>
             </div>
         </div>
-        <transition-group name="list" mode="out-in">
+        <transition-group name="out-list">
             <div class="list-group-item list-group-item-action" v-for="game in gamesList" :key="game.id">
                 <div class="row align-items-center">
                     <div class="col">{{ game.username }}</div>

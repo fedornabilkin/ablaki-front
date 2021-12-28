@@ -64,11 +64,14 @@ export const getProfile = async () => {
 }
 
 export const orel = {
-    get: async () => {
+    get: async (page = 1) => {
         return new Promise((resolve, reject) => {
             axios.get(`${baseUrl}v1/orel?per-page=1000`).then(res => {
                 if (!res.data.errors) {
-                    resolve(res.data);
+                    resolve({
+                        list: res.data,
+                        count: Number(res.headers['x-pagination-total-count']),
+                    });
                 } else {
                     reject(res.data);
                 }

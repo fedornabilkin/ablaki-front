@@ -18,6 +18,7 @@ export default {
     emits: ['newGameClick'],
     setup(props, { emit }) {
         const gamesList = ref([]);
+        const gamesCount = ref(0);
         const isGamesLoading = ref(true);
 
         const store = useStore();
@@ -26,7 +27,7 @@ export default {
             isGamesLoading.value = true;
             orel.get()
                 .then((res) => {
-                    res = res.map((game) => ({
+                    const list = res.list.map((game) => ({
                         ...game,
                         created_date: moment.unix(game.created_at).format("HH:mm:SS DD.MM.YYYY"),
                         isLoading: false,
@@ -34,7 +35,8 @@ export default {
                         error: null,
                     }));
 
-                    gamesList.value = res;
+                    gamesCount.value = res.count;
+                    gamesList.value = list;
                     isGamesLoading.value = false;
                 })
                 .catch((err) => {
@@ -83,6 +85,7 @@ export default {
 
         return {
             gamesList,
+            gamesCount,
             isGamesLoading,
             onPlay,
             openDialogCreate,
@@ -95,6 +98,7 @@ export default {
 <template>
     <games-list
         :gamesList="gamesList"
+        :gamesCount="gamesCount"
         :isGamesLoading="isGamesLoading"
         @newGameClick="openDialogCreate"
         @onPlay="onPlay" />

@@ -7,6 +7,9 @@
             gamesList: {
                 type: Array,
             },
+            gamesCount: {
+                type: Number,
+            },
             isGamesLoading: {
                 type: Boolean,
                 default: () => true,
@@ -117,8 +120,7 @@
         <transition-group :name="transitionName">
             <div
                 :class="[
-                    'list-group-item',
-                    'list-group-item-action',
+                    'py-2',
                     { 'game-win': game.isWin === true },
                     { 'game-lose': game.isWin === false },
                 ]"
@@ -126,41 +128,43 @@
                 :key="game.id"
                 v-loading="game.isLoading"
             >
-                <div class="row align-items-center game-row">
-                    <div class="col">{{ game.username }}</div>
-                    <div class="col">{{ game.kon }} кр.</div>
-                    <div class="col">{{ game.created_date }}</div>
-                    <div class="col">
-                        <div v-if="game.error !== null">
-                            {{ game.error }}
-                        </div>
-                        <div v-else-if="game.isWin === null">
-                            <!-- <el-tooltip effect="dark" content="Играть" placement="top" :append-to-body="false"> -->
-                            <el-button
-                                icon="sunny"
-                                type="primary"
-                                circle
-                                @click="onClickPlay(game.id, 1)"
-                            />
-                            <!-- </el-tooltip> -->
+                <el-card shadow="hover">
+                    <div class="row align-items-center game-row">
+                        <div class="col">{{ game.username }}</div>
+                        <div class="col">{{ game.kon }} кр.</div>
+                        <div class="col">{{ game.created_date }}</div>
+                        <div class="col">
+                            <div v-if="game.error !== null">
+                                {{ game.error }}
+                            </div>
+                            <div v-else-if="game.isWin === null">
+                                <!-- <el-tooltip effect="dark" content="Играть" placement="top" :append-to-body="false"> -->
+                                <el-button
+                                    icon="sunny"
+                                    type="primary"
+                                    circle
+                                    @click="onClickPlay(game.id, 1)"
+                                />
+                                <!-- </el-tooltip> -->
 
-                            <!-- <el-tooltip effect="dark" content="Играть" placement="top" :append-to-body="false"> -->
-                            <el-button
-                                icon="moon"
-                                class="ms-3"
-                                circle
-                                @click="onClickPlay(game.id, 2)"
-                            />
-                            <!-- </el-tooltip> -->
-                        </div>
-                        <div v-else-if="game.isWin === true">
-                            Победа
-                        </div>
-                        <div v-else-if="game.isWin === false">
-                            Поражение
+                                <!-- <el-tooltip effect="dark" content="Играть" placement="top" :append-to-body="false"> -->
+                                <el-button
+                                    icon="moon"
+                                    class="ms-3"
+                                    circle
+                                    @click="onClickPlay(game.id, 2)"
+                                />
+                                <!-- </el-tooltip> -->
+                            </div>
+                            <div v-else-if="game.isWin === true">
+                                Победа
+                            </div>
+                            <div v-else-if="game.isWin === false">
+                                Поражение
+                            </div>
                         </div>
                     </div>
-                </div>
+                </el-card>
             </div>
 
             <div
@@ -183,6 +187,7 @@
         :page-size="10"
         :total="filteredGamesCount"
         v-model:current-page="currentPage"
+        class="mt-2"
     />
 </template>
 
@@ -194,14 +199,14 @@
         }
     }
     .list-group-item {
-        min-height: 57px;
-        display: flex;
-        align-items: center;
+        // min-height: 57px;
+        // display: flex;
+        // align-items: center;
 
-        .game-row {
-            height: 100%;
-            width: 100%;
-        }
+        // .game-row {
+        //     height: 100%;
+        //     width: 100%;
+        // }
 
         &.game-win {
             background-color: rgba(162, 236, 191, 0.562);
