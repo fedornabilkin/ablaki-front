@@ -11,6 +11,11 @@
 
 @use "element-plus/theme-chalk/src/index.scss" as *;
 
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+@import "~bootstrap";
+
 .el-notification__content {
     text-align: left;
 }
@@ -68,6 +73,17 @@
 }
 .out-list-leave-to {
     margin-bottom: -57px;
+    opacity: 0;
+    z-index: unset !important;
+}
+
+.fade-list-enter-active, .fade-list-leave-active {
+    transition: all .3s;
+}
+.fade-list-enter-from {
+    opacity: 0;
+}
+.fade-list-leave-to {
     opacity: 0;
     z-index: unset !important;
 }
