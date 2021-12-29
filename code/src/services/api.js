@@ -64,9 +64,10 @@ export const getProfile = async () => {
 }
 
 export const orel = {
-    get: async (page = 1) => {
+    get: async (konFilter) => {
+        let urlParams = konFilter ? `filter[kon]=${konFilter}` : '';
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrl}v1/orel?per-page=1000`).then(res => {
+            axios.get(`${baseUrl}v1/orel?${urlParams}`).then(res => {
                 if (!res.data.errors) {
                     resolve({
                         list: res.data,
@@ -77,6 +78,27 @@ export const orel = {
                 }
             }).catch(e => reject(e));
         });
+    },
+
+    getKonCount: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/orel/kon-count`).then(res => {
+                if (!res.data.errors) {
+                    resolve(res.data);
+                } else {
+                    reject(res.data);
+                }
+            }).catch(e => reject(e));
+        });
+    },
+
+    getGamesPage: async (konFilter) => {
+        return Promise.all([orel.get(konFilter), orel.getKonCount()]).then(res => {
+           return {
+               games: res[0],
+               konCount: res[1],
+           };
+        })
     },
 
     create: async (kon, count) => {

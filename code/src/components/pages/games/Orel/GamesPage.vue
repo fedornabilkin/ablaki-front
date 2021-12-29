@@ -20,23 +20,26 @@ export default {
         const gamesList = ref([]);
         const gamesCount = ref(0);
         const isGamesLoading = ref(true);
+        const konCount = ref([]);
 
         const store = useStore();
 
-        const fetchGames = () => {
+        const fetchGames = (konFilter) => {
             isGamesLoading.value = true;
-            orel.get()
+
+            orel.getGamesPage(konFilter)
                 .then((res) => {
-                    const list = res.list.map((game) => ({
+                    const games = res.games.list.map((game) => ({
                         ...game,
-                        created_date: moment.unix(game.created_at).format("HH:mm:SS DD.MM.YYYY"),
+                        createdDate: moment.unix(game.created_at).format("HH:mm:SS DD.MM.YYYY"),
                         isLoading: false,
                         isWin: null,
                         error: null,
                     }));
 
                     gamesCount.value = res.count;
-                    gamesList.value = list;
+                    gamesList.value = games;
+                    konCount.value = res.konCount;
                     isGamesLoading.value = false;
                 })
                 .catch((err) => {
@@ -77,6 +80,14 @@ export default {
             });
         }
 
+        const onKonFilter = (kon) => {
+            fetchGames(kon);
+        }
+
+        const onPageChange = (page) => {
+            // fetchGames(page);
+        }
+
         const openDialogCreate = () => {
             emit('newGameClick');
         };
@@ -86,8 +97,11 @@ export default {
         return {
             gamesList,
             gamesCount,
+            konCount,
             isGamesLoading,
             onPlay,
+            onPageChange,
+            onKonFilter,
             openDialogCreate,
         };
     },
@@ -100,6 +114,9 @@ export default {
         :gamesList="gamesList"
         :gamesCount="gamesCount"
         :isGamesLoading="isGamesLoading"
+        :konCount="konCount"
         @newGameClick="openDialogCreate"
-        @onPlay="onPlay" />
+        @pageChange="onPageChange"
+        @play="onPlay"
+        @konFilter="onKonFilter" />
 </template>
