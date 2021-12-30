@@ -53,7 +53,7 @@
 
 // list animation
 .list-enter-active, .list-leave-active {
-    transition: all .3s;
+    transition: all 3s;
 }
 .list-enter-from {
     opacity: 0;
@@ -66,7 +66,7 @@
 }
 
 .out-list-enter-active, .out-list-leave-active {
-    transition: all .3s;
+    transition: all 3s;
 }
 .out-list-enter-from {
     opacity: 0;
@@ -78,7 +78,7 @@
 }
 
 .fade-list-enter-active, .fade-list-leave-active {
-    transition: all .3s;
+    transition: all 3s;
 }
 .fade-list-enter-from {
     opacity: 0;
@@ -89,11 +89,25 @@
 }
 
 .none-enter-active, .none-leave-active {
-    transition: all .3s;
+    transition: all 3s;
 }
 .none-enter-from {
     opacity: 0;
 }
 .none-leave-active {
     display: none !important;
+}
+
+.list-complete-item {
+    transition: all .3s ease;
+}
+.list-complete-enter-from,
+.list-complete-leave-to {
+    opacity: 0;
+}
+.list-complete-leave-active {
+    position: absolute;
+}
+.list-complete-move {
+    transition: transform .3s ease;
 }

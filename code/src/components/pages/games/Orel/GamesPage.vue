@@ -1,7 +1,7 @@
 <script>
 import { ref } from "@vue/reactivity";
 import { useStore } from 'vuex';
-import GamesList from './GamesList.vue';
+import GamesList from './GamesList';
 import { orel, errorHandler } from '../../../../services/api';
 
 import moment from "moment";
@@ -18,7 +18,6 @@ export default {
     emits: ['newGameClick'],
     setup(props, { emit }) {
         const gamesList = ref([]);
-        const gamesCount = ref(0);
         const isGamesLoading = ref(true);
         const konCount = ref([]);
 
@@ -29,15 +28,16 @@ export default {
 
             orel.getGamesPage(konFilter)
                 .then((res) => {
-                    const games = res.games.list.map((game) => ({
+                    const games = res.games.map((game) => ({
                         ...game,
-                        createdDate: moment.unix(game.created_at).format("HH:mm:SS DD.MM.YYYY"),
+                        createdDate: moment
+                            .unix(game.created_at)
+                            .format("HH:mm:ss DD.MM.YYYY"),
                         isLoading: false,
                         isWin: null,
                         error: null,
                     }));
 
-                    gamesCount.value = res.count;
                     gamesList.value = games;
                     konCount.value = res.konCount;
                     isGamesLoading.value = false;
@@ -84,10 +84,6 @@ export default {
             fetchGames(kon);
         }
 
-        const onPageChange = (page) => {
-            // fetchGames(page);
-        }
-
         const openDialogCreate = () => {
             emit('newGameClick');
         };
@@ -96,11 +92,9 @@ export default {
 
         return {
             gamesList,
-            gamesCount,
             konCount,
             isGamesLoading,
             onPlay,
-            onPageChange,
             onKonFilter,
             openDialogCreate,
         };
@@ -112,11 +106,9 @@ export default {
 <template>
     <games-list
         :gamesList="gamesList"
-        :gamesCount="gamesCount"
         :isGamesLoading="isGamesLoading"
         :konCount="konCount"
         @newGameClick="openDialogCreate"
-        @pageChange="onPageChange"
         @play="onPlay"
         @konFilter="onKonFilter" />
 </template>

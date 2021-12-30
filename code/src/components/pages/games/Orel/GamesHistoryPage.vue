@@ -1,11 +1,14 @@
 <script>
-    import { ref } from "@vue/reactivity";
-    import { orel } from "../../../../services/api";
-    import { ElNotification } from "element-plus";
-    import { watch } from "@vue/runtime-core";
-    import moment from "moment";
+import { ref } from "@vue/reactivity";
+import { watch } from "@vue/runtime-core";
+import { orel } from "../../../../services/api";
+import GamesList from './GamesList';
 
-    export default {
+import { ElNotification } from "element-plus";
+import moment from "moment";
+
+export default {
+    components: { GamesList },
         props: {
             reloadListTrigger: {
                 type: Boolean,
@@ -14,23 +17,29 @@
         emits: ["newGameClick"],
         setup(props, { emit }) {
             const gamesList = ref([]);
+            const gamesCount = ref(0);
             const isGamesLoading = ref(true);
 
-            const fetchGames = () => {
+            const fetchGames = (page = 1) => {
                 isGamesLoading.value = true;
-                orel.getHistory()
+
+                orel.getHistory(page)
                     .then((res) => {
-                        res = res.map((game) => ({
+                        let games = res.list.map((game) => ({
                             ...game,
                             createdDate: moment
                                 .unix(game.created_at)
-                                .format("HH:mm:SS DD.MM.YYYY"),
+                                .format("HH:mm:ss DD.MM.YYYY"),
                             updatedDate: moment
                                 .unix(game.updated_at)
-                                .format("HH:mm:SS DD.MM.YYYY"),
+                                .format("HH:mm:ss DD.MM.YYYY"),
+                            isLoading: false,
+                            isWin: game.win,
+                            error: null,
                         }));
 
-                        gamesList.value = res;
+                        gamesList.value = games;
+                        gamesCount.value = res.count;
                         isGamesLoading.value = false;
                     })
                     .catch((err) => {
@@ -42,6 +51,10 @@
             //     fetchGames();
             // });
 
+            const onPageChange = (page) => {
+                fetchGames(page);
+            }
+
             const onCreateGameClicked = () => {
                 emit("newGameClick");
             };
@@ -50,7 +63,9 @@
 
             return {
                 gamesList,
+                gamesCount,
                 isGamesLoading,
+                onPageChange,
                 onCreateGameClicked,
             };
         },
@@ -58,6 +73,17 @@
 </script>
 
 <template>
+    <games-list
+        :gamesList="gamesList"
+        :gamesCount="gamesCount"
+        :isGamesLoading="isGamesLoading"
+        @newGameClick="onCreateGameClicked"
+        @pageChange="onPageChange"
+    >
+        <template v-slot:dateTitle>
+            <span>Дата</span>
+        </template>
+    </games-list>
     <!--el-table :data="gamesList" v-loading="isGamesLoading" class="mt-2">
         <el-table-column prop="username" label="Игрок" />
         <el-table-column prop="kon" label="Ставка">
@@ -97,7 +123,7 @@
             <div v-else>Загрузка...</div>
         </template>
     </el-table-->
-    <div class="list-group list-group-flush" v-loading="isGamesLoading">
+    <!-- <div class="list-group list-group-flush" v-loading="isGamesLoading">
         <div class="list-group-item list-group-item-title d-none d-sm-block">
             <div class="row">
                 <div class="col-2">Игрок 1</div>
@@ -115,7 +141,6 @@
             >
                 <el-card shadow="hover">
                     <div class="row align-items-center">
-                        <!-- <div class="col-sm-2"><span class="d-sm-none">Игрок 1: </span><span>{{ game.username }}</span></div> -->
                         <div class="col-sm-2">
                             <div class="row">
                                 <div class="col-5 d-sm-none">Игрок 1: </div>
@@ -129,7 +154,6 @@
                                 <div class="col-7">{{ game.username_gamer }}</div>
                             </div>
                         </div>
-                        <!-- <div class="col-sm-2"><span class="d-sm-none">Игрок 2: </span>{{ game.username_gamer }}</div> -->
                         
                         <div class="col-sm-2">
                             <div class="row">
@@ -138,9 +162,6 @@
                             </div>
                         </div>
 
-                        <!-- <div class="col-sm-2"><span class="d-sm-none">Ставка: </span>{{ game.kon }} кр.</div> -->
-                        <!-- <div class="col-sm-3"><span class="d-sm-none">Результат: </span>{{ game.isWin ? "Победа" : "Поражение" }}</div> -->
-                        
                         <div class="col-sm-3">
                             <div class="row">
                                 <div class="col-5 d-sm-none">Результат: </div>
@@ -159,10 +180,6 @@
                             </div>
                         </div>
 
-                        <!-- <div class="col-sm-3">
-                            <div class=""><span class="d-sm-none">Дата создания: </span><time class="time">{{ game.createdDate }}</time></div>
-                            <div class=""><span class="d-sm-none">Дата игры: </span><time class="time">{{ game.updatedDate }}</time></div>
-                        </div> -->
                     </div>
                 </el-card>
             </div>
@@ -179,7 +196,7 @@
                 </div>
             </div>
         </transition-group>
-    </div>
+    </div> -->
 </template>
 
 <style lang="scss" scoped>

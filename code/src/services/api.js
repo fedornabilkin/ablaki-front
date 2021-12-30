@@ -69,10 +69,7 @@ export const orel = {
         return new Promise((resolve, reject) => {
             axios.get(`${baseUrl}v1/orel?${urlParams}`).then(res => {
                 if (!res.data.errors) {
-                    resolve({
-                        list: res.data,
-                        count: Number(res.headers['x-pagination-total-count']),
-                    });
+                    resolve(res.data);
                 } else {
                     reject(res.data);
                 }
@@ -127,11 +124,14 @@ export const orel = {
         });
     },
 
-    getMy: async () => {
+    getMy: async (page = 1) => {
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrl}v1/orel/my`).then(res => {
+            axios.get(`${baseUrl}v1/orel/my?page=${page}`).then(res => {
                 if (!res.data.errors) {
-                    resolve(res.data);
+                    resolve({
+                        list: res.data,
+                        count: Number(res.headers['x-pagination-total-count']),
+                    });
                 } else {
                     reject(res.data);
                 }
@@ -151,11 +151,14 @@ export const orel = {
         });
     },
 
-    getHistory: async () => {
+    getHistory: async (page = 1) => {
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrl}v1/orel/history`).then(res => {
+            axios.get(`${baseUrl}v1/orel/history?page=${page}`).then(res => {
                 if (!res.data.errors) {
-                    resolve(res.data);
+                    resolve({
+                        list: res.data,
+                        count: Number(res.headers['x-pagination-total-count']),
+                    });
                 } else {
                     reject(res.data);
                 }

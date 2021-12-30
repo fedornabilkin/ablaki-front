@@ -1,117 +1,108 @@
 <script>
-    import { computed, ref } from "@vue/reactivity";
-    import { watch } from "@vue/runtime-core";
+import { computed, ref } from "@vue/reactivity";
+import { watch } from "@vue/runtime-core";
+import { useStore } from 'vuex';
 
-    export default {
-        props: {
-            gamesList: {
-                type: Array,
-            },
-            gamesCount: {
-                type: Number,
-            },
-            konCount: {
-                type: Array,
-            },
-            isGamesLoading: {
-                type: Boolean,
-                default: () => true,
-            },
+export default {
+    props: {
+        gamesList: {
+            type: Array,
         },
-        emits: ["newGameClick", "pageChange", "konFilter", "play"],
-        setup(props, { emit }) {
-            // const currentPage = ref(1);
-            const konFilter = ref();
-            // const transitionName = ref("fade-list");
-
-            const createNewGame = () => {
-                emit("newGameClick");
-            };
-
-            const onClickPlay = (id, hod) => {
-                emit("play", id, hod);
-            };
-
-            const onClickKonFilter = (kon) => {
-                // transitionName.value = "none";
-
-                konFilter.value = konFilter.value === kon ? undefined : kon;
-
-                emit("konFilter", konFilter.value);
-                // currentPage.value = 1;
-
-                // setTimeout(() => {
-                    // transitionName.value = "fade-list";
-                // });
-            };
-
-            const gameListReady = props.isGamesLoading === false && props.gamesList.length > 0;
-
-            // watch(currentPage, (page, oldPage) => {
-                // emit("pageChange", page);
-            // });
-
-            // watch(() => props.gamesList, () => {
-            //     transitionName.value = "none";
-
-            //     setTimeout(() => {
-            //         // transitionName.value = "fade-list";
-            //     });
-            // });
-
-            // watch(
-            //     [currentPage, () => props.gamesList],
-            //     (newValues, prevValues) => {
-            //         transitionName.value = "none";
-
-            //         setTimeout(() => {
-            //             transitionName.value = "out-list";
-            //         });
-
-            //         konList.value.clear();
-            //         newValues[1].map((game) => {
-            //             if (game.isWin === null && game.error === null) {
-            //                 konList.value.set(game.kon, (konList.value.get(game.kon) ?? 0) + 1);
-            //             }
-            //         });
-            //     }
-            // );
-
-            // const pageGamesList = computed(() =>
-            //     props.gamesList
-            //         .filter((game) =>
-            //             konFilter.value === undefined ? true : game.kon === konFilter.value
-            //         )
-            //         .slice((currentPage.value - 1) * 10, currentPage.value * 10)
-            // );
-
-            // const filteredGamesCount = computed(() => 
-            //     props.gamesList
-            //         .filter((game) =>
-            //             konFilter.value === undefined ? true : game.kon === konFilter.value
-            //         ).length
-            // );
-
-            console.log(props);
-
-            return {
-                props,
-                // currentPage,
-                konFilter,
-                // transitionName,
-                gameListReady,
-                // pageGamesList,
-                // filteredGamesCount,
-                createNewGame,
-                onClickPlay,
-                onClickKonFilter,
-            };
+        gamesCount: {
+            type: Number,
+            default: () => 0,
         },
-    };
+        konCount: {
+            type: Array,
+            default: () => null,
+        },
+        isGamesLoading: {
+            type: Boolean,
+            default: () => true,
+        },
+        noplayer: {
+            type: Boolean,
+            default: () => false,
+        },
+        notHideDate: {
+            type: Boolean,
+            default: () => false,
+        },
+    },
+    emits: ["newGameClick", "pageChange", "konFilter", "play"],
+    setup(props, { emit }) {
+        const currentPage = ref(1);
+        const konFilter = ref();
+        const transitionName = ref("out-list");
+
+        const store = useStore();
+
+        const createNewGame = () => {
+            emit("newGameClick");
+        };
+
+        const onClickPlay = (id, hod) => {
+            emit("play", id, hod);
+        };
+
+        const onClickKonFilter = (kon) => {
+            konFilter.value = konFilter.value === kon ? undefined : kon;
+
+            emit("konFilter", konFilter.value);
+        };
+
+        const gameListReady = props.isGamesLoading === false && props.gamesList.length > 0;
+
+        const getPlayerName = (username, usernameGamer) => {
+            return username === store.getters['auth/user'].username ? usernameGamer : username;
+        }
+
+        const getGameDate = (createdDate, updatedDate) => {
+            return updatedDate ?? createdDate;
+        }
+
+        watch(currentPage, (page, oldPage) => {
+            emit("pageChange", page);
+        });
+
+        watch(() => props.gamesList, () => {
+            let prevTransition = transitionName.value;
+            transitionName.value = "none";
+
+            setTimeout(() => {
+                transitionName.value = prevTransition;
+            });
+        });
+
+        // watch(
+        //     [currentPage, () => props.gamesList],
+        //     (newValues, prevValues) => {
+        //         transitionName.value = "none";
+
+        //         setTimeout(() => {
+        //             transitionName.value = "out-list";
+        //         });
+        //     }
+        // );
+
+        return {
+            props,
+            currentPage,
+            konFilter,
+            transitionName,
+            gameListReady,
+            getPlayerName,
+            getGameDate,
+            createNewGame,
+            onClickPlay,
+            onClickKonFilter,
+        };
+    },
+};
 </script>
 
 <template>
-    <el-button-group class="kon-filter">
+    <el-button-group class="kon-filter" v-if="konCount !== null">
         <el-tooltip
             v-for="{kon, count} in props.konCount"
             effect="dark"
@@ -125,63 +116,88 @@
     <div class="list-group list-group-flush" v-loading="props.isGamesLoading">
         <div class="list-group-item list-group-item-title game-list-title">
             <div class="row">
-                <div class="col">Игрок</div>
+                <div class="col" v-if="!props.noplayer">
+                    <slot name="playerTitle">Игрок</slot>
+                </div>
                 <div class="col">Ставка</div>
-                <div class="col">Дата создания</div>
-                <div class="col">Играть</div>
+                <div class="col">
+                    <slot name="dateTitle">Дата создания</slot>
+                </div>
+                <div class="col">
+                    <slot name="actionTitle">Играть</slot>
+                </div>
             </div>
         </div>
 
-        <!-- <transition-group :name="transitionName"> -->
-            <div
-                class="game-item"
-                v-for="game in gamesList"
-                :key="game.id"
-                v-loading="game.isLoading"
-            >
+        <!-- <transition-group name="list-complete">
+            <div v-for="game in props.gamesList" :key="game.id" class="list-complete-item">
                 <el-card shadow="hover" :class="[
                     'game-card',
-                    { 'game-win': game.isWin === true },
-                    { 'game-lose': game.isWin === false },
                 ]">
-                    <div class="row align-items-center game-row">
-                        <div class="col col-username">
-                            <div class="d-sm-none small text-muted label">С кем:</div>
-                            <div class="">{{ game.username }}</div>
-                        </div>
-                        <div class="col col-kon">
-                            <div class="d-sm-none small text-muted label">На сколько:</div>
-                            <div class="">{{ game.kon }} кр.</div>
-                        </div>
-                        <div class="col col-createdDate">{{ game.createdDate }}</div>
-                        <div class="col col-play">
-                            <div v-if="game.error !== null">
-                                {{ game.error }}
-                            </div>
-                            <div v-else-if="game.isWin === null" class="game-buttons">
-                                <el-button
-                                    icon="sunny"
-                                    type="primary"
-                                    circle
-                                    @click="onClickPlay(game.id, 1)"
-                                />
-
-                                <el-button
-                                    icon="moon"
-                                    class="ms-3"
-                                    circle
-                                    @click="onClickPlay(game.id, 2)"
-                                />
-                            </div>
-                            <div v-else-if="game.isWin === true">
-                                Победа
-                            </div>
-                            <div v-else-if="game.isWin === false">
-                                Поражение
-                            </div>
-                        </div>
-                    </div>
+                    <div class="">{{ game.id }}</div>
+                    <slot name="actionCol" :gameId="game.id" :isLoading="game.isLoading" />
                 </el-card>
+            </div>
+        </transition-group> -->
+
+        <transition-group name="list-complete">
+            <div
+                class="list-complete-item"
+                v-for="game in props.gamesList"
+                :key="game.id"
+            >
+                <div class="game-item" v-loading="game.isLoading">
+                    <el-card shadow="hover" :class="[
+                        'game-card',
+                        { 'game-win': game.isWin === true },
+                        { 'game-lose': game.isWin === false },
+                    ]">
+                        <div class="row align-items-center game-row">
+                            <div class="col col-username" v-if="!props.noplayer">
+                                <div class="d-sm-none small text-muted label">С кем:</div>
+                                <div class="">{{ getPlayerName(game.username, game.username_gamer) }}</div>
+                            </div>
+                            <div class="col col-kon">
+                                <div class="d-sm-none small text-muted label">На сколько:</div>
+                                <div class="">{{ game.kon }} кр.</div>
+                            </div>
+                            <div :class="['col', 'col-created-date', {'hide-mobile': !props.notHideDate}]">
+                                <slot name="dateCol" :createdDate="game.createdDate" :updatedDate="game.updatedDate">
+                                    <div class="">{{ getGameDate(game.createdDate, game.updatedDate) }}</div>
+                                </slot>
+                            </div>
+                            <div class="col col-play">
+                                <slot name="actionCol" :gameId="game.id" :isLoading="game.isLoading">
+                                    <div v-if="game.error !== null">
+                                        {{ game.error }}
+                                    </div>
+                                    <div v-else-if="game.isWin === null" class="game-buttons">
+
+                                        <el-button
+                                            icon="sunny"
+                                            type="primary"
+                                            circle
+                                            @click="onClickPlay(game.id, 1)"
+                                        />
+
+                                        <el-button
+                                            icon="moon"
+                                            class="ms-3"
+                                            circle
+                                            @click="onClickPlay(game.id, 2)"
+                                        />
+                                    </div>
+                                    <div v-else-if="game.isWin === true">
+                                        Победа
+                                    </div>
+                                    <div v-else-if="game.isWin === false">
+                                        Поражение
+                                    </div>
+                                </slot>
+                            </div>
+                        </div>
+                    </el-card>
+                </div>
             </div>
 
             <div
@@ -195,18 +211,19 @@
                     >
                 </div>
             </div>
-        <!-- </transition-group> -->
+        </transition-group>
     </div>
 
-    <!-- <el-pagination
+    <el-pagination
         background
         :pager-count="5"
         layout="pager"
-        :page-size="10"
+        :page-size="20"
         :total="props.gamesCount"
         v-model:current-page="currentPage"
+        :hide-on-single-page="true"
         class="mt-2"
-    /> -->
+    />
 </template>
 
 <style lang="scss" scoped>
@@ -225,21 +242,37 @@
     }
 
     .game-item {
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
+        padding-top: 0.4rem;
+        padding-bottom: 0.4rem;
         position: relative;
 
         .game-card {
-            .col-createdDate {
-                @include media-breakpoint-down(sm) {
-                    display: none;
+            .col-created-date {
+                color: #666;
+                font-size: 0.875em;
+
+                &.hide-mobile {
+                    @include media-breakpoint-down(sm) {
+                        display: none;
+                    }
                 }
             }
 
             .col-play {
+                font-size: 1.2rem;
+                font-weight: 600;
+                color: rgb(119, 119, 119);
+                min-height: 40px;
+                display: flex;
+                align-items: center;
+
                 .game-buttons {
                     display: flex;
                 }
+            }
+
+            ::v-deep .el-card__body {
+                padding: 1rem;
             }
 
             &.game-win {
