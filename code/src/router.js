@@ -19,6 +19,9 @@ import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pag
 import { store } from './store/store';
 
 
+import { store } from './store/store';
+
+
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
 // "Компонентом" может быть как конструктор компонента, созданный
