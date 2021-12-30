@@ -1,14 +1,113 @@
 @forward 'element-plus/theme-chalk/src/common/var.scss' with (
     $alert: (
         'title-font-size': '15px',
+    ),
+    $colors: (
+        'primary': (
+            'base': #33a004,
+        ),
     )
 );
 
 @use "element-plus/theme-chalk/src/index.scss" as *;
 
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+@import "~bootstrap";
+
 .el-notification__content {
     text-align: left;
 }
-.el-form-item__label {
-	line-height: unset;
+.el-form--label-top {
+    .el-form-item__label {
+        line-height: unset;
+    }
+}
+.el-input-number {
+    width: auto;
+    max-width: 180px;
+}
+.el-dialog {
+    max-width: 500px;
+    width: 98%;
+}
+
+.list-group {
+    .list-group-item-title {
+        color: rgb(144, 147, 153);
+        font-weight: bold;
+
+        & > * {
+            // width: 100%;
+        }
+    }
+
+    &.list-group-flush {
+        & > .list-group-item:last-child {
+            border-bottom-width: 1px !important;
+            border-bottom-color: transparent;
+        }
+    }
+}
+
+// list animation
+.list-enter-active, .list-leave-active {
+    transition: all 3s;
+}
+.list-enter-from {
+    opacity: 0;
+    margin-bottom: -57px;
+}
+.list-leave-to {
+    opacity: 0;
+    margin-bottom: -57px;
+    z-index: unset !important;
+}
+
+.out-list-enter-active, .out-list-leave-active {
+    transition: all 3s;
+}
+.out-list-enter-from {
+    opacity: 0;
+}
+.out-list-leave-to {
+    margin-bottom: -57px;
+    opacity: 0;
+    z-index: unset !important;
+}
+
+.fade-list-enter-active, .fade-list-leave-active {
+    transition: all 3s;
+}
+.fade-list-enter-from {
+    opacity: 0;
+}
+.fade-list-leave-to {
+    opacity: 0;
+    z-index: unset !important;
+}
+
+.none-enter-active, .none-leave-active {
+    transition: all 3s;
+}
+.none-enter-from {
+    opacity: 0;
+}
+.none-leave-active {
+    display: none !important;
+}
+
+.list-complete-item {
+    transition: all .3s ease;
+}
+.list-complete-enter-from,
+.list-complete-leave-to {
+    opacity: 0;
+}
+.list-complete-leave-active {
+    position: absolute;
+}
+.list-complete-move {
+    transition: transform .3s ease;
 }

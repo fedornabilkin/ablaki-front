@@ -3,17 +3,17 @@ import { computed, ref } from "@vue/reactivity";
 import { useStore } from "vuex";
 import { getWall } from "../../../services/api";
 export default {
-	async setup() {
-		const store = useStore();
-		const userData = computed(() => store.getters.user);
+    async setup() {
+        const store = useStore();
+        const userData = computed(() => store.getters['auth/user']);
 
-		const userWall = ref(await getWall(userData.value.username));
+        const userWall = ref(await getWall(userData.value.username));
 
-		return {
-			userData,
-			userWall,
-		};
-	},
+        return {
+            userData,
+            userWall,
+        };
+    },
 };
 </script>
 

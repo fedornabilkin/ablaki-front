@@ -14,10 +14,9 @@ import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
 
 import Ablaki from './components/pages/games/Ablaki';
-import Orel from "./components/pages/games/Orel";
+import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pages/games/Orel";
 
 import { store } from './store/store';
-
 
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
@@ -37,8 +36,12 @@ const routes = [
     { path: '/users/logout', component: Logout },
     { path: '/users/profile', component: Profile },
 
-    { path: '/games/ablaki', component: Ablaki },
-    { path: '/games/orel', component: Orel },
+    { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
+    { path: '/games/orel', component: Orel, children: [
+        { path: '', component: OrelGames },
+        { path: 'my', component: MyOrelGames },
+        { path: 'history', component: GamesHistoryPage },
+    ], meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
@@ -49,7 +52,7 @@ const router = createRouter({
 router.beforeEach((to, from) => {
     // instead of having to check every route record with
     // to.matched.some(record => record.meta.requiresAuth)
-    if (to.meta.requiresAuth && store.getters.isAuthenticated === false) {
+    if (to.meta.requiresAuth && store.getters['auth/isAuthorized'] === false) {
         // this route requires auth, check if logged in
         // if not, redirect to login page.
         return {

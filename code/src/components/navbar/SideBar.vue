@@ -3,7 +3,7 @@ import { computed } from "@vue/reactivity";
 import { useStore } from "vuex";
 
 const store = useStore();
-const isAuthenticated = computed(() => store.getters.isAuthenticated);
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 
 const menuItems = computed(() => {
     let games = [
@@ -21,7 +21,7 @@ const menuItems = computed(() => {
         ]
     } else {
         return [
-            {anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'sign-in-alt'},
+            {anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'user'},
             ...games
         ]
     }

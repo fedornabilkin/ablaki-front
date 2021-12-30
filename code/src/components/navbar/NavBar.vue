@@ -23,15 +23,15 @@
 import { mapGetters } from 'vuex';
 
 export default {
-	name: "NavBar",
-	data: function () {
-		return {};
-	},
+    name: "NavBar",
+    data: function () {
+        return {};
+    },
     created: function () {
 
     },
     computed: {
-        ...mapGetters([
+        ...mapGetters('auth', [
             'isAuthenticated',
         ]),
         menuItems() {

@@ -12,7 +12,7 @@
         },
         methods: {
             logout: function () {
-                this.$store.dispatch('logout')
+                this.$store.dispatch('auth/logout')
                     .then(() => this.$router.push('/'))
                     .catch(() => this.$router.push('/'))
             },
