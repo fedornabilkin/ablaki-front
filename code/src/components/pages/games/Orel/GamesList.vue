@@ -102,18 +102,36 @@ export default {
 </script>
 
 <template>
-    <el-button-group class="kon-filter" v-if="konCount !== null">
-        <el-tooltip
-            v-for="{kon, count} in props.konCount"
-            effect="dark"
-            :content="`${count} шт`"
-            placement="top"
-        >
-            <el-button round @click="onClickKonFilter(kon)" :class="{selected: kon === konFilter}">{{ kon }}</el-button>
-        </el-tooltip>
-    </el-button-group>
+    <div v-if="konCount !== null" class="kon-filter">
+        <div>Фильтр:</div>
+        <el-button-group class="kon-list">
+            <el-tooltip
+                v-for="{kon, count} in props.konCount"
+                effect="dark"
+                :content="`${count} шт`"
+                placement="top"
+            >
+                <el-button size="mini" @click="onClickKonFilter(kon)" :class="{selected: kon === konFilter}">{{ kon }}</el-button>
+            </el-tooltip>
+        </el-button-group>
+    </div>
+    
 
-    <div class="list-group list-group-flush" v-loading="props.isGamesLoading">
+    <el-card
+        v-if="props.gamesList.length === 0 && !isGamesLoading"
+        shadow="hover"
+        class="no-games-card">
+        <div class="no-games-placeholder">
+            <div class="me-3">Игр нет :(</div>
+            <div>
+                <el-button type="primary" @click="createNewGame" round icon="Plus"
+                    >Создать</el-button
+                >
+            </div>
+        </div>
+    </el-card>
+
+    <div v-else class="list-group list-group-flush" v-loading="props.isGamesLoading">
         <div class="list-group-item list-group-item-title game-list-title">
             <div class="row">
                 <div class="col" v-if="!props.noplayer">
@@ -199,18 +217,6 @@ export default {
                     </el-card>
                 </div>
             </div>
-
-            <div
-                class="list-group-item no-games-placeholder"
-                v-if="props.gamesList.length === 0 && !isGamesLoading"
-            >
-                <div class="d-inline-block me-3">Игр нет :(</div>
-                <div>
-                    <el-button type="primary" @click="createNewGame" round icon="Plus"
-                        >Создать</el-button
-                    >
-                </div>
-            </div>
         </transition-group>
     </div>
 
@@ -229,9 +235,14 @@ export default {
 <style lang="scss" scoped>
 
     .kon-filter {
-        .selected {
-            background: var(--el-color-primary);
-            color: var(--el-color-white);
+        .kon-list {
+            overflow: auto;
+            display: flex;
+
+            .selected {
+                background: var(--el-color-primary);
+                color: var(--el-color-white);
+            }
         }
     }
 
@@ -282,6 +293,19 @@ export default {
             &.game-lose {
                 background: linear-gradient(90deg, transparent 54%, rgba(236, 162, 162, 0.562) 100%);
             }
+        }
+    }
+
+    .no-games-card {
+
+        ::v-deep .el-card__body {
+            padding: .7rem;
+        }
+
+        .no-games-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;    
         }
     }
 </style>

@@ -57,6 +57,14 @@ export default {
                 gamesList.value[gameIndex].isLoading = false;
                 gamesList.value[gameIndex].isWin = res.game.win;
 
+                let kon = gamesList.value[gameIndex].kon;
+
+                konCount.value = konCount.value.map((konItem) =>
+                    konItem.kon === kon ?
+                        { ...konItem, count: konItem.count - 1 } :
+                        konItem
+                );
+
                 store.dispatch('auth/setData', res.gamer);
             }).catch(e => {
                 gamesList.value[gameIndex].isLoading = false;
@@ -75,7 +83,9 @@ export default {
                 });
 
                 if (freeGames.length === 0) {
-                    fetchGames();
+                    setTimeout(() => {
+                        fetchGames();
+                    }, 1000);
                 }
             });
         }

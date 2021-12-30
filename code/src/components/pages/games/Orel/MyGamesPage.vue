@@ -29,7 +29,7 @@ export default {
                         ...game,
                         createdDate: moment
                             .unix(game.created_at)
-                            .format("HH:mm:SS DD.MM.YYYY"),
+                            .format("HH:mm:ss DD.MM.YYYY"),
                         isLoading: false,
                         isWin: game.win,
                         error: null,
@@ -50,10 +50,6 @@ export default {
             gamesList.value[gameIndex].isLoading = true;
             
             orel.delete(id).then((res) => {
-                // gamesList.value = gamesList.value.filter(
-                //     (game) => game.id !== id
-                // );
-
                 gamesList.value.splice(gameIndex, 1);
 
                 ElNotification({
@@ -115,60 +111,7 @@ export default {
             <span>{{ createdDate }}</span>
         </template>
 
-        <!-- <el-tooltip effect="dark" content="Отменить игру" placement="top">
-            <el-button
-                icon="delete"
-                type="danger"
-                circle
-                :loading="game.isLoading"
-                @click="deleteGame(game.id)"
-            />
-        </el-tooltip> -->
     </games-list>
-
-    <!-- <div class="list-group list-group-flush" v-loading="isGamesLoading">
-        <div class="list-group-item list-group-item-title">
-            <div class="row">
-                <div class="col">Игрок</div>
-                <div class="col">Ставка</div>
-                <div class="col">Дата создания</div>
-                <div class="col">Действия</div>
-            </div>
-        </div>
-        <transition-group name="out-list">
-            <div class="list-group-item list-group-item-action" v-for="game in gamesList" :key="game.id">
-                <div class="row align-items-center">
-                    <div class="col">{{ game.username }}</div>
-                    <div class="col">{{ game.kon }} кр.</div>
-                    <div class="col">{{ game.createdDate }}</div>
-                    <div class="col">
-                        <el-tooltip effect="dark" content="Отменить игру" placement="top">
-                            <el-button
-                                icon="delete"
-                                type="danger"
-                                circle
-                                :loading="game.isLoading"
-                                @click="deleteGame(game.id)"
-                            />
-                        </el-tooltip>
-                    </div>
-                </div>
-            </div>
-
-            <div class="list-group-item no-games-placeholder" v-if="gamesList.length === 0 && !isGamesLoading">
-                <div class="d-inline-block me-3">Игр нет :(</div>
-                <div>
-                    <el-button
-                        type="primary"
-                        @click="onCreateGameClicked"
-                        round
-                        icon="Plus"
-                        >Создать</el-button
-                    >
-                </div>
-            </div>
-        </transition-group>
-    </div> -->
 
 </template>
 
