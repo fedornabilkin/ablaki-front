@@ -102,7 +102,7 @@ export default {
 </script>
 
 <template>
-    <div v-if="konCount !== null" class="kon-filter">
+    <div v-if="props.konCount !== null" class="kon-filter">
         <div>Фильтр:</div>
         <el-button-group class="kon-list">
             <el-tooltip
@@ -131,8 +131,8 @@ export default {
         </div>
     </el-card>
 
-    <div v-else class="list-group list-group-flush" v-loading="props.isGamesLoading">
-        <div class="list-group-item list-group-item-title game-list-title">
+    <div v-else class="games-list list-group list-group-flush" v-loading="props.isGamesLoading">
+        <div class="list-group-item list-group-item-title games-list-title">
             <div class="row">
                 <div class="col" v-if="!props.noplayer">
                     <slot name="playerTitle">Игрок</slot>
@@ -227,7 +227,6 @@ export default {
         :page-size="20"
         :total="props.gamesCount"
         v-model:current-page="currentPage"
-        :hide-on-single-page="true"
         class="mt-2"
     />
 </template>
@@ -246,52 +245,56 @@ export default {
         }
     }
 
-    .game-list-title {
-        @include media-breakpoint-down(sm) {
-                display: none;
-            }
-    }
-
-    .game-item {
-        padding-top: 0.4rem;
-        padding-bottom: 0.4rem;
+    .games-list {
         position: relative;
+        
+        .games-list-title {
+            @include media-breakpoint-down(sm) {
+                    display: none;
+                }
+        }
 
-        .game-card {
-            .col-created-date {
-                color: #666;
-                font-size: 0.875em;
+        .game-item {
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
+            position: relative;
 
-                &.hide-mobile {
-                    @include media-breakpoint-down(sm) {
-                        display: none;
+            .game-card {
+                .col-created-date {
+                    color: #666;
+                    font-size: 0.875em;
+
+                    &.hide-mobile {
+                        @include media-breakpoint-down(sm) {
+                            display: none;
+                        }
                     }
                 }
-            }
 
-            .col-play {
-                font-size: 1.2rem;
-                font-weight: 600;
-                color: rgb(119, 119, 119);
-                min-height: 40px;
-                display: flex;
-                align-items: center;
-
-                .game-buttons {
+                .col-play {
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    color: rgb(119, 119, 119);
+                    min-height: 40px;
                     display: flex;
+                    align-items: center;
+
+                    .game-buttons {
+                        display: flex;
+                    }
                 }
-            }
 
-            ::v-deep .el-card__body {
-                padding: 1rem;
-            }
+                ::v-deep .el-card__body {
+                    padding: 1rem;
+                }
 
-            &.game-win {
-                background: linear-gradient(90deg, transparent 54%, #31a00447 100%);
-            }
+                &.game-win {
+                    background: linear-gradient(90deg, transparent 54%, #31a00447 100%);
+                }
 
-            &.game-lose {
-                background: linear-gradient(90deg, transparent 54%, rgba(236, 162, 162, 0.562) 100%);
+                &.game-lose {
+                    background: linear-gradient(90deg, transparent 54%, rgba(236, 162, 162, 0.562) 100%);
+                }
             }
         }
     }

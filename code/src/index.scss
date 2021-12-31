@@ -37,10 +37,6 @@
     .list-group-item-title {
         color: rgb(144, 147, 153);
         font-weight: bold;
-
-        & > * {
-            // width: 100%;
-        }
     }
 
     &.list-group-flush {
@@ -100,6 +96,7 @@
 
 .list-complete-item {
     transition: all .3s ease;
+    width: 100%;
 }
 .list-complete-enter-from,
 .list-complete-leave-to {
