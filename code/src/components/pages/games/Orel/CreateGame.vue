@@ -2,7 +2,7 @@
 import { ref } from "@vue/reactivity";
 import { ElNotification } from 'element-plus';
 
-import { orel } from "../../../../services/api";
+import { errorHandler, orel } from "../../../../services/api";
 
 export default {
     props: {
@@ -30,7 +30,16 @@ export default {
                     emit("gameCreated");
                 })
                 .catch((err) => {
-                    console.log(err);
+                    errorHandler(err, {
+                        "Insufficient funds": () => {
+                            ElNotification({
+                                message: 'Недостаточно средств на балансе',
+                                type: 'error',
+                            });
+                            
+                            isLoading.value = false;
+                        }
+                    });
                 });
         };
 
