@@ -15,6 +15,7 @@
             label-position="top"
             class="mt-3"
             @submit.prevent="submit"
+            size="large"
         >
             <el-form-item label="Логин" prop="username">
                 <el-input v-model="form.username"></el-input>
@@ -29,11 +30,11 @@
                 <el-input type="password" v-model="form.passwordRepeat"></el-input>
             </el-form-item>
             <el-form-item label="" prop="rules">
-                <el-checkbox v-model="form.rules">Согласен со всем, что вы там понаписали</el-checkbox>
+                <el-checkbox v-model="form.rules" class="rules-checkbox">Согласен со всем, что вы там понаписали</el-checkbox>
             </el-form-item>
 
-            <el-form-item size="medium">
-                <el-button type="primary" native-type="submit" :disabled="!btnEnabled">Регистрация</el-button>
+            <el-form-item>
+                <el-button type="primary" native-type="submit" :disabled="!btnEnabled" class="submit-button">Регистрация</el-button>
             </el-form-item>
         </el-form>
     </div>
@@ -201,6 +202,19 @@ export default {
 };
 </script>
 
-<style>
+<style lang="scss" scoped>
+::v-deep .el-form--label-top {
+    .el-form-item__label {
+        padding: 0;
+    }
+}
 
+.rules-checkbox {
+    height: auto;
+    margin: 0.5rem 0 0;
+}
+
+.submit-button {
+    margin-top: .5rem;
+}
 </style>

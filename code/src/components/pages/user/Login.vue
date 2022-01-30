@@ -10,6 +10,7 @@
             label-position="top"
             class="mt-3"
             @submit.prevent="login"
+            size="large"
         >
             <el-form-item label="Логин" prop="login">
                 <el-input v-model="auth.login" name="email" autocomplete="on"></el-input>
@@ -19,7 +20,7 @@
                 <el-input v-model="auth.password" type="password"></el-input>
             </el-form-item>
 
-            <el-form-item size="medium">
+            <el-form-item>
                 <el-button type="primary" native-type="submit" :disabled="disabled">Войти</el-button>
             </el-form-item>
         </el-form>
@@ -122,5 +123,10 @@ export default {
 };
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+::v-deep .el-form--label-top {
+    .el-form-item__label {
+        padding: 0;
+    }
+}
 </style>

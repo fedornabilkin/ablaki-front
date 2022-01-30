@@ -18,6 +18,7 @@
                     placement="top"
                     v-model="creditsTooltipAnimation"
                     :manual="true"
+                    :append-to-body="false"
                 >
                     <div>
                         <span>{{ roundCredits(user.person.credit) }}</span>

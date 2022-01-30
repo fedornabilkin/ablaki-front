@@ -1,10 +1,11 @@
 <template>
-    <div class="container" v-if="dataFetched">
-        <nav-bar/>
+    <nav-bar/>
+    
+    <div class="container mt-3" v-if="dataFetched">
+        
+        <!-- <user-bar v-if="isAuthenticated"/> -->
 
-        <user-bar v-if="isAuthenticated"/>
-
-        <side-bar />
+        <side-bar v-if="isAuthenticated"/>
 
         <Suspense>
             <template #default>

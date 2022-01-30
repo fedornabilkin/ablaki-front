@@ -111,7 +111,7 @@ export default {
                 :content="`${count} шт`"
                 placement="top"
             >
-                <el-button size="mini" @click="onClickKonFilter(kon)" :class="{selected: kon === konFilter}">{{ kon }}</el-button>
+                <el-button @click="onClickKonFilter(kon)" :class="{selected: kon === konFilter}">{{ kon }}</el-button>
             </el-tooltip>
         </el-button-group>
     </div>
@@ -233,11 +233,15 @@ export default {
 </template>
 
 <style lang="scss" scoped>
+    @import "~bootstrap/scss/functions";
+    @import "~bootstrap/scss/variables";
+    @import "~bootstrap/scss/mixins";
 
     .kon-filter {
         .kon-list {
             overflow: auto;
             display: flex;
+            margin-bottom: .5rem;
 
             .selected {
                 background: var(--el-color-primary);

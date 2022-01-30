@@ -15,9 +15,9 @@ const menuItems = computed(() => {
     if (isAuthenticated.value) {
         return [
             ...games,
-            {anchor: 'Заказать выплату',url: 'balance/zakaz',title: 'Заказать выплату',icon: 'money'},
-            {anchor: 'Кабинет', url: '/users/profile', title: 'Кабинет', icon: 'user'},
-            {anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'circle-close'}
+            // {anchor: 'Заказать выплату',url: 'balance/zakaz',title: 'Заказать выплату',icon: 'money'},
+            // {anchor: 'Кабинет', url: '/users/profile', title: 'Кабинет', icon: 'user'},
+            // {anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'circle-close'}
         ]
     } else {
         return [
