@@ -61,6 +61,9 @@ export default {
             return updatedDate ?? createdDate;
         }
 
+        const isKonfilterVisible = computed(() =>
+            props.konCount !== null && props.konCount.length > 1/* && props.gamesList.length >= 20*/);
+
         watch(currentPage, (page, oldPage) => {
             emit("pageChange", page);
         });
@@ -91,6 +94,7 @@ export default {
             konFilter,
             transitionName,
             gameListReady,
+            isKonfilterVisible,
             getPlayerName,
             getGameDate,
             createNewGame,
@@ -102,8 +106,7 @@ export default {
 </script>
 
 <template>
-    <div v-if="props.konCount !== null" class="kon-filter">
-        <div>Фильтр:</div>
+    <div v-if="isKonfilterVisible" class="kon-filter">
         <el-button-group class="kon-list">
             <el-tooltip
                 v-for="{kon, count} in props.konCount"
@@ -176,8 +179,11 @@ export default {
                                 <div class="">{{ getPlayerName(game.username, game.username_gamer) }}</div>
                             </div>
                             <div class="col col-kon">
-                                <div class="d-sm-none small text-muted label">На сколько:</div>
-                                <div class="">{{ game.kon }} кр.</div>
+                                <div>
+                                    <span class="d-sm-none small text-muted label">Кон:</span>
+                                    <span>{{ game.kon }} кр.</span>
+                                </div>
+                                <!-- <div class=""></div> -->
                             </div>
                             <div :class="['col', 'col-created-date', {'hide-mobile': !props.notHideDate}]">
                                 <slot name="dateCol" :createdDate="game.createdDate" :updatedDate="game.updatedDate">
@@ -227,6 +233,7 @@ export default {
         :page-size="20"
         :total="props.gamesCount"
         v-model:current-page="currentPage"
+        :hide-on-single-page="true"
         class="mt-2"
     />
 </template>
@@ -255,8 +262,8 @@ export default {
         }
 
         .game-item {
-            padding-top: 0.4rem;
-            padding-bottom: 0.4rem;
+            padding-top: .2rem;
+            padding-bottom: .2rem;
             position: relative;
 
             .game-card {
@@ -285,7 +292,7 @@ export default {
                 }
 
                 ::v-deep .el-card__body {
-                    padding: 1rem;
+                    padding: 0.5rem 1rem;
                 }
 
                 &.game-win {
