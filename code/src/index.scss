@@ -36,12 +36,9 @@ a {
     width: auto;
     max-width: 180px;
 }
-.el-input-number__increase {
-    bottom: auto;
-}
-.el-input-number.is-controls-right .el-input-number__increase, .el-input-number.is-controls-right .el-input-number__decrease {
-    height: calc(50% - 1px);
-    line-height: 15px;
+
+hr {
+    margin: 0.5rem 0;
 }
 
 .el-dialog {

@@ -27,26 +27,26 @@ const auth = {
     },
     mutations: {
         [AUTH_REQUEST]: (state) => {
-            if (state.status === null) {
+            if (state.status === null || state.status === "guest") {
                 state.status = 'loading';
             }
         },
         [AUTH_SUCCESS]: (state, payload) => {
-            state.status = 'success';
+            state.status = 'user';
             if (payload !== undefined) {
                 state.token = payload.token;
                 state.user = {...payload.user};
             }
         },
         [FETCH_USER_SUCCESS]: (state, payload) => {
-            state.status = 'success';
+            state.status = 'user';
             state.user = {...payload};
         },
         [AUTH_ERROR]: (state) => {
-            state.status = 'error';
+            state.status = 'guest';
         },
         [LOGOUT]: (state) => {
-            state.status = 'success';
+            state.status = 'guest';
             state.token = '';
             state.user = null;
         },

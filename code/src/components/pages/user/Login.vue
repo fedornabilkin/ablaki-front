@@ -2,6 +2,8 @@
     <div class="container">
         <h1>Вход</h1>
 
+        {{isLoading}}
+
         <el-form
             v-loading="isLoading"
             :model="auth"
@@ -38,6 +40,7 @@ export default {
     },
     data() {
         return {
+            // isLoading: false,
             auth: {
                 login: "",
                 password: "",

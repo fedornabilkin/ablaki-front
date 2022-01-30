@@ -58,7 +58,7 @@ export default {
             'authStatus',
         ]),
         dataFetched() {
-            return this.authStatus !== null && this.authStatus !== 'loading'
+            return this.authStatus !== null
         },
     },
 

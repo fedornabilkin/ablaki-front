@@ -46,25 +46,27 @@
             </template>
         </el-dropdown> -->
 
+        <!-- v-model:visible="isMenuOpened"
+        :hide-after="0" -->
         <el-popover
+            trigger="click"
             placement="bottom"
-            width="230px"
+            width="250px"
             popper-class="user-menu-popper"
-            :hide-after="0"
-            :append-to-body="false"
+            :popper-options="{ boundariesElement: 'viewport' }"
             :offset="0"
             :show-arrow="false"
-            v-model:visible="isMenuOpened"
+            
         >
             <div class="user-menu-list" v-if="isAuthenticated">
                 <user-bar v-if="isAuthenticated"/>
-                <router-link :to="`/users/wall/${user.username}`" class="user-menu-link">
+                <!-- <router-link :to="`/users/wall/${user.username}`" class="user-menu-link">
                     <el-icon size="20"><postcard /></el-icon>Стена
                 </router-link>
 
                 <router-link to="/users/profile" class="user-menu-link">
                     <el-icon size="20"><user /></el-icon>Кабинет
-                </router-link>
+                </router-link> -->
 
                 <hr />
 
@@ -212,30 +214,39 @@ export default {
     }
 }
 
-::v-deep .user-menu-popper {
-    padding: 0;
+:deep(.user-menu-popper) {
+    padding: 0 !important;
+    background: #ccc;
+}
+
+.user-menu-popper {
+    padding: 0 !important;
+    background: #ccc;
 
     .user-menu-list {
         display: flex;
         flex-direction: column;
+        padding: .4rem 0;
         // min-width: 250px;
 
         .user-menu-link {
             color: #333333;
             display: flex;
             gap: .8rem;
-            padding: .7rem 1rem;
+            padding: .4rem;
+            border-radius: 5px;
+            align-items: center;
 
             &:hover {
                 background: #fafafa;
             }
         }
 
-        .user-bar {
+        :deep(.user-bar) {
             flex-direction: column;
 
             .user-bar-right {
-                margin: .6rem;
+                // margin: .6rem;
                 border-radius: 6px;
                 background: #f0f2f5;
                 display: flex;
@@ -252,6 +263,7 @@ export default {
 
             .user-bar-left {
                 order: 2;
+                margin-top: .5rem;
 
                 & > a {
                     @extend .user-menu-link;
