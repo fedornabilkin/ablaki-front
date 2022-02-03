@@ -256,9 +256,8 @@ export default {
         }
     }
 
+
     .games-list {
-        position: relative;
-        
         .games-list-title {
             @include media-breakpoint-down(sm) {
                     display: none;
