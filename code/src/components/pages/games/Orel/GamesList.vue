@@ -61,6 +61,9 @@ export default {
             return updatedDate ?? createdDate;
         }
 
+        const isKonfilterVisible = computed(() =>
+            props.konCount !== null && props.konCount.length > 1/* && props.gamesList.length >= 20*/);
+
         watch(currentPage, (page, oldPage) => {
             emit("pageChange", page);
         });
@@ -91,6 +94,7 @@ export default {
             konFilter,
             transitionName,
             gameListReady,
+            isKonfilterVisible,
             getPlayerName,
             getGameDate,
             createNewGame,
@@ -102,8 +106,7 @@ export default {
 </script>
 
 <template>
-    <div v-if="konCount !== null" class="kon-filter">
-        <div>Фильтр:</div>
+    <div v-if="isKonfilterVisible" class="kon-filter">
         <el-button-group class="kon-list">
             <el-tooltip
                 v-for="{kon, count} in props.konCount"
@@ -131,8 +134,8 @@ export default {
         </div>
     </el-card>
 
-    <div v-else class="list-group list-group-flush" v-loading="props.isGamesLoading">
-        <div class="list-group-item list-group-item-title game-list-title">
+    <div v-else class="games-list list-group list-group-flush" v-loading="props.isGamesLoading">
+        <div class="list-group-item list-group-item-title games-list-title">
             <div class="row">
                 <div class="col" v-if="!props.noplayer">
                     <slot name="playerTitle">Игрок</slot>
@@ -176,8 +179,11 @@ export default {
                                 <div class="">{{ getPlayerName(game.username, game.username_gamer) }}</div>
                             </div>
                             <div class="col col-kon">
-                                <div class="d-sm-none small text-muted label">На сколько:</div>
-                                <div class="">{{ game.kon }} кр.</div>
+                                <div>
+                                    <span class="d-sm-none small text-muted label">Кон:</span>
+                                    <span>{{ game.kon }} кр.</span>
+                                </div>
+                                <!-- <div class=""></div> -->
                             </div>
                             <div :class="['col', 'col-created-date', {'hide-mobile': !props.notHideDate}]">
                                 <slot name="dateCol" :createdDate="game.createdDate" :updatedDate="game.updatedDate">
@@ -250,52 +256,56 @@ export default {
         }
     }
 
-    .game-list-title {
-        @include media-breakpoint-down(sm) {
-                display: none;
-            }
-    }
-
-    .game-item {
-        padding-top: 0.4rem;
-        padding-bottom: 0.4rem;
+    .games-list {
         position: relative;
+        
+        .games-list-title {
+            @include media-breakpoint-down(sm) {
+                    display: none;
+                }
+        }
 
-        .game-card {
-            .col-created-date {
-                color: #666;
-                font-size: 0.875em;
+        .game-item {
+            padding-top: .2rem;
+            padding-bottom: .2rem;
+            position: relative;
 
-                &.hide-mobile {
-                    @include media-breakpoint-down(sm) {
-                        display: none;
+            .game-card {
+                .col-created-date {
+                    color: #666;
+                    font-size: 0.875em;
+
+                    &.hide-mobile {
+                        @include media-breakpoint-down(sm) {
+                            display: none;
+                        }
                     }
                 }
-            }
 
-            .col-play {
-                font-size: 1.2rem;
-                font-weight: 600;
-                color: rgb(119, 119, 119);
-                min-height: 40px;
-                display: flex;
-                align-items: center;
-
-                .game-buttons {
+                .col-play {
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    color: rgb(119, 119, 119);
+                    min-height: 40px;
                     display: flex;
+                    align-items: center;
+
+                    .game-buttons {
+                        display: flex;
+                    }
                 }
-            }
 
-            ::v-deep .el-card__body {
-                padding: 1rem;
-            }
+                ::v-deep .el-card__body {
+                    padding: 0.5rem 1rem;
+                }
 
-            &.game-win {
-                background: linear-gradient(90deg, transparent 54%, #31a00447 100%);
-            }
+                &.game-win {
+                    background: linear-gradient(90deg, transparent 54%, #31a00447 100%);
+                }
 
-            &.game-lose {
-                background: linear-gradient(90deg, transparent 54%, rgba(236, 162, 162, 0.562) 100%);
+                &.game-lose {
+                    background: linear-gradient(90deg, transparent 54%, rgba(236, 162, 162, 0.562) 100%);
+                }
             }
         }
     }
