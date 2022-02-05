@@ -1,129 +1,106 @@
 <script>
-import { computed, ref } from "@vue/reactivity";
-import { watch } from "@vue/runtime-core";
-import { useStore } from 'vuex';
+    import { computed, reactive, ref } from "@vue/reactivity";
+    import { watch } from "@vue/runtime-core";
+    import { useStore } from "vuex";
+    import GameFilter from './GameFilter.vue';
 
-export default {
-    props: {
-        gamesList: {
-            type: Array,
+    export default {
+    components: { GameFilter },
+        props: {
+            gamesList: {
+                type: Array,
+            },
+            gamesCount: {
+                type: Number,
+                default: () => 0,
+            },
+            konCount: {
+                type: Array,
+                default: () => null,
+            },
+            isGamesLoading: {
+                type: Boolean,
+                default: () => true,
+            },
+            noplayer: {
+                type: Boolean,
+                default: () => false,
+            },
+            notHideDate: {
+                type: Boolean,
+                default: () => false,
+            },
         },
-        gamesCount: {
-            type: Number,
-            default: () => 0,
-        },
-        konCount: {
-            type: Array,
-            default: () => null,
-        },
-        isGamesLoading: {
-            type: Boolean,
-            default: () => true,
-        },
-        noplayer: {
-            type: Boolean,
-            default: () => false,
-        },
-        notHideDate: {
-            type: Boolean,
-            default: () => false,
-        },
-    },
-    emits: ["newGameClick", "pageChange", "konFilter", "play"],
-    setup(props, { emit }) {
-        const currentPage = ref(1);
-        const konFilter = ref();
-        const transitionName = ref("out-list");
+        emits: ["newGameClick", "pageChange", "konFilter", "play"],
+        setup(props, { emit }) {
+            const currentPage = ref(1);
+            const transitionName = ref("out-list");
+            const tooltipButtonRef = reactive({el: null, content: null});
 
-        const store = useStore();
+            const store = useStore();
 
-        const createNewGame = () => {
-            emit("newGameClick");
-        };
+            const createNewGame = () => {
+                emit("newGameClick");
+            };
 
-        const onClickPlay = (id, hod) => {
-            emit("play", id, hod);
-        };
+            const onClickPlay = (id, hod) => {
+                emit("play", id, hod);
+            };
 
-        const onClickKonFilter = (kon) => {
-            konFilter.value = konFilter.value === kon ? undefined : kon;
+            const onKonFilter = (kon) => {
+                emit("konFilter", kon);
+            };
 
-            emit("konFilter", konFilter.value);
-        };
+            const gameListReady = props.isGamesLoading === false && props.gamesList.length > 0;
 
-        const gameListReady = props.isGamesLoading === false && props.gamesList.length > 0;
+            const getPlayerName = (username, usernameGamer) => {
+                return username === store.getters["auth/user"].username ? usernameGamer : username;
+            };
 
-        const getPlayerName = (username, usernameGamer) => {
-            return username === store.getters['auth/user'].username ? usernameGamer : username;
-        }
+            const getGameDate = (createdDate, updatedDate) => {
+                return updatedDate ?? createdDate;
+            };
 
-        const getGameDate = (createdDate, updatedDate) => {
-            return updatedDate ?? createdDate;
-        }
-
-        const isKonfilterVisible = computed(() =>
-            props.konCount !== null && props.konCount.length > 1/* && props.gamesList.length >= 20*/);
-
-        watch(currentPage, (page, oldPage) => {
-            emit("pageChange", page);
-        });
-
-        watch(() => props.gamesList, () => {
-            let prevTransition = transitionName.value;
-            transitionName.value = "none";
-
-            setTimeout(() => {
-                transitionName.value = prevTransition;
+            watch(currentPage, (page, oldPage) => {
+                emit("pageChange", page);
             });
-        });
 
-        // watch(
-        //     [currentPage, () => props.gamesList],
-        //     (newValues, prevValues) => {
-        //         transitionName.value = "none";
+            watch(
+                () => props.gamesList,
+                () => {
+                    let prevTransition = transitionName.value;
+                    transitionName.value = "none";
 
-        //         setTimeout(() => {
-        //             transitionName.value = "out-list";
-        //         });
-        //     }
-        // );
+                    setTimeout(() => {
+                        transitionName.value = prevTransition;
+                    });
+                }
+            );
 
-        return {
-            props,
-            currentPage,
-            konFilter,
-            transitionName,
-            gameListReady,
-            isKonfilterVisible,
-            getPlayerName,
-            getGameDate,
-            createNewGame,
-            onClickPlay,
-            onClickKonFilter,
-        };
-    },
-};
+            return {
+                props,
+                currentPage,
+                transitionName,
+                tooltipButtonRef,
+                gameListReady,
+                getPlayerName,
+                getGameDate,
+                createNewGame,
+                onClickPlay,
+                onKonFilter,
+            };
+        },
+    };
 </script>
 
 <template>
-    <div v-if="isKonfilterVisible" class="kon-filter">
-        <el-button-group class="kon-list">
-            <el-tooltip
-                v-for="{kon, count} in props.konCount"
-                effect="dark"
-                :content="`${count} шт`"
-                placement="top"
-            >
-                <el-button @click="onClickKonFilter(kon)" :class="{selected: kon === konFilter}">{{ kon }}</el-button>
-            </el-tooltip>
-        </el-button-group>
-    </div>
-    
+    <game-filter :konCount="props.konCount" @konFilter="onKonFilter"/>
 
     <el-card
         v-if="props.gamesList.length === 0 && !isGamesLoading"
         shadow="hover"
-        class="no-games-card">
+        class="no-games-card"
+    >
         <div class="no-games-placeholder">
             <div class="me-3">Игр нет :(</div>
             <div>
@@ -150,33 +127,23 @@ export default {
             </div>
         </div>
 
-        <!-- <transition-group name="list-complete">
-            <div v-for="game in props.gamesList" :key="game.id" class="list-complete-item">
-                <el-card shadow="hover" :class="[
-                    'game-card',
-                ]">
-                    <div class="">{{ game.id }}</div>
-                    <slot name="actionCol" :gameId="game.id" :isLoading="game.isLoading" />
-                </el-card>
-            </div>
-        </transition-group> -->
-
         <transition-group name="list-complete">
-            <div
-                class="list-complete-item"
-                v-for="game in props.gamesList"
-                :key="game.id"
-            >
+            <div class="list-complete-item" v-for="game in props.gamesList" :key="game.id">
                 <div class="game-item" v-loading="game.isLoading">
-                    <el-card shadow="hover" :class="[
-                        'game-card',
-                        { 'game-win': game.isWin === true },
-                        { 'game-lose': game.isWin === false },
-                    ]">
+                    <el-card
+                        shadow="hover"
+                        :class="[
+                            'game-card',
+                            { 'game-win': game.isWin === true },
+                            { 'game-lose': game.isWin === false },
+                        ]"
+                    >
                         <div class="row align-items-center game-row">
                             <div class="col col-username" v-if="!props.noplayer">
                                 <div class="d-sm-none small text-muted label">С кем:</div>
-                                <div class="">{{ getPlayerName(game.username, game.username_gamer) }}</div>
+                                <div class="">
+                                    {{ getPlayerName(game.username, game.username_gamer) }}
+                                </div>
                             </div>
                             <div class="col col-kon">
                                 <div>
@@ -185,18 +152,33 @@ export default {
                                 </div>
                                 <!-- <div class=""></div> -->
                             </div>
-                            <div :class="['col', 'col-created-date', {'hide-mobile': !props.notHideDate}]">
-                                <slot name="dateCol" :createdDate="game.createdDate" :updatedDate="game.updatedDate">
-                                    <div class="">{{ getGameDate(game.createdDate, game.updatedDate) }}</div>
+                            <div
+                                :class="[
+                                    'col',
+                                    'col-created-date',
+                                    { 'hide-mobile': !props.notHideDate },
+                                ]"
+                            >
+                                <slot
+                                    name="dateCol"
+                                    :createdDate="game.createdDate"
+                                    :updatedDate="game.updatedDate"
+                                >
+                                    <div class="">
+                                        {{ getGameDate(game.createdDate, game.updatedDate) }}
+                                    </div>
                                 </slot>
                             </div>
                             <div class="col col-play">
-                                <slot name="actionCol" :gameId="game.id" :isLoading="game.isLoading">
+                                <slot
+                                    name="actionCol"
+                                    :gameId="game.id"
+                                    :isLoading="game.isLoading"
+                                >
                                     <div v-if="game.error !== null">
                                         {{ game.error }}
                                     </div>
                                     <div v-else-if="game.isWin === null" class="game-buttons">
-
                                         <el-button
                                             icon="sunny"
                                             type="primary"
@@ -243,30 +225,16 @@ export default {
     @import "~bootstrap/scss/variables";
     @import "~bootstrap/scss/mixins";
 
-    .kon-filter {
-        .kon-list {
-            overflow: auto;
-            display: flex;
-            margin-bottom: .5rem;
-
-            .selected {
-                background: var(--el-color-primary);
-                color: var(--el-color-white);
-            }
-        }
-    }
-
-
     .games-list {
         .games-list-title {
             @include media-breakpoint-down(sm) {
-                    display: none;
-                }
+                display: none;
+            }
         }
 
         .game-item {
-            padding-top: .2rem;
-            padding-bottom: .2rem;
+            padding-top: 0.2rem;
+            padding-bottom: 0.2rem;
             position: relative;
 
             .game-card {
@@ -303,22 +271,25 @@ export default {
                 }
 
                 &.game-lose {
-                    background: linear-gradient(90deg, transparent 54%, rgba(236, 162, 162, 0.562) 100%);
+                    background: linear-gradient(
+                        90deg,
+                        transparent 54%,
+                        rgba(236, 162, 162, 0.562) 100%
+                    );
                 }
             }
         }
     }
 
     .no-games-card {
-
         ::v-deep .el-card__body {
-            padding: .7rem;
+            padding: 0.7rem;
         }
 
         .no-games-placeholder {
             display: flex;
             align-items: center;
-            justify-content: center;    
+            justify-content: center;
         }
     }
 </style>
