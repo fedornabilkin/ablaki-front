@@ -1,7 +1,7 @@
 <template>
     <div class="nav">
         <div class="nav-links">
-            <router-link class="nav-link logo active" to="/">
+            <router-link class="nav-link logo" to="/">
                 <!-- <el-button type="text">Ablaki</el-button> -->
                 Ablaki
             </router-link>
@@ -14,37 +14,6 @@
                 <el-icon><question-filled /></el-icon>Wiki
             </router-link>
         </div>
-
-        <!-- <el-tabs>
-            <el-tab-pane label="User" name="first" />
-            <el-tab-pane label="Config" name="second" />
-            <el-tab-pane label="Role" name="third" />
-            <el-tab-pane label="Task" name="fourth" />
-        </el-tabs> -->
-
-        <!-- <el-dropdown class="user-menu" trigger="click">
-            <span>
-                <el-icon size="20"><avatar /></el-icon>
-            </span>
-            <template #dropdown>
-                <el-dropdown-menu>
-                    <el-dropdown-item>
-                        <router-link to="/users/wall/a">
-                            <el-button type="text" icon="postcard">Стена</el-button>
-                        </router-link>
-                    </el-dropdown-item>
-                    <el-dropdown-item>
-                        <router-link to="/users/profile">Кабинет</router-link>
-                    </el-dropdown-item>
-                    <el-dropdown-item>
-                        <router-link to="/users/wall/qweqwe">Стена</router-link>
-                    </el-dropdown-item>
-                    <el-dropdown-item divided>
-                        <router-link to="/users/logout">Выход</router-link>
-                    </el-dropdown-item>
-                </el-dropdown-menu>
-            </template>
-        </el-dropdown> -->
 
         <!-- v-model:visible="isMenuOpened"
         :hide-after="0" -->
@@ -60,13 +29,6 @@
         >
             <div class="user-menu-list" v-if="isAuthenticated">
                 <user-bar v-if="isAuthenticated"/>
-                <!-- <router-link :to="`/users/wall/${user.username}`" class="user-menu-link">
-                    <el-icon size="20"><postcard /></el-icon>Стена
-                </router-link>
-
-                <router-link to="/users/profile" class="user-menu-link">
-                    <el-icon size="20"><user /></el-icon>Кабинет
-                </router-link> -->
 
                 <hr />
 

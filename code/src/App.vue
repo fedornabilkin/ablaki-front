@@ -87,9 +87,6 @@ export default {
     .h1 {
         font-size: 1.7rem;
     }
-    .cursor-pointer {
-        cursor: pointer;
-    }
 
     .nowrap {
         white-space: nowrap;
@@ -97,15 +94,14 @@ export default {
 
     #app {
         $mainColor: #3B90D1;
-
         font-family: 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         color: #2c3e50;
         margin-top: 0;
 
-        & .pre {
-                white-space: pre;
+        &.pre {
+            white-space: pre;
         }
     }
 </style>

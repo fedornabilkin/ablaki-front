@@ -12,8 +12,25 @@
 @use "element-plus/theme-chalk/src/index.scss" as *;
 @import "~bootstrap";
 
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+}
+
+body {
+    flex-grow: 1;
+}
+
 #app {
     background-color: #f4f7f8;
+    height: 100%;
 }
 
 .container {
