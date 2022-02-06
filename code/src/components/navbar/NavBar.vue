@@ -1,3 +1,38 @@
+<script>
+import { computed, ref } from '@vue/reactivity';
+import { mapGetters, useStore } from 'vuex';
+import UserBar from './UserBar.vue';
+import { watch } from '@vue/runtime-core';
+import { useRoute } from 'vue-router';
+
+export default {
+    components: { UserBar },
+    name: "NavBar",
+
+    setup() {
+        const route = useRoute();
+        const store = useStore();
+
+        const popoverRef = ref();
+
+        const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
+
+        const closeMenu = () => {
+            popoverRef.value.hide();
+        }
+
+        watch(route, () => {
+            closeMenu();
+        });
+
+        return {
+            popoverRef,
+            isAuthenticated,
+        };
+    }
+};
+</script>
+
 <template>
     <div class="nav">
         <div class="nav-links">
@@ -15,17 +50,15 @@
             </router-link>
         </div>
 
-        <!-- v-model:visible="isMenuOpened"
-        :hide-after="0" -->
         <el-popover
+            ref="popoverRef"
             trigger="click"
+            :manual="true"
             placement="bottom"
             width="250px"
             popper-class="user-menu-popper"
-            :popper-options="{ boundariesElement: 'viewport' }"
             :offset="0"
             :show-arrow="false"
-            
         >
             <div class="user-menu-list" v-if="isAuthenticated">
                 <user-bar v-if="isAuthenticated"/>
@@ -54,55 +87,6 @@
         </el-popover>
     </div>
 </template>
-
-<script>
-import { mapGetters } from 'vuex';
-import UserBar from './UserBar.vue';
-
-export default {
-    components: { UserBar },
-    name: "NavBar",
-    data: function () {
-        return {
-            isMenuOpened: false,
-        };
-    },
-    computed: {
-        ...mapGetters('auth', [
-            'isAuthenticated',
-            'user',
-        ]),
-        menuItems() {
-            let items = [
-                {anchor: 'Форум', url: '/forum', title: 'Форум', icon: 'comment'},
-                {anchor: 'Wiki', url: '/wiki', title: 'wiki', icon: 'question-filled'},
-            ];
-            
-            if (!this.isAuthenticated) {
-                // items.push({anchor: 'Регистрация', url: '/users/registration', title: 'Регистрация', icon: 'circle-plus-filled'});
-                // items.push({anchor: 'Войти', url: '/users/login', title: 'Авторизация', icon: 'user-filled'});
-            } else {
-                // items.push({anchor: 'Выход', url: '/users/logout', title: 'Выход', icon: 'circle-close-filled'});
-            }
-
-            return items;
-        }
-    },
-    methods: {
-        toggleMenu () {
-            this.isMenuOpened = !this.isMenuOpened;
-        },
-        closeMenu () {
-            this.isMenuOpened = false;
-        }
-    },
-    watch: {
-        $route (to, from) {
-            this.closeMenu();
-        }
-    }
-};
-</script>
 
 <style lang="scss" scoped>
 .logo {
