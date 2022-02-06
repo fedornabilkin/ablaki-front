@@ -38,11 +38,11 @@ export default {
                     }));
 
                     if (merge === true) {
-                        console.log("gamesList.value", gamesList.value);
-                        console.log("games", games);
+                        // console.log("gamesList.value", gamesList.value);
+                        // console.log("games", games);
 
                         gamesList.value = gamesList.value.concat(games);
-                        console.log("gamesList.value", gamesList.value);
+                        // console.log("gamesList.value", gamesList.value);
                     } else {
                         gamesList.value = games;
                     }
