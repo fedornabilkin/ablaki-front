@@ -267,11 +267,11 @@
                 }
 
                 &.game-win {
-                    background: linear-gradient(90deg, transparent 54%, #31a00447 100%);
+                    background-image: linear-gradient(90deg, transparent 54%, #31a00447 100%);
                 }
 
                 &.game-lose {
-                    background: linear-gradient(
+                    background-image: linear-gradient(
                         90deg,
                         transparent 54%,
                         rgba(236, 162, 162, 0.562) 100%
