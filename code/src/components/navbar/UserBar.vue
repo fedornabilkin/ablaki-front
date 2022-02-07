@@ -4,6 +4,9 @@
             <router-link :to="'/users/wall/' + user.username">
                 <el-button type="text" icon="postcard">Стена {{ user.username }}</el-button>
             </router-link>
+            <router-link to="/users/profile/">
+                <el-button type="text" icon="user">Профиль</el-button>
+            </router-link>
         </div>
         
         <div class="user-bar-right">
@@ -16,8 +19,9 @@
                     effect="dark"
                     :content="creditsTooltipContent"
                     placement="top"
-                    v-model="creditsTooltipAnimation"
+                    v-model:visible="creditsTooltipAnimation"
                     :manual="true"
+                    :append-to-body="false"
                 >
                     <div>
                         <span>{{ roundCredits(user.person.credit) }}</span>

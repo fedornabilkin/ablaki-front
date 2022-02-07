@@ -1,10 +1,11 @@
 <template>
-    <div class="container" v-if="dataFetched">
-        <nav-bar/>
+    <nav-bar/>
+    
+    <div class="container mt-3" v-if="dataFetched">
+        
+        <!-- <user-bar v-if="isAuthenticated"/> -->
 
-        <user-bar v-if="isAuthenticated"/>
-
-        <side-bar />
+        <side-bar v-if="isAuthenticated"/>
 
         <Suspense>
             <template #default>
@@ -57,7 +58,7 @@ export default {
             'authStatus',
         ]),
         dataFetched() {
-            return this.authStatus !== null && this.authStatus !== 'loading'
+            return this.authStatus !== null
         },
     },
 
@@ -86,9 +87,6 @@ export default {
     .h1 {
         font-size: 1.7rem;
     }
-    .cursor-pointer {
-        cursor: pointer;
-    }
 
     .nowrap {
         white-space: nowrap;
@@ -96,15 +94,14 @@ export default {
 
     #app {
         $mainColor: #3B90D1;
-
         font-family: 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         color: #2c3e50;
         margin-top: 0;
 
-        & .pre {
-                white-space: pre;
+        &.pre {
+            white-space: pre;
         }
     }
 </style>

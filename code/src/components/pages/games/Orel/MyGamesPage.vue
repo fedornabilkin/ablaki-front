@@ -1,5 +1,5 @@
 <script>
-import { ref } from "@vue/reactivity";
+import { computed, ref } from "@vue/reactivity";
 import { watch } from "@vue/runtime-core";
 import { orel } from "../../../../services/api";
 import GamesList from './GamesList';
@@ -19,9 +19,11 @@ export default {
         const gamesList = ref([]);
         const gamesCount = ref(0);
         const isGamesLoading = ref(true);
+        const currentPage = ref(1);
 
-        const fetchGames = (page = 1) => {
+        const fetchGames = (page = 1, merge = false) => {
             isGamesLoading.value = true;
+            currentPage.value = page;
 
             orel.getMy(page)
                 .then((res) => {
@@ -35,7 +37,16 @@ export default {
                         error: null,
                     }));
 
-                    gamesList.value = games;
+                    if (merge === true) {
+                        // console.log("gamesList.value", gamesList.value);
+                        // console.log("games", games);
+
+                        gamesList.value = gamesList.value.concat(games);
+                        // console.log("gamesList.value", gamesList.value);
+                    } else {
+                        gamesList.value = games;
+                    }
+                    
                     gamesCount.value = res.count;
                     isGamesLoading.value = false;
                 })
@@ -50,7 +61,12 @@ export default {
             gamesList.value[gameIndex].isLoading = true;
             
             orel.delete(id).then((res) => {
+                if (gamesCount.value > 20 && gamesList.value.length < 40) {
+                    fetchGames(currentPage.value + 1, true);
+                }
+
                 gamesList.value.splice(gameIndex, 1);
+                gamesCount.value--;
 
                 ElNotification({
                     message: "Игра удалена",
@@ -64,12 +80,14 @@ export default {
         }
 
         watch(() => props.reloadListTrigger, () => {
-            fetchGames();
+            fetchGames(currentPage.value);
         });
 
         const onCreateGameClicked = () => {
             emit("newGameClick");
         };
+
+        const currentPageGamesList = computed(() => gamesList.value.slice(0, 20));
 
         fetchGames();
 
@@ -77,6 +95,7 @@ export default {
             gamesList,
             gamesCount,
             isGamesLoading,
+            currentPageGamesList,
             deleteGame,
             onPageChange,
             onCreateGameClicked,
@@ -87,7 +106,7 @@ export default {
 
 <template>
     <games-list
-        :gamesList="gamesList"
+        :gamesList="currentPageGamesList"
         :gamesCount="gamesCount"
         :isGamesLoading="isGamesLoading"
         @newGameClick="onCreateGameClicked"

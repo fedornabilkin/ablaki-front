@@ -10,11 +10,36 @@
 );
 
 @use "element-plus/theme-chalk/src/index.scss" as *;
-
-@import "~bootstrap/scss/functions";
-@import "~bootstrap/scss/variables";
-@import "~bootstrap/scss/mixins";
 @import "~bootstrap";
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+}
+
+body {
+    flex-grow: 1;
+}
+
+#app {
+    background-color: #f4f7f8;
+    height: 100%;
+}
+
+.container {
+    max-width: 720px;
+}
+
+a {
+    text-decoration: none;
+}
 
 .el-notification__content {
     text-align: left;
@@ -28,6 +53,11 @@
     width: auto;
     max-width: 180px;
 }
+
+hr {
+    margin: 0.5rem 0;
+}
+
 .el-dialog {
     max-width: 500px;
     width: 98%;
@@ -37,10 +67,6 @@
     .list-group-item-title {
         color: rgb(144, 147, 153);
         font-weight: bold;
-
-        & > * {
-            // width: 100%;
-        }
     }
 
     &.list-group-flush {
@@ -100,6 +126,7 @@
 
 .list-complete-item {
     transition: all .3s ease;
+    width: 100%;
 }
 .list-complete-enter-from,
 .list-complete-leave-to {

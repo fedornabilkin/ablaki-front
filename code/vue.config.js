@@ -4,14 +4,14 @@ module.exports = {
     },
     chainWebpack: config => {
         config.resolve.extensions.add('.vue', '.js');
-    },
-    css: {
-        loaderOptions: {
-            sass: {
-                additionalData: `
-                    @import "@/index.scss";
-                `
-            }
-        }
     }
+    // css: {
+    //     loaderOptions: {
+    //         sass: {
+    //             additionalData: `
+    //                 @import "@/preloadStyles.scss";
+    //             `
+    //         }
+    //     }
+    // }
 }
