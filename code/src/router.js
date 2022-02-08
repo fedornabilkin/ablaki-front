@@ -24,24 +24,30 @@ import { store } from './store/store';
 // через `Vue.extend()`, так и просто объект с опциями компонента.
 
 const routes = [
-    { path: "/:pathMatch(.*)*'", name: 'Error', component: PageNotFound },
     { path: '/', component: Main },
 
-    { path: '/forum', component: Forum },
-    { path: '/wiki', component: Wiki },
-
-    { path: '/users/wall/:login', component: Wall, meta: { requiresAuth: true } },
     { path: '/users/registration', component: Registration },
     { path: '/users/login', component: Login },
     { path: '/users/logout', component: Logout },
-    { path: '/users/profile', component: Profile },
 
-    { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
     { path: '/games/orel', component: Orel, children: [
         { path: '', component: OrelGames },
         { path: 'my', component: MyOrelGames },
         { path: 'history', component: GamesHistoryPage },
     ], meta: { requiresAuth: true } },
+
+    { path: '/:pathMatch(.*)', component: PageNotFound },
+
+
+
+    { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
+    
+    { path: '/forum', component: Forum },
+    { path: '/wiki', component: Wiki },
+
+    { path: '/users/wall/:login', component: Wall, meta: { requiresAuth: true } },
+    
+    { path: '/users/profile', component: Profile },    
 ];
 
 const router = createRouter({
