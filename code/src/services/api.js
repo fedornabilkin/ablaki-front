@@ -167,6 +167,22 @@ export const orel = {
     },
 }
 
+export const exchange = {
+    create: async (type, credit, rate, count) => {
+        return new Promise((resolve, reject) => {
+            /*axios.post(`${baseUrl}v1/orel`, {kon, count}).then(res => {
+                if (!res.data.errors) {
+                    resolve(res.data);
+                } else {
+                    reject(res.data);
+                }
+            }).catch(e => reject(e));*/
+
+            resolve();
+        });
+    },
+};
+
 export const errorHandler = (e, errors) => {
     if (!errors.hasOwnProperty("404")) {
         errors['404'] = () => alert("something сломалось")

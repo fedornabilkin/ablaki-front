@@ -12,6 +12,7 @@ import Login from './components/pages/user/Login';
 import Logout from './components/pages/user/Logout';
 import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
+import Exchange from './components/pages/user/Exchange';
 
 import Ablaki from './components/pages/games/Ablaki';
 import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pages/games/Orel";
@@ -35,6 +36,8 @@ const routes = [
         { path: 'my', component: MyOrelGames },
         { path: 'history', component: GamesHistoryPage },
     ], meta: { requiresAuth: true } },
+
+    { path: '/exchange', component: Exchange },
 
     { path: '/:pathMatch(.*)', component: PageNotFound },
 
