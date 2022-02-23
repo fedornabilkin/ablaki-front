@@ -94,7 +94,7 @@ export default {
 
     #app {
         $mainColor: #3B90D1;
-        font-family: 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
+        font-family: 'Open Sans', 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         color: #2c3e50;

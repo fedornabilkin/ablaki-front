@@ -83,16 +83,6 @@ export default {
             class="form-neworder"
         >
 
-            <!-- <div class="row"> -->
-                <!-- <div class="col-6"> -->
-                    <!-- <el-radio v-model="type" label="0" size="large">Продать</el-radio> -->
-                <!-- </div> -->
-
-                <!-- <div class="col-6"> -->
-                    <!-- <el-radio v-model="type" label="1" size="large">Купить</el-radio> -->
-                <!-- </div> -->
-            <!-- </div> -->
-
             <el-radio-group v-model="type">
                 <el-radio-button :label="0">Продать</el-radio-button>
                 <el-radio-button :label="1">Купить</el-radio-button>

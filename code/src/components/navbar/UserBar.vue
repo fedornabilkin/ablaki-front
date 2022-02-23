@@ -7,6 +7,9 @@
             <router-link to="/users/profile/">
                 <el-button type="text" icon="user">Профиль</el-button>
             </router-link>
+            <router-link to="/exchange/">
+                <el-button type="text" icon="refresh">Биржа кредитов</el-button>
+            </router-link>
         </div>
         
         <div class="user-bar-right">

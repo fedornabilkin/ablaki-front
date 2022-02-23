@@ -4,9 +4,10 @@ import { mapGetters, useStore } from 'vuex';
 import UserBar from './UserBar.vue';
 import { watch } from '@vue/runtime-core';
 import { useRoute } from 'vue-router';
+import UserAccounts from './UserAccounts.vue';
 
 export default {
-    components: { UserBar },
+    components: { UserBar, UserAccounts },
     name: "NavBar",
 
     setup() {
@@ -50,41 +51,50 @@ export default {
             </router-link>
         </div>
 
-        <el-popover
-            ref="popoverRef"
-            trigger="click"
-            :manual="true"
-            placement="bottom"
-            width="250px"
-            popper-class="user-menu-popper"
-            :offset="0"
-            :show-arrow="false"
-        >
-            <div class="user-menu-list" v-if="isAuthenticated">
-                <user-bar v-if="isAuthenticated"/>
+        <div class="nav-user">
 
-                <hr />
+            <user-accounts v-if="isAuthenticated" />
 
-                <router-link to="/users/logout" class="user-menu-link">
-                    <el-icon size="20"><circle-close /></el-icon>Выход
-                </router-link>
-            </div>
-            <div class="user-menu-list" v-else>
-                <router-link to="/users/login" class="user-menu-link">
-                    <el-icon size="20"><user /></el-icon>Вход
-                </router-link>
+            <el-popover
+                ref="popoverRef"
+                trigger="click"
+                :manual="true"
+                placement="bottom"
+                width="250px"
+                popper-class="user-menu-popper"
+                :offset="0"
+                :show-arrow="false"
+            >
+                <div class="user-menu-list" v-if="isAuthenticated">
+                    <user-bar v-if="isAuthenticated"/>
 
-                <router-link to="/users/registration" class="user-menu-link">
-                    <el-icon size="20"><circle-plus /></el-icon>Регистрация
-                </router-link>
-            </div>
-            <template #reference>
-                <div class="user-avatar" @click="toggleMenu">
-                    <img src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg" alt="">
-                    <el-icon><arrow-down /></el-icon>
+                    <hr />
+
+                    <router-link to="/users/logout" class="user-menu-link">
+                        <el-icon size="20"><circle-close /></el-icon>Выход
+                    </router-link>
                 </div>
-            </template>
-        </el-popover>
+                <div class="user-menu-list" v-else>
+                    <router-link to="/users/login" class="user-menu-link">
+                        <el-icon size="20"><user /></el-icon>Вход
+                    </router-link>
+
+                    <router-link to="/users/registration" class="user-menu-link">
+                        <el-icon size="20"><circle-plus /></el-icon>Регистрация
+                    </router-link>
+                </div>
+                <template #reference>
+                    <div class="user-avatar" @click="toggleMenu">
+                        <!-- <img src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg" alt=""> -->
+                        <el-icon><user-filled /></el-icon>
+                    </div>
+                </template>
+            </el-popover>
+        </div>
+
+        
+
+        
     </div>
 </template>
 
@@ -113,12 +123,13 @@ export default {
         align-items: stretch;
 
         .nav-link {
-            color: #333333;
+            color: #585858;
             padding: 0.5rem 1rem;
             display: flex;
             align-items: center;
             gap: .6rem;
             border-bottom: 2px solid transparent;
+            font-weight: 600;
 
             &:hover {
                 color: var(--el-color-primary);
@@ -131,20 +142,31 @@ export default {
         }
     }
 
-    .user-menu {
-        width: 30px;
+    .nav-user {
         display: flex;
+        flex-direction: row;
         align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
+
+        .user-menu {
+            width: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
     }
+
+    
 
     .user-avatar {
         display: flex;
         align-items: center;
         padding: 10px;
+        margin-left: 1rem;
         margin-right: 1rem;
         cursor: pointer;
+        transition: .2s;
+        border-radius: 50%;
 
         &:hover {
             background: #f5f4f4;
