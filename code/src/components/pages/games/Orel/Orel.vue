@@ -2,10 +2,12 @@
 import { ref } from "@vue/reactivity";
 import { watch } from "@vue/runtime-core";
 import CreateGame from "./CreateGame.vue";
+import PageHeader from '../../../PageHeader.vue';
 
 export default {
     components: {
         CreateGame,
+        PageHeader,
     },
     setup() {
         const dialogCreate = ref(false);
@@ -40,7 +42,33 @@ export default {
 </script>
 
 <template>
-    <div class="row mt-2">
+    <page-header
+        pageTitle="Игра Орел-решка"
+        :extraLinks="[
+            {
+                link: '/games/orel',
+                title: 'Все игры',
+            }, {
+                link: '/games/orel/my',
+                title: 'Мои игры',
+            }, {
+                link: '/games/orel/history',
+                title: 'История',
+            }, 
+        ]"
+    >
+        <template v-slot:actions>
+            <el-button
+                type="primary"
+                @click="dialogCreate = true"
+                round
+                icon="Plus"
+                >Создать игры</el-button
+            >
+        </template>
+    </page-header>
+
+    <!--div class="row mt-2">    
         <div class="col-sm">
             <div class="display-6">Игра Орел-решка</div>
         </div>
@@ -70,7 +98,7 @@ export default {
                 <el-button type="text" icon="apple">История</el-button>
             </el-breadcrumb-item>
         </el-breadcrumb>
-    </div>
+    </div!-->
 
     <create-game
         :isOpen="dialogCreate"

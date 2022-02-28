@@ -30,11 +30,29 @@ const menuItems = computed(() => {
 </script>
 
 <template>
-    <div class="">
-        <router-link class="pe-2" v-for="item in menuItems" :key="item.url" :to="item.url">
-            <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
-            <!-- <font-awesome-icon class="pr-1" :icon="item.icon"/> -->
-            <!-- <span class="hidden-sm-down">{{ item.anchor }}</span> -->
-        </router-link>
+    <div class="bg-white">
+        <div class="menu-games">
+            <router-link class="menu-games-item" v-for="item in menuItems" :key="item.url" :to="item.url">
+                <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
+            </router-link>
+        </div>
     </div>
 </template>
+
+<style lang="scss" scoped>
+.menu-games {
+    display: flex;
+    justify-content: flex-start;
+    margin: 0 2rem;
+
+    .menu-games-item {
+        font-size: 16px;
+        
+        .el-button {
+            padding: 1rem;
+            font-size: inherit;
+            height: auto;
+        }
+    }
+}
+</style>

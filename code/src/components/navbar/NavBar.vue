@@ -39,6 +39,7 @@ export default {
         <div class="nav-links">
             <router-link class="nav-link logo" to="/">
                 <!-- <el-button type="text">Ablaki</el-button> -->
+                <img src="@/assets/logo-spinning.gif" alt="">
                 Ablaki
             </router-link>
 
@@ -91,9 +92,6 @@ export default {
                 </template>
             </el-popover>
         </div>
-
-        
-
         
     </div>
 </template>
@@ -105,6 +103,7 @@ export default {
 }
 
 .nav {
+    box-shadow: 0 20px 7px -13px rgb(67 95 138 / 7%);
     background: #ffffff;
     position: sticky;
     width: 100%;
@@ -156,13 +155,10 @@ export default {
         }
     }
 
-    
-
     .user-avatar {
         display: flex;
         align-items: center;
         padding: 10px;
-        margin-left: 1rem;
         margin-right: 1rem;
         cursor: pointer;
         transition: .2s;

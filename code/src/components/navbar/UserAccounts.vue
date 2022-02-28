@@ -1,10 +1,15 @@
 <template>
     <div class="user-bar-right">
-        <div>
-            <span>{{ user.person.balance }}</span>
-            <span>Кг</span>
-        </div>
-        <div>
+        <router-link to="/balance/pay">
+            <el-link type="primary">
+                <span>{{ user.person.balance }}</span>
+                <span>Кг</span>
+            </el-link>
+        </router-link>
+
+        <el-divider direction="vertical"></el-divider>
+        
+        <router-link to="/exchange">
             <el-tooltip
                 effect="dark"
                 :content="creditsTooltipContent"
@@ -18,11 +23,18 @@
                     <span>Cr</span>
                 </div>
             </el-tooltip>
-        </div>
-        <div>
-            <el-icon style="vertical-align: text-top;"><star /></el-icon>
-            <span>{{ user.person.rating }}</span>
-        </div>
+        </router-link>
+
+        <el-divider direction="vertical"></el-divider>
+
+        <router-link to="/top">
+            <el-button type="text">
+                <el-icon style="vertical-align: text-top;"><star /></el-icon>
+                <span>{{ user.person.rating }}</span>
+            </el-button>
+        </router-link>
+
+        <el-divider direction="vertical"></el-divider>
     </div>
 
 </template>
