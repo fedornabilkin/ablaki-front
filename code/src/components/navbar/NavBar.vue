@@ -97,6 +97,10 @@ export default {
 </template>
 
 <style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 .logo {
     font-size: 1.2rem;
     margin-left: 1rem;
@@ -130,6 +134,11 @@ export default {
             border-bottom: 2px solid transparent;
             font-weight: 600;
 
+            @include media-breakpoint-down(sm) {
+                font-size: .9rem;
+                padding: 0.5rem;
+            }
+
             &:hover {
                 color: var(--el-color-primary);
                 background: #f5f4f4;
@@ -146,12 +155,10 @@ export default {
         flex-direction: row;
         align-items: center;
 
-        .user-menu {
-            width: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 1rem;
+        .user-bar-right {
+            @include media-breakpoint-down(sm) {
+                display: none;
+            }
         }
     }
 
@@ -210,7 +217,6 @@ export default {
             flex-direction: column;
 
             .user-bar-right {
-                // margin: .6rem;
                 border-radius: 6px;
                 background: #f0f2f5;
                 display: flex;

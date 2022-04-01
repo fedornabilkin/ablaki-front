@@ -29,5 +29,5 @@ export default {
                 />
             </template>
         </el-table-column>
-    </el-table>   
+    </el-table>
 </template>

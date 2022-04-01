@@ -1,39 +1,16 @@
 <script>
-import { computed, ref } from '@vue/reactivity';
+import { computed } from '@vue/reactivity';
 import { useStore } from 'vuex';
-import { watch } from '@vue/runtime-core';
+import UserAccounts from './UserAccounts.vue';
 
 export default {
+    components: { UserAccounts },
     setup() {
         const store = useStore();
         const user = computed(() => store.getters['auth/user']);
-        const creditsTooltipAnimation = ref(false);
-        const creditsTooltipContent = ref("");
-
-        const creditsTooltipAnimationTimeout = ref();
-
-        watch(() => user.value?.person?.credit, (value, oldValue) => {
-            let diff = roundCredits(value - oldValue);
-            let displayedDiff = `${diff < 0 ? '-' : '+'}${Math.abs(diff)}`;
-
-            creditsTooltipContent.value = `${displayedDiff} Cr`
-            creditsTooltipAnimation.value = true;
-
-            clearTimeout(creditsTooltipAnimationTimeout.value);
-            creditsTooltipAnimationTimeout.value = setTimeout(() => {
-                creditsTooltipAnimation.value = false;
-            }, 2500);
-        });
-
-        const roundCredits = (credits) => {
-            return Math.round(credits * 10) / 10;
-        }
 
         return {
             user,
-            creditsTooltipAnimation,
-            creditsTooltipContent,
-            roundCredits,
         }
     },
 }
@@ -55,7 +32,9 @@ export default {
             </router-link>
         </div>
         
-        <div class="user-bar-right">
+        <user-accounts />
+        
+        <!--div class="user-bar-right">
             <div>
                 <span>{{ user.person.balance }}</span>
                 <span>Кг</span>
@@ -79,7 +58,7 @@ export default {
                 <el-icon style="vertical-align: text-top;"><star /></el-icon>
                 <span>{{ user.person.rating }}</span>
             </div>
-        </div>
+        </div-->
     </div>
 </template>
 
@@ -91,10 +70,14 @@ export default {
         flex-grow: 1;
     }
 
-    .user-bar-right {
+    :deep(.user-bar-right) {
         display: flex;
         align-items: center;
-        gap: .5rem;
+        gap: 0;
+
+        .el-divider {
+            display: none;            
+        }
     }
 }
 </style>

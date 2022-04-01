@@ -40,18 +40,59 @@ const menuItems = computed(() => {
 </template>
 
 <style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 .menu-games {
     display: flex;
     justify-content: flex-start;
     margin: 0 2rem;
 
+    @include media-breakpoint-down(sm) {
+        justify-content: space-around;
+    }
+
     .menu-games-item {
         font-size: 16px;
+        position: relative;
+
+        &.router-link-active {
+            // border-bottom: 1px solid var(--el-color-primary);
+            // border-bottom-color: var(--el-color-primary);
+
+            &::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 4px;
+                background: rgb(198 206 230);
+                border-radius: 4px;
+            }
+        }
         
-        .el-button {
+        :deep(.el-button) {
             padding: 1rem;
             font-size: inherit;
             height: auto;
+
+            @include media-breakpoint-down(sm) {
+                display: flex;
+                flex-direction: column;
+                padding: .8rem 0;
+
+                & [class*=el-icon] + span {
+                    margin-left: unset;
+                }
+            }
+
+            & > span {
+                @include media-breakpoint-down(sm) {
+                    margin-top: .5rem;
+                }
+            }
         }
     }
 }

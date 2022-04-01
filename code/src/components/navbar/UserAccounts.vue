@@ -1,35 +1,37 @@
 <template>
     <div class="user-bar-right">
         <router-link to="/balance/pay">
-            <el-link type="primary">
+            <el-button type="text">
+                <el-icon><span>Кг</span></el-icon>
                 <span>{{ user.person.balance }}</span>
-                <span>Кг</span>
-            </el-link>
+            </el-button>
         </router-link>
 
         <el-divider direction="vertical"></el-divider>
         
         <router-link to="/exchange">
-            <el-tooltip
-                effect="dark"
-                :content="creditsTooltipContent"
-                placement="bottom"
-                v-model:visible="creditsTooltipAnimation"
-                :manual="true"
-                :append-to-body="false"
-            >
-                <div>
-                    <span>{{ roundCredits(user.person.credit) }}</span>
-                    <span>Cr</span>
-                </div>
-            </el-tooltip>
+            <el-button type="text">
+                <el-tooltip
+                    effect="dark"
+                    :content="creditsTooltipContent"
+                    placement="bottom"
+                    v-model:visible="creditsTooltipAnimation"
+                    :manual="true"
+                    :append-to-body="false"
+                >
+                    <div>
+                        <el-icon>Cr</el-icon>
+                        <span>{{ roundCredits(user.person.credit) }}</span>
+                    </div>
+                </el-tooltip>
+            </el-button>
         </router-link>
 
         <el-divider direction="vertical"></el-divider>
 
         <router-link to="/top">
-            <el-button type="text">
-                <el-icon style="vertical-align: text-top;"><star /></el-icon>
+            <el-button type="text" icon="star">
+                <!-- <el-icon><star /></el-icon> -->
                 <span>{{ user.person.rating }}</span>
             </el-button>
         </router-link>
@@ -85,7 +87,14 @@ export default {
     display: flex;
     align-items: center;
     gap: .5rem;
-
     font-weight: 600;
+
+    .el-button {
+        font-weight: 700;
+    }
+
+    .el-icon {
+        font-style: normal;
+    }
 }
 </style>
