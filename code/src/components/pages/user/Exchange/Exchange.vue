@@ -1,8 +1,9 @@
 <script>
 import { ref } from '@vue/reactivity';
 import NewOrder from './NewOrder.vue';
+import PageHeader from '../../../PageHeader.vue';
 export default {
-    components: { NewOrder },
+    components: { NewOrder, PageHeader },
     setup() {
         const newOrderDialog = ref(false);
 
@@ -31,12 +32,22 @@ export default {
 
 <template>
 
-    <div class="row pt-2">
-        <div class="col-sm">
-            <div class="display-6">Биржа кредитов</div>
-        </div>
-
-        <div class="col-sm-auto mt-3 mt-sm-0">
+    <page-header
+        pageTitle="Биржа кредитов"
+        :extraLinks="[
+            {
+                link: '/exchange',
+                title: 'Все заявки',
+            }, {
+                link: '/exchange/my',
+                title: 'Мои заявки',
+            }, {
+                link: '#',
+                title: 'Удалить все заявки',
+            }, 
+        ]"
+    >
+        <template v-slot:actions>
             <el-button
                 type="primary"
                 @click="openNewOrderDialog"
@@ -44,22 +55,8 @@ export default {
                 icon="Plus"
                 >Добавить заявку</el-button
             >
-        </div>
-    </div>
-
-    <el-breadcrumb separator="/">
-        <el-breadcrumb-item to="/exchange">
-            <el-button type="text" icon="apple">Все заявки</el-button>
-        </el-breadcrumb-item>
-
-        <el-breadcrumb-item to="/exchange/my">
-            <el-button type="text" icon="apple">Мои заявки</el-button>
-        </el-breadcrumb-item>
-
-        <el-breadcrumb-item to="/exchange">
-            <el-button type="text" icon="apple">Удалить все заявки</el-button>
-        </el-breadcrumb-item>
-    </el-breadcrumb>
+        </template>
+    </page-header>
 
     <new-order
         :isOpen="newOrderDialog"
@@ -67,5 +64,7 @@ export default {
         @close="closeNewOrderDialog"
     />
 
-    <router-view />
+    <div class="container">
+        <router-view />
+    </div>
 </template>

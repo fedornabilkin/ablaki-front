@@ -57,6 +57,10 @@ export default {
 </template>
 
 <style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 .page-header {
     background: linear-gradient(109.12deg,#f5f6fa -.72%,#e7f0fe);
 
@@ -81,22 +85,31 @@ export default {
                 }
             }
 
-            .extra-tabs {
-                padding: 0.25rem;
-                background-color: rgba(30,58,138,.2);
-                border-radius: 0.75rem;
+            .extra {
                 display: flex;
 
-                .btn-tab {
-                    border-radius: 8px;
-                    margin-left: unset;
-                    background-color: transparent;
-                    color: rgb(108, 103, 129);
-                    border: none;
+                .extra-tabs {
+                    padding: 0.25rem;
+                    background-color: rgba(30,58,138,.2);
+                    border-radius: 0.75rem;
+                    display: flex;
+                    overflow: auto;
 
-                    &.active {
-                        background: #fff;
-                        box-shadow: #0000002b 0 1px 3px;
+                    @include media-breakpoint-down(sm) {
+                        // flex-direction: column;
+                    }
+
+                    .btn-tab {
+                        border-radius: 8px;
+                        margin-left: unset;
+                        background-color: transparent;
+                        color: rgb(108, 103, 129);
+                        border: none;
+
+                        &.active {
+                            background: #fff;
+                            box-shadow: #0000002b 0 1px 3px;
+                        }
                     }
                 }
             }

@@ -106,8 +106,10 @@ export default {
         @close="closeDialogCreate"
     />
 
-    <router-view
-        @newGameClick="openDialogCreate"
-        :reloadListTrigger="reloadListTrigger"
-    ></router-view>
+    <div class="container">
+        <router-view
+            @newGameClick="openDialogCreate"
+            :reloadListTrigger="reloadListTrigger"
+        />
+    </div>
 </template>
