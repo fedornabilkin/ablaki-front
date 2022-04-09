@@ -45,7 +45,7 @@ export const getWall = async (username) => {
             if (!res.data.errors) {
                 resolve(res.data);
             } else {
-                reject(res.data);
+                reject();
             }
         }).catch(e => reject(e));
     });

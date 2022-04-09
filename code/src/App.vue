@@ -1,22 +1,14 @@
 <template>
     <nav-bar/>
     
-    <div class="" v-if="dataFetched">
-        
+    <div v-if="dataFetched">       
         <!-- <user-bar v-if="isAuthenticated"/> -->
 
         <side-bar v-if="isAuthenticated"/>
 
-        <div class="">
-            <Suspense>
-                <template #default>
-                    <router-view></router-view>
-                </template>
-                <template #fallback>
-                    <div>Loading...</div>
-                </template>
-            </Suspense>
-        </div>
+        <!-- <div class=""> -->
+        <router-view></router-view>
+        <!-- </div> -->
         
     </div>
 </template>

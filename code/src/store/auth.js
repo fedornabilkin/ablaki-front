@@ -21,9 +21,7 @@ const auth = {
         authStatus: state => state.status,
         token: state => state.token,
         headerToken: state => 'Bearer ' + state.token,
-        user: state => {
-            return state.user;
-        },
+        user: state => state.user,
     },
     mutations: {
         [AUTH_REQUEST]: (state) => {

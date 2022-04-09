@@ -2,6 +2,8 @@ import Vue from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
+import WithUser from './components/WithUser.vue';
+
 import Main from './components/pages/Main';
 import Forum from './components/pages/forum/Forum';
 import PageNotFound from './components/pages/PageNotFound';
@@ -31,6 +33,7 @@ const routes = [
     { path: '/users/login', component: Login },
     { path: '/users/logout', component: Logout },
 
+
     { path: '/games/orel', component: Orel, children: [
         { path: '', component: OrelGames },
         { path: 'my', component: MyOrelGames },
@@ -42,6 +45,10 @@ const routes = [
         { path: 'my', component: MyOrders },
     ], meta: { requiresAuth: true } },
 
+    { path: '/users/wall/:login', component: WithUser, children: [
+        { path: '', component: Wall },
+    ], meta: { requiresAuth: true } },
+    
     { path: '/:pathMatch(.*)', component: PageNotFound },
 
 
@@ -51,7 +58,7 @@ const routes = [
     { path: '/forum', component: Forum },
     { path: '/wiki', component: Wiki },
 
-    { path: '/users/wall/:login', component: Wall, meta: { requiresAuth: true } },
+    
     
     { path: '/users/profile', component: Profile },    
 ];
