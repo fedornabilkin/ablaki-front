@@ -102,8 +102,13 @@ export default {
 @import "~bootstrap/scss/mixins";
 
 .logo {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     margin-left: 1rem;
+
+    img {
+        width: 30px;
+        height: auto;
+    }
 }
 
 .nav {
@@ -114,7 +119,7 @@ export default {
     top: 0;
     left: 0;
     border-bottom: 1px solid var(--border-color);
-    z-index: 1;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     // align-items: center;
@@ -124,15 +129,17 @@ export default {
     .nav-links {
         display: flex;
         align-items: stretch;
+        font-size: .9rem;
 
         .nav-link {
             color: #585858;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             display: flex;
             align-items: center;
             gap: .6rem;
-            border-bottom: 2px solid transparent;
+            // border-bottom: 2px solid transparent;
             font-weight: 600;
+            position: relative;
 
             @include media-breakpoint-down(sm) {
                 font-size: .9rem;
@@ -141,11 +148,22 @@ export default {
 
             &:hover {
                 color: var(--el-color-primary);
-                background: #f5f4f4;
+                // background: #f5f4f4;
             }
 
             &.router-link-active {
-                border-bottom-color: var(--el-color-primary);
+                // border-bottom-color: var(--el-color-primary);
+
+                &::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    left: 10%;
+                    width: 80%;
+                    height: 4px;
+                    background: #009688;
+                    border-radius: 4px;
+                }
             }
         }
     }

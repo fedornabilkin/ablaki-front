@@ -65,10 +65,11 @@ const menuItems = computed(() => {
                 content: '';
                 position: absolute;
                 bottom: 0;
-                left: 0;
-                width: 100%;
+                left: 10%;
+                width: 80%;
                 height: 4px;
-                background: rgb(198 206 230);
+                // background: rgb(198 206 230);
+                background: #009688;
                 border-radius: 4px;
             }
         }

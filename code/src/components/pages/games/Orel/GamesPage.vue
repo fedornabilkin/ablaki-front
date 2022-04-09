@@ -74,7 +74,6 @@ export default {
                     },
                     "No free game": () => {
                         gamesList.value[gameIndex].error = "Игра сыграна";
-                        // gamesList.value.splice(gameIndex, 1);
                     }
                 });
             }).finally(onfinally => {
