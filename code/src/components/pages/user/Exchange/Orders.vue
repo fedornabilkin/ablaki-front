@@ -1,80 +1,55 @@
 <script>
     import { ref } from "@vue/reactivity";
     import OrdersList from "./OrdersList.vue";
+    import { errorHandler, exchange } from '../../../../services/api';
+    import { useFetchOrders } from './hooks/useFetchOrders';
+import { ElNotification } from 'element-plus';
 
     export default {
         components: { OrdersList },
         setup() {
-            const ordersBuy = ref([
-                {
-                    id: 1,
-                    rate: 0.03,
-                    credit: 50,
-                },
-                {
-                    id: 2,
-                    rate: 0.029,
-                    credit: 51,
-                },
-                {
-                    id: 3,
-                    rate: 0.0289,
-                    credit: 60,
-                },
-                {
-                    id: 4,
-                    rate: 0.024,
-                    credit: 100,
-                },
-            ]);
+            const {
+                isloading: isloadingBuy,
+                ordersList: ordersBuy
+            } = useFetchOrders(exchange.getBuy);
 
-            const ordersSell = ref([
-                {
-                    id: 19,
-                    rate: 10,
-                    credit: 299,
-                },
-            ]);
-
-            ordersBuy.value = ordersBuy.value.map((order) => {
-                return {
-                    ...order,
-                    isLoading: false,
-                    status: null,
-                };
-            });
-
-            ordersSell.value = ordersSell.value.map((order) => {
-                return {
-                    ...order,
-                    isLoading: false,
-                    status: null,
-                };
-            });
+            const {
+                isloading: isloadingSell,
+                ordersList: ordersSell
+            } = useFetchOrders(exchange.getSell);
 
             const onBuy = (id) => {
-                let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
-
-                ordersBuy.value[orderIndex].isLoading = true;
-
-                setTimeout(() => {
-                    ordersBuy.value[orderIndex].isLoading = false;
-                    ordersBuy.value[orderIndex].status = "success";
-                }, 1000);
-            };
-
-            const onSell = (id) => {
                 let orderIndex = ordersSell.value.findIndex((order) => order.id === id);
 
                 ordersSell.value[orderIndex].isLoading = true;
 
-                setTimeout(() => {
+                exchange.proceed(id).then(res => {
                     ordersSell.value[orderIndex].isLoading = false;
                     ordersSell.value[orderIndex].status = "success";
-                }, 1000);
+                }).catch(e => {
+                    errorHandler(e, {
+                        "Type is invalid.": () => ElNotification({
+                            message: 'Type is invalid',
+                            type: 'error',
+                        })
+                    });
+                })
+            };
+
+            const onSell = (id) => {
+                let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
+
+                ordersBuy.value[orderIndex].isLoading = true;
+
+                exchange.proceed(id).then(res => {
+                    ordersBuy.value[orderIndex].isLoading = false;
+                    ordersBuy.value[orderIndex].status = "success";
+                });
             };
 
             return {
+                isloadingBuy,
+                isloadingSell,
                 ordersBuy,
                 ordersSell,
                 onBuy,
@@ -89,8 +64,8 @@
         <div class="col-md-6">
             <h5>Купить кредиты</h5>
 
-            <orders-list :orders="ordersBuy">
-                <template v-slot:action="{ orderId, isLoading, status, credit, price }">
+            <orders-list :orders="ordersSell" :isloading="isloadingSell">
+                <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
                     </div>
@@ -102,7 +77,7 @@
                         v-if="status === null"
                     >
                         <el-icon><bottom /></el-icon> {{ credit }}Cr
-                        <el-icon><top /></el-icon>{{ price }}Кг
+                        <el-icon><top /></el-icon>{{ amount }}Кг
                     </el-button>
                 </template>
             </orders-list>
@@ -111,8 +86,8 @@
         <div class="col-md-6">
             <h5>Продать кредиты</h5>
 
-            <orders-list :orders="ordersSell">
-                <template v-slot:action="{ orderId, isLoading, status, credit, price }">
+            <orders-list :orders="ordersBuy" :isloading="isloadingBuy">
+                <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
                     </div>
@@ -123,8 +98,8 @@
                         :loading="isLoading"
                         v-if="status === null"
                     >
-                        <el-icon><top /></el-icon> {{ credit }}Cr <el-icon><bottom /></el-icon>
-                        {{ price }}Кг
+                        <el-icon><top /></el-icon> {{ credit }}Cr
+                        <el-icon><bottom /></el-icon> {{ amount }}Кг
                     </el-button>
                 </template>
             </orders-list>

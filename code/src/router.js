@@ -40,7 +40,7 @@ const routes = [
     { path: '/exchange', component: Exchange, children: [
         { path: '', component: Orders },
         { path: 'my', component: MyOrders },
-    ] },
+    ], meta: { requiresAuth: true } },
 
     { path: '/:pathMatch(.*)', component: PageNotFound },
 

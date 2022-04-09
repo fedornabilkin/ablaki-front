@@ -168,19 +168,55 @@ export const orel = {
 }
 
 export const exchange = {
-    create: async (type, credit, rate, count) => {
+    getBuy: async () => {
         return new Promise((resolve, reject) => {
-            /*axios.post(`${baseUrl}v1/orel`, {kon, count}).then(res => {
-                if (!res.data.errors) {
-                    resolve(res.data);
-                } else {
-                    reject(res.data);
-                }
-            }).catch(e => reject(e));*/
-
-            resolve();
+            axios.get(`${baseUrl}v1/exchange`, {params: {"filter[type]": "buy", "sort": "-price"}}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
         });
     },
+    getSell: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/exchange`, {params: {"filter[type]": "sell"}}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
+        });
+    },
+    getMyBuy: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/exchange/my`, {params: {"filter[type]": "buy"}}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
+        });
+    },
+    getMySell: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/exchange/my`, {params: {"filter[type]": "sell"}}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
+        });
+    },
+    create: async (type, credit, amount, count) => {
+        return new Promise((resolve, reject) => {
+            axios.post(`${baseUrl}v1/exchange`, {type, credit, amount}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
+        });
+    },
+    proceed: async (id) => {
+        return new Promise((resolve, reject) => {
+            axios.put(`${baseUrl}v1/exchange/${id}`, {}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
+        });
+    },
+    cancel: async (id) => {
+        return new Promise((resolve, reject) => {
+            axios.delete(`${baseUrl}v1/exchange/${id}`, {}).then(res => {
+                resolve(res.data);
+            }).catch(e => reject(e));
+        });
+    }
 };
 
 export const errorHandler = (e, errors) => {

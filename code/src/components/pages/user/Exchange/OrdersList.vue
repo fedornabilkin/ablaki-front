@@ -4,6 +4,10 @@ export default {
         orders: {
             type: Array,
             default: () => [],
+        },
+        isloading: {
+            type: Boolean,
+            default: () => false,
         }
     },
     setup(props, {emit}) {
@@ -15,8 +19,8 @@ export default {
 </script>
 
 <template>
-    <el-table :data="orders" stripe empty-text="Заявки не найдены">
-        <el-table-column prop="rate" label="Цена за 1000" width="120"/>
+    <el-table :data="orders" v-loading="isloading" stripe empty-text="Заявки не найдены">
+        <el-table-column prop="price" :formatter="(row) => `${row.price} Кг`" label="Цена за 1000" width="120"/>
         <el-table-column label="">
             <template #default="scope">
                 <slot
@@ -25,7 +29,7 @@ export default {
                     :isLoading="scope.row.isLoading"
                     :status="scope.row.status"
                     :credit="scope.row.credit"
-                    :price="scope.row.rate * scope.row.credit / 1000"
+                    :amount="scope.row.amount"
                 />
             </template>
         </el-table-column>
