@@ -2,10 +2,14 @@
 import { ref } from '@vue/reactivity';
 import NewOrder from './NewOrder.vue';
 import PageHeader from '../../../PageHeader.vue';
+import { onMounted } from '@vue/runtime-core';
+import { useRoute } from 'vue-router';
 export default {
     components: { NewOrder, PageHeader },
     setup() {
         const newOrderDialog = ref(false);
+        const viewRef = ref(null);
+        const route = useRoute();
 
         const openNewOrderDialog = () => {
             newOrderDialog.value = true;
@@ -15,12 +19,17 @@ export default {
             newOrderDialog.value = false;
         };
 
-        const onCreated = () => {
+        const onCreated = (type) => {
             closeNewOrderDialog();
-            //reloadListTrigger.value = !reloadListTrigger.value;
+
+            if (route.fullPath === "/exchange/my") {
+                if (type === "buy") viewRef.value.refetchBuy();
+                if (type === "sell") viewRef.value.refetchSell();
+            }
         };
 
         return {
+            viewRef,
             newOrderDialog,
             openNewOrderDialog,
             closeNewOrderDialog,
@@ -31,7 +40,6 @@ export default {
 </script>
 
 <template>
-
     <page-header
         pageTitle="Биржа кредитов"
         :extraLinks="[
@@ -42,8 +50,8 @@ export default {
                 link: '/exchange/my',
                 title: 'Мои заявки',
             }, {
-                link: '#',
-                title: 'Удалить все заявки',
+                link: '/exchange/history',
+                title: 'История',
             }, 
         ]"
     >
@@ -65,6 +73,8 @@ export default {
     />
 
     <div class="container">
-        <router-view />
+        <router-view v-slot="{ Component }">
+            <component :is="Component" ref="viewRef" />
+        </router-view>
     </div>
 </template>

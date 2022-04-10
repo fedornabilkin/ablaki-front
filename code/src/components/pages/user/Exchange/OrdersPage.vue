@@ -3,18 +3,18 @@
     import OrdersList from "./OrdersList.vue";
     import { errorHandler, exchange } from '../../../../services/api';
     import { useFetchOrders } from './hooks/useFetchOrders';
-import { ElNotification } from 'element-plus';
+    import { ElNotification } from 'element-plus';
 
     export default {
         components: { OrdersList },
         setup() {
             const {
-                isloading: isloadingBuy,
+                isLoading: isLoadingBuy,
                 ordersList: ordersBuy
             } = useFetchOrders(exchange.getBuy);
 
             const {
-                isloading: isloadingSell,
+                isLoading: isLoadingSell,
                 ordersList: ordersSell
             } = useFetchOrders(exchange.getSell);
 
@@ -48,8 +48,8 @@ import { ElNotification } from 'element-plus';
             };
 
             return {
-                isloadingBuy,
-                isloadingSell,
+                isLoadingBuy,
+                isLoadingSell,
                 ordersBuy,
                 ordersSell,
                 onBuy,
@@ -64,7 +64,7 @@ import { ElNotification } from 'element-plus';
         <div class="col-md-6">
             <h5>Купить кредиты</h5>
 
-            <orders-list :orders="ordersSell" :isloading="isloadingSell">
+            <orders-list :orders="ordersSell" :isLoading="isLoadingSell">
                 <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
@@ -86,7 +86,7 @@ import { ElNotification } from 'element-plus';
         <div class="col-md-6">
             <h5>Продать кредиты</h5>
 
-            <orders-list :orders="ordersBuy" :isloading="isloadingBuy">
+            <orders-list :orders="ordersBuy" :isLoading="isLoadingBuy">
                 <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>

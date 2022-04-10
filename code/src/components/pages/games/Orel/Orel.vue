@@ -68,38 +68,6 @@ export default {
         </template>
     </page-header>
 
-    <!--div class="row mt-2">    
-        <div class="col-sm">
-            <div class="display-6">Игра Орел-решка</div>
-        </div>
-
-        <div class="col-sm-auto mt-3 mt-sm-0">
-            <el-button
-                type="primary"
-                @click="dialogCreate = true"
-                round
-                icon="Plus"
-                >Создать игры</el-button
-            >
-        </div>
-    </div>
-
-    <div>
-        <el-breadcrumb separator="/">
-            <el-breadcrumb-item to="/games/orel">
-                <el-button type="text" icon="apple">Все игры</el-button>
-            </el-breadcrumb-item>
-
-            <el-breadcrumb-item to="/games/orel/my">
-                <el-button type="text" icon="apple">Мои игры</el-button>
-            </el-breadcrumb-item>
-
-            <el-breadcrumb-item to="/games/orel/history">
-                <el-button type="text" icon="apple">История</el-button>
-            </el-breadcrumb-item>
-        </el-breadcrumb>
-    </div!-->
-
     <create-game
         :isOpen="dialogCreate"
         @gameCreated="onGameCreated"

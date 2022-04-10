@@ -6,16 +6,19 @@
     import { useFetchOrders } from './hooks/useFetchOrders';
 
     export default {
+        name: "MyOrdersPage",
         components: { NewOrder, OrdersList },
         setup() {
             const {
-                isloading: isloadingBuy,
-                ordersList: ordersBuy
+                isLoading: isLoadingBuy,
+                ordersList: ordersBuy,
+                refetch: refetchBuy,
             } = useFetchOrders(exchange.getMyBuy);
 
             const {
-                isloading: isloadingSell,
-                ordersList: ordersSell
+                isLoading: isLoadingSell,
+                ordersList: ordersSell,
+                refetch: refetchSell,
             } = useFetchOrders(exchange.getMySell);
 
             const onCancel = (id, type) => {
@@ -45,10 +48,12 @@
             };
 
             return {
-                isloadingBuy,
-                isloadingSell,
+                isLoadingBuy,
+                isLoadingSell,
                 ordersBuy,
                 ordersSell,
+                refetchBuy,
+                refetchSell,
                 onCancel,
             };
         },
@@ -60,7 +65,7 @@
         <div class="col-md-6">
             <h5>Мои заявки на покупку</h5>
 
-            <orders-list :orders="ordersBuy" :isloading="isloadingBuy">
+            <orders-list :orders="ordersBuy" :isLoading="isLoadingBuy">
                 <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
@@ -73,8 +78,8 @@
                         :loading="isLoading"
                         v-if="status === null"
                     >
-                        <el-icon><top /></el-icon> {{ credit }}Cr
-                        <el-icon><bottom /></el-icon>{{ amount }}Кг
+                        <el-icon><top /></el-icon>{{ credit }} Cr
+                        <el-icon><bottom /></el-icon>{{ amount }} Кг
                     </el-button>
                 </template>
             </orders-list>
@@ -83,7 +88,7 @@
         <div class="col-md-6">
             <h5>Мои заявки на продажу</h5>
 
-            <orders-list :orders="ordersSell" :isloading="isloadingSell">
+            <orders-list :orders="ordersSell" :isLoading="isLoadingSell">
                 <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>

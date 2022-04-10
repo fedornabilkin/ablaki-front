@@ -196,6 +196,17 @@ export const exchange = {
             }).catch(e => reject(e));
         });
     },
+    getHistory: async () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`${baseUrl}v1/exchange/history`).then(res => {
+                if (!res.data.errors) {
+                    resolve(res.data);
+                } else {
+                    reject();
+                }
+            }).catch(e => reject(e));
+        });
+    },
     create: async (type, credit, amount, count) => {
         return new Promise((resolve, reject) => {
             axios.post(`${baseUrl}v1/exchange`, {type, credit, amount}).then(res => {
@@ -212,7 +223,7 @@ export const exchange = {
     },
     cancel: async (id) => {
         return new Promise((resolve, reject) => {
-            axios.delete(`${baseUrl}v1/exchange/${id}`, {}).then(res => {
+            axios.delete(`${baseUrl}v1/exchange/${id}`).then(res => {
                 resolve(res.data);
             }).catch(e => reject(e));
         });

@@ -14,7 +14,7 @@ import Login from './components/pages/user/Login';
 import Logout from './components/pages/user/Logout';
 import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
-import Exchange, { MyOrders, Orders } from './components/pages/user/Exchange';
+import Exchange, { MyOrdersPage, OrdersPage, OrdersHistoryPage } from './components/pages/user/Exchange';
 
 import Ablaki from './components/pages/games/Ablaki';
 import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pages/games/Orel";
@@ -33,21 +33,25 @@ const routes = [
     { path: '/users/login', component: Login },
     { path: '/users/logout', component: Logout },
 
+    { path: '/', component: WithUser, children: [
+        { path: '/games/orel', component: Orel, children: [
+            { path: '', component: OrelGames },
+            { path: 'my', component: MyOrelGames },
+            { path: 'history', component: GamesHistoryPage },
+        ], meta: { requiresAuth: true } },
 
-    { path: '/games/orel', component: Orel, children: [
-        { path: '', component: OrelGames },
-        { path: 'my', component: MyOrelGames },
-        { path: 'history', component: GamesHistoryPage },
+        { path: '/exchange', component: Exchange, children: [
+            { path: '', component: OrdersPage },
+            { path: 'my', component: MyOrdersPage },
+            { path: 'history', component: OrdersHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/wall/:login', component: Wall },
     ], meta: { requiresAuth: true } },
 
-    { path: '/exchange', component: Exchange, children: [
-        { path: '', component: Orders },
-        { path: 'my', component: MyOrders },
-    ], meta: { requiresAuth: true } },
 
-    { path: '/users/wall/:login', component: WithUser, children: [
-        { path: '', component: Wall },
-    ], meta: { requiresAuth: true } },
+    
+
     
     { path: '/:pathMatch(.*)', component: PageNotFound },
 

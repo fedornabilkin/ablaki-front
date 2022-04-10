@@ -29,7 +29,7 @@ export default {
                     });
                     isLoading.value = false;
 
-                    emit("created");
+                    emit("created", type.value);
                 })
                 .catch((err) => {
                     errorHandler(err, {

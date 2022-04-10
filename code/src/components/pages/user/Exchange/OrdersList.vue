@@ -5,7 +5,7 @@ export default {
             type: Array,
             default: () => [],
         },
-        isloading: {
+        isLoading: {
             type: Boolean,
             default: () => false,
         }
@@ -19,7 +19,7 @@ export default {
 </script>
 
 <template>
-    <el-table :data="orders" v-loading="isloading" stripe empty-text="Заявки не найдены">
+    <el-table :data="orders" v-loading="isLoading" stripe empty-text="Заявки не найдены">
         <el-table-column prop="price" :formatter="(row) => `${row.price} Кг`" label="Цена за 1000" width="120"/>
         <el-table-column label="">
             <template #default="scope">

@@ -1,12 +1,14 @@
 import Exchange from './Exchange';
-import Orders from './Orders.vue';
+import OrdersPage from './OrdersPage';
 import NewOrder from './NewOrder';
-import MyOrders from './MyOrders';
+import MyOrdersPage from './MyOrdersPage';
+import OrdersHistoryPage from './OrdersHistoryPage';
 
 export default Exchange;
 
 export {
-    Orders,
+    OrdersPage,
+    MyOrdersPage,
+    OrdersHistoryPage,
     NewOrder,
-    MyOrders,
 }

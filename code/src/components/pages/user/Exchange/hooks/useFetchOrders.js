@@ -1,29 +1,27 @@
 import { ref } from "vue";
+import { useFetch } from "../../../../../hooks/useFetch";
 
 export const useFetchOrders = (fun) => {
-    const isloading = ref(true);
-    const ordersList = ref([]);
-
-    const fetch = () => {
-        isloading.value = true;
-
-        fun().then(res => {
-            ordersList.value = res.map((order) => {
-                return {
-                    ...order,
-                    isLoading: false,
-                    status: null,
-                };
-            });
-
-            isloading.value = false;
+    const {
+        isLoading,
+        result: ordersList,
+        refetch,
+    } = useFetch(
+        fun, 
+        [], 
+        (res) => {
+        return res.map((order) => {
+            return {
+                ...order,
+                isLoading: false,
+                status: null,
+            };
         });
-    }
-
-    fetch();
+    });
 
     return {
-        isloading,
+        isLoading,
         ordersList,
+        refetch,
     }
 }
