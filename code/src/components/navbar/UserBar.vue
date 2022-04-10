@@ -19,7 +19,7 @@ export default {
 <template>
     <div class="user-bar">
         <div class="user-bar-left">
-            <router-link :to="'/users/wall/' + user.username">
+            <router-link :to="'/wall/' + user.username">
                 <el-button type="text" icon="postcard">Стена {{ user.username }}</el-button>
             </router-link>
             
