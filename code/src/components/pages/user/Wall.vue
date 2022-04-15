@@ -19,7 +19,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <el-card shadow="never">
-                            <el-avatar style="width: 100%;" shape="square" fit="cover" size="100%" src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg" />
+                            <el-avatar style="width: 100%;" shape="square" fit="cover" src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg" />
                         </el-card>
                     </div>
                     <div class="col-md-8">
