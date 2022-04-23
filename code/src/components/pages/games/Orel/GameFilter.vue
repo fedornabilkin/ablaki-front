@@ -47,6 +47,7 @@
         <el-button-group class="kon-list">
             <el-button
                 v-for="{ kon, count } in props.konCount"
+                v-bind:key="kon"
                 :class="{ selected: kon === konFilter }"
                 @click="onClickKonFilter(kon)"
                 @mouseover="(e) => onFilterBtnMouseover(e, count)"
