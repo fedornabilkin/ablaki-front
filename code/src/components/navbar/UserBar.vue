@@ -34,31 +34,6 @@ export default {
         
         <user-accounts />
         
-        <!--div class="user-bar-right">
-            <div>
-                <span>{{ user.person.balance }}</span>
-                <span>Кг</span>
-            </div>
-            <div>
-                <el-tooltip
-                    effect="dark"
-                    :content="creditsTooltipContent"
-                    placement="top"
-                    v-model:visible="creditsTooltipAnimation"
-                    :manual="true"
-                    :append-to-body="false"
-                >
-                    <div>
-                        <span>{{ roundCredits(user.person.credit) }}</span>
-                        <span>Cr</span>
-                    </div>
-                </el-tooltip>
-            </div>
-            <div>
-                <el-icon style="vertical-align: text-top;"><star /></el-icon>
-                <span>{{ user.person.rating }}</span>
-            </div>
-        </div-->
     </div>
 </template>
 

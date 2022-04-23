@@ -17,7 +17,6 @@
                     placement="bottom"
                     v-model:visible="creditsTooltipAnimation"
                     :manual="true"
-                    :append-to-body="false"
                 >
                     <div>
                         <el-icon>Cr</el-icon>
@@ -65,7 +64,7 @@ export default {
             clearTimeout(creditsTooltipAnimationTimeout.value);
             creditsTooltipAnimationTimeout.value = setTimeout(() => {
                 creditsTooltipAnimation.value = false;
-            }, 2500);
+            }, 250000);
         });
 
         const roundCredits = (credits) => {
@@ -83,11 +82,24 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 .user-bar-right {
     display: flex;
     align-items: center;
     gap: .5rem;
     font-weight: 600;
+
+    @include media-breakpoint-down(sm) {
+        gap: 0rem;
+        font-size: 1.1rem;
+
+        :deep(.el-button) {
+            font-size: 0.8rem;
+        }
+    }
 
     .el-button {
         font-weight: 700;

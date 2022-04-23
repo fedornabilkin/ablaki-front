@@ -62,9 +62,20 @@ export default {
 @import "~bootstrap/scss/mixins";
 
 .page-header {
+    position: relative;
     background: linear-gradient(109.12deg,#f5f6fa -.72%,#e7f0fe);
 
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+            background: linear-gradient(180deg, transparent 0%, transparent 90%, #f4f7f8 100%);
+        z-index: 0;
+    }
+
     .container {
+        position: relative;
+        z-index: 1;
 
         .header-wrapper {
             padding: 100px 0 38px;
