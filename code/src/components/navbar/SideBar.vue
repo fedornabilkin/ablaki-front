@@ -31,7 +31,7 @@ const menuItems = computed(() => {
 
 <template>
     <div class="bg-white">
-        <div class="menu-games">
+        <div class="container menu-games">
             <router-link class="menu-games-item" v-for="item in menuItems" :key="item.url" :to="item.url">
                 <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
             </router-link>
@@ -47,7 +47,7 @@ const menuItems = computed(() => {
 .menu-games {
     display: flex;
     justify-content: flex-start;
-    margin: 0 2rem;
+    // margin: 0 2rem;
 
     @include media-breakpoint-down(sm) {
         justify-content: space-around;
@@ -86,6 +86,7 @@ const menuItems = computed(() => {
 
                 & [class*=el-icon] + span {
                     margin-left: unset;
+                    font-size: .9rem;
                 }
             }
 

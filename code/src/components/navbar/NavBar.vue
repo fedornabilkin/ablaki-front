@@ -14,20 +14,27 @@ export default {
         const route = useRoute();
         const store = useStore();
 
-        const popoverRef = ref();
+        const popoverUserMenuRef = ref();
+        const popoverMenuRef = ref();
 
         const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 
+        const closeUserMenu = () => {
+            popoverUserMenuRef.value.hide();
+        }
+
         const closeMenu = () => {
-            popoverRef.value.hide();
+            popoverMenuRef.value.hide();
         }
 
         watch(route, () => {
+            closeUserMenu();
             closeMenu();
         });
 
         return {
-            popoverRef,
+            popoverUserMenuRef,
+            popoverMenuRef,
             isAuthenticated,
         };
     }
@@ -36,63 +43,105 @@ export default {
 
 <template>
     <div class="nav">
-        <div class="nav-links">
-            <router-link class="nav-link logo" to="/">
-                <!-- <el-button type="text">Ablaki</el-button> -->
-                <img src="@/assets/logo-spinning.gif" alt="">
-                Ablaki
-            </router-link>
+        <div class="container">
+            <div class="nav-links">
 
-            <router-link class="nav-link" to="/forum">
-                <el-icon><comment /></el-icon>Форум
-            </router-link>
+                <el-popover
+                    ref="popoverMenuRef"
+                    trigger="click"
+                    :manual="true"
+                    placement="bottom"
+                    width="250px"
+                    popper-class="mobile-nav-popper"
+                    :offset="0"
+                    :show-arrow="false"
+                    :persistent="false"
+                    transition="el-zoom-in-top"
+                >
 
-            <router-link class="nav-link" to="/wiki">
-                <el-icon><question-filled /></el-icon>Wiki
-            </router-link>
-        </div>
+                    <div class="mobile-nav">
+                        <router-link class="nav-link logo" to="/">
+                            <span class="logo-name">Ablaki</span>
+                        </router-link>
 
-        <div class="nav-user">
+                        <router-link class="nav-link" to="/forum">
+                            <el-icon><comment /></el-icon>Форум
+                        </router-link>
 
-            <user-accounts v-if="isAuthenticated" />
-
-            <el-popover
-                ref="popoverRef"
-                trigger="click"
-                :manual="true"
-                placement="bottom"
-                width="250px"
-                popper-class="user-menu-popper"
-                :offset="0"
-                :show-arrow="false"
-            >
-                <div class="user-menu-list" v-if="isAuthenticated">
-                    <user-bar v-if="isAuthenticated"/>
-
-                    <hr />
-
-                    <router-link to="/users/logout" class="user-menu-link">
-                        <el-icon size="20"><circle-close /></el-icon>Выход
-                    </router-link>
-                </div>
-                <div class="user-menu-list" v-else>
-                    <router-link to="/users/login" class="user-menu-link">
-                        <el-icon size="20"><user /></el-icon>Вход
-                    </router-link>
-
-                    <router-link to="/users/registration" class="user-menu-link">
-                        <el-icon size="20"><circle-plus /></el-icon>Регистрация
-                    </router-link>
-                </div>
-                <template #reference>
-                    <div class="user-avatar" @click="toggleMenu">
-                        <!-- <img src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg" alt=""> -->
-                        <el-icon><user-filled /></el-icon>
+                        <router-link class="nav-link" to="/wiki">
+                            <el-icon><question-filled /></el-icon>Wiki
+                        </router-link>
                     </div>
-                </template>
-            </el-popover>
+
+                    <template #reference>
+                        <a class="nav-link mobile-menu" href="#">
+                            <div class="mobile-menu-hamburger">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                        </a>
+                    </template>
+                </el-popover>
+
+                
+
+                <router-link class="nav-link logo" to="/">
+                    <img src="@/assets/logo-spinning.gif" alt="">
+                    <span class="logo-name">Ablaki</span>
+                </router-link>
+
+                <router-link class="nav-link" to="/forum">
+                    <el-icon><comment /></el-icon>Форум
+                </router-link>
+
+                <router-link class="nav-link" to="/wiki">
+                    <el-icon><question-filled /></el-icon>Wiki
+                </router-link>
+            </div>
+
+            <div class="nav-user">
+
+                <user-accounts v-if="isAuthenticated" />
+
+                <el-popover
+                    ref="popoverUserMenuRef"
+                    trigger="click"
+                    :manual="true"
+                    placement="bottom"
+                    width="250px"
+                    popper-class="user-menu-popper"
+                    :offset="0"
+                    :show-arrow="false"
+                    :persistent="false"
+                    transition="el-zoom-in-top"
+                >
+                    <div class="user-menu-list" v-if="isAuthenticated">
+                        <user-bar v-if="isAuthenticated"/>
+
+                        <hr />
+
+                        <router-link to="/users/logout" class="user-menu-link">
+                            <el-icon size="20"><circle-close /></el-icon>Выход
+                        </router-link>
+                    </div>
+                    <div class="user-menu-list" v-else>
+                        <router-link to="/users/login" class="user-menu-link">
+                            <el-icon size="20"><user /></el-icon>Вход
+                        </router-link>
+
+                        <router-link to="/users/registration" class="user-menu-link">
+                            <el-icon size="20"><circle-plus /></el-icon>Регистрация
+                        </router-link>
+                    </div>
+                    <template #reference>
+                        <div class="user-avatar">
+                            <el-icon><user-filled /></el-icon>
+                        </div>
+                    </template>
+                </el-popover>
+            </div>
         </div>
-        
     </div>
 </template>
 
@@ -101,18 +150,8 @@ export default {
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
 
-.logo {
-    font-size: 1.1rem;
-    margin-left: 1rem;
-
-    img {
-        width: 30px;
-        height: auto;
-    }
-}
-
 .nav {
-    box-shadow: 0 20px 7px -13px rgb(67 95 138 / 7%);
+    box-shadow: 0 8px 7px -2px rgb(67 95 138 / 7%);
     background: #ffffff;
     position: sticky;
     width: 100%;
@@ -120,15 +159,18 @@ export default {
     left: 0;
     border-bottom: 1px solid var(--border-color);
     z-index: 2;
-    display: flex;
-    justify-content: space-between;
-    // align-items: center;
-    align-items: stretch;
-    flex-wrap: nowrap;
+
+    .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: stretch;
+        flex-wrap: nowrap;
+    }
 
     .nav-links {
         display: flex;
-        align-items: stretch;
+        // align-items: stretch;
+        align-items: center;
         font-size: .9rem;
 
         .nav-link {
@@ -137,7 +179,6 @@ export default {
             display: flex;
             align-items: center;
             gap: .6rem;
-            // border-bottom: 2px solid transparent;
             font-weight: 600;
             position: relative;
 
@@ -146,14 +187,54 @@ export default {
                 padding: 0.5rem;
             }
 
+            @include media-breakpoint-down(sm) {
+                display: none;
+            }
+
             &:hover {
                 color: var(--el-color-primary);
-                // background: #f5f4f4;
+            }
+
+            &.logo {
+                font-size: 1.1rem;
+
+                img {
+                    width: 30px;
+                    height: auto;
+                }
+            }
+
+            &.mobile-menu {
+                display: none;
+                position: relative;
+                width: 35px;
+                height: 100%;
+                min-height: 50px;
+                padding: 0;
+
+                .mobile-menu-hamburger {
+                    width: 100%;
+                    height: 30px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-evenly;
+                    align-items: center;
+                    background: #fff;
+
+                    .line {
+                        width: 60%;
+                        height: 2px;
+                        background: grey;
+                        border-radius: 6px;
+                    }
+                }
+
+                @include media-breakpoint-down(sm) {
+                    display: flex;
+                }
             }
 
             &.router-link-active {
-                // border-bottom-color: var(--el-color-primary);
-
                 &::after {
                     content: '';
                     position: absolute;
@@ -172,19 +253,12 @@ export default {
         display: flex;
         flex-direction: row;
         align-items: center;
-
-        .user-bar-right {
-            @include media-breakpoint-down(sm) {
-                display: none;
-            }
-        }
     }
 
     .user-avatar {
         display: flex;
         align-items: center;
         padding: 10px;
-        margin-right: 1rem;
         cursor: pointer;
         transition: .2s;
         border-radius: 50%;
@@ -215,7 +289,7 @@ export default {
     .user-menu-list {
         display: flex;
         flex-direction: column;
-        padding: .4rem 0;
+        // padding: .4rem 0;
         // min-width: 250px;
 
         .user-menu-link {
@@ -257,6 +331,20 @@ export default {
                     @extend .user-menu-link;
                 }
             }
+        }
+    }
+}
+
+.mobile-nav-popper {
+    .mobile-nav {
+        .nav-link {
+            color: #000;
+            padding: 0.5rem 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            font-weight: 400;
+            position: relative;
         }
     }
 }
