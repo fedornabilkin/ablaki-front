@@ -69,7 +69,8 @@ export default {
         content: '';
         position: absolute;
         inset: 0;
-            background: linear-gradient(180deg, transparent 0%, transparent 90%, #f4f7f8 100%);
+        // background: linear-gradient(180deg, transparent 0%, transparent 90%, #f4f7f8 100%);
+        box-shadow: 0 2px 6px -2px rgb(67 95 138 / 7%);
         z-index: 0;
     }
 
