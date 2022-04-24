@@ -38,10 +38,14 @@ export default {
                                 message: 'Недостаточно средств на балансе',
                                 type: 'error',
                             });
-                            
-                            isLoading.value = false;
-                        }
+                        },
+                        "Exceeded the available number of positions": () => ElNotification({
+                            message: 'Исчерпано допустимое количество заявок на продажу кредитов',
+                            type: 'error',
+                        })
                     });
+
+                    isLoading.value = false;
                 });
         };
 
