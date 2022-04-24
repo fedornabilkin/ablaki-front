@@ -196,9 +196,10 @@ export default {
 
             &.logo {
                 font-size: 1.1rem;
+                padding: 0.95rem 1rem;
 
                 img {
-                    width: 30px;
+                    width: 25px;
                     height: auto;
                 }
             }
