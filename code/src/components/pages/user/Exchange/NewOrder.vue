@@ -13,7 +13,7 @@ export default {
     },
     emits: ['close', 'created'],
     setup(props, { emit }) {
-        const type = ref("sell");
+        const type = ref("buy");
         const credit = ref(50);
         const price = ref(1);
         const count = ref(1);
@@ -24,7 +24,7 @@ export default {
             exchange.create(type.value, credit.value, finalPrice.value, count.value)
                 .then((res) => {
                     ElNotification({
-                        message: 'Заявки созданы',
+                        message: 'Заявка создана',
                         type: 'success',
                     });
                     isLoading.value = false;
@@ -84,8 +84,8 @@ export default {
         >
 
             <el-radio-group v-model="type">
-                <el-radio-button label="sell">Продать</el-radio-button>
-                <el-radio-button label="buy">Купить</el-radio-button>
+                <el-radio-button label="buy">Продать</el-radio-button>
+                <el-radio-button label="sell">Купить</el-radio-button>
             </el-radio-group>         
 
             <div class="row mt-3">

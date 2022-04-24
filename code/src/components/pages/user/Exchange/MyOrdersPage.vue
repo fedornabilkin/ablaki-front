@@ -23,18 +23,6 @@
 
             const onCancel = (id, type) => {
                 if (type === "buy") {
-                    let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
-                    ordersBuy.value[orderIndex].isLoading = true;
-
-                    exchange.cancel(id).then(res => {
-                        ordersBuy.value[orderIndex].isLoading = false;
-                        ordersBuy.value[orderIndex].status = "success";
-
-                        ordersBuy.value.splice(orderIndex, 1);
-                    });
-                }
-                
-                if (type === "sell") {
                     let orderIndex = ordersSell.value.findIndex((order) => order.id === id);
                     ordersSell.value[orderIndex].isLoading = true;
 
@@ -43,6 +31,18 @@
                         ordersSell.value[orderIndex].status = "success";
 
                         ordersSell.value.splice(orderIndex, 1);
+                    });
+                }
+                
+                if (type === "sell") {
+                    let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
+                    ordersBuy.value[orderIndex].isLoading = true;
+
+                    exchange.cancel(id).then(res => {
+                        ordersBuy.value[orderIndex].isLoading = false;
+                        ordersBuy.value[orderIndex].status = "success";
+
+                        ordersBuy.value.splice(orderIndex, 1);
                     });
                 }
             };
@@ -65,7 +65,7 @@
         <div class="col-md-6">
             <h5>Мои заявки на покупку</h5>
 
-            <orders-list :orders="ordersBuy" :isLoading="isLoadingBuy">
+            <orders-list :orders="ordersSell" :isLoading="isLoadingSell">
                 <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
@@ -88,7 +88,7 @@
         <div class="col-md-6">
             <h5>Мои заявки на продажу</h5>
 
-            <orders-list :orders="ordersSell" :isLoading="isLoadingSell">
+            <orders-list :orders="ordersBuy" :isLoading="isLoadingBuy">
                 <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
                     <div class="d-flex" v-if="status === 'success'">
                         <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>

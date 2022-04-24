@@ -61,7 +61,7 @@ export default {
 
                     <div class="mobile-nav">
                         <router-link class="nav-link logo" to="/">
-                            <span class="logo-name">Ablaki</span>
+                            <el-icon><monitor /></el-icon>Ablaki
                         </router-link>
 
                         <router-link class="nav-link" to="/forum">
@@ -74,21 +74,20 @@ export default {
                     </div>
 
                     <template #reference>
-                        <a class="nav-link mobile-menu" href="#">
+                        <button class="nav-link mobile-menu">
                             <div class="mobile-menu-hamburger">
                                 <div class="line"></div>
                                 <div class="line"></div>
                                 <div class="line"></div>
                             </div>
-                        </a>
+                        </button>
                     </template>
                 </el-popover>
 
                 
-
                 <router-link class="nav-link logo" to="/">
                     <img src="@/assets/logo-spinning.gif" alt="">
-                    <span class="logo-name">Ablaki</span>
+                    <span>Ablaki</span>
                 </router-link>
 
                 <router-link class="nav-link" to="/forum">
@@ -211,10 +210,13 @@ export default {
                 height: 100%;
                 min-height: 50px;
                 padding: 0;
+                margin: 0;
+                border: none;
+                background: none;
 
                 .mobile-menu-hamburger {
                     width: 100%;
-                    height: 30px;
+                    height: 25px;
                     display: flex;
                     flex-direction: column;
                     justify-content: space-evenly;
@@ -338,7 +340,7 @@ export default {
 .mobile-nav-popper {
     .mobile-nav {
         .nav-link {
-            color: #000;
+            color: #666;
             padding: 0.5rem 0.4rem;
             display: flex;
             align-items: center;

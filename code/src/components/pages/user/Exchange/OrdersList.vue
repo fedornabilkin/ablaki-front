@@ -30,6 +30,8 @@ export default {
                     :status="scope.row.status"
                     :credit="scope.row.credit"
                     :amount="scope.row.amount"
+                    :datetime="scope.row.updated_at"
+                    :type="scope.row.type"
                 />
             </template>
         </el-table-column>

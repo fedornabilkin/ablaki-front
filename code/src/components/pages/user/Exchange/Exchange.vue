@@ -2,7 +2,6 @@
 import { ref } from '@vue/reactivity';
 import NewOrder from './NewOrder.vue';
 import PageHeader from '../../../PageHeader.vue';
-import { onMounted } from '@vue/runtime-core';
 import { useRoute } from 'vue-router';
 export default {
     components: { NewOrder, PageHeader },
