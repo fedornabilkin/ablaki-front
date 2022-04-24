@@ -2,8 +2,18 @@
     <div class="user-bar-right">
         <router-link to="/balance/pay">
             <el-button type="text">
-                <el-icon><span>Кг</span></el-icon>
-                <span>{{ user.person.balance }}</span>
+                <el-tooltip
+                    effect="dark"
+                    :content="balanceTooltipContent"
+                    placement="bottom"
+                    v-model:visible="balanceTooltipAnimation"
+                    :manual="true"
+                >
+                    <div>
+                        <el-icon><span>Кг</span></el-icon>
+                        <span>{{ roundBalance(user.person.balance) }}</span>
+                    </div>
+                </el-tooltip>
             </el-button>
         </router-link>
 
@@ -51,8 +61,11 @@ export default {
         const user = computed(() => store.getters['auth/user']);
         const creditsTooltipAnimation = ref(false);
         const creditsTooltipContent = ref("");
-
         const creditsTooltipAnimationTimeout = ref();
+
+        const balanceTooltipAnimation = ref(false);
+        const balanceTooltipContent = ref("");
+        const balanceTooltipAnimationTimeout = ref();
 
         watch(() => user.value?.person?.credit, (value, oldValue) => {
             let diff = roundCredits(value - oldValue);
@@ -64,18 +77,38 @@ export default {
             clearTimeout(creditsTooltipAnimationTimeout.value);
             creditsTooltipAnimationTimeout.value = setTimeout(() => {
                 creditsTooltipAnimation.value = false;
-            }, 250000);
+            }, 2500);
+        });
+
+        watch(() => user.value?.person?.balance, (value, oldValue) => {
+            let diff = roundBalance(value - oldValue);
+            let displayedDiff = `${diff < 0 ? '-' : '+'}${Math.abs(diff)}`;
+
+            balanceTooltipContent.value = `${displayedDiff} Cr`
+            balanceTooltipAnimation.value = true;
+
+            clearTimeout(balanceTooltipAnimationTimeout.value);
+            balanceTooltipAnimationTimeout.value = setTimeout(() => {
+                balanceTooltipAnimation.value = false;
+            }, 2500);
         });
 
         const roundCredits = (credits) => {
             return Math.round(credits * 10) / 10;
+        }
+        
+        const roundBalance = (credits) => {
+            return Math.round(credits * 100) / 100;
         }
 
         return {
             user,
             creditsTooltipAnimation,
             creditsTooltipContent,
+            balanceTooltipAnimation,
+            balanceTooltipContent,
             roundCredits,
+            roundBalance,
         }
     },
 }

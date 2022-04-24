@@ -170,14 +170,14 @@ export const orel = {
 export const exchange = {
     getBuy: async () => {
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrl}v1/exchange`, {params: {"filter[type]": "buy", "sort": "-price"}}).then(res => {
+            axios.get(`${baseUrl}v1/exchange`, {params: {"filter[type]": "buy", "sort": "-amount"}}).then(res => {
                 resolve(res.data);
             }).catch(e => reject(e));
         });
     },
     getSell: async () => {
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrl}v1/exchange`, {params: {"filter[type]": "sell"}}).then(res => {
+            axios.get(`${baseUrl}v1/exchange`, {params: {"filter[type]": "sell", "sort": "price"}}).then(res => {
                 resolve(res.data);
             }).catch(e => reject(e));
         });
