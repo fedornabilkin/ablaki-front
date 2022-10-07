@@ -1,82 +1,41 @@
-<template>
-    <div class="user-bar">
-        <div class="user-bar-left">
-            <router-link :to="'/users/wall/' + user.username">
-                <el-button type="text" icon="postcard">Стена {{ user.username }}</el-button>
-            </router-link>
-            <router-link to="/users/profile/">
-                <el-button type="text" icon="user">Профиль</el-button>
-            </router-link>
-        </div>
-        
-        <div class="user-bar-right">
-            <div>
-                <span>{{ user.person.balance }}</span>
-                <span>Кг</span>
-            </div>
-            <div>
-                <el-tooltip
-                    effect="dark"
-                    :content="creditsTooltipContent"
-                    placement="top"
-                    v-model:visible="creditsTooltipAnimation"
-                    :manual="true"
-                    :append-to-body="false"
-                >
-                    <div>
-                        <span>{{ roundCredits(user.person.credit) }}</span>
-                        <span>Cr</span>
-                    </div>
-                </el-tooltip>
-            </div>
-            <div>
-                <el-icon style="vertical-align: text-top;"><star /></el-icon>
-                <span>{{ user.person.rating }}</span>
-            </div>
-        </div>
-    </div>
-</template>
-
 <script>
-import { computed, ref } from '@vue/reactivity';
+import { computed } from '@vue/reactivity';
 import { useStore } from 'vuex';
-import { watch } from '@vue/runtime-core';
+import UserAccounts from './UserAccounts.vue';
 
 export default {
+    components: { UserAccounts },
     setup() {
         const store = useStore();
         const user = computed(() => store.getters['auth/user']);
-        const creditsTooltipAnimation = ref(false);
-        const creditsTooltipContent = ref("");
-
-        const creditsTooltipAnimationTimeout = ref();
-
-        watch(() => user.value?.person?.credit, (value, oldValue) => {
-            let diff = roundCredits(value - oldValue);
-            let displayedDiff = `${diff < 0 ? '-' : '+'}${Math.abs(diff)}`;
-
-            creditsTooltipContent.value = `${displayedDiff} Cr`
-            creditsTooltipAnimation.value = true;
-
-            clearTimeout(creditsTooltipAnimationTimeout.value);
-            creditsTooltipAnimationTimeout.value = setTimeout(() => {
-                creditsTooltipAnimation.value = false;
-            }, 2500);
-        });
-
-        const roundCredits = (credits) => {
-            return Math.round(credits * 10) / 10;
-        }
 
         return {
             user,
-            creditsTooltipAnimation,
-            creditsTooltipContent,
-            roundCredits,
         }
     },
 }
 </script>
+
+<template>
+    <div class="user-bar">
+        <div class="user-bar-left">
+            <router-link :to="'/wall/' + user.username">
+                <el-button type="text" icon="postcard">Стена {{ user.username }}</el-button>
+            </router-link>
+            
+            <router-link to="/users/profile/">
+                <el-button type="text" icon="user">Профиль</el-button>
+            </router-link>
+
+            <router-link to="/exchange">
+                <el-button type="text" icon="refresh">Биржа кредитов</el-button>
+            </router-link>
+        </div>
+        
+        <user-accounts />
+        
+    </div>
+</template>
 
 <style lang="scss" scoped>
 .user-bar {
@@ -86,10 +45,14 @@ export default {
         flex-grow: 1;
     }
 
-    .user-bar-right {
+    :deep(.user-bar-right) {
         display: flex;
         align-items: center;
-        gap: .5rem;
+        gap: 0;
+
+        .el-divider {
+            display: none;            
+        }
     }
 }
 </style>

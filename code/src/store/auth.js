@@ -21,9 +21,7 @@ const auth = {
         authStatus: state => state.status,
         token: state => state.token,
         headerToken: state => 'Bearer ' + state.token,
-        user: state => {
-            return state.user;
-        },
+        user: state => state.user,
     },
     mutations: {
         [AUTH_REQUEST]: (state) => {
@@ -103,8 +101,26 @@ const auth = {
             commit(LOGOUT);
             localStorage.removeItem('token');
         },
-        setData({commit}, userData) {
+        setData({commit,}, userData) {
             commit(FETCH_USER_SUCCESS, userData);
+        },
+        addCredit({commit, state}, credits) {
+            commit(FETCH_USER_SUCCESS, {
+                ...state.user,
+                person: {
+                    ...state.user.person,
+                    credit: state.user.person.credit + credits
+                }
+            });
+        },
+        addBalance({commit, state}, balance) {
+            commit(FETCH_USER_SUCCESS, {
+                ...state.user,
+                person: {
+                    ...state.user.person,
+                    balance: state.user.person.balance + balance
+                }
+            });
         },
         logout({commit}) {
             return new Promise((resolve, reject) => {

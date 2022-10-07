@@ -30,11 +30,72 @@ const menuItems = computed(() => {
 </script>
 
 <template>
-    <div class="">
-        <router-link class="pe-2" v-for="item in menuItems" :key="item.url" :to="item.url">
-            <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
-            <!-- <font-awesome-icon class="pr-1" :icon="item.icon"/> -->
-            <!-- <span class="hidden-sm-down">{{ item.anchor }}</span> -->
-        </router-link>
+    <div class="bg-white">
+        <div class="container menu-games">
+            <router-link class="menu-games-item" v-for="item in menuItems" :key="item.url" :to="item.url">
+                <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
+            </router-link>
+        </div>
     </div>
 </template>
+
+<style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
+.menu-games {
+    display: flex;
+    justify-content: flex-start;
+    // margin: 0 2rem;
+
+    @include media-breakpoint-down(sm) {
+        justify-content: space-around;
+    }
+
+    .menu-games-item {
+        font-size: 16px;
+        position: relative;
+
+        &.router-link-active {
+            // border-bottom: 1px solid var(--el-color-primary);
+            // border-bottom-color: var(--el-color-primary);
+
+            &::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 10%;
+                width: 80%;
+                height: 4px;
+                // background: rgb(198 206 230);
+                background: #009688;
+                border-radius: 4px;
+            }
+        }
+        
+        :deep(.el-button) {
+            padding: 1rem;
+            font-size: inherit;
+            height: auto;
+
+            @include media-breakpoint-down(sm) {
+                display: flex;
+                flex-direction: column;
+                padding: .8rem 0;
+
+                & [class*=el-icon] + span {
+                    margin-left: unset;
+                    font-size: .9rem;
+                }
+            }
+
+            & > span {
+                @include media-breakpoint-down(sm) {
+                    margin-top: .5rem;
+                }
+            }
+        }
+    }
+}
+</style>

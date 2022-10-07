@@ -1,20 +1,14 @@
 <template>
     <nav-bar/>
     
-    <div class="container mt-3" v-if="dataFetched">
-        
+    <div v-if="dataFetched">       
         <!-- <user-bar v-if="isAuthenticated"/> -->
 
         <side-bar v-if="isAuthenticated"/>
 
-        <Suspense>
-            <template #default>
-                <router-view></router-view>
-            </template>
-            <template #fallback>
-                <div>Loading...</div>
-            </template>
-        </Suspense>
+        <!-- <div class=""> -->
+        <router-view></router-view>
+        <!-- </div> -->
         
     </div>
 </template>
@@ -94,7 +88,7 @@ export default {
 
     #app {
         $mainColor: #3B90D1;
-        font-family: 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
+        font-family: 'Open Sans', 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         color: #2c3e50;

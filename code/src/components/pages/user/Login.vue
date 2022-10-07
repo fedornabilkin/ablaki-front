@@ -2,8 +2,6 @@
     <div class="container">
         <h1>Вход</h1>
 
-        {{isLoading}}
-
         <el-form
             v-loading="isLoading"
             :model="auth"

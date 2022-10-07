@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="container">
 
         <h1>Ablaki.ru - каждый день!</h1>
 
@@ -29,7 +29,7 @@
 
                 <div class="small text-muted">
     <span class="login m-r-1">
-        <a href="/users/wall/Ass238" title="Страница пользователя Ass238" target="_blank">
+        <a href="/wall/Ass238" title="Страница пользователя Ass238" target="_blank">
             <b>Ass238</b>
         </a>
     </span>
@@ -58,7 +58,7 @@
 
                 <div class="small text-muted">
     <span class="login m-r-1">
-        <a href="/users/wall/BORA179" title="Страница пользователя BORA179" target="_blank">
+        <a href="/wall/BORA179" title="Страница пользователя BORA179" target="_blank">
             <b>BORA179</b>
         </a>
     </span>

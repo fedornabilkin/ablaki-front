@@ -2,6 +2,8 @@ import Vue from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
+import WithUser from './components/WithUser.vue';
+
 import Main from './components/pages/Main';
 import Forum from './components/pages/forum/Forum';
 import PageNotFound from './components/pages/PageNotFound';
@@ -12,6 +14,7 @@ import Login from './components/pages/user/Login';
 import Logout from './components/pages/user/Logout';
 import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
+import Exchange, { MyOrdersPage, OrdersPage, OrdersHistoryPage } from './components/pages/user/Exchange';
 
 import Ablaki from './components/pages/games/Ablaki';
 import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pages/games/Orel";
@@ -24,24 +27,44 @@ import { store } from './store/store';
 // через `Vue.extend()`, так и просто объект с опциями компонента.
 
 const routes = [
-    { path: "/:pathMatch(.*)*'", name: 'Error', component: PageNotFound },
     { path: '/', component: Main },
 
-    { path: '/forum', component: Forum },
-    { path: '/wiki', component: Wiki },
-
-    { path: '/users/wall/:login', component: Wall, meta: { requiresAuth: true } },
     { path: '/users/registration', component: Registration },
     { path: '/users/login', component: Login },
     { path: '/users/logout', component: Logout },
-    { path: '/users/profile', component: Profile },
+
+    { path: '/', component: WithUser, children: [
+        { path: '/games/orel', component: Orel, children: [
+            { path: '', component: OrelGames },
+            { path: 'my', component: MyOrelGames },
+            { path: 'history', component: GamesHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/exchange', component: Exchange, children: [
+            { path: '', component: OrdersPage },
+            { path: 'my', component: MyOrdersPage },
+            { path: 'history', component: OrdersHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/wall/:login', component: Wall },
+    ], meta: { requiresAuth: true } },
+
+
+    
+
+    
+    { path: '/:pathMatch(.*)', component: PageNotFound },
+
+
 
     { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
-    { path: '/games/orel', component: Orel, children: [
-        { path: '', component: OrelGames },
-        { path: 'my', component: MyOrelGames },
-        { path: 'history', component: GamesHistoryPage },
-    ], meta: { requiresAuth: true } },
+    
+    { path: '/forum', component: Forum },
+    { path: '/wiki', component: Wiki },
+
+    
+    
+    { path: '/users/profile', component: Profile },    
 ];
 
 const router = createRouter({
