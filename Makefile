@@ -69,7 +69,7 @@ log-nginx:
 	docker-compose logs --follow nginx
 
 up-vuejs:
-	docker-compose up --detach vuejsx
+	docker-compose up --detach vuejs
 
 shell-vuejs:
 	docker-compose exec vuejs sh
