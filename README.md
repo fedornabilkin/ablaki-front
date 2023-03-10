@@ -7,22 +7,10 @@ OS `Debian/Ubuntu`
 `docker`   
 `docker-compose`
 
-###### Требуемые настройки Сервера Linux
-
-В файл `/etc/hosts` добавить:
-
-```
-127.0.0.1 api.Ablaki.local 
-127.0.0.1 Ablaki.local
-```
-
 ###### Установка
 
-* Создать конфиг `\code\src\config\params.js`   
-Пример конфига - `\code\src\config\params.js-sample`   
-    Указывается адрес для обращений к апи. Можно указать адрес тестовых серверов.
-
-
+* создать файл .env по аналогии с .env-sample
+* создать директорию `code/dist`
 * Из корневой директории выполнить 
 
 `make up` или `docker-compose up -d`
@@ -31,12 +19,15 @@ OS `Debian/Ubuntu`
    
    `docker-compose up -d && docker-compose logs -f`
 
-* В контейнере `vuejs` выполнить компиляцию (**если фронт не собрался**):
+* В контейнере `vuejs` выполнить компиляцию 
+с изменением ограничения памяти (**если фронт не собрался**):
  
 ```
-docker-compose exec vuejs sh
+docker-compose run --rm vuejs sh
+export NODE_OPTIONS=--max_old_space_size=4096
 cd /web/code/ && npm run build
 ```
 
-Фронт доступен по `Ablaki.local`, для разработки и livereload
-фронт необходимо открывать по адресу `localhost:8080`
+Фронт доступен по `localhost:3181` (номер порат, который указан в файле .env),
+для разработки и *livereload* фронт необходимо открывать
+по адресу `localhost:8080`

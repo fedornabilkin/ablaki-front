@@ -1,6 +1,10 @@
-import axios from "axios";
-import config from "../config/config";
-import { login as apiLogin, registration as apiRegistration, logout as apiLogout, getProfile as apiGetProfile } from "../services/api";
+import {
+    getProfile as apiGetProfile,
+    login as apiLogin,
+    loginKey as apiLoginKey,
+    logout as apiLogout,
+    registration as apiRegistration
+} from "../services/api";
 
 const AUTH_REQUEST = 'auth_request';
 const AUTH_SUCCESS = 'auth_success';
@@ -55,6 +59,21 @@ const auth = {
                 commit(AUTH_REQUEST);
 
                 apiLogin(login, password).then(res => {
+                    localStorage.setItem('token', res.token);
+                    commit(AUTH_SUCCESS, res);
+                    resolve(res);
+                }).catch(e => {
+                    localStorage.removeItem('token');
+                    commit(AUTH_ERROR);
+                    reject(e);
+                });
+            })
+        },
+        loginKey({commit}, {key}) {
+            return new Promise((resolve, reject) => {
+                commit(AUTH_REQUEST);
+
+                apiLoginKey(key).then(res => {
                     localStorage.setItem('token', res.token);
                     commit(AUTH_SUCCESS, res);
                     resolve(res);

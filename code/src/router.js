@@ -1,5 +1,4 @@
-import Vue from 'vue';
-import { createRouter, createWebHistory } from 'vue-router';
+import {createRouter, createWebHistory} from 'vue-router';
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
 import WithUser from './components/WithUser.vue';
@@ -11,15 +10,16 @@ import Wiki from './components/pages/Wiki';
 
 import Registration from './components/pages/user/Registration';
 import Login from './components/pages/user/Login';
+import loginKey from "./components/pages/user/loginKey";
 import Logout from './components/pages/user/Logout';
 import Wall from './components/pages/user/Wall';
 import Profile from './components/pages/user/Profile';
-import Exchange, { MyOrdersPage, OrdersPage, OrdersHistoryPage } from './components/pages/user/Exchange';
+import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage} from './components/pages/user/Exchange';
 
 import Ablaki from './components/pages/games/Ablaki';
-import Orel, { GamesHistoryPage, MyOrelGames, OrelGames } from "./components/pages/games/Orel";
+import Orel, {GamesHistoryPage, MyOrelGames, OrelGames} from "./components/pages/games/Orel";
 
-import { store } from './store/store';
+import {store} from './store/store';
 
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
@@ -31,6 +31,7 @@ const routes = [
 
     { path: '/users/registration', component: Registration },
     { path: '/users/login', component: Login },
+    { path: '/users/login-key/:key', component: loginKey },
     { path: '/users/logout', component: Logout },
 
     { path: '/', component: WithUser, children: [
