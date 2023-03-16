@@ -1,10 +1,10 @@
 <script>
-import { computed, ref } from "@vue/reactivity";
-import { watch } from "@vue/runtime-core";
-import { orel } from "../../../../services/api";
+import {computed, ref} from "@vue/reactivity";
+import {watch} from "@vue/runtime-core";
+import {orel} from "../../../../services/api/games/orel";
 import GamesList from './GamesList';
 
-import { ElNotification } from "element-plus";
+import {ElNotification} from "element-plus";
 import moment from "moment";
 
 export default {
@@ -25,7 +25,7 @@ export default {
             isGamesLoading.value = true;
             currentPage.value = page;
 
-            orel.getMy(page)
+            orel.my(page)
                 .then((res) => {
                     let games = res.list.map((game) => ({
                         ...game,

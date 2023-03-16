@@ -1,10 +1,7 @@
 <script>
-import { ref } from "@vue/reactivity";
-import { watch } from "@vue/runtime-core";
-import { orel } from "../../../../services/api";
+import {ref} from "@vue/reactivity";
+import {orel} from "../../../../services/api/games/orel";
 import GamesList from './GamesList';
-
-import { ElNotification } from "element-plus";
 import moment from "moment";
 
 export default {

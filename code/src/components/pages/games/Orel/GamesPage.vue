@@ -1,10 +1,11 @@
 <script>
-import { ref } from "@vue/reactivity";
-import { useStore } from 'vuex';
+import {ref} from "@vue/reactivity";
+import {useStore} from 'vuex';
 import GamesList from './GamesList';
-import { orel, errorHandler } from '../../../../services/api';
+import {orel} from '../../../../services/api/games/orel';
 
 import moment from "moment";
+import {errorHandler} from "../../../../services/api/errorHandler";
 
 export default {
     components: {

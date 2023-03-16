@@ -1,6 +1,6 @@
 <script>
-import { exchange } from '../../../../services/api';
-import { useFetch } from '../../../../hooks/useFetch';
+import {exchange} from '../../../../services/api/exchange';
+import {useFetch} from '../../../../hooks/useFetch';
 import OrdersList from './OrdersList.vue';
 import moment from 'moment';
 

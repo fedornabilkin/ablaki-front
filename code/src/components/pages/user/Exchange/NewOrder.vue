@@ -1,8 +1,9 @@
 <script>
-import { computed, ref } from "@vue/reactivity";
-import { ElNotification } from 'element-plus';
+import {computed, ref} from "@vue/reactivity";
+import {ElNotification} from 'element-plus';
 
-import { errorHandler, exchange } from "../../../../services/api";
+import {exchange} from "../../../../services/api/exchange";
+import {errorHandler} from "../../../../services/api/errorHandler";
 
 export default {
     props: {

@@ -1,12 +1,12 @@
 <script>
-    import { ref } from "@vue/reactivity";
-    import OrdersList from "./OrdersList.vue";
-    import { errorHandler, exchange } from '../../../../services/api';
-    import { useFetchOrders } from './hooks/useFetchOrders';
-    import { ElNotification } from 'element-plus';
-    import { useStore } from 'vuex';
+import OrdersList from "./OrdersList.vue";
+import {exchange} from '../../../../services/api/exchange';
+import {errorHandler} from "../../../../services/api/errorHandler";
+import {useFetchOrders} from './hooks/useFetchOrders';
+import {ElNotification} from 'element-plus';
+import {useStore} from 'vuex';
 
-    export default {
+export default {
         components: { OrdersList },
         setup() {
             const store = useStore();

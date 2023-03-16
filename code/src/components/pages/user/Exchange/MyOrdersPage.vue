@@ -1,11 +1,10 @@
 <script>
-    import { ref } from "@vue/reactivity";
-    import NewOrder from "./NewOrder.vue";
-    import OrdersList from "./OrdersList.vue";
-    import { exchange } from '../../../../services/api';
-    import { useFetchOrders } from './hooks/useFetchOrders';
+import NewOrder from "./NewOrder.vue";
+import OrdersList from "./OrdersList.vue";
+import {exchange} from '../../../../services/api/exchange';
+import {useFetchOrders} from './hooks/useFetchOrders';
 
-    export default {
+export default {
         name: "MyOrdersPage",
         components: { NewOrder, OrdersList },
         setup() {

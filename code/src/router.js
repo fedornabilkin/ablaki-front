@@ -5,6 +5,8 @@ import WithUser from './components/WithUser.vue';
 
 import Main from './components/pages/Main';
 import Forum from './components/pages/forum/Forum';
+import Read from "./components/pages/forum/Read.vue";
+
 import PageNotFound from './components/pages/PageNotFound';
 import Wiki from './components/pages/Wiki';
 
@@ -50,21 +52,19 @@ const routes = [
         { path: '/wall/:login', component: Wall },
     ], meta: { requiresAuth: true } },
 
+    { path: '/forum', component: Forum, children: [
+        // { path: '', component: OrdersPage },
+        // { path: 'my', component: MyOrdersPage },
+        // { path: 'read/:theme_id', component: Read },
+    ]},
+    { path: '/forum/read/:theme_id', component: Read },
 
-    
 
-    
     { path: '/:pathMatch(.*)', component: PageNotFound },
 
 
-
     { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
-    
-    { path: '/forum', component: Forum },
     { path: '/wiki', component: Wiki },
-
-    
-    
     { path: '/users/profile', component: Profile },    
 ];
 
