@@ -145,9 +145,9 @@ export default {
 </template>
 
 <style lang="scss" scoped>
-@import "~bootstrap/scss/functions";
-@import "~bootstrap/scss/variables";
-@import "~bootstrap/scss/mixins";
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/mixins";
 
 .nav {
     box-shadow: 0 8px 7px -2px rgb(67 95 138 / 7%);

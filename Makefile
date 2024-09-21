@@ -44,19 +44,16 @@ docker-build:
 	docker-compose build
 
 npm-serve:
-	docker-compose run --rm -p "8080:8080" -v "$(PWD)/code:/app" vuejs npm run serve
+	docker-compose run --rm -p "8080:8080" -v "$(PWD)/code:/app" nodejs npm run dev
 
 npm-build:
-	docker-compose run --rm -v "$(PWD)/code:/app" vuejs npm run build
-
-npm-build-dev:
-	docker-compose run --rm -v "$(PWD)/code:/app" vuejs npm run build-dev
+	docker-compose run --rm -v "$(PWD)/code:/app" nodejs npm run build
 
 npm-install:
-	docker-compose run --rm -v "$(PWD)/code:/app" vuejs npm install
+	docker-compose run --rm -v "$(PWD)/code:/app" nodejs npm install
 
 npm-prune:
-	docker-compose run --rm -v "$(PWD)/code:/app" vuejs npm prune
+	docker-compose run --rm -v "$(PWD)/code:/app" nodejs npm prune
 
 
 up-nginx:
@@ -68,14 +65,14 @@ shell-nginx:
 log-nginx:
 	docker-compose logs --follow nginx
 
-up-vuejs:
-	docker-compose up --detach vuejs
+up-nodejs:
+	docker-compose up --detach nodejs
 
-shell-vuejs:
-	docker-compose exec vuejs sh
+shell-nodejs:
+	docker-compose exec nodejs sh
 
-log-vuejs:
-	docker-compose logs --follow vuejs
+log-nodejs:
+	docker-compose logs --follow nodejs
 
 logs:
 	docker-compose logs --follow

@@ -1,20 +1,27 @@
-import { createApp } from 'vue';
-import ElementPlus from 'element-plus';
+import {createApp} from 'vue';
+import {createPinia} from 'pinia';
 
-// import 'element-plus/dist/index.css';
+import 'element-plus/dist/index.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.scss';
-// import 'bootstrap/dist/css/bootstrap.min.css';
 import App from './App.vue';
-import { router } from './router';
-import { store } from './store/store';
-import { setupElementPlusIcons } from './plugins/element-plus-icons';
+import {router} from './router';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue';
+import {store} from './store/store';
 
 const app = createApp(App);
 
-app.use(ElementPlus);
-app.use(store);
-app.use(router);
+for (const [key, value] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, value);
+}
 
-setupElementPlusIcons(app);
+
+app
+  .use(createPinia())
+  .use(router)
+  .use(ElementPlus)
+  .use(store)
 
 app.mount('#app');

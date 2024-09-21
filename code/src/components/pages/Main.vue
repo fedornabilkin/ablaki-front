@@ -20,7 +20,7 @@
                             <span class="fa fa-star text-info" aria-hidden="true"></span>
                             <span class="amount">72.9</span>
                         </div>
-                        <img class="avatar img-rounded img-thumbnail" src="/img/avatar/414_1506803980.jpg" alt="">
+                        <img class="avatar img-rounded img-thumbnail" src="" alt="">
                     </div></div>
 
                 <a class="close text-danger" href="/slider/remove/13" data-type="ajax" title="Удалить" aria-label="Close">
@@ -49,7 +49,7 @@
                             <span class="fa fa-star text-success" aria-hidden="true"></span>
                             <span class="amount">155</span>
                         </div>
-                        <img class="avatar img-rounded img-thumbnail" src="/img/avatar/8483_1543235239.gif" alt="">
+                        <img class="avatar img-rounded img-thumbnail" src="" alt="">
                     </div></div>
 
                 <a class="close text-danger" href="/slider/remove/9" data-type="ajax" title="Удалить" aria-label="Close">
@@ -109,6 +109,5 @@
     }
 </script>
 
-<style scoped>
-
+<style>
 </style>

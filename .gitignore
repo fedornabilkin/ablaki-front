@@ -1,3 +1,5 @@
 .idea
 .env
+code/node_modules
+code/dist
 f.context.tar.gz
