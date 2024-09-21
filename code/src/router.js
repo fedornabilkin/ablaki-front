@@ -3,22 +3,22 @@ import {createRouter, createWebHistory} from 'vue-router';
 // Они могут быть импортированы из других файлов
 import WithUser from './components/WithUser.vue';
 
-import Main from './components/pages/Main';
-import Forum from './components/pages/forum/Forum';
+import Main from './components/pages/Main.vue';
+import Forum from './components/pages/forum/Forum.vue';
 import Read from "./components/pages/forum/Read.vue";
 
-import PageNotFound from './components/pages/PageNotFound';
-import Wiki from './components/pages/Wiki';
+import PageNotFound from './components/pages/PageNotFound.vue';
+import Wiki from './components/pages/Wiki.vue';
 
-import Registration from './components/pages/user/Registration';
-import Login from './components/pages/user/Login';
-import loginKey from "./components/pages/user/loginKey";
-import Logout from './components/pages/user/Logout';
-import Wall from './components/pages/user/Wall';
-import Profile from './components/pages/user/Profile';
-import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage} from './components/pages/user/Exchange';
+import Registration from './components/pages/user/Registration.vue';
+import Login from './components/pages/user/Login.vue';
+import loginKey from "./components/pages/user/loginKey.vue";
+import Logout from './components/pages/user/Logout.vue';
+import Wall from './components/pages/user/Wall.vue';
+import Profile from './components/pages/user/Profile.vue';
+import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage} from "./components/pages/user/Exchange";
 
-import Ablaki from './components/pages/games/Ablaki';
+import Ablaki from './components/pages/games/Ablaki.vue';
 import Orel, {GamesHistoryPage, MyOrelGames, OrelGames} from "./components/pages/games/Orel";
 
 import {store} from './store/store';
@@ -29,7 +29,10 @@ import {store} from './store/store';
 // через `Vue.extend()`, так и просто объект с опциями компонента.
 
 const routes = [
-    { path: '/', component: Main },
+    {
+      path: '/',
+      component: () => import('./components/pages/Main.vue')
+    },
 
     { path: '/users/registration', component: Registration },
     { path: '/users/login', component: Login },
@@ -65,26 +68,26 @@ const routes = [
 
     { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
     { path: '/wiki', component: Wiki },
-    { path: '/users/profile', component: Profile },    
+    { path: '/users/profile', component: Profile },
 ];
 
 const router = createRouter({
     history: createWebHistory(),
-    routes: routes,
+    routes,
 });
 
 router.beforeEach((to, from) => {
     // instead of having to check every route record with
     // to.matched.some(record => record.meta.requiresAuth)
-    if (to.meta.requiresAuth && store.getters['auth/isAuthorized'] === false) {
-        // this route requires auth, check if logged in
-        // if not, redirect to login page.
-        return {
-            path: '/',
-            // save the location we were at to come back later
-            //query: { redirect: to.fullPath },
-        }
-    }
+    // if (to.meta.requiresAuth && store.getters['auth/isAuthorized'] === false) {
+    //     // this route requires auth, check if logged in
+    //     // if not, redirect to login page.
+    //     return {
+    //         path: '/',
+    //         // save the location we were at to come back later
+    //         //query: { redirect: to.fullPath },
+    //     }
+    // }
 })
 
 export { router };

@@ -1,7 +1,7 @@
 <script>
 import {ref} from "@vue/reactivity";
 import {useStore} from 'vuex';
-import GamesList from './GamesList';
+import GamesList from './GamesList.vue';
 import {orel} from '../../../../services/api/games/orel';
 
 import moment from "moment";

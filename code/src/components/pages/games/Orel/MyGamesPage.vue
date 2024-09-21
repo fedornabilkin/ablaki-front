@@ -2,7 +2,7 @@
 import {computed, ref} from "@vue/reactivity";
 import {watch} from "@vue/runtime-core";
 import {orel} from "../../../../services/api/games/orel";
-import GamesList from './GamesList';
+import GamesList from './GamesList.vue';
 
 import {ElNotification} from "element-plus";
 import moment from "moment";

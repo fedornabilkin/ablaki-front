@@ -1,3 +1,5 @@
 export default {
-    apiDomain: process.env.VUE_APP_API_DOMAIN,
+    apiDomain: import.meta.env.VITE_API_URL,
+    // apiDomain: process.env.VITE_API_URL,
+    // apiDomain: 'http://94.250.251.94:3180/',
 };

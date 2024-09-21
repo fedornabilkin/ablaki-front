@@ -4,25 +4,22 @@ services:
         restart: unless-stopped
         build:
             context: .
-            dockerfile: docker/production/nginx.docker
+            dockerfile: .docker/nginx/Dockerfile
         volumes:
-            - ./docker/development/nginx/conf.d:/etc/nginx/conf.d
-            - ./code/:/app/
+            - ./.docker/nginx/conf.d:/etc/nginx/conf.d
+            - ./code/dist:/app/
+        command: /bin/sh -c "nginx -g 'daemon off;'"
         env_file:
             - .env
         ports:
             - ${BLK_NGINX_PORT}:80
         depends_on:
-            - vuejs
+            - nodejs
 
-    vuejs:
+    nodejs:
         build:
-            context: docker/development
-            dockerfile: vuejs.docker
-        working_dir: /app
+            context: .
+            dockerfile: .docker/nodejs/Dockerfile
         volumes:
             - ./code/:/app/
-        env_file:
-            - .env
-        ports:
-            - 8080:8080
+        command: /bin/sh -c 'npm ci && npm run build'

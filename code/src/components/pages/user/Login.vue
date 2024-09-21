@@ -1,30 +1,26 @@
-<template>
-    <div class="container">
-        <h1>Вход</h1>
+<template lang="pug">
+div.container
+  h1 Вход
 
-        <el-form
-            v-loading="isLoading"
-            :model="auth"
-            ref="formRef"
-            :rules="validationRules"
-            label-position="top"
-            class="mt-3"
-            @submit.prevent="login"
-            size="large"
-        >
-            <el-form-item label="Логин" prop="login">
-                <el-input v-model="auth.login" name="email" autocomplete="on"></el-input>
-            </el-form-item>
+  el-form(
+    v-loading="isLoading"
+    :model="auth"
+    ref="formRef"
+    :rules="validationRules"
+    label-position="top"
+    class="mt-3"
+    @submit.prevent="login"
+    size="large"
+  )
+    el-form-item(label="Логин" prop="login")
+      el-input( v-model="auth.login" name="email" autocomplete="on")
 
-            <el-form-item label="Пароль" prop="password">
-                <el-input v-model="auth.password" type="password"></el-input>
-            </el-form-item>
+    el-form-item(label="Пароль" prop="password")
+      el-input( v-model="auth.password" type="password")
 
-            <el-form-item>
-                <el-button type="primary" native-type="submit" :disabled="disabled">Войти</el-button>
-            </el-form-item>
-        </el-form>
-    </div>
+    el-form-item
+      el-button( type="primary" native-type="submit" :disabled="disabled") Войти
+
 </template>
 
 <script>
