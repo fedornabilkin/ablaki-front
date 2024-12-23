@@ -7,7 +7,7 @@ const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 
 const menuItems = computed(() => {
     let games = [
-        {anchor: 'Ablaki', url: '/games/ablaki', title: 'Игра Ablaki', icon: 'apple'},
+        {anchor: 'Saper', url: '/games/saper', title: 'Игра Saper', icon: 'apple'},
         {anchor: 'Орел-решка', url: '/games/orel', title: 'Игра Орел-решка', icon: 'coin'},
         {anchor: 'Дуэль', url: '/games/duel', title: 'Игра дуэль', icon: 'aim'},
         {anchor: '5 яблок', url: '/games/fiveapple', title: 'Игра 5 яблок', icon: 'collection'}     

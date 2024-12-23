@@ -19,6 +19,7 @@ export default {
     emits: ['newGameClick'],
     setup(props, { emit }) {
         const gamesList = ref([]);
+      const gamesCount = ref(0);
         const isGamesLoading = ref(true);
         const konCount = ref([]);
 
@@ -42,6 +43,7 @@ export default {
                     gamesList.value = games;
                     konCount.value = res.konCount;
                     isGamesLoading.value = false;
+                  gamesCount.value = res.length
                 })
                 .catch((err) => {
                     console.log(err);
@@ -102,6 +104,7 @@ export default {
 
         return {
             gamesList,
+          gamesCount,
             konCount,
             isGamesLoading,
             onPlay,
@@ -116,6 +119,7 @@ export default {
 <template>
     <games-list
         :gamesList="gamesList"
+        :gamesCount="gamesCount"
         :isGamesLoading="isGamesLoading"
         :konCount="konCount"
         @newGameClick="openDialogCreate"

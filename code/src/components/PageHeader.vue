@@ -1,3 +1,21 @@
+<template lang="pug">
+  div.page-header
+    div.container
+      div.header-wrapper
+        div.header-top
+          div.title {{pageTitle}}
+
+        div.extra
+          div.extra-tabs
+            div.actions
+              slot(name="actions")
+            router-link(:to="extraLink.link" v-for="extraLink in extraLinks")
+              el-button(
+                  :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
+                  type="default"
+              ) {{extraLink.title}}
+</template>
+
 <script>
 import { computed } from '@vue/reactivity';
 import { useRoute } from 'vue-router';
@@ -27,35 +45,6 @@ export default {
 }
 </script>
 
-<template>
-    <div class="page-header">
-        <div class="container">
-            <div class="header-wrapper">
-                <div class="header-top">
-                    <div class="title">{{pageTitle}}</div>
-                    <div class="actions">
-                        <slot name="actions" />
-                    </div>
-                </div>
-
-                <div class="extra">
-
-                    <div class="extra-tabs">
-                        <router-link :to="extraLink.link" v-for="extraLink in extraLinks">
-                            <el-button
-                                :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
-                                type="default"
-                                size="large"
-                                >{{extraLink.title}}</el-button
-                            >
-                        </router-link>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
-
 <style lang="scss" scoped>
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
@@ -79,7 +68,7 @@ export default {
         z-index: 1;
 
         .header-wrapper {
-            padding: 100px 0 38px;
+            padding: 30px 0 38px;
             
             .header-top {
                 display: flex;
@@ -112,7 +101,7 @@ export default {
                     }
 
                     .btn-tab {
-                        border-radius: 8px;
+                        //border-radius: 8px;
                         margin-left: unset;
                         background-color: transparent;
                         color: rgb(108, 103, 129);
