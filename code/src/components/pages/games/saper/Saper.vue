@@ -1,39 +1,34 @@
-<template lang="pug">.container
+<template lang="pug">div
   page-header(pageTitle="Сапер" :extraLinks="extraLinks")
-
     template(v-slot:actions)
-      el-button(icon="Plus" @click="dialogCreate=true") Создать
+      el-button(icon="Plus" type="success" @click="dialogCreate=true")
 
-  el-table(:data="collection")
-    el-table-column(prop="id" label="Id" width="60")
-    el-table-column(label="Игрок")
-      template(#default="scope")
-        | {{ scope.row.created_by?.getUserName()}}
-    el-table-column(prop="kon" label="Кон" width="60")
-    el-table-column(label="")
-      template(#default)
-        el-button(type="success") Play
+  .container
+    el-table(:data="collection")
+      el-table-column(prop="id" label="Id" width="60")
+      el-table-column(label="Игрок")
+        template(#default="scope")
+          | {{ getUserName(scope.row)}}
+      el-table-column(prop="kon" label="Кон" width="60")
+      el-table-column(label="")
+        template(#default)
+          el-button(type="success") Play
 
-  create-game(
-    :isOpen="dialogCreate"
-    :konList="[1,2,3,5,7,10]"
-    :kon="1"
-    :apiService="apiService"
-    @close="dialogCreate=false")
+    create-game(
+      :isOpen="dialogCreate"
+      :konList="[1,2,3,5,7,10]"
+      :kon="1"
+      :apiService="apiService"
+      @close="dialogCreate=false")
 
 </template>
 
 <script>
 // @click="dialogCreate = true"
-import axios from "axios";
-import config from "../../../../config/config";
 import PageHeader from "@/components/PageHeader.vue";
 import CreateGame from "@/components/pages/games/CreateGame.vue";
 import {saper} from "@/services/api/games/saper";
-import {SaperBuilder} from "@/entities/games/builder";
-import {UserBuilder} from "@/entities/user/builder";
-
-let urlMain = config.getParam('apiDomain');
+import {gameSaperStore} from "@/store/games/saper";
 
 export default {
 
@@ -48,28 +43,38 @@ export default {
       {
         link: '/games/saper',
         title: 'Все игры',
+        icon: 'Apple',
+        type: 'success',
       }, {
         link: '/games/saper/my',
         title: 'Мои игры',
+        icon: 'User',
+        type: 'warning',
       }, {
         link: '/games/saper/history',
         title: 'История',
+        icon: 'Calendar',
+      }, {
+        link: '/games/saper/remove',
+        title: 'Удалить',
+        icon: 'DocumentDelete',
+        type: 'danger',
       },
     ],
   }),
 
   setup() {
     const apiService = saper;
-    return {
-      apiService,
-    }
+    const saperSore = gameSaperStore()
+
+    return {apiService, saperSore}
   },
 
   mounted() {
-    this.getCollection();
+    this.getItems();
   },
 
-  // computed: {
+  computed: {
   //   extraLinks: () => ([
   //     {
   //       link: '/games/saper',
@@ -82,27 +87,15 @@ export default {
   //       title: 'История',
   //     },
   //   ])
-  // },
+  },
 
   methods: {
-    getUrlList: function () {
-      return urlMain + 'v1/saper?sort=-id';
+    getUserName(row) {
+      return row.created_by?.getUserName();
     },
 
-    getCollection: function () {
-      axios.get(this.getUrlList())
-          .then(resp => {
-            // this.gameList = resp.data;
-            const builder = new SaperBuilder({userBuilder: new UserBuilder()})
-            // const builder = new SaperBuilder()
-            builder.createCollection(resp.data)
-            this.collection = builder.getCollection()
-          })
-          .catch(err => {
-            if (err.response) {
-              this.exception = err.response.data;
-            }
-          })
+    async getItems() {
+      this.collection = await this.saperSore.getItems()
     },
 
   },

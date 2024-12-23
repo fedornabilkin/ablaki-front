@@ -2,12 +2,12 @@ import axios from "axios";
 import config from "../../../config/config";
 
 const baseUrl = config.getParam('apiDomain');
-const baseUrlOrel = `${baseUrl}v1/saper`;
+const baseUrlSaper = `${baseUrl}v1/saper`;
 
 export const saper = {
   my: async (page = 1) => {
     return new Promise((resolve, reject) => {
-      axios.get(`${baseUrlOrel}/my?page=${page}`).then(res => {
+      axios.get(`${baseUrlSaper}/my?page=${page}`).then(res => {
         if (!res.data.errors) {
           resolve({
             list: res.data,
@@ -23,7 +23,7 @@ export const saper = {
   get: async (konFilter) => {
     let urlParams = konFilter ? `filter[kon]=${konFilter}` : '';
     return new Promise((resolve, reject) => {
-      axios.get(`${baseUrlOrel}?${urlParams}`).then(res => {
+      axios.get(`${baseUrlSaper}?${urlParams}`).then(res => {
         if (!res.data.errors) {
           resolve(res.data);
         } else {
@@ -35,7 +35,7 @@ export const saper = {
 
   getKonCount: async () => {
     return new Promise((resolve, reject) => {
-      axios.get(`${baseUrlOrel}/kon-count`).then(res => {
+      axios.get(`${baseUrlSaper}/kon-count`).then(res => {
         if (!res.data.errors) {
           resolve(res.data);
         } else {
@@ -56,7 +56,7 @@ export const saper = {
 
   create: async (kon, count) => {
     return new Promise((resolve, reject) => {
-      axios.post(`${baseUrlOrel}`, {kon, count}).then(res => {
+      axios.post(`${baseUrlSaper}`, {kon, count}).then(res => {
         if (!res.data.errors) {
           resolve(res.data);
         } else {
@@ -68,7 +68,7 @@ export const saper = {
 
   play: async (id, hod) => {
     return new Promise((resolve, reject) => {
-      axios.post(`${baseUrlOrel}/play/${id}`, {
+      axios.post(`${baseUrlSaper}/play/${id}`, {
         hod
       }).then(res => {
         if (!(res.data?.errors ?? null)) {
@@ -82,7 +82,7 @@ export const saper = {
 
   delete: async (id) => {
     return new Promise((resolve, reject) => {
-      axios.delete(`${baseUrlOrel}/${id}`).then(res => {
+      axios.delete(`${baseUrlSaper}/${id}`).then(res => {
         if (!res.data.errors) {
           resolve(res.data);
         } else {
@@ -94,7 +94,7 @@ export const saper = {
 
   getHistory: async (page = 1) => {
     return new Promise((resolve, reject) => {
-      axios.get(`${baseUrlOrel}/history?page=${page}`).then(res => {
+      axios.get(`${baseUrlSaper}/history?page=${page}`).then(res => {
         if (!res.data.errors) {
           resolve({
             list: res.data,

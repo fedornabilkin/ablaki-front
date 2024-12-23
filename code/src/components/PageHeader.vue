@@ -11,9 +11,11 @@
               slot(name="actions")
             router-link(:to="extraLink.link" v-for="extraLink in extraLinks")
               el-button(
-                  :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
-                  type="default"
-              ) {{extraLink.title}}
+                :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
+                :icon="extraLink.icon"
+                :type="extraLink.type"
+              )
+                span(class="d-none d-sm-block") {{extraLink.title}}
 </template>
 
 <script>
@@ -68,7 +70,7 @@ export default {
         z-index: 1;
 
         .header-wrapper {
-            padding: 30px 0 38px;
+            padding: 1rem 0;
             
             .header-top {
                 display: flex;
@@ -76,7 +78,7 @@ export default {
                 margin-bottom: .5rem;
 
                 .title {
-                    font-size: 2rem;
+                    font-size: 1.8rem;
                     font-weight: 600;
                 }
 
@@ -90,9 +92,7 @@ export default {
                 display: flex;
 
                 .extra-tabs {
-                    padding: 0.25rem;
                     background-color: rgba(30,58,138,.2);
-                    border-radius: 0.75rem;
                     display: flex;
                     overflow: auto;
 

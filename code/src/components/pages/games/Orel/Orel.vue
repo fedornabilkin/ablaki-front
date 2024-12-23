@@ -49,12 +49,15 @@ export default {
             {
                 link: '/games/orel',
                 title: 'Все игры',
+                icon: 'Coin',
             }, {
                 link: '/games/orel/my',
                 title: 'Мои игры',
+                icon: 'User',
             }, {
                 link: '/games/orel/history',
                 title: 'История',
+                icon: 'Calendar',
             }, 
         ]"
     >
@@ -62,7 +65,8 @@ export default {
             <el-button
                 @click="dialogCreate = true"
                 icon="Plus"
-                >Создать</el-button
+                type="success"
+                ></el-button
             >
         </template>
     </page-header>
