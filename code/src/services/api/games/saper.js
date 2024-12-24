@@ -66,17 +66,29 @@ export const saper = {
     });
   },
 
-  play: async (id, hod) => {
+  start: async (id) => {
     return new Promise((resolve, reject) => {
-      axios.post(`${baseUrlSaper}/play/${id}`, {
-        hod
-      }).then(res => {
-        if (!(res.data?.errors ?? null)) {
-          resolve(res.data);
-        } else {
-          reject(res.data);
-        }
-      }).catch(e => reject(e));
+      axios.get(`${baseUrlSaper}/start/${id}`)
+        .then(res => {
+          if (!(res.data?.errors ?? null)) {
+            resolve(res.data);
+          } else {
+            reject(res.data);
+          }
+        }).catch(e => reject(e));
+    });
+  },
+
+  play: async (id, row, col) => {
+    return new Promise((resolve, reject) => {
+      axios.post(`${baseUrlSaper}/play/${id}`, {row, col})
+        .then(res => {
+          if (!(res.data?.errors ?? null)) {
+            resolve(res.data);
+          } else {
+            reject(res.data);
+          }
+        }).catch(e => reject(e));
     });
   },
 

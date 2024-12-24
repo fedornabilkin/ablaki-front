@@ -12,12 +12,17 @@
       el-table-column(prop="kon" label="Кон" width="60")
       el-table-column(label="")
         template(#default)
-          el-button(type="success") Play
+          el-button(type="success" @click="dialogPlay=true") Play
 
     create-game(
       :isOpen="dialogCreate"
       :konList="[1,2,3,5,7,10]"
       :kon="1"
+      :apiService="apiService"
+      @close="dialogCreate=false")
+
+    play-game(
+      :isOpen="dialogPlay"
       :apiService="apiService"
       @close="dialogCreate=false")
 
@@ -29,27 +34,27 @@ import PageHeader from "@/components/PageHeader.vue";
 import CreateGame from "@/components/pages/games/CreateGame.vue";
 import {saper} from "@/services/api/games/saper";
 import {gameSaperStore} from "@/store/games/saper";
+import PlayGame from "@/components/pages/games/saper/PlayGame.vue";
 
 export default {
 
   name: "Saper",
-  components: {CreateGame, PageHeader},
+  components: {CreateGame, PageHeader, PlayGame},
 
   data: () => ({
     collection: [],
     exception: null,
     dialogCreate: false,
+    dialogPlay: false,
     extraLinks: [
       {
         link: '/games/saper',
         title: 'Все игры',
         icon: 'Apple',
-        type: 'success',
       }, {
         link: '/games/saper/my',
         title: 'Мои игры',
         icon: 'User',
-        type: 'warning',
       }, {
         link: '/games/saper/history',
         title: 'История',
