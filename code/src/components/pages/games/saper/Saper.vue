@@ -11,8 +11,8 @@
           | {{ getUserName(scope.row)}}
       el-table-column(prop="kon" label="Кон" width="60")
       el-table-column(label="")
-        template(#default)
-          el-button(type="success" @click="dialogPlay=true") Play
+        template(#default="scope")
+          el-button(type="success" @click="btnPlay(scope.row)") Play
 
     create-game(
       :isOpen="dialogCreate"
@@ -23,8 +23,9 @@
 
     play-game(
       :isOpen="dialogPlay"
+      :game="currentGame"
       :apiService="apiService"
-      @close="dialogCreate=false")
+      @close="dialogPlay=false")
 
 </template>
 
@@ -43,6 +44,7 @@ export default {
 
   data: () => ({
     collection: [],
+    currentGame: {id:0, kon:0},
     exception: null,
     dialogCreate: false,
     dialogPlay: false,
@@ -101,6 +103,11 @@ export default {
 
     async getItems() {
       this.collection = await this.saperSore.getItems()
+    },
+
+    btnPlay(row) {
+      this.dialogPlay=true
+      this.currentGame = {id: row.id, kon: row.kon}
     },
 
   },
