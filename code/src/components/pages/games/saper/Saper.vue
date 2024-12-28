@@ -1,4 +1,4 @@
-<template lang="pug">div
+<template lang="pug">
   page-header(pageTitle="Сапер" :extraLinks="extraLinks")
     template(v-slot:actions)
       el-button(icon="Plus" type="success" @click="dialogCreate=true")

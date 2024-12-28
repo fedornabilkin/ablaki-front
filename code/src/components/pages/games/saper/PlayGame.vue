@@ -1,115 +1,104 @@
-<script>
-export default {
-  props: {
-    isOpen: {type: Boolean, default: true,},
-    apiService: {type: Object, default: {}},
-    game: {type: Object, default: {id:0, kon:0}},
-  },
+<script setup>
 
-  data: () => ({
-    isLoading: false,
-    btnActive: true,
-    tableData: [],
-    response: '',
-  }),
+import {ref, computed} from "@vue/reactivity";
+import {onMounted} from "vue";
 
-  setup() {
+const props = defineProps(['isOpen', 'apiService', 'game'])
 
-    return {}
-  },
+const isLoading = ref(false)
+const btnActive = ref(true)
+const tableData = ref([])
+const response = ref('')
 
-  mounted() {
-    this.createGameArray()
-  },
+onMounted(() => {
+  createGameArray()
+})
 
-  computed: {
-    title() {
-      return `Игра: ${this.game.id} Ставка: ${this.game.kon}`
-    },
-  },
+const title = computed(() => {
+  return `Игра: ${props.game.id} Ставка: ${props.game.kon}`
+})
 
-  methods: {
-    handleOpen() {
-      this.setResponse('')
-      this.createGameArray()
-    },
+const createGameArray = () => {
+  tableData.value = Array(5).fill().map(() =>
+      Array(7).fill().map(() => ({
+        type: 'default',
+        isClick: false,
+        isLoading: false,
+      }))
+  );
+}
 
-    createGameArray() {
-      this.tableData = Array(5).fill().map(() =>
-          Array(7).fill().map(() => ({
-            type: 'default',
-            isClick: false,
-            isLoading: false,
-          }))
-      );
-    },
+const setResponse = (msg) => {
+  response.value = msg
+}
 
-    getType(i, k) {
-      let element = this.tableData[i-1][k-1]
-      return element?.type
-    },
+const handleOpen = () => {
+  isLoading.value = false
+  setResponse('')
+  createGameArray()
+}
 
-    getLoading(i, k) {
-      let element = this.tableData[i-1][k-1]
-      return element?.isLoading
-    },
+const getType = (i, k) => {
+  let element = tableData.value[i-1][k-1]
+  return element?.type
+}
 
-    getClickElement(i, k) {
-      return this.tableData[i-1][k-1]
-    },
+const getLoading = (i, k) => {
+  let element = tableData.value[i-1][k-1]
+  return element?.isLoading
+}
 
-    setResponse(msg) {
-      this.response = msg
-    },
+const getClickElement = (i, k) => {
+  return tableData.value[i-1][k-1]
+}
 
-    checkState(data) {
-      console.log(data)
-    },
+const checkState = (data) => {
+  console.log(data)
+}
 
-    startGame() {
-      this.setResponse('')
-      this.isLoading = true;
-      this.apiService.start(this.game.id)
-          .then((res) => {
-            this.createGameArray()
-          })
-          .catch((err) => {
-            this.setResponse(err.response.data.message)
-          })
-          .finally(() => {
-            this.isLoading = false
-          })
-    },
+const startGame = () => {
+  setResponse('')
+  isLoading.value = true;
+  props.apiService.start(props.game.id)
+      .then((res) => {
+        createGameArray()
+      })
+      .catch((err) => {
+        setResponse(err.response.data.message)
+        checkState(err.response)
+      })
+      .finally(() => {
+        isLoading.value = false
+      })
+}
 
-    playGame(row, col) {
-      this.setResponse('')
-      let element = this.getClickElement(row, col)
-      element.isLoading = true
-      element.isClick = true
+const playGame = (row, col) => {
+  setResponse('')
+  const element = getClickElement(row, col)
+  element.isLoading = true
+  element.isClick = true
 
-      this.apiService.play(this.game.id, row, col)
-          .then((res) => {
-            element.type = 'success'
-            this.checkState(res)
-          })
-          .catch((err) => {
-            element.type = 'warning'
-            this.setResponse(err.response.data.message)
-            console.log(err.response.data)
-          })
-          .finally(() => {
-            element.isLoading = false
-          })
-    }
-  },
+  props.apiService.play(props.game.id, row, col)
+      .then((res) => {
+        element.type = 'success'
+        checkState(res)
+      })
+      .catch((err) => {
+        element.type = 'warning'
+        setResponse(err.response.data.message)
+        checkState(err.response)
+      })
+      .finally(() => {
+        element.isLoading = false
+      })
+}
 
-};
 </script>
 
 <template lang="pug">
   el-dialog(
     top="3rem"
-    :model-value="isOpen"
+    :model-value="props.isOpen"
     :title="title"
     :modal="false"
     destroy-on-close
@@ -119,7 +108,7 @@ export default {
     table
       tr(v-for="i in 5" :key="i")
         td(v-for="k in 7" :key="k")
-          el-button(icon="Apple" :type="getType(i, k)" @click="playGame(i, k)" :loading="getLoading(i, k)")
+          el-button(class="play-game" icon="Apple" :type="getType(i, k)" @click="playGame(i, k)" :loading="getLoading(i, k)")
 
     div.mt-3
       el-button(type="primary" @click="startGame" :disabled="!btnActive" :loading="isLoading") Начать
@@ -127,5 +116,5 @@ export default {
 </template>
 
 <style scoped lang="scss">
-
+ .play-game {max-width: 2.7rem}
 </style>
