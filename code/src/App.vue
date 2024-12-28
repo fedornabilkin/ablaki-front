@@ -54,8 +54,8 @@ export default {
   },
 
   mounted() {
-    console.log('mounted')
-    console.log(import.meta.env)
+    // console.log('mounted')
+    // console.log(import.meta.env)
     // if (this.loading) {
     //     this.menuList.push({anchor: 'Статистика', url: '/statistic', title: '', icon: 'user'});
     //     this.menuList.push({anchor: 'Биржа кредитов', url: '/exchange', title: '', icon: 'user'});

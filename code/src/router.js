@@ -1,6 +1,5 @@
 import {createRouter, createWebHistory} from 'vue-router';
-// 1. Определяем компоненты для маршрутов.
-// Они могут быть импортированы из других файлов
+
 import WithUser from './components/WithUser.vue';
 
 import Main from './components/pages/Main.vue';
@@ -18,31 +17,42 @@ import Wall from './components/pages/user/Wall.vue';
 import Profile from './components/pages/user/Profile.vue';
 import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage} from "./components/pages/user/Exchange";
 
-import Ablaki from './components/pages/games/Ablaki.vue';
+import Saper from './components/pages/games/saper/Saper.vue';
 import Orel, {GamesHistoryPage, MyOrelGames, OrelGames} from "./components/pages/games/Orel";
 
 import {store} from './store/store';
 
+// 1. Определяем компоненты для маршрутов.
+// Они могут быть импортированы из других файлов
 // 2. Определяем несколько маршрутов
 // Каждый маршрут должен указывать на компонент.
 // "Компонентом" может быть как конструктор компонента, созданный
 // через `Vue.extend()`, так и просто объект с опциями компонента.
 
 const routes = [
-    {
-      path: '/',
-      component: () => import('./components/pages/Main.vue')
-    },
+    // {
+    //   path: '/',
+    //   component: () => import('./components/pages/Main.vue')
+    // },
+
+    { path: '/', component: Main },
 
     { path: '/users/registration', component: Registration },
     { path: '/users/login', component: Login },
     { path: '/users/login-key/:key', component: loginKey },
     { path: '/users/logout', component: Logout },
+    { path: '/users/profile', component: Profile },
 
     { path: '/', component: WithUser, children: [
         { path: '/games/orel', component: Orel, children: [
             { path: '', component: OrelGames },
             { path: 'my', component: MyOrelGames },
+            { path: 'history', component: GamesHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/games/saper', component: Saper, children: [
+            { path: '', component: Saper },
+            { path: 'my', component: Saper },
             { path: 'history', component: GamesHistoryPage },
         ], meta: { requiresAuth: true } },
 
@@ -62,13 +72,10 @@ const routes = [
     ]},
     { path: '/forum/read/:theme_id', component: Read },
 
-
     { path: '/:pathMatch(.*)', component: PageNotFound },
 
-
-    { path: '/games/ablaki', component: Ablaki, meta: { requiresAuth: true } },
     { path: '/wiki', component: Wiki },
-    { path: '/users/profile', component: Profile },
+
 ];
 
 const router = createRouter({

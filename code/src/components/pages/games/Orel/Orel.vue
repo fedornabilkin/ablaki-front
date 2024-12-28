@@ -1,15 +1,15 @@
 <script>
 import { ref } from "@vue/reactivity";
-import { watch } from "@vue/runtime-core";
-import CreateGame from "./CreateGame.vue";
+import CreateGame from "../CreateGame.vue";
 import PageHeader from '../../../PageHeader.vue';
+import {orel} from '@/services/api/games/orel';
 
 export default {
-    components: {
-        CreateGame,
-        PageHeader,
-    },
+    components: { CreateGame, PageHeader, },
+
     setup() {
+      const apiService = orel;
+
         const dialogCreate = ref(false);
         
         // триггер, заставляющий перезапросить инфу для страницы, который слушают все
@@ -36,6 +36,7 @@ export default {
             closeDialogCreate,
             onGameCreated,
             reloadListTrigger,
+          apiService,
         };
     },
 };
@@ -43,33 +44,38 @@ export default {
 
 <template>
     <page-header
-        pageTitle="Игра Орел-решка"
+        pageTitle="Орел-решка"
         :extraLinks="[
             {
                 link: '/games/orel',
                 title: 'Все игры',
+                icon: 'Coin',
             }, {
                 link: '/games/orel/my',
                 title: 'Мои игры',
+                icon: 'User',
             }, {
                 link: '/games/orel/history',
                 title: 'История',
+                icon: 'Calendar',
             }, 
         ]"
     >
         <template v-slot:actions>
             <el-button
-                type="primary"
                 @click="dialogCreate = true"
-                round
                 icon="Plus"
-                >Создать игры</el-button
+                type="success"
+                ></el-button
             >
         </template>
     </page-header>
 
     <create-game
         :isOpen="dialogCreate"
+        :konList="[10,20,50,100,200,500,1000]"
+        :kon="5"
+        :apiService="apiService"
         @gameCreated="onGameCreated"
         @close="closeDialogCreate"
     />

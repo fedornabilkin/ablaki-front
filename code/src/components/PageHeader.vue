@@ -1,3 +1,23 @@
+<template lang="pug">
+  div.page-header
+    div.container
+      div.header-wrapper
+        div.header-top
+          div.title {{pageTitle}}
+
+        div.extra
+          div.extra-tabs
+            div.actions
+              slot(name="actions")
+            router-link(:to="extraLink.link" v-for="extraLink in extraLinks")
+              el-button(
+                :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
+                :icon="extraLink.icon"
+                :type="extraLink.type"
+              )
+                span(class="d-none d-sm-block") {{extraLink.title}}
+</template>
+
 <script>
 import { computed } from '@vue/reactivity';
 import { useRoute } from 'vue-router';
@@ -27,35 +47,6 @@ export default {
 }
 </script>
 
-<template>
-    <div class="page-header">
-        <div class="container">
-            <div class="header-wrapper">
-                <div class="header-top">
-                    <div class="title">{{pageTitle}}</div>
-                    <div class="actions">
-                        <slot name="actions" />
-                    </div>
-                </div>
-
-                <div class="extra">
-
-                    <div class="extra-tabs">
-                        <router-link :to="extraLink.link" v-for="extraLink in extraLinks">
-                            <el-button
-                                :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
-                                type="default"
-                                size="large"
-                                >{{extraLink.title}}</el-button
-                            >
-                        </router-link>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
-
 <style lang="scss" scoped>
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
@@ -79,7 +70,7 @@ export default {
         z-index: 1;
 
         .header-wrapper {
-            padding: 100px 0 38px;
+            padding: 1rem 0;
             
             .header-top {
                 display: flex;
@@ -87,7 +78,7 @@ export default {
                 margin-bottom: .5rem;
 
                 .title {
-                    font-size: 2rem;
+                    font-size: 1.8rem;
                     font-weight: 600;
                 }
 
@@ -101,9 +92,7 @@ export default {
                 display: flex;
 
                 .extra-tabs {
-                    padding: 0.25rem;
                     background-color: rgba(30,58,138,.2);
-                    border-radius: 0.75rem;
                     display: flex;
                     overflow: auto;
 
@@ -112,7 +101,7 @@ export default {
                     }
 
                     .btn-tab {
-                        border-radius: 8px;
+                        //border-radius: 8px;
                         margin-left: unset;
                         background-color: transparent;
                         color: rgb(108, 103, 129);
