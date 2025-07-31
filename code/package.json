@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "vite build",
-    "dev": "vite --port 5173 --host 0.0.0.0",
+    "dev": "vite --host 0.0.0.0",
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {

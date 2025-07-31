@@ -1,75 +1,73 @@
-<script>
-import PageHeader from "../../PageHeader.vue";
+<script lang="ts" setup>
+import PageHeader from "@/components/PageHeader.vue";
 import {ref} from "vue";
-import {commentApi, themeApi} from "../../../services/api/forum";
+import {commentApi, themeApi} from "@/services/api/forum";
 import {useRoute} from "vue-router";
+import {ForumThemeBuilder, ForumCommentBuilder} from "@/entities/forum/builder"
+import {UserBuilder} from "@/entities/user/builder"
 
-export default {
-    name: "Read",
-    components: {PageHeader},
-    setup(){
-      const theme = ref({});
-      const comments = ref([]);
-      const route = useRoute();
-      const theme_id = route.params.theme_id;
+const theme = ref({});
+const comments = ref([]);
+const route = useRoute();
+const themeId = route.params.theme_id;
 
-      const fetchTheme = () => {
-        themeApi.view(theme_id)
-            .then((res) => {
-              theme.value = res
-            })
-            .catch((res) => {
-              console.log(err);
-            });
-      };
+const userBuilder: UserBuilder = new UserBuilder()
+const themeBuilder: ForumThemeBuilder = new ForumThemeBuilder()
+theme.value = themeBuilder.getEntity()
+const commentBuilder: ForumCommentBuilder = new ForumCommentBuilder({userBuilder: userBuilder})
 
-      const fetchComments = () => {
-        commentApi.index(theme_id)
-            .then((res) => {
-              comments.value = res;
-            })
-            .catch((err) => {
-              console.log(err);
-            });
-      };
+const fetchTheme = () => {
+  themeApi.view(themeId)
+      .then((response: []) => {
+        themeBuilder.build(response)
+        theme.value = themeBuilder.getEntity()
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+};
 
-      fetchTheme();
-      fetchComments();
+const fetchComments = () => {
+  commentApi.index(themeId)
+      .then((response: []) => {
+        commentBuilder.createCollection(response)
+        comments.value = commentBuilder.getCollection()
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+};
 
-      return {
-        comments: comments,
-        theme: theme,
-      }
-    },
-  }
+fetchTheme();
+fetchComments();
+
+const extraLinks = [
+  {
+    link: '/forum',
+    title: 'Все темы',
+  }, {
+    link: '/forum/my',
+    title: 'Мои темы',
+  },
+]
+
 </script>
 
-<template>
+<template lang="pug">
+  page-header(pageTitle="Форум" :extraLinks="extraLinks")
+  .container
+    .row
+      .col-sm {{theme.getName()}}
 
-  <page-header
-      pageTitle="Форум"
-      :extraLinks="[
-            {
-                link: '/forum',
-                title: 'Все темы',
-            }, {
-                link: '/forum/my',
-                title: 'Мои темы',
-            },
-        ]"
-  >
-
-  </page-header>
-
-  <div class="container">
-    <div class="row">
-      <div class="col-sm">{{theme.title}}</div>
-    </div>
-    <div class="row mt-2 border-top" v-for="comment in comments" :key="comment.id">
-      <div class="col-sm">{{comment.user.username}} ({{comment.user.person.rating}})</div>
-      <div class="col-sm">({{comment.id}}) {{comment.comment}}</div>
-    </div>
-  </div>
+    el-table(:data='comments' stripe height='450')
+      el-table-column(prop='id' label='#' width='60')
+      el-table-column(label='Автор' width='120')
+        template(#default="scope")
+          | {{scope.row.created_by.getUserName()}}
+      el-table-column(prop='name' label='Комментарий' width='250')
+        template(#default="scope")
+          | {{scope.row.getComment()}}
+      el-table-column(prop='created_at_format' label='Дата' width='160')
 
 </template>
 

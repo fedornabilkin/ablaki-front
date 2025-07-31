@@ -9,6 +9,7 @@ export class UserBuilder extends MainBuilder {
   }
 
   build(data) {
+    super.build(data)
     this.entity.id = data.id
     this.entity.username = data.username
   }

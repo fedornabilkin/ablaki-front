@@ -1,6 +1,10 @@
-export default class User {
+import MainEntity from "@/entities/mainEntity";
+
+export default class User extends MainEntity{
   id = 0
   username = ''
+  created_at = 0
+  last_login_at = 0
   name = ''
   age = 0
   email = ''

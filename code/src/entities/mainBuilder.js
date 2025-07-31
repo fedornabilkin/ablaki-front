@@ -4,7 +4,7 @@ import MainEntity from "@/entities/mainEntity";
 export default class MainBuilder {
   entity
   collection = []
-  userBuilder
+  userBuilder = null
 
   constructor(config = {}) {
     Object.assign(this, config)
@@ -29,10 +29,10 @@ export default class MainBuilder {
     this.createDate(data.created_at, 'created_at')
     this.createDate(data.updated_at, 'updated_at')
 
-    if (data.created_by) {
+    if (data.created_by && this.userBuilder) {
       this.entity.created_by = this.createUser(data.created_by)
     }
-    if (data.updated_by) {
+    if (data.updated_by && this.userBuilder) {
       this.entity.updated_by = this.createUser(data.updated_by)
     }
   }
@@ -62,7 +62,7 @@ export default class MainBuilder {
   }
 
   createUser(data) {
-    this.userBuilder.createForName(data)
+    this.userBuilder.build(data)
     return this.userBuilder.getUser()
   }
 }
