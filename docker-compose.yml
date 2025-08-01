@@ -1,25 +1,23 @@
 version: "3.3"
 services:
-    nginx:
-        restart: unless-stopped
-        build:
-            context: .
-            dockerfile: .docker/nginx/Dockerfile
-        volumes:
-            - ./.docker/nginx/conf.d:/etc/nginx/conf.d
-            - ./project/dist:/app/
-        command: /bin/sh -c "nginx -g 'daemon off;'"
-        env_file:
-            - .env
-        ports:
-            - ${BLK_NGINX_PORT}:80
-        depends_on:
-            - nodejs
+  nginx:
+    restart: unless-stopped
+    image: nginx:1.28.0-alpine
+    working_dir: /app
+    volumes:
+      - ./.docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./project/dist:/app/
+    command: /bin/sh -c "nginx -g 'daemon off;'"
+    env_file:
+      - .env
+    ports:
+      - ${BLK_NGINX_PORT}:80
+    depends_on:
+      - nodejs
 
-    nodejs:
-        build:
-            context: .
-            dockerfile: .docker/nodejs/Dockerfile
-        volumes:
-            - ./project/:/app/
-        command: /bin/sh -c 'npm ci && npm run build'
+  nodejs:
+    image: node:24.4.1-alpine3.22
+    working_dir: /app
+    volumes:
+      - ./project/:/app/
+    command: /bin/sh -c 'npm ci && npm run build'
