@@ -26,8 +26,12 @@ export default class MainBuilder {
   }
 
   build(data) {
-    this.createDate(data.created_at, 'created_at')
-    this.createDate(data.updated_at, 'updated_at')
+    if (data.created_at) {
+      this.createDate(data.created_at, 'created_at')
+    }
+    if (data.updated_at) {
+      this.createDate(data.updated_at, 'updated_at')
+    }
 
     if (data.created_by && this.userBuilder) {
       this.entity.created_by = this.createUser(data.created_by)
@@ -58,7 +62,7 @@ export default class MainBuilder {
 
   createDate(data, field, format = 'DD.MM.YYYY HH:mm:ss') {
     this.entity[field] = data
-    this.entity[field + "_format"] = moment(data).format(format)
+    this.entity[field + "_format"] = moment.unix(data).format(format)
   }
 
   createUser(data) {
