@@ -35,7 +35,8 @@ export const themeApi = {
 
     create: async (title, comment) => {
         return new Promise((resolve, reject) => {
-            axios.post(`${baseUrlTheme}`, {title, comment}).then(res => {
+            const view = 0
+            axios.post(`${baseUrlTheme}`, {title, comment, view}).then(res => {
                 if (!res.data.errors) {
                     resolve(res.data);
                 } else {
@@ -110,9 +111,9 @@ export const commentApi = {
         });
     },
 
-    create: async (title, comment) => {
+    create: async (comment, theme_id) => {
         return new Promise((resolve, reject) => {
-            axios.post(`${baseUrlComment}`, {title, comment}).then(res => {
+            axios.post(`${baseUrlComment}`, {comment, theme_id}).then(res => {
                 if (!res.data.errors) {
                     resolve(res.data);
                 } else {

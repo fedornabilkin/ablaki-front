@@ -21,7 +21,7 @@
 <template>
     <el-result title="Not Found" sub-title="Страница не найдена">
         <template #icon>
-            <el-image :src="require('@/assets/logo.jpeg')"></el-image>
+            <el-image :src="'@/assets/logo.jpeg'"></el-image>
         </template>
         <template #extra>
             <el-button type="primary" @click="goBack">Назад</el-button>

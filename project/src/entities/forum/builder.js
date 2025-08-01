@@ -22,7 +22,7 @@ export class ForumCommentBuilder extends MainBuilder {
   }
 
   build(data) {
-    data.created_by = data.user
+    data.created_by = data.user ? data.user : undefined
     super.build(data)
     this.entity.id = data.id
     this.entity.comment = data.comment
