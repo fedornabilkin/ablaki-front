@@ -1,117 +1,95 @@
-<script>
+<script setup>
 import OrdersList from "./OrdersList.vue";
-import {exchange} from '../../../../services/api/exchange';
-import {errorHandler} from "../../../../services/api/errorHandler";
+import {exchange} from '@/services/api/exchange.js';
+import {errorHandler} from "@/services/api/errorHandler.js";
 import {useFetchOrders} from './hooks/useFetchOrders';
 import {ElNotification} from 'element-plus';
 import {useStore} from 'vuex';
 
-export default {
-        components: { OrdersList },
-        setup() {
-            const store = useStore();
-            
-            const {
-                isLoading: isLoadingBuy,
-                ordersList: ordersBuy
-            } = useFetchOrders(exchange.getBuy);
 
-            const {
-                isLoading: isLoadingSell,
-                ordersList: ordersSell
-            } = useFetchOrders(exchange.getSell);
+const store = useStore();
 
-            const onBuy = (id) => {
-                let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
+const {isLoading: isLoadingBuy, ordersList: ordersBuy} = useFetchOrders(exchange.getBuy);
 
-                ordersBuy.value[orderIndex].isLoading = true;
+const {isLoading: isLoadingSell, ordersList: ordersSell} = useFetchOrders(exchange.getSell);
 
-                exchange.proceed(id).then(res => {
-                    ordersBuy.value[orderIndex].isLoading = false;
-                    ordersBuy.value[orderIndex].status = "success";
+const onBuy = (id) => {
+  let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
 
-                    store.dispatch('auth/addCredit', res.credit);
-                    store.dispatch('auth/addBalance', -res.amount);
-                }).catch(e => {
-                    errorHandler(e, {
-                        "Type is invalid.": () => ElNotification({
-                            message: 'Type is invalid',
-                            type: 'error',
-                        })
-                    });
-                })
-            };
+  ordersBuy.value[orderIndex].isLoading = true;
 
-            const onSell = (id) => {
-                let orderIndex = ordersSell.value.findIndex((order) => order.id === id);
+  exchange.proceed(id).then(res => {
+    ordersBuy.value[orderIndex].isLoading = false;
+    ordersBuy.value[orderIndex].status = "success";
 
-                ordersSell.value[orderIndex].isLoading = true;
+    store.dispatch('auth/addCredit', res.credit);
+    store.dispatch('auth/addBalance', -res.amount);
+  }).catch(e => {
+    errorHandler(e, {
+      "Type is invalid.": () => ElNotification({
+        message: 'Type is invalid',
+        type: 'error',
+      })
+    });
+  })
+};
 
-                exchange.proceed(id).then(res => {
-                    ordersSell.value[orderIndex].isLoading = false;
-                    ordersSell.value[orderIndex].status = "success";
+const onSell = (id) => {
+  let orderIndex = ordersSell.value.findIndex((order) => order.id === id);
 
-                    store.dispatch('auth/addCredit', -res.credit);
-                    store.dispatch('auth/addBalance', res.amount);
-                });
-            };
+  console.log(orderIndex, id)
+  console.log(ordersSell.value[orderIndex])
+  ordersSell.value[orderIndex].isLoading = true;
 
-            return {
-                isLoadingBuy,
-                isLoadingSell,
-                ordersBuy,
-                ordersSell,
-                onBuy,
-                onSell,
-            };
-        },
-    };
+  exchange.proceed(id).then(res => {
+    ordersSell.value[orderIndex].isLoading = false;
+    ordersSell.value[orderIndex].status = "success";
+
+    store.dispatch('auth/addCredit', -res.credit);
+    store.dispatch('auth/addBalance', res.amount);
+  });
+};
+
 </script>
 
-<template>
-    <div class="row mt-2">
-        <div class="col-md-6">
-            <h5>Купить кредиты</h5>
+<template lang="pug">
+  .row.mt-2
+    .col-md-6
+      h5 Купить кредиты
+      orders-list(:orders='ordersBuy' :isloading='isLoadingBuy')
+        template(v-slot:info='{ credit, amount }')
+          el-tag(type="success" effect="light")
+            | {{ credit }} Cr
+            font-awesome-icon.px-1(icon='fa fa-arrow-right')
+          el-tag(type="info" effect="light")
+            font-awesome-icon(icon='fa fa-user')
+          el-tag(type="error" effect="light")
+            font-awesome-icon.px-1(icon='fa fa-arrow-right')
+            | {{ amount }} Кг
 
-            <orders-list :orders="ordersBuy" :isLoading="isLoadingBuy">
-                <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
-                    <div class="d-flex" v-if="status === 'success'">
-                        <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
-                    </div>
-                    <el-button
-                        size="small"
-                        icon="wallet"
-                        @click="onBuy(orderId)"
-                        :loading="isLoading"
-                        v-if="status === null"
-                    >
-                        <el-icon><bottom /></el-icon> {{ credit }}Cr
-                        <el-icon><top /></el-icon>{{ amount }}Кг
-                    </el-button>
-                </template>
-            </orders-list>
-        </div>
+        template(v-slot:action='{ orderId, isLoading, status }')
+          .d-flex.text-success(v-if="status === 'success'")
+            font-awesome-icon(icon='fa fa-check')
+          el-button(size='small' @click='onBuy(orderId)' :loading='isLoading' v-if='status === null')
+            font-awesome-icon(icon='fa fa-exchange-alt')
 
-        <div class="col-md-6">
-            <h5>Продать кредиты</h5>
+    .col-md-6
+      h5 Продать кредиты
+      orders-list(:orders='ordersSell' :isloading='isLoadingSell')
+        template(v-slot:info='{ credit, amount }')
+          el-tag(type="success" effect="light")
+            | {{ amount }} Кг
+            font-awesome-icon.px-1(icon='fa fa-arrow-right')
+          el-tag(type="info" effect="light")
+            font-awesome-icon(icon='fa fa-user')
+          el-tag(type="error" effect="light")
+            font-awesome-icon.px-1(icon='fa fa-arrow-right')
+            | {{ credit }} Cr
 
-            <orders-list :orders="ordersSell" :isLoading="isLoadingSell">
-                <template v-slot:action="{ orderId, isLoading, status, credit, amount }">
-                    <div class="d-flex" v-if="status === 'success'">
-                        <el-icon size="1.55rem" color="#AF0423"><success-filled /></el-icon>
-                    </div>
-                    <el-button
-                        size="small"
-                        icon="wallet"
-                        @click="onSell(orderId)"
-                        :loading="isLoading"
-                        v-if="status === null"
-                    >
-                        <el-icon><top /></el-icon> {{ credit }}Cr
-                        <el-icon><bottom /></el-icon> {{ amount }}Кг
-                    </el-button>
-                </template>
-            </orders-list>
-        </div>
-    </div>
+        template(v-slot:action='{ orderId, isLoading, status }')
+          .d-flex.text-success(v-if="status === 'success'")
+            font-awesome-icon(icon='fa fa-check')
+          el-button(size='small' @click='onSell(orderId)' :loading='isLoading' v-if='status === null')
+            font-awesome-icon(icon='fa fa-exchange-alt')
+
 </template>

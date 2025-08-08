@@ -1,39 +1,24 @@
-<script>
-export default {
-    props: {
-        orders: {
-            type: Array,
-            default: () => [],
-        },
-        isLoading: {
-            type: Boolean,
-            default: () => false,
-        }
-    },
-    setup(props, {emit}) {
-        return {
+<script setup>
 
-        }
-    },
-}
+const props = defineProps(['orders', 'isLoading'])
+
 </script>
 
-<template>
-    <el-table :data="orders" v-loading="isLoading" stripe empty-text="Заявки не найдены">
-        <el-table-column prop="price" :formatter="(row) => `${row.price} Кг`" label="Цена за 1000" width="120"/>
-        <el-table-column label="">
-            <template #default="scope">
-                <slot
-                    name="action"
-                    :orderId="scope.row.id"
-                    :isLoading="scope.row.isLoading"
-                    :status="scope.row.status"
-                    :credit="scope.row.credit"
-                    :amount="scope.row.amount"
-                    :datetime="scope.row.updated_at"
-                    :type="scope.row.type"
-                />
-            </template>
-        </el-table-column>
-    </el-table>
+<template lang="pug">
+  el-table(:data='props.orders' v-loading='props.isLoading' stripe empty-text='Заявки не найдены')
+    el-table-column(prop='id' label='#' width='60')
+    el-table-column(prop='price' :formatter='(row) => `${row.price} Кг`' label='*1000' width='80')
+    el-table-column(label='')
+      template(#default='scope')
+        slot(name='info' :credit='scope.row.credit' :amount='scope.row.amount' :datetime='scope.row.updated_at')
+    el-table-column(label='' width='60')
+      template(#default='scope')
+        slot(
+          name='action'
+          :orderId='scope.row.id'
+          :isloading='scope.row.loading'
+          :status='scope.row.status'
+          :type='scope.row.type'
+        )
+
 </template>

@@ -20,19 +20,22 @@ export default {
     <div class="user-bar">
         <div class="user-bar-left">
             <router-link :to="'/wall/' + user.username">
-                <el-button type="text" icon="postcard">Стена {{ user.username }}</el-button>
+              <font-awesome-icon icon="fa fa-id-card"/>
+              <el-button type="text">Стена {{ user.username }}</el-button>
             </router-link>
             
             <router-link to="/users/profile/">
-                <el-button type="text" icon="user">Профиль</el-button>
+              <font-awesome-icon icon="fa fa-user"/>
+              <el-button type="text">Профиль</el-button>
             </router-link>
 
             <router-link to="/exchange">
-                <el-button type="text" icon="refresh">Биржа кредитов</el-button>
+              <font-awesome-icon icon="fa fa-exchange-alt"/>
+              <el-button type="text">Биржа кредитов</el-button>
             </router-link>
         </div>
         
-        <user-accounts />
+<!--        <user-accounts />-->
         
     </div>
 </template>

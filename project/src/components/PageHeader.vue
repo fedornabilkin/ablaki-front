@@ -1,51 +1,62 @@
+<script setup>
+import { computed } from '@vue/reactivity';
+import { useRoute } from 'vue-router';
+
+const props = defineProps(['pageTitle', 'extraLinks'])
+
+const route = useRoute();
+const path = computed(() => route.path)
+
+const isCurrentLink = (link) => {
+  return link === path.value;
+};
+
+
+// export default {
+//     props: {
+//         pageTitle: {
+//             type: String,
+//             default: "",
+//         },
+//         extraLinks: {
+//             type: Array,
+//             default: () => [],
+//         }
+//     },
+//     setup() {
+//         const route = useRoute();
+//         const path = computed(() => route.path)
+//
+//         const isCurrentLink = (link) => {
+//             return link === path.value;
+//         };
+//
+//         return {
+//             isCurrentLink,
+//         }
+//     },
+// }
+</script>
+
 <template lang="pug">
   div.page-header
     div.container
       div.header-wrapper
         div.header-top
-          div.title {{pageTitle}}
+          div.title {{props.pageTitle}}
 
         div.extra
           div.extra-tabs
             div.actions
               slot(name="actions")
-            router-link(:to="extraLink.link" v-for="extraLink in extraLinks")
+            router-link(:to="extraLink.link" v-for="extraLink in props.extraLinks")
               el-button(
                 :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
-                :icon="extraLink.icon"
                 :type="extraLink.type"
               )
-                span(class="d-none d-sm-block") {{extraLink.title}}
+                font-awesome-icon(:icon='extraLink.icon')
+                span.px-1(class="d-none d-sm-block") {{extraLink.title}}
 </template>
-
-<script>
-import { computed } from '@vue/reactivity';
-import { useRoute } from 'vue-router';
-export default {
-    props: {
-        pageTitle: {
-            type: String,
-            default: "",
-        },
-        extraLinks: {
-            type: Array,
-            default: () => [],
-        }
-    },
-    setup() {
-        const route = useRoute();
-        const path = computed(() => route.path)
-        
-        const isCurrentLink = (link) => {
-            return link === path.value;
-        };
-
-        return {
-            isCurrentLink,
-        }
-    },
-}
-</script>
 
 <style lang="scss" scoped>
 @import "bootstrap/scss/functions";

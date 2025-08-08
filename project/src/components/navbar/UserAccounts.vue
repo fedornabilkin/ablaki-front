@@ -1,64 +1,42 @@
-<template>
-    <div class="user-bar-right">
-        <router-link to="/balance/pay">
-            <el-button type="text">
-                <el-tooltip
-                    effect="dark"
-                    :content="balanceTooltipContent"
-                    placement="bottom"
-                    v-model:visible="balanceTooltipAnimation"
-                    :manual="true"
-                >
-                    <div>
-                        <el-icon><span>Кг</span></el-icon>
-                        <span>{{ roundBalance(user.person.balance) }}</span>
-                    </div>
-                </el-tooltip>
-            </el-button>
-        </router-link>
+<template lang="pug">
+  .user-bar-right
+    router-link(to='/balance/pay')
+      el-button(type='text')
+        el-tooltip(effect='dark' :content='balanceTooltipContent' placement='bottom' v-model:visible='balanceTooltipAnimation' :manual='true')
+          div
+            el-icon
+              span &Kcy;&gcy;
+            span {{ roundBalance(user.person.balance) }}
+    el-divider(direction='vertical')
+    router-link(to='/exchange')
+      el-button(type='text')
+        el-tooltip(effect='dark' :content='creditsTooltipContent' placement='bottom' v-model:visible='creditsTooltipAnimation' :manual='true')
+          div
+            el-icon Cr
+            span {{ roundCredits(user.person.credit) }}
+    el-divider(direction='vertical')
 
-        <el-divider direction="vertical"></el-divider>
-        
-        <router-link to="/exchange">
-            <el-button type="text">
-                <el-tooltip
-                    effect="dark"
-                    :content="creditsTooltipContent"
-                    placement="bottom"
-                    v-model:visible="creditsTooltipAnimation"
-                    :manual="true"
-                >
-                    <div>
-                        <el-icon>Cr</el-icon>
-                        <span>{{ roundCredits(user.person.credit) }}</span>
-                    </div>
-                </el-tooltip>
-            </el-button>
-        </router-link>
-
-        <el-divider direction="vertical"></el-divider>
-
-        <router-link to="/top">
-            <el-button type="text" icon="star">
-                <!-- <el-icon><star /></el-icon> -->
-                <span>{{ user.person.rating }}</span>
-            </el-button>
-        </router-link>
-
-        <el-divider direction="vertical"></el-divider>
-    </div>
-
+    el-button(v-if="checkAvailableRatingEvery()" type='text' @click="addRating()")
+      font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-star')
+    font-awesome-icon.text-success(v-if="!checkAvailableRatingEvery()" icon='fa fa-star')
+    router-link(to='/top')
+      el-button(type='text')
+        span {{ user.person.rating }}
+    el-divider(direction='vertical')
 </template>
 
 <script>
 import { computed, ref } from '@vue/reactivity';
 import { useStore } from 'vuex';
 import { watch } from '@vue/runtime-core';
+import { ratingApi } from '@/services/api/rating';
+import {ElNotification} from "element-plus";
 
 export default {
     setup() {
         const store = useStore();
         const user = computed(() => store.getters['auth/user']);
+        const isAvailableRatingEvery = ref(true);
         const creditsTooltipAnimation = ref(false);
         const creditsTooltipContent = ref("");
         const creditsTooltipAnimationTimeout = ref();
@@ -101,6 +79,32 @@ export default {
             return Math.round(credits * 100) / 100;
         }
 
+        const addRating = () => {
+          const notify = {title: 'Рейтинг', message: 'Что-то пошло не так', type: 'info'}
+          ratingApi.every()
+              .then((response) => {
+                notify.type = 'success'
+                notify.message = 'Рейтинг успешно добавлен'
+                if (response !== true && response.message !== undefined) {
+                  notify.type = 'warning'
+                  notify.message = response.message
+                }
+                isAvailableRatingEvery.value = false
+              })
+              .catch((err) => {
+                console.log(err)
+                notify.type = 'error'
+                notify.message = err.message
+              })
+              .finally(() => {
+                ElNotification(notify)
+              })
+        }
+
+        const checkAvailableRatingEvery = () => {
+          return isAvailableRatingEvery.value
+        }
+
         return {
             user,
             creditsTooltipAnimation,
@@ -109,6 +113,8 @@ export default {
             balanceTooltipContent,
             roundCredits,
             roundBalance,
+          addRating,
+          checkAvailableRatingEvery,
         }
     },
 }
@@ -118,6 +124,21 @@ export default {
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/mixins";
+
+.jello-horizontal{
+  animation:jello-horizontal 5s linear both;
+  animation-iteration-count: infinite;
+  animation-delay: 2s;
+}
+@keyframes jello-horizontal{
+  0%{transform:scale3d(1,1,1)}
+  3%{transform:scale3d(1.25,.75,1)}
+  4%{transform:scale3d(.75,1.25,1)}
+  5%{transform:scale3d(1.15,.85,1)}
+  6%{transform:scale3d(.95,1.05,1)}
+  7%{transform:scale3d(1.05,.95,1)}
+  100%{transform:scale3d(1,1,1)}
+}
 
 .user-bar-right {
     display: flex;

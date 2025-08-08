@@ -2,46 +2,60 @@ import {library} from '@fortawesome/fontawesome-svg-core'
 import * as icons from '@fortawesome/free-solid-svg-icons'
 
 let myIcons = [
-    'faUser',
-    'faUserCheck',
-    'faSignInAlt',
-    'faSignOutAlt',
-    'faPlus',
+  'faUser',
+  'faUserCheck',
+  'faSignInAlt',
+  'faSignOutAlt',
+  'faPlus',
+  'faIdCard',
 
-    'faStar',
+  'faStar',
+  'faTrophy',
 
-    'faComments',
-    'faQuestionCircle',
+  'faComments',
+  'faQuestionCircle',
 
-    'faDollarSign',
-    'faGraduationCap',
-    'faAdjust',
-    'faAppleAlt',
-    'faCrosshairs',
+  'faDollarSign',
+  'faGraduationCap',
+  'faAdjust',
+  'faAppleAlt',
+  'faCrosshairs',
 
-    'faArrowAltCircleRight',
-    'faCheck',
-    'faPencilAlt',
-    'faClone',
+  'faArrowAltCircleRight',
+  'faArrowDown',
+  'faArrowUp',
+  'faArrowRight',
+  'faArrowLeft',
+  'faCheck',
+  'faPencilAlt',
+  'faClone',
 
-    'faEye',
-    'faEyeSlash',
+  'faEye',
+  'faEyeSlash',
 
-    'faFileExcel',
-    'faCogs',
-    'faExchangeAlt',
-    'faPowerOff',
-    'faLock',
-    'faSearch',
-    'faCircle',
-    'faCheckCircle',
-    'faTrashAlt',
-    'faBan',
-    'faTimesCircle',
-    'faBox',
-    'faTimes'
+  'faExclamationCircle',
+
+  'faFileExcel',
+  'faCogs',
+  'faCog',
+  'faSpinner',
+  'faExchangeAlt',
+  'faPowerOff',
+  'faLock',
+  'faSearch',
+  'faCircle',
+  'faCheckCircle',
+  'faTrashAlt',
+  'faBan',
+  'faTimesCircle',
+  'faBox',
+  'faTimes',
 ];
 
-myIcons.forEach(function(item) {
-    library.add(icons[item]);
-});
+export class IconManager {
+  constructor() {
+    myIcons.forEach(function (item) {
+      library.add(icons[item]);
+    });
+  }
+}

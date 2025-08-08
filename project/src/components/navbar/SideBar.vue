@@ -7,10 +7,10 @@ const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 
 const menuItems = computed(() => {
     let games = [
-        {anchor: 'Saper', url: '/games/saper', title: 'Игра Saper', icon: 'apple'},
-        {anchor: 'Орел-решка', url: '/games/orel', title: 'Игра Орел-решка', icon: 'coin'},
-        {anchor: 'Дуэль', url: '/games/duel', title: 'Игра дуэль', icon: 'aim'},
-        {anchor: '5 яблок', url: '/games/fiveapple', title: 'Игра 5 яблок', icon: 'collection'}     
+        {anchor: 'Сапер', url: '/games/saper', title: 'Игра сапер', icon: 'fa fa-apple-alt'},
+        {anchor: 'Орел-решка', url: '/games/orel', title: 'Игра Орел-решка', icon: 'fa fa-adjust'},
+        {anchor: 'Дуэль', url: '/games/duel', title: 'Игра дуэль', icon: 'fa fa-crosshairs'},
+        {anchor: '5 яблок', url: '/games/fiveapple', title: 'Игра 5 яблок', icon: 'fa fa-graduation-cap'}
     ];
     if (isAuthenticated.value) {
         return [
@@ -29,14 +29,14 @@ const menuItems = computed(() => {
 
 </script>
 
-<template>
-    <div class="bg-white">
-        <div class="container menu-games">
-            <router-link class="menu-games-item" v-for="item in menuItems" :key="item.url" :to="item.url">
-                <el-button type="text" :icon="item.icon">{{ item.anchor }}</el-button>
-            </router-link>
-        </div>
-    </div>
+<template lang="pug">
+  .bg-white
+    .container.menu-games
+      router-link.menu-games-item(v-for='item in menuItems' :key='item.url' :to='item.url')
+        el-button(type='text')
+          font-awesome-icon.mx-1(:icon='item.icon')
+          | {{ item.anchor }}
+
 </template>
 
 <style lang="scss" scoped>

@@ -11,11 +11,17 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 import {store} from './store/store';
 
+import {IconManager} from './fontawesome.js'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+const _ = new IconManager()
+
 const app = createApp(App);
 
 for (const [key, value] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, value);
 }
+
+app.component('font-awesome-icon', FontAwesomeIcon)
 
 
 app

@@ -42,106 +42,114 @@ export default {
 </script>
 
 <template>
-    <div class="nav">
-        <div class="container">
-            <div class="nav-links">
+  <div class="nav">
+    <div class="container">
+      <div class="nav-links">
 
-                <el-popover
-                    ref="popoverMenuRef"
-                    trigger="click"
-                    :manual="true"
-                    placement="bottom"
-                    width="250px"
-                    popper-class="mobile-nav-popper"
-                    :offset="0"
-                    :show-arrow="false"
-                    :persistent="false"
-                    transition="el-zoom-in-top"
-                >
+        <el-popover
+            ref="popoverMenuRef"
+            trigger="click"
+            :manual="true"
+            placement="bottom"
+            width="250px"
+            popper-class="mobile-nav-popper"
+            :offset="0"
+            :show-arrow="false"
+            :persistent="false"
+            transition="el-zoom-in-top"
+        >
 
-                    <div class="mobile-nav">
-                        <router-link class="nav-link logo" to="/">
-                            <el-icon><monitor /></el-icon>Ablaki
-                        </router-link>
+          <div class="mobile-nav">
+            <router-link class="nav-link logo" to="/">
+              <img src="@/assets/logo-spinning.gif" alt="">
+              Ablakin
+            </router-link>
 
-                        <router-link class="nav-link" to="/forum">
-                            <el-icon><comment /></el-icon>Форум
-                        </router-link>
+            <router-link class="nav-link" to="/forum">
+              <font-awesome-icon icon="fa fa-comments"/>
+              Форум
+            </router-link>
 
-                        <router-link class="nav-link" to="/wiki">
-                            <el-icon><question-filled /></el-icon>Wiki
-                        </router-link>
-                    </div>
+            <router-link class="nav-link" to="/wiki">
+              <font-awesome-icon icon="fa fa-question-circle"/>
+              Wiki
+            </router-link>
+          </div>
 
-                    <template #reference>
-                        <button class="nav-link mobile-menu">
-                            <div class="mobile-menu-hamburger">
-                                <div class="line"></div>
-                                <div class="line"></div>
-                                <div class="line"></div>
-                            </div>
-                        </button>
-                    </template>
-                </el-popover>
+          <template #reference>
+            <button class="nav-link mobile-menu">
+              <div class="mobile-menu-hamburger">
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+              </div>
+            </button>
+          </template>
+        </el-popover>
 
-                
-                <router-link class="nav-link logo" to="/">
-                    <img src="@/assets/logo-spinning.gif" alt="">
-                    <span>Ablaki</span>
-                </router-link>
 
-                <router-link class="nav-link" to="/forum">
-                    <el-icon><comment /></el-icon>Форум
-                </router-link>
+        <router-link class="nav-link logo" to="/">
+          <img src="@/assets/logo-spinning.gif" alt="">
+          <span>Ablakin</span>
+        </router-link>
 
-                <router-link class="nav-link" to="/wiki">
-                    <el-icon><question-filled /></el-icon>Wiki
-                </router-link>
+        <router-link class="nav-link" to="/forum">
+          <font-awesome-icon icon="fa fa-comments"/>
+          Форум
+        </router-link>
+
+        <router-link class="nav-link" to="/wiki">
+          <font-awesome-icon icon="fa fa-question-circle"/>
+          Wiki
+        </router-link>
+      </div>
+
+      <div class="nav-user">
+
+        <user-accounts v-if="isAuthenticated"/>
+
+        <el-popover
+            ref="popoverUserMenuRef"
+            trigger="click"
+            :manual="true"
+            placement="bottom"
+            width="250px"
+            popper-class="user-menu-popper"
+            :offset="0"
+            :show-arrow="false"
+            :persistent="false"
+            transition="el-zoom-in-top"
+        >
+          <div class="user-menu-list" v-if="isAuthenticated">
+            <user-bar v-if="isAuthenticated"/>
+
+            <hr/>
+
+            <router-link to="/users/logout" class="user-menu-link">
+              <font-awesome-icon icon="fa fa-sign-out-alt"/>
+              Выход
+            </router-link>
+          </div>
+          <div class="user-menu-list" v-else>
+            <router-link to="/users/login" class="user-menu-link">
+              <font-awesome-icon icon="fa fa-sign-in-alt"/>
+              Вход
+            </router-link>
+
+            <router-link to="/users/registration" class="user-menu-link">
+              <font-awesome-icon icon="fa fa-plus"/>
+              Регистрация
+            </router-link>
+          </div>
+          <template #reference>
+            <div class="user-avatar">
+              <font-awesome-icon icon="fa fa-user"/>
             </div>
-
-            <div class="nav-user">
-
-                <user-accounts v-if="isAuthenticated" />
-
-                <el-popover
-                    ref="popoverUserMenuRef"
-                    trigger="click"
-                    :manual="true"
-                    placement="bottom"
-                    width="250px"
-                    popper-class="user-menu-popper"
-                    :offset="0"
-                    :show-arrow="false"
-                    :persistent="false"
-                    transition="el-zoom-in-top"
-                >
-                    <div class="user-menu-list" v-if="isAuthenticated">
-                        <user-bar v-if="isAuthenticated"/>
-
-                        <hr />
-
-                        <router-link to="/users/logout" class="user-menu-link">
-                            <el-icon size="20"><circle-close /></el-icon>Выход
-                        </router-link>
-                    </div>
-                    <div class="user-menu-list" v-else>
-                        <router-link to="/users/login" class="user-menu-link">
-                            <el-icon size="20"><user /></el-icon>Вход
-                        </router-link>
-
-                        <router-link to="/users/registration" class="user-menu-link">
-                            <el-icon size="20"><circle-plus /></el-icon>Регистрация
-                        </router-link>
-                    </div>
-                    <template #reference>
-                        <div class="user-avatar">
-                            <el-icon><user-filled /></el-icon>
-                        </div>
-                    </template>
-                </el-popover>
-            </div>
-        </div>
+          </template>
+        </el-popover>
+      </div>
     </div>
+  </div>
 </template>
 
 <style lang="scss" scoped>

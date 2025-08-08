@@ -1,44 +1,35 @@
-<script>
-import {exchange} from '../../../../services/api/exchange';
-import {useFetch} from '../../../../hooks/useFetch';
+<script setup>
+import {exchange} from '@/services/api/exchange.js';
+import {useFetch} from '@/hooks/useFetch.js';
 import OrdersList from './OrdersList.vue';
 import moment from 'moment';
 
-export default {
-    components: { OrdersList },
-    setup () {
-        const { result: orders, isLoading } = useFetch(exchange.getHistory, []);
+const {result: orders, isLoading: isLoading} = useFetch(exchange.getHistory, []);
 
-        const formatDatetime = (timestamp) => {
-            return moment(timestamp * 1000).format("DD.MM.YY HH:mm:ss")
-        }
-
-        return {
-            orders,
-            isLoading,
-            formatDatetime,
-        }
-    }
+const formatDatetime = (timestamp) => {
+  return moment(timestamp * 1000).format("DD.MM.YY HH:mm:ss")
 }
+
 </script>
 
-<template>
+<template lang="pug">
+  h5.mt-2 История сделок
+  orders-list(:orders='orders' :isloading='isLoading')
+    template(v-slot:info='{credit, amount, datetime}')
+      el-tag(type="success" effect="light")
+        span(v-if="type === 'sell'") {{ credit }} Cr
+        span(v-else) {{ amount }} Кг
+        font-awesome-icon.px-1(icon='fa fa-arrow-right')
+      el-tag(type="info" effect="light")
+        font-awesome-icon(icon='fa fa-user')
+      el-tag(type="error" effect="light")
+        font-awesome-icon.px-1(icon='fa fa-arrow-right')
+        span(v-if="type === 'sell'") {{ amount }} Кг
+        span(v-else) {{ credit }} Cr
 
-    <h5 class="mt-2">История сделок</h5>
-    <orders-list :orders="orders" :isLoading="isLoading">
-        <template v-slot:action="{ type, credit, amount, datetime }">
-                
-            <el-icon><bottom v-if="type === 'sell'" /><top v-else /></el-icon> {{ credit }}Cr
-            <el-icon><top v-if="type === 'sell'" /><bottom v-else /></el-icon> {{ amount }}Кг
+      time.text-muted.mx-1 {{ formatDatetime(datetime) }}
 
-            <time class="created-date">{{ formatDatetime(datetime) }}</time>
-        </template>
-    </orders-list>
 </template>
 
 <style lang="scss" scoped>
-.created-date {
-    color: #666;
-    font-size: 0.875em;
-}
 </style>

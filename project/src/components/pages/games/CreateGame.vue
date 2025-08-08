@@ -1,9 +1,5 @@
 <template lang="pug">
-  el-dialog(
-      :model-value="isOpen"
-      title="Создать игры"
-      destroy-on-close
-      @close="closeDialog")
+  el-dialog(:model-value="isOpen" title="Создать игры" destroy-on-close @close="closeDialog")
 
     form(action="" class="form-newgame")
       div.row
@@ -74,28 +70,29 @@ export default {
 
     createGame() {
       this.isLoading = true;
+      const notify = {type: 'error', message: 'Что-то пошло не так'}
       this.apiService.create(this.kon, this.count)
           .then((res) => {
-            ElNotification({
-              message: 'Игры созданы',
-              type: 'success',
-            });
-            this.isLoading = false;
+            notify.message = 'Игры созданы'
+            notify.type = 'success'
 
-            emit("gameCreated");
+            emit("gameCreated")
           })
           .catch((err) => {
             errorHandler(err, {
               "Insufficient funds": () => {
-                ElNotification({
-                  message: 'Недостаточно средств на балансе',
-                  type: 'error',
-                });
-
-                this.isLoading = false;
+                notify.message = 'Недостаточно средств на балансе'
+                notify.type = 'warning'
               }
             });
-          });
+          })
+          .finally(() => {
+            this.isLoading = false
+            ElNotification({
+              message: notify.message,
+              type: notify.type,
+            })
+          })
     }
   },
 
