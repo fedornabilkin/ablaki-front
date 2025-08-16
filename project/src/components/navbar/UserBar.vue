@@ -16,28 +16,19 @@ export default {
 }
 </script>
 
-<template>
-    <div class="user-bar">
-        <div class="user-bar-left">
-            <router-link :to="'/wall/' + user.username">
-              <font-awesome-icon icon="fa fa-id-card"/>
-              <el-button type="text">Стена {{ user.username }}</el-button>
-            </router-link>
-            
-            <router-link to="/users/profile/">
-              <font-awesome-icon icon="fa fa-user"/>
-              <el-button type="text">Профиль</el-button>
-            </router-link>
+<template lang="pug">
+  .user-bar
+    .user-bar-left
+      router-link(:to="'/wall/' + user.username")
+        font-awesome-icon(icon='fa fa-id-card')
+        el-button(type='text') Стена {{ user.username }}
+      router-link(to='/users/profile/')
+        font-awesome-icon(icon='fa fa-user')
+        el-button(type='text') Профиль
+      router-link(to='/exchange')
+        font-awesome-icon(icon='fa fa-exchange-alt')
+        el-button(type='text') Биржа кредитов
 
-            <router-link to="/exchange">
-              <font-awesome-icon icon="fa fa-exchange-alt"/>
-              <el-button type="text">Биржа кредитов</el-button>
-            </router-link>
-        </div>
-        
-<!--        <user-accounts />-->
-        
-    </div>
 </template>
 
 <style lang="scss" scoped>

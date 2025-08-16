@@ -5,6 +5,9 @@ export default class User extends MainEntity{
   username = ''
   created_at = 0
   last_login_at = 0
+  person = {}
+
+
   name = ''
   age = 0
   email = ''

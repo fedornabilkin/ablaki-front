@@ -1,6 +1,7 @@
 import MainBuilder from "../mainBuilder";
 import UserActivity from "@/entities/user/userActivity";
 import User from "@/entities/user/user";
+import {Person} from "@/entities/user/person.js";
 
 export class UserBuilder extends MainBuilder {
 
@@ -14,14 +15,37 @@ export class UserBuilder extends MainBuilder {
     this.entity.username = data.username
   }
 
-  createForName(data) {
+  createForWall(data) {
+    super.build(data)
     this.entity.id = data.id
-    this.entity.name = data.username
-    this.entity.fullName = data.full_name
+    this.entity.username = data.username
+
+    this.entity.person = this.createPerson(data.person)
+  }
+
+  createPerson(data) {
+    const builder = new PersonBuilder()
+    builder.build(data)
+    return builder.getEntity()
   }
 
   getUser() {
     return this.getEntity()
+  }
+}
+
+
+export class PersonBuilder extends MainBuilder {
+  createEntity() {
+    return new Person()
+  }
+
+  build(data) {
+    super.build(data)
+    this.entity.id = data.id
+    this.entity.rating = data.rating
+    this.entity.refovod = data.refovod
+    this.entity.bonus.balance.count = data.bonus_count
   }
 }
 
@@ -66,7 +90,7 @@ export class Director {
     this.builder.build(data)
   }
 
-  buildGroupBuilder(data) {
-    this.builder.createForName(data)
+  createForWall(data) {
+    this.builder.createForWall(data)
   }
 }

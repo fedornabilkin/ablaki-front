@@ -11,31 +11,6 @@ const isCurrentLink = (link) => {
   return link === path.value;
 };
 
-
-// export default {
-//     props: {
-//         pageTitle: {
-//             type: String,
-//             default: "",
-//         },
-//         extraLinks: {
-//             type: Array,
-//             default: () => [],
-//         }
-//     },
-//     setup() {
-//         const route = useRoute();
-//         const path = computed(() => route.path)
-//
-//         const isCurrentLink = (link) => {
-//             return link === path.value;
-//         };
-//
-//         return {
-//             isCurrentLink,
-//         }
-//     },
-// }
 </script>
 
 <template lang="pug">
@@ -54,7 +29,7 @@ const isCurrentLink = (link) => {
                 :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
                 :type="extraLink.type"
               )
-                font-awesome-icon(:icon='extraLink.icon')
+                font-awesome-icon(v-if="extraLink.icon" :icon='extraLink.icon')
                 span.px-1(class="d-none d-sm-block") {{extraLink.title}}
 </template>
 

@@ -46,42 +46,6 @@ const extraLinks = [
 
 const konList = [10,20,50,100,200,500,1000]
 
-// export default {
-//     components: { CreateGame, PageHeader, },
-//
-//     setup() {
-//       const apiService = orel;
-//
-//         const dialogCreate = ref(false);
-//
-//         // триггер, заставляющий перезапросить инфу для страницы, который слушают все
-//         // страницы в дочернем router-view
-//         const reloadListTrigger = ref(false);
-//
-//         const openDialogCreate = () => {
-//             dialogCreate.value = true;
-//         };
-//
-//         const closeDialogCreate = () => {
-//             dialogCreate.value = false;
-//         };
-//
-//         // при эмите инфы о том, что игра создана, дергаем триггер,
-//         // заставляя открытую страницу перезапросить данные
-//         const onGameCreated = () => {
-//             reloadListTrigger.value = !reloadListTrigger.value;
-//         };
-//
-//         return {
-//             dialogCreate,
-//             openDialogCreate,
-//             closeDialogCreate,
-//             onGameCreated,
-//             reloadListTrigger,
-//           apiService,
-//         };
-//     },
-// };
 </script>
 
 <template lang="pug">
@@ -90,6 +54,6 @@ const konList = [10,20,50,100,200,500,1000]
       el-button(@click='dialogCreate = true' icon='Plus' type='success')
   create-game(:isOpen='dialogCreate' :konList='konList' :kon='5' :apiService='apiService' @gameCreated='onGameCreated' @close='closeDialogCreate')
   .container
-    router-view(@newGameClick='openDialogCreate' :reloadListtrigger='reloadListTrigger')
+    router-view(@newGameClick='openDialogCreate' :reloadListTrigger='reloadListTrigger')
 
 </template>

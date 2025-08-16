@@ -11,13 +11,14 @@ export class SaperBuilder extends MainBuilder {
   }
 
   build(data) {
+    data.created_by = {id: data.user_id, username: data.username}
+    data.updated_by = {id: data.user_gamer, username: data.username_gamer}
+
     super.build(data)
 
     this.entity.id = data.id
     this.entity.kon = data.kon
 
-    this.entity.created_by = this.createUser({id: data.user_id})
-    this.entity.updated_by = this.createUser({id: data.user_gamer})
   }
 
 }

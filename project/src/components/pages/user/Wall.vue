@@ -1,70 +1,75 @@
-<script>
+<script setup>
 import { ref } from "vue";
 import { useRoute } from 'vue-router';
-import { getWall } from '../../../services/api';
-import PageHeader from '../../PageHeader.vue';
+import { getWall } from '@/services/api.js';
+import PageHeader from "@/components/PageHeader.vue";
+import {UserBuilder} from "@/entities/user/builder.js";
 
-export default {
-    components: { PageHeader },
-    setup() {
-        const route = useRoute();
-        
-        const wall = ref(null);
-        const isLoading = ref(true);
+const route = useRoute()
 
-        getWall(route.params.login).then(res => {
-            wall.value = res;
-            isLoading.value = false;
-        });
+const user = ref(null)
+const isLoading = ref(true)
 
-        return {
-            wall,
-            isLoading,
-        };
-    },
-};
+getWall(route.params.login)
+    .then(response => {
+
+      const builder = new UserBuilder()
+      builder.createForWall(response)
+      user.value = builder.getEntity()
+    })
+    .finally(() => {
+      isLoading.value = false
+    })
+
+const wallTitle = (user) => {
+  return `Стена пользователя ${user.getUserName()}`
+}
+
+const extraLinks = [
+  // {
+  //   link: `/wall/${wall.username}`,
+  //   title: 'Стена',
+  // },
+  // {
+  //   link: `/messages/${wall.username}`,
+  //   title: 'Сообщение',
+  // },
+  // {
+  //   link: `#`,
+  //   title: 'Подписаться',
+  // }
+]
+
 </script>
 
-<template>
-    <div v-loading="isLoading">
-        <template v-if="wall">
-            <page-header
-                :pageTitle="wall.username"
-                :extraLinks="[{
-                    link: `/wall/${wall.username}`,
-                    title: 'Стена',
-                }, {
-                    link: `/messages/${wall.username}`,
-                    title: 'Сообщение',
-                }, {
-                    link: `#`,
-                    title: 'Подписаться',
-                }]"
-            />
-
-            <div class="container py-4">
-                <div class="row">
-                    <div class="col-md-4">
-                        <el-card shadow="never">
-                            <el-avatar class="user-avatar" shape="square" fit="cover" src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg" />
-                        </el-card>
-                    </div>
-                    <div class="col-md-8">
-                        <el-card shadow="never">
-                            <div class="row">
-                                <div class="col">Рейтинг</div>
-                                <div class="col-auto">{{wall.person.rating}}</div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col">Рефералов</div>
-                                <div class="col-auto">{{wall.person.refovod}}</div>
-                            </div>
-                        </el-card>
-                    </div>
-                </div>
-            </div>
-        </template>
-    </div>
+<template lang="pug">
+  div(v-loading='isLoading')
+    template(v-if='user')
+      page-header(:pageTitle='wallTitle(user)' :extraLinks='extraLinks')
+      .container.py-4
+        .row
+          .col-md-4
+            el-card(shadow='never')
+              el-avatar.user-avatar(shape='square' fit='cover' src='https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg')
+          .col-md-8
+            el-card(v-if="user" shadow='never')
+              .row
+                .col Регистрация
+                .col-auto {{ user.created_at_format }}
+              .row
+                .col Последняя активность
+                .col-auto {{ user.last_login_at }}
+              .row
+                .col Рейтинг
+                .col-auto {{ user.person.getRating() }}
+              .row
+                .col Количество бонусов рейтинга
+                .col-auto {{ user.person.getBonusRatingCount() }}
+              .row.mt-3(v-if="user.person.isRefovod()")
+                .col Рефовод
+                .col-auto Есть
+        .row
+          .col {{ user.person.getDescription() }}
 </template>
 
 <style lang="scss" scoped>
