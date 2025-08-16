@@ -37,9 +37,13 @@ const getItems = () => {
     })
 }
 
-const btnPlay = (row) => {
+const btnPlay = (scope) => {
   dialogPlay.value = true
-  currentGame.value = {id: row.id, kon: row.kon}
+  currentGame.value = scope.row
+}
+
+const gameComplete = () => {
+  console.log(currentGame)
 }
 
 getItems()
@@ -75,27 +79,30 @@ const extraLinks = [
 
   .container
     el-table(:data="collection" v-loading='isLoading')
-      el-table-column(prop="id" label="Id" width="60")
+      el-table-column(prop="id" label="Id" width="120")
       el-table-column(label="Игрок")
         template(#default="scope")
           router-link(:to="'/wall/' + getUserName(scope.row)") {{ getUserName(scope.row)}}
       el-table-column(prop="kon" label="Кон" width="60")
       el-table-column(label="")
         template(#default="scope")
-          el-button(type="success" @click="btnPlay(scope.row)") Play
+          el-button(type="success" @click="btnPlay(scope)") Play
 
     create-game(
       :isOpen="dialogCreate"
       :konList="[1,2,3,5,7,10]"
       :kon="1"
       :apiService="apiService"
-      @close="dialogCreate=false")
+      @close="dialogCreate=false"
+    )
 
     play-game(
       :isOpen="dialogPlay"
       :game="currentGame"
       :apiService="apiService"
-      @close="dialogPlay=false")
+      @close="dialogPlay=false"
+      @gameComplete="gameComplete"
+    )
 
 </template>
 

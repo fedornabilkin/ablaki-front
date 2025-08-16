@@ -4,6 +4,7 @@ import {ref, computed} from "@vue/reactivity";
 import {onMounted} from "vue";
 
 const props = defineProps(['isOpen', 'apiService', 'game'])
+const emit = defineEmits(['gameComplete'])
 
 const isLoading = ref(false)
 const btnActive = ref(true)
@@ -34,6 +35,7 @@ const setResponse = (msg) => {
 
 const handleOpen = () => {
   isLoading.value = false
+  btnActive.value = true
   setResponse('')
   createGameArray()
 }
@@ -60,7 +62,7 @@ const startGame = () => {
   setResponse('')
   isLoading.value = true;
   props.apiService.start(props.game.id)
-      .then((res) => {
+      .then(() => {
         createGameArray()
       })
       .catch((err) => {
@@ -69,6 +71,7 @@ const startGame = () => {
       })
       .finally(() => {
         isLoading.value = false
+        btnActive.value = false
       })
 }
 
@@ -82,11 +85,15 @@ const playGame = (row, col) => {
       .then((res) => {
         element.type = 'success'
         checkState(res)
+        if (row === 1) {
+          emit('gameComplete')
+        }
       })
       .catch((err) => {
         element.type = 'warning'
         setResponse(err.response.data.message)
         checkState(err.response)
+        emit('gameComplete')
       })
       .finally(() => {
         element.isLoading = false
