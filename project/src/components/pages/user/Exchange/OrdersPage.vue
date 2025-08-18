@@ -24,13 +24,14 @@ const onBuy = (id) => {
 
     store.dispatch('auth/addCredit', res.credit);
     store.dispatch('auth/addBalance', -res.amount);
-  }).catch(e => {
-    errorHandler(e, {
-      "Type is invalid.": () => ElNotification({
-        message: 'Type is invalid',
-        type: 'error',
-      })
-    });
+  })
+  .catch(e => {
+    let message = 'Что-то пошло не так'
+    errorHandler(e, (msg) => message = msg);
+    ElNotification({
+      message: message,
+      type: 'error',
+    })
   })
 };
 

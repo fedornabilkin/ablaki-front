@@ -2,8 +2,8 @@
 import {computed, ref} from "@vue/reactivity";
 import {ElNotification} from 'element-plus';
 
-import {exchange} from "../../../../services/api/exchange";
-import {errorHandler} from "../../../../services/api/errorHandler";
+import {exchange} from "@/services/api/exchange.js";
+import {errorHandler} from "@/services/api/errorHandler.js";
 
 export default {
     props: {
@@ -22,32 +22,25 @@ export default {
 
         const createOrder = () => {
             isLoading.value = true;
+            const notify = {type: 'error', message: 'Что-то пошло не так'}
             exchange.create(type.value, credit.value, finalPrice.value, count.value)
-                .then((res) => {
-                    ElNotification({
-                        message: 'Заявка создана',
-                        type: 'success',
-                    });
-                    isLoading.value = false;
+                .then(() => {
+                  notify.message = 'Заявка создана'
+                  notify.type = 'success'
 
-                    emit("created", type.value);
+                  emit("created", type.value);
                 })
                 .catch((err) => {
-                    errorHandler(err, {
-                        "Insufficient funds": () => {
-                            ElNotification({
-                                message: 'Недостаточно средств на балансе',
-                                type: 'error',
-                            });
-                        },
-                        "Exceeded the available number of positions": () => ElNotification({
-                            message: 'Исчерпано допустимое количество заявок на продажу кредитов',
-                            type: 'error',
-                        })
-                    });
-
-                    isLoading.value = false;
-                });
+                  notify.type = 'warning'
+                  errorHandler(err, (msg) => notify.message = msg);
+                })
+                .finally(() => {
+                  isLoading.value = false;
+                  ElNotification({
+                    message: notify.message,
+                    type: notify.type,
+                  })
+                })
         };
 
         const closeDialog = () => {

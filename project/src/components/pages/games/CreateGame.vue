@@ -72,19 +72,15 @@ export default {
       this.isLoading = true;
       const notify = {type: 'error', message: 'Что-то пошло не так'}
       this.apiService.create(this.kon, this.count)
-          .then((res) => {
+          .then(() => {
             notify.message = 'Игры созданы'
             notify.type = 'success'
 
             emit("gameCreated")
           })
           .catch((err) => {
-            errorHandler(err, {
-              "Insufficient funds": () => {
-                notify.message = 'Недостаточно средств на балансе'
-                notify.type = 'warning'
-              }
-            });
+            notify.type = 'warning'
+            errorHandler(err, (msg) => notify.message = msg)
           })
           .finally(() => {
             this.isLoading = false

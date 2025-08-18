@@ -2,10 +2,10 @@
 import {ref} from "@vue/reactivity";
 import {useStore} from 'vuex';
 import GamesList from './GamesList.vue';
-import {orel} from '../../../../services/api/games/orel';
+import {orel} from '@/services/api/games/orel.js';
 
 import moment from "moment";
-import {errorHandler} from "../../../../services/api/errorHandler";
+import {errorHandler} from "@/services/api/errorHandler.js";
 
 export default {
     components: {
@@ -71,14 +71,7 @@ export default {
                 store.dispatch('auth/setData', res.gamer);
             }).catch(e => {
                 gamesList.value[gameIndex].isLoading = false;
-                errorHandler(e, {
-                    "The requested model does not exist.": () => {
-                        gamesList.value[gameIndex].error = "Игра удалена";
-                    },
-                    "No free game": () => {
-                        gamesList.value[gameIndex].error = "Игра сыграна";
-                    }
-                });
+                errorHandler(e, (msg) => gamesList.value[gameIndex].error = msg);
             }).finally(onfinally => {
                 let freeGames = gamesList.value.filter(game => {
                     return game.isWin === null && game.error === null;
