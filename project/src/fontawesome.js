@@ -10,6 +10,7 @@ let myIcons = [
   'faIdCard',
 
   'faStar',
+  'faCoins',
   'faTrophy',
 
   'faComments',

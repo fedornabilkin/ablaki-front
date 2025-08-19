@@ -4,15 +4,18 @@
       el-button(type='text')
         el-tooltip(effect='dark' :content='balanceTooltipContent' placement='bottom' v-model:visible='balanceTooltipAnimation' :manual='true')
           div
-            el-icon
-              span &Kcy;&gcy;
+            span Кг
             span {{ roundBalance(user.person.balance) }}
     el-divider(direction='vertical')
+
+
+    el-button(v-if="checkAvailableBonusEvery()" type='text' @click="addBonus()")
+      font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-coins')
     router-link(to='/exchange')
       el-button(type='text')
         el-tooltip(effect='dark' :content='creditsTooltipContent' placement='bottom' v-model:visible='creditsTooltipAnimation' :manual='true')
           div
-            el-icon Cr
+            span Cr
             span {{ roundCredits(user.person.credit) }}
     el-divider(direction='vertical')
 
@@ -31,12 +34,14 @@ import { useStore } from 'vuex';
 import { watch } from '@vue/runtime-core';
 import { ratingApi } from '@/services/api/rating';
 import {ElNotification} from "element-plus";
+import {bonusApi} from "@/services/api/bonus.js";
 
 export default {
     setup() {
         const store = useStore();
         const user = computed(() => store.getters['auth/user']);
         const isAvailableRatingEvery = ref(true);
+        const isAvailableBonusEvery = ref(true);
         const creditsTooltipAnimation = ref(false);
         const creditsTooltipContent = ref("");
         const creditsTooltipAnimationTimeout = ref();
@@ -79,30 +84,56 @@ export default {
             return Math.round(credits * 100) / 100;
         }
 
-        const addRating = () => {
-          const notify = {title: 'Рейтинг', message: 'Что-то пошло не так', type: 'info'}
-          ratingApi.every()
-              .then((response) => {
-                notify.type = 'success'
-                notify.message = 'Рейтинг успешно добавлен'
-                if (response !== true && response.message !== undefined) {
-                  notify.type = 'warning'
-                  notify.message = response.message
-                }
-                isAvailableRatingEvery.value = false
-              })
-              .catch((err) => {
-                console.log(err)
-                notify.type = 'error'
-                notify.message = err.message
-              })
-              .finally(() => {
-                ElNotification(notify)
-              })
-        }
+      const addRating = () => {
+        const notify = {title: 'Рейтинг', message: 'Что-то пошло не так', type: 'info'}
+        ratingApi.every()
+            .then((response) => {
+              notify.type = 'success'
+              notify.message = 'Рейтинг успешно добавлен'
+              if (response !== true && response.message !== undefined) {
+                notify.type = 'warning'
+                notify.message = response.message
+              }
+              isAvailableRatingEvery.value = false
+            })
+            .catch((err) => {
+              console.log(err)
+              notify.type = 'error'
+              notify.message = err.message
+            })
+            .finally(() => {
+              ElNotification(notify)
+            })
+      }
+
+      const addBonus = () => {
+        const notify = {title: 'Бонус', message: 'Что-то пошло не так', type: 'info'}
+        bonusApi.every()
+            .then((response) => {
+              notify.type = 'success'
+              notify.message = 'Бонус успешно получен'
+              if (response !== true && response.message !== undefined) {
+                notify.type = 'warning'
+                notify.message = response.message
+              }
+              isAvailableBonusEvery.value = false
+            })
+            .catch((err) => {
+              console.log(err)
+              notify.type = 'error'
+              notify.message = err.message
+            })
+            .finally(() => {
+              ElNotification(notify)
+            })
+      }
 
         const checkAvailableRatingEvery = () => {
           return isAvailableRatingEvery.value
+        }
+
+        const checkAvailableBonusEvery = () => {
+          return isAvailableBonusEvery.value
         }
 
         return {
@@ -114,7 +145,9 @@ export default {
             roundCredits,
             roundBalance,
           addRating,
+          addBonus,
           checkAvailableRatingEvery,
+          checkAvailableBonusEvery,
         }
     },
 }
