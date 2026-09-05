@@ -22,7 +22,7 @@ const columns = [
     render: (row) => slots.action
       ? slots.action({
           orderId: row.id,
-          isLoading: row.loading,
+          isLoading: row.isLoading,
           status: row.status,
           type: row.type,
         })
@@ -36,5 +36,6 @@ const columns = [
     :data="props.orders"
     :columns="columns"
     :loading="props.isLoading"
+    :scroll-x="400"
   />
 </template>

@@ -1,108 +1,64 @@
-<script lang="ts" setup>
-import PageHeader from "@/components/PageHeader.vue";
-import {ref} from "vue";
-import {commentApi, themeApi} from "@/services/api/forum";
-import {useRoute} from "vue-router";
-import {ForumThemeBuilder, ForumCommentBuilder} from "@/entities/forum/builder"
-import {UserBuilder} from "@/entities/user/builder"
-import {
-  NForm,
-  NFormItem,
-  NInput,
-  NButton,
-  NDataTable,
-} from 'naive-ui'
-
-const theme = ref({});
-const comments = ref([]);
-const isLoading = ref(false)
-const loadingData = ref(false)
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useStore } from 'vuex';
+import { NAlert, NButton, NCard, NForm, NFormItem, NInput } from 'naive-ui';
+import PageHeader from '@/components/PageHeader.vue';
+import RequestState from '@/components/RequestState.vue';
+import PagePager from '@/components/PagePager.vue';
+import { list, detail, emptyPage, field, date, mutate, errorText, type RecordData } from '@/services/api/portal';
+import { usePageRequest } from '@/hooks/usePageRequest';
 const route = useRoute();
-const themeId = route.params.theme_id;
-const item = ref({comment:'', theme_id: themeId-0})
-
-const userBuilder: UserBuilder = new UserBuilder()
-const themeBuilder: ForumThemeBuilder = new ForumThemeBuilder()
-theme.value = themeBuilder.getEntity()
-const commentBuilder: ForumCommentBuilder = new ForumCommentBuilder({userBuilder: userBuilder})
-
-const fetchTheme = () => {
-  themeApi.view(themeId)
-      .then((response: []) => {
-        themeBuilder.build(response)
-        theme.value = themeBuilder.getEntity()
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-};
-
-const fetchComments = () => {
-  loadingData.value = true
-  commentApi.index(themeId)
-      .then((response: []) => {
-        commentBuilder.createCollection(response)
-        comments.value = commentBuilder.getCollection()
-      })
-      .catch((err) => {
-        console.log(err);
-      })
-      .finally(() => loadingData.value = false)
-};
-
-fetchTheme();
-fetchComments();
-
-const saveItem = () => {
-  if (item.value.comment === '' || item.value.theme_id < 1) {
-    return
-  }
-  isLoading.value = true
-  commentApi.create(item.value.comment, item.value.theme_id)
-      .then((response) => {
-        commentBuilder.build(response)
-        comments.value.unshift(commentBuilder.getEntity())
-        item.value.comment = ''
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-      .finally(() => isLoading.value = false)
-  return false
+const store = useStore();
+const id = computed(() => String(route.params.theme_id));
+const page = ref(1);
+const comment = ref('');
+const saving = ref(false);
+const saveError = ref('');
+const authenticated = computed(() => store.getters['auth/isAuthenticated']);
+watch(id, () => { page.value = 1; comment.value = ''; saveError.value = ''; });
+const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id.value)), null as RecordData | null, [id]);
+const comments = usePageRequest(() => list('forum-comment', page.value, { 'filter[theme_id]': id.value, expand: 'user', sort: '-id' }), emptyPage(), [id, page]);
+function author(item: RecordData) {
+  const user = item.user;
+  return user && typeof user === 'object' && 'username' in user ? field(user.username) : '';
 }
-
-const extraLinks = [
-  {
-    link: '/forum',
-    title: 'Все темы',
-  }, {
-    link: '/forum/my',
-    title: 'Мои темы',
-  },
-]
-
-const columns = [
-  { title: '#', key: 'id', width: 60, render: (row: any) => row.getId?.() ?? row.id },
-  { title: 'Автор', key: 'author', width: 120, render: (row: any) => row?.created_by?.getUserName?.() ?? '' },
-  { title: 'Комментарий', key: 'comment', width: 450, render: (row: any) => row.getComment?.() ?? row.comment },
-  { title: 'Дата', key: 'created_at_format', width: 160 },
-]
-
+async function submit() {
+  if (saving.value || !comment.value.trim()) return;
+  const themeId = id.value;
+  const revision = store.state.auth.revision;
+  saving.value = true;
+  saveError.value = '';
+  try {
+    await mutate('forum-comment', 'post', { theme_id: Number(themeId), comment: comment.value.trim() });
+    if (themeId !== id.value || revision !== store.state.auth.revision) return;
+    comment.value = '';
+    if (page.value !== 1) page.value = 1;
+    else await comments.refresh();
+  } catch (cause) { if (themeId === id.value) saveError.value = errorText(cause); }
+  finally { saving.value = false; }
+}
 </script>
-
 <template lang="pug">
-  page-header(:pageTitle="theme.getName()" :extraLinks="extraLinks")
-  .container
-    n-form(inline :model="item" @submit.prevent="saveItem()")
-      n-form-item
-        n-input(v-model:value="item.comment" type="textarea" placeholder="Сообщение" clearable)
-      n-form-item
-        n-button(type="success" :loading='isLoading' @click="saveItem") Создать
-
-    n-data-table(:loading="loadingData" :data='comments' :columns="columns" :max-height='450' style="width: 100%")
-
+page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'Обсуждение'" :extra-links="[{ link: '/forum', title: '← Все темы' }]")
+.container.page.stack
+  request-state(:loading="theme.loading.value" :error="theme.error.value" @retry="theme.refresh")
+    template(v-if="theme.data.value")
+      p.muted Создано {{ date(theme.data.value.created_at) }} · Новые сообщения сверху
+      n-card(v-if="authenticated" title="Ваш ответ")
+        n-form(@submit.prevent="submit")
+          n-form-item(label="Сообщение" :label-props="{ for: 'reply' }")
+            n-input(:input-props="{ id: 'reply' }" v-model:value="comment" type="textarea" :autosize="{ minRows: 3, maxRows: 12 }" :disabled="saving" placeholder="Напишите ответ")
+          n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
+          n-button(type="primary" attr-type="submit" :loading="saving" :disabled="!comment.trim()") Отправить
+      n-alert(v-else type="info")
+        router-link(:to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войдите, чтобы ответить
+      request-state(:loading="comments.loading.value" :error="comments.error.value" :empty="!comments.data.value.items.length" @retry="comments.refresh")
+        n-card(v-for="item in comments.data.value.items" :key="item.id")
+          .toolbar.mb-3
+            router-link(v-if="author(item)" :to="'/wall/' + encodeURIComponent(author(item))") {{ author(item) }}
+            span.muted(v-else) Участник №{{ item.user_id }}
+            time.muted {{ date(item.created_at) }}
+          .pre-wrap {{ field(item.comment) }}
+      page-pager(v-if="!comments.error.value" v-model:page="page" :result="comments.data.value" :disabled="comments.loading.value")
 </template>
-
-<style scoped>
-
-</style>

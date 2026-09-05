@@ -51,7 +51,6 @@
             :loading="isLoading"
             :disabled="disabled"
             block
-            @click="onSubmit"
           >
             Войти
           </n-button>
@@ -87,6 +86,7 @@ export default {
     return {
       auth: {login: '', password: ''},
       serverError: '',
+      submitting: false,
       validationRules: {
         login: [{required: true, message: 'Введите логин', trigger: ['blur']}],
         password: [{required: true, message: 'Введите пароль', trigger: ['blur']}],
@@ -95,7 +95,7 @@ export default {
   },
   computed: {
     disabled() {
-      return !this.auth.login || !this.auth.password || this.isLoading;
+      return !this.auth.login || !this.auth.password || this.isLoading || this.submitting;
     },
     isLoading() {
       return this.$store.getters['auth/authStatus'] === 'loading';
@@ -103,15 +103,18 @@ export default {
   },
   methods: {
     onSubmit() {
+      if (this.submitting) return;
+      this.submitting = true;
       this.serverError = '';
       this.$refs.formRef
         .validate()
         .then(() => this.doLogin())
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => { this.submitting = false; });
     },
     doLogin() {
       const {login, password} = this.auth;
-      this.$store
+      return this.$store
         .dispatch('auth/login', {login, password})
         .then(() => {
           this.notification.success({
