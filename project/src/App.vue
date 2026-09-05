@@ -31,8 +31,6 @@ import {
   NMessageProvider,
 } from 'naive-ui';
 
-import axios from 'axios';
-import {getProfile} from './services/api.js';
 import {mapGetters} from 'vuex';
 
 export default {
@@ -49,20 +47,6 @@ export default {
     NMessageProvider,
   },
 
-  created: function () {
-    if (this.$store.state.auth.token) {
-      axios.defaults.headers.common['Authorization'] = this.headerToken;
-    }
-
-    this.$store.dispatch('auth/fetchData').catch(e => {
-      this.$router.push('/')
-    });
-  },
-  watch: {
-    'headerToken': function () {
-      axios.defaults.headers.common['Authorization'] = this.headerToken;
-    }
-  },
   computed: {
     ...mapGetters('auth', [
       'isAuthenticated',
@@ -95,7 +79,6 @@ export default {
   data() {
     return {
       darkTheme,
-      authStatus: true,
       themeOverrides: {
         common: {
           primaryColor: '#ff7a00',

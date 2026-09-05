@@ -1,4 +1,4 @@
-import axios from "axios";
+import {apiClient as axios} from "@/services/httpClient";
 import config from "../../../config/config";
 
 const baseUrl = config.getParam('apiDomain');

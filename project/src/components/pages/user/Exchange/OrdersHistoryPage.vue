@@ -2,10 +2,11 @@
 import {exchange} from '@/services/api/exchange.js';
 import {useFetch} from '@/hooks/useFetch.js';
 import OrdersList from './OrdersList.vue';
+import RequestError from '@/components/RequestError.vue';
 import moment from 'moment';
 import {NTag} from 'naive-ui';
 
-const {result: orders, isLoading: isLoading} = useFetch(exchange.getHistory, []);
+const {result: orders, isLoading, error, refetch} = useFetch(exchange.getHistory, []);
 
 const formatDatetime = (timestamp) => {
   return moment(timestamp * 1000).format("DD.MM.YY HH:mm:ss")
@@ -15,6 +16,7 @@ const formatDatetime = (timestamp) => {
 
 <template lang="pug">
   h5.mt-2 История сделок
+  request-error(:failed="!!error" @retry="refetch")
   orders-list(:orders='orders' :isloading='isLoading')
     template(v-slot:info='{credit, amount, datetime}')
       n-tag(type="success")

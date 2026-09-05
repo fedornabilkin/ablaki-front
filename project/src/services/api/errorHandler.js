@@ -1,22 +1,17 @@
 import { showAlert } from "../dialog.js";
 
-export const errorHandler = (e, errors) => {
-  if (!errors.hasOwnProperty("404")) {
-    errors['404'] = () => showAlert("Что-то сломалось")
-  }
-
-  if (!e.response) {
-    console.log("Ошибка Интернета");
-  } else if (typeof errors === "function") {
-    errors(e.response.data.message)
-  } else {
-    Object.keys(errors).map(function (key) {
-      let error = String(e.response.data.message);
-      let errorCode = String(e.response.status);
-
-      if (error === key || errorCode === key) {
-        errors[key](error);
-      }
-    })
-  }
-}
+export const errorHandler = (error, handlers = {}) => {
+    const response = error?.response;
+    if (!response) {
+        showAlert('Не удалось связаться с сервером. Проверьте соединение и повторите попытку.');
+        return;
+    }
+    const message = String(response.data?.message ?? '');
+    if (typeof handlers === 'function') {
+        handlers(response.status >= 500 ? 'Ошибка сервера. Повторите попытку позже.' : message);
+        return;
+    }
+    const handler = handlers?.[message] ?? handlers?.[String(response.status)];
+    if (typeof handler === 'function') handler(message);
+    else showAlert(response.status === 401 ? 'Войдите в аккаунт заново.' : 'Не удалось выполнить действие. Повторите попытку.');
+};

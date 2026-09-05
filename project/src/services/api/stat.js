@@ -1,4 +1,4 @@
-import axios from "axios";
+import {apiClient as axios} from "@/services/httpClient";
 import config from "../../config/config";
 // TODO(stat-mock): убрать импорт и ветки isStatMockMode() после подключения бэка
 import {isStatMockMode, mockStatIndex, mockStatTop, mockStatUser} from "../stat/mock";

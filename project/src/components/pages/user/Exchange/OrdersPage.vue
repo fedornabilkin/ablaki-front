@@ -1,56 +1,37 @@
 <script setup>
 import OrdersList from "./OrdersList.vue";
+import RequestError from '@/components/RequestError.vue';
 import {exchange} from '@/services/api/exchange.js';
 import {errorHandler} from "@/services/api/errorHandler.js";
 import {useFetchOrders} from './hooks/useFetchOrders';
-import {NTag, NButton, useNotification} from 'naive-ui';
+import {NTag, NButton} from 'naive-ui';
 import {useStore} from 'vuex';
 
 
 const store = useStore();
-const notification = useNotification();
 
-const {isLoading: isLoadingBuy, ordersList: ordersBuy} = useFetchOrders(exchange.getBuy);
+const {isLoading: isLoadingBuy, ordersList: ordersBuy, error: errorBuy, refetch: reloadBuy} = useFetchOrders(exchange.getBuy);
 
-const {isLoading: isLoadingSell, ordersList: ordersSell} = useFetchOrders(exchange.getSell);
+const {isLoading: isLoadingSell, ordersList: ordersSell, error: errorSell, refetch: reloadSell} = useFetchOrders(exchange.getSell);
 
-const onBuy = (id) => {
-  let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
-
-  ordersBuy.value[orderIndex].isLoading = true;
-
-  exchange.proceed(id).then(res => {
-    ordersBuy.value[orderIndex].isLoading = false;
-    ordersBuy.value[orderIndex].status = "success";
-
-    store.dispatch('auth/addCredit', res.credit);
-    store.dispatch('auth/addBalance', -res.amount);
-  })
-  .catch(e => {
-    let message = 'Что-то пошло не так'
-    errorHandler(e, (msg) => message = msg);
-    notification.error({
-      content: message,
-      duration: 4500,
-    })
-  })
+const proceedOrder = async (orders, id) => {
+  const order = orders.value.find(item => item.id === id);
+  if (!order || order.isLoading || order.status === 'success') return;
+  order.isLoading = true;
+  try {
+    await exchange.proceed(id);
+    order.status = 'success';
+    // Refresh the server balance instead of estimating settlement on the client.
+    await store.dispatch('auth/fetchData');
+  } catch (error) {
+    errorHandler(error);
+  } finally {
+    order.isLoading = false;
+  }
 };
 
-const onSell = (id) => {
-  let orderIndex = ordersSell.value.findIndex((order) => order.id === id);
-
-  console.log(orderIndex, id)
-  console.log(ordersSell.value[orderIndex])
-  ordersSell.value[orderIndex].isLoading = true;
-
-  exchange.proceed(id).then(res => {
-    ordersSell.value[orderIndex].isLoading = false;
-    ordersSell.value[orderIndex].status = "success";
-
-    store.dispatch('auth/addCredit', -res.credit);
-    store.dispatch('auth/addBalance', res.amount);
-  });
-};
+const onBuy = id => proceedOrder(ordersBuy, id);
+const onSell = id => proceedOrder(ordersSell, id);
 
 </script>
 
@@ -58,6 +39,7 @@ const onSell = (id) => {
   .row.mt-2
     .col-md-6
       h5 Купить кредиты
+      request-error(:failed="!!errorBuy" @retry="reloadBuy")
       orders-list(:orders='ordersBuy' :isloading='isLoadingBuy')
         template(v-slot:info='{ credit, amount }')
           n-tag(type="success")
@@ -78,6 +60,7 @@ const onSell = (id) => {
 
     .col-md-6
       h5 Продать кредиты
+      request-error(:failed="!!errorSell" @retry="reloadSell")
       orders-list(:orders='ordersSell' :isloading='isLoadingSell')
         template(v-slot:info='{ credit, amount }')
           n-tag(type="success")

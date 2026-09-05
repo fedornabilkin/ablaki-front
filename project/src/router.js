@@ -27,6 +27,7 @@ import Craft from './components/pages/craft/Craft.vue';
 import City from './components/pages/city/City.vue';
 
 import {store} from './store/store';
+import {createAuthGuard} from './services/authGuard';
 
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
@@ -47,7 +48,7 @@ const routes = [
     { path: '/users/login', component: Login },
     { path: '/users/login-key/:key', component: loginKey },
     { path: '/users/logout', component: Logout },
-    { path: '/users/profile', component: Profile },
+    { path: '/users/profile', component: Profile, meta: { requiresAuth: true } },
 
     { path: '/', component: WithUser, children: [
         { path: '/games/orel', component: Orel, children: [
@@ -109,18 +110,6 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach((to, from) => {
-    // instead of having to check every route record with
-    // to.matched.some(record => record.meta.requiresAuth)
-    // if (to.meta.requiresAuth && store.getters['auth/isAuthorized'] === false) {
-    //     // this route requires auth, check if logged in
-    //     // if not, redirect to login page.
-    //     return {
-    //         path: '/',
-    //         // save the location we were at to come back later
-    //         //query: { redirect: to.fullPath },
-    //     }
-    // }
-})
+router.beforeEach(createAuthGuard(store));
 
 export { router };

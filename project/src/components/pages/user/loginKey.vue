@@ -3,7 +3,6 @@
 </template>
 
 <script>
-import {useRoute} from "vue-router";
 import {NSpin, useNotification} from "naive-ui";
 
 export default {
@@ -22,11 +21,10 @@ export default {
   created() {
     if (this.$store.getters['auth/isAuthenticated']) {
       this.$router.push("/");
+      return;
     }
 
-    const route = useRoute();
-
-    const key = route.params.key;
+    const key = this.$route.params.key;
 
     this.$store
         .dispatch("auth/loginKey", {key})
@@ -36,16 +34,15 @@ export default {
             content: 'Вы вошли в аккаунт',
             duration: 4500,
           });
-          this.$router.push("/");
+          this.$router.replace("/");
         })
         .catch((err) => {
-          if (err.errors !== undefined) {
-            for (let resKey in err.errors) {
-              this.errors.text[resKey] = err.errors[resKey];
-            }
-
-            this.$refs.formRef.validate();
-          }
+          this.notification.error({
+            title: 'Не удалось войти',
+            content: 'Ссылка недействительна или сервер недоступен. Войдите с логином и паролем.',
+            duration: 4500,
+          });
+          this.$router.replace('/users/login');
         })
         .finally(() => {
           this.isLoading = false;

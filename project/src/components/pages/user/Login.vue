@@ -119,7 +119,8 @@ export default {
             content: 'Вы вошли в аккаунт',
             duration: 4500,
           });
-          this.$router.push('/');
+          const redirect = this.$route.query.redirect;
+          this.$router.replace(typeof redirect === 'string' && /^\/(?![\/\\])/.test(redirect) ? redirect : '/');
         })
         .catch((err) => {
           this.serverError = this.extractError(err);
