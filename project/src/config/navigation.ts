@@ -2,9 +2,11 @@ export const navigation = [
   { to: '/games', title: 'Игры' },
   { to: '/forum', title: 'Форум' },
   { to: '/users', title: 'Участники' },
+  { to: '/statistic', title: 'Статистика' },
   { to: '/exchange', title: 'Биржа' },
   { to: '/balance', title: 'История счёта', account: true },
   { to: '/transfer', title: 'Переводы', account: true },
+  { to: '/users/referrals', title: 'Рефералы', account: true },
 ];
 export const games = [
   { to: '/games/orel', title: 'Орлянка', description: 'Выберите орла или решку, создайте свою игру или присоединитесь к чужой.', badge: '1 из 2' },

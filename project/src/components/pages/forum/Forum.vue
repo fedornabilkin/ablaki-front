@@ -1,21 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NModal } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
+import ListFilters from '@/components/ListFilters.vue';
 import { list, emptyPage, field, date, mutate, record, errorText } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
+import { useListQuery } from '@/hooks/useListQuery';
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
 const authenticated = computed(() => store.getters['auth/isAuthenticated']);
 const mine = computed(() => route.path === '/forum/my');
-const page = ref(1);
-watch(mine, () => { page.value = 1; });
-const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, { sort: '-last_post' }), emptyPage(), [mine, page]);
+const { page, search, filters, params, reset } = useListQuery();
+const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, params.value), emptyPage(), [mine, page, params]);
 const links = computed(() => [{ link: '/forum', title: 'Все темы' }, ...(authenticated.value ? [{ link: '/forum/my', title: 'Мои темы' }] : [])]);
 const showCreate = ref(false);
 const title = ref('');
@@ -53,6 +54,7 @@ page-header(page-title="Форум" :extra-links="links")
     router-link.nav-item(v-else :to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войти для обсуждения
 .container.page
   n-card
+    list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       .record-row(v-for="theme in data.items" :key="theme.id")
         div

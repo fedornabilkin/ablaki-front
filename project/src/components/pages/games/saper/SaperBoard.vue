@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { useStore } from 'vuex';
 import { isAxiosError } from 'axios';
 import { NAlert, NButton, NCard, useDialog } from 'naive-ui';
@@ -18,16 +18,18 @@ const message = ref('');
 const error = ref('');
 const moves = ref<Record<number, number>>({});
 const lostCell = ref<number | null>(null);
+let disposed = false;
 async function start() {
   if (busy.value || started.value) return;
   busy.value = true; error.value = '';
   const revision = store.state.auth.revision;
   try {
     await startSaper(props.game.id);
-    if (revision !== store.state.auth.revision) return;
+    if (disposed || revision !== store.state.auth.revision) return;
     started.value = true;
     emit('account-change');
   } catch (cause) {
+    if (disposed || revision !== store.state.auth.revision) return;
     error.value = errorText(cause);
     if (isAxiosError(cause) && (!cause.response || cause.response.status >= 500)) uncertain.value = true;
   } finally { busy.value = false; }
@@ -38,11 +40,12 @@ async function play(col: number) {
   const revision = store.state.auth.revision;
   try {
     await mutate('saper/play/' + props.game.id, 'post', { row: row.value, col });
-    if (revision !== store.state.auth.revision) return;
+    if (disposed || revision !== store.state.auth.revision) return;
     moves.value[row.value] = col;
     row.value--;
     if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('account-change'); }
   } catch (cause) {
+    if (disposed || revision !== store.state.auth.revision) return;
     const response = isAxiosError(cause) ? cause.response : undefined;
     // The existing backend signals a confirmed loss with a specific 400 response.
     const lost = response?.status === 400 && ['Game lost', 'Игра проиграна'].includes(response.data?.message);
@@ -58,15 +61,17 @@ function warnUnload(event: BeforeUnloadEvent) {
   if (busy.value || (started.value && !complete.value)) { event.preventDefault(); event.returnValue = ''; }
 }
 window.addEventListener('beforeunload', warnUnload);
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnload));
-onBeforeRouteLeave(() => {
+onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunload', warnUnload); });
+function confirmLeave() {
   if (!store.getters['auth/isAuthenticated']) return true;
   if (!busy.value && (!started.value || complete.value)) return true;
   if (busy.value) return false;
   return new Promise<boolean>(resolve => {
     dialog.warning({ title: 'Игра ещё идёт', content: 'После ухода со страницы восстановить поле пока нельзя. Покинуть игру?', positiveText: 'Покинуть', negativeText: 'Остаться', onPositiveClick: () => resolve(true), onNegativeClick: () => resolve(false), onClose: () => resolve(false), onMaskClick: () => resolve(false) });
   });
-});
+}
+onBeforeRouteLeave(confirmLeave);
+onBeforeRouteUpdate((to, from) => to.path === from.path || confirmLeave());
 </script>
 <template lang="pug">
 n-card(:title="'Игра №' + game.id")

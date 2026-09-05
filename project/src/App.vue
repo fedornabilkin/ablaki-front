@@ -2,6 +2,7 @@
 import { darkTheme, ruRU, dateRuRU, NConfigProvider, NLoadingBarProvider, NDialogProvider, NNotificationProvider, NMessageProvider } from 'naive-ui';
 import NavBar from '@/components/navbar/NavBar.vue';
 import NaiveApiRegistrar from '@/components/NaiveApiRegistrar.vue';
+import RandomTip from '@/components/RandomTip.vue';
 import { themeOverrides } from '@/theme/tokens';
 </script>
 <template lang="pug">
@@ -15,5 +16,9 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
           nav-bar
           main#content(tabindex="-1")
             router-view
+          random-tip
           footer.site-footer.container Ablakin · Игры и общение
 </template>
+<style scoped>
+#content { scroll-margin-top: 13rem; }
+</style>

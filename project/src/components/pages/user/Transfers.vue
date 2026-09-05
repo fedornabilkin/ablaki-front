@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCard, NForm, NFormItem, NInputNumber, NPopconfirm, NSelect } from 'naive-ui';
+import { NAlert, NButton, NCard, NForm, NFormItem, NInputNumber, NPopconfirm } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
+import ListFilters from '@/components/ListFilters.vue';
 import { list, emptyPage, mutate, date, field, errorText, person } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
+import { useListQuery } from '@/hooks/useListQuery';
 const store = useStore();
 const balance = computed(() => person(store.getters['auth/user']).credit);
-const mode = ref('active');
-const page = ref(1);
-watch(mode, () => { page.value = 1; });
-const { data, loading, error, refresh } = usePageRequest(() => list(mode.value === 'active' ? 'transfer' : 'transfer/history', page.value), emptyPage(), [mode, page]);
+const { page, search, filters, params, reset } = useListQuery({ mode: 'active' });
+const mode = computed(() => filters.value.mode === 'history' ? 'history' : 'active');
+const definitions = [{ key: 'mode', label: 'Список переводов', options: [{ label: 'Не получены', value: 'active' }, { label: 'История', value: 'history' }] }];
+const { data, loading, error, refresh } = usePageRequest(() => {
+  const { 'filter[mode]': _mode, ...query } = params.value;
+  return list(mode.value === 'active' ? 'transfer' : 'transfer/history', page.value, query);
+}, emptyPage(), [mode, page, params]);
 const amount = ref<number | null>(null);
 const receiveId = ref<number | null>(null);
 const busy = ref(false);
@@ -63,7 +68,7 @@ page-header(page-title="Переводы кредитов")
             n-button(:disabled="!receiveId || busy") Получить
           | Получить перевод №{{ receiveId }}?
   n-card(title="Мои переводы")
-    n-select.mb-3(v-model:value="mode" :options="[{ label: 'Не получены', value: 'active' }, { label: 'История', value: 'history' }]" aria-label="Список переводов" :disabled="busy")
+    list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="loading || busy" @reset="reset")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       .record-row(v-for="entry in data.items" :key="entry.id")
         div

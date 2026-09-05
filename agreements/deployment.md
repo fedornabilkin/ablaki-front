@@ -1,10 +1,10 @@
 # Соглашение по деплою frontend
 
-Статус: workflow и серверный скрипт добавлены в код по образцу PCM Helper; настройка GitHub/VPS и первый production-запуск этой работой не выполнялись. [Инструкция](../docs/deployment-github-vps.md).
+Статус: владелец подтвердил успешный production-деплой frontend. [Инструкция](../docs/deployment-github-vps.md).
 
 ## Схема
 - GitHub Actions собирает project/dist и передаёт проверенный архив по SSH; статику отдаёт системный nginx.
-- PR выполняет проверки. Production-публикация допускается из master после проверок; release/2026-09-05 предназначена для подготовки.
+- Разработка и публикация ведутся непосредственно в master по решению владельца. Push master выполняет CI и production deploy; PR не обязателен. Рабочие ветки создаются только по отдельной просьбе.
 - Базовое окружение CI — Node.js 24; npm ci → npm run test:unit → npm run build.
 - На VPS передавать только dist и скрипт релиза. Сборка на сервере не требуется.
 - Web-root — `/var/www/ablakin.ru`, deploy-root — `/opt/ablaki-frontend`. В инструкции используется домен `ablakin.ru`; SSH-доступ и адрес отдельного API-хоста нужно сверить до первого запуска.

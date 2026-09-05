@@ -24,7 +24,7 @@ describe('portal API contracts', () => {
   it('sends page and theme filter separately through the shared client', async () => {
     const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: [{ id: 1 }], headers: {} });
     await list('forum-comment', 3, { 'filter[theme_id]': '7', expand: 'user' });
-    expect(get).toHaveBeenCalledWith(expect.stringMatching(/v1\/forum-comment$/), { params: { page: 3, 'filter[theme_id]': '7', expand: 'user' } });
+    expect(get).toHaveBeenCalledWith(expect.stringMatching(/v1\/forum-comment$/), { params: { page: 3, 'filter[theme_id]': '7', expand: 'user', envelope: 1 } });
   });
   it('accepts 201 with an empty body for credit transfer creation', async () => {
     const request = vi.spyOn(apiClient, 'request').mockResolvedValue({ data: '', status: 201 });
@@ -34,5 +34,10 @@ describe('portal API contracts', () => {
   it('rejects a missing public wall', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue({ data: null });
     await expect(detail('users/wall/missing')).rejects.toThrow();
+  });
+  it('reads actual page counts from the opt-in Yii envelope without depending on CORS headers', () => {
+    expect(pageData({ items: [{ id: 2 }], _meta: { totalCount: 21, pageCount: 2, currentPage: 2, perPage: 20 } }, {})).toEqual({ items: [{ id: 2 }], total: 21, pageCount: 2, currentPage: 2, pageSize: 20 });
+    expect(() => pageData({ items: [], _meta: { totalCount: 21, pageCount: 1, currentPage: 1, perPage: 20 } }, {})).toThrow();
+    expect(() => pageData({ items: [], _meta: { totalCount: null, pageCount: 0, currentPage: 1, perPage: 20 } }, {})).toThrow();
   });
 });

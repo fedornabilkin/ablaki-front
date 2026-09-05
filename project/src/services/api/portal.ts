@@ -3,7 +3,7 @@ import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 
 export type RecordData = Record<string, unknown> & { id: number };
-export interface Page { items: RecordData[]; total: number | null; pageSize: number; }
+export interface Page { items: RecordData[]; total: number | null; pageSize: number; currentPage?: number; pageCount?: number; }
 export const emptyPage = (): Page => ({ items: [], total: null, pageSize: 20 });
 const url = (path: string) => config.makeApiUrl(`v1/${path}`);
 export function record(value: unknown): RecordData {
@@ -26,6 +26,20 @@ export function date(value: unknown): string {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' });
 }
 export function pageData(data: unknown, headers: Record<string, unknown>): Page {
+  if (data && typeof data === 'object' && !Array.isArray(data) && 'items' in data && '_meta' in data) {
+    const meta = data._meta;
+    if (!Array.isArray(data.items) || !meta || typeof meta !== 'object') throw new Error('invalid-response');
+    const values = meta as Record<string, unknown>;
+    const total = Number(values.totalCount);
+    const pageSize = Number(values.perPage);
+    const currentPage = Number(values.currentPage);
+    const pageCount = Number(values.pageCount);
+    if ([values.totalCount, values.perPage, values.currentPage, values.pageCount].some(value => !['number', 'string'].includes(typeof value)) ||
+      !Number.isSafeInteger(total) || total < 0 || !Number.isSafeInteger(pageSize) || pageSize < 1 ||
+      !Number.isSafeInteger(currentPage) || currentPage < 1 || !Number.isSafeInteger(pageCount) || pageCount < 0 ||
+      pageCount !== Math.ceil(total / pageSize)) throw new Error('invalid-response');
+    return { items: data.items.map(record), total, pageSize, currentPage, pageCount };
+  }
   if (!Array.isArray(data)) throw new Error('invalid-response');
   const rawTotal = headers['x-pagination-total-count'];
   const total = rawTotal == null || rawTotal === '' ? null : Number(rawTotal);
@@ -33,7 +47,7 @@ export function pageData(data: unknown, headers: Record<string, unknown>): Page 
   return { items: data.map(record), total: total !== null && Number.isSafeInteger(total) && total >= 0 ? total : null, pageSize: Number.isSafeInteger(size) && size > 0 ? size : 20 };
 }
 export async function list(path: string, page = 1, params: Record<string, unknown> = {}): Promise<Page> {
-  const response = await apiClient.get(url(path), { params: { page, ...params } });
+  const response = await apiClient.get(url(path), { params: { page, ...params, envelope: 1 } });
   return pageData(response.data, response.headers);
 }
 export async function detail(path: string): Promise<RecordData> {
