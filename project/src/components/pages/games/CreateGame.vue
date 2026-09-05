@@ -1,37 +1,38 @@
 <template lang="pug">
-  el-dialog(:model-value="isOpen" title="Создать игры" destroy-on-close @close="closeDialog")
+  n-modal(:show="isOpen" preset="card" title="Создать игры" style="max-width: 500px;" @update:show="(v) => v || closeDialog()")
 
     form(action="" class="form-newgame")
       div.row
         div(class="col-sm label") Ставка
 
         div.col-sm-auto
-          el-input-number(v-model="kon" :min="1" controls-position="right")
+          n-input-number(v-model:value="kon" :min="1")
 
       div(class="fast-kon mt-2")
         div(v-for="btn in konList" :key="btn")
-          el-button(type="info" size="small" :disabled="btn === kon" @click="fastKon(btn)") {{ btn }}
+          n-button(type="info" size="small" :disabled="btn === kon" @click="fastKon(btn)") {{ btn }}
 
       div(class="row mt-4")
         div(class="col-sm label") Кол-во игр
 
         div.col-sm-auto
-          el-input-number(v-model="count" :min="1" controls-position="right")
+          n-input-number(v-model:value="count" :min="1")
 
       div(class="fast-kon mt-2")
         div(v-for="btn in countList" :key="btn")
-          el-button(type="info" size="small" :disabled="btn === count" @click="fastCount(btn)") {{ btn }}
+          n-button(type="info" size="small" :disabled="btn === count" @click="fastCount(btn)") {{ btn }}
 
       div.mt-3
-        el-button(type="primary" @click="createGame" :disabled="!btnActive" :loading="isLoading") Создать
+        n-button(type="primary" @click="createGame" :disabled="!btnActive" :loading="isLoading") Создать
 </template>
 
 <script>
-import {ElNotification} from 'element-plus';
+import {NModal, NInputNumber, NButton, useNotification} from 'naive-ui';
 import {errorHandler} from "@/services/api/errorHandler";
 import {ref} from "@vue/reactivity";
 
 export default {
+    components: { NModal, NInputNumber, NButton },
     props: {
       isOpen: {type: Boolean, default: true,},
       konList: {type: Array, default: [1,2,3],},
@@ -51,12 +52,13 @@ export default {
     setup(props, { emit }) {
         const kon = ref(5);
         const count = ref(1);
+        const notification = useNotification();
 
         const closeDialog = () => {
             emit('close');
         };
 
-      return {kon, count, closeDialog}
+      return {kon, count, closeDialog, notification}
     },
 
   methods: {
@@ -76,7 +78,7 @@ export default {
             notify.message = 'Игры созданы'
             notify.type = 'success'
 
-            emit("gameCreated")
+            this.$emit("gameCreated")
           })
           .catch((err) => {
             notify.type = 'warning'
@@ -84,9 +86,10 @@ export default {
           })
           .finally(() => {
             this.isLoading = false
-            ElNotification({
-              message: notify.message,
-              type: notify.type,
+            const type = ['info', 'success', 'warning', 'error'].includes(notify.type) ? notify.type : 'info';
+            this.notification[type]({
+              content: notify.message,
+              duration: 4500,
             })
           })
     }

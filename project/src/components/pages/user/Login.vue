@@ -1,129 +1,148 @@
-<template lang="pug">
-div.container
-  h1 Вход
+<template>
+  <div class="container login-page">
+    <h1>Вход</h1>
 
-  el-form(
-    v-loading="isLoading"
-    :model="auth"
-    ref="formRef"
-    :rules="validationRules"
-    label-position="top"
-    class="mt-3"
-    @submit.prevent="login"
-    size="large"
-  )
-    el-form-item(label="Логин" prop="login")
-      el-input( v-model="auth.login" name="email" autocomplete="on")
+    <n-alert
+      v-if="serverError"
+      type="error"
+      :show-icon="true"
+      :closable="true"
+      class="mt-3"
+      @close="serverError = ''"
+    >
+      {{ serverError }}
+    </n-alert>
 
-    el-form-item(label="Пароль" prop="password")
-      el-input( v-model="auth.password" type="password")
+    <n-spin :show="isLoading">
+      <n-form
+        :model="auth"
+        ref="formRef"
+        :rules="validationRules"
+        label-placement="top"
+        class="mt-3"
+        size="large"
+        @submit.prevent="onSubmit"
+      >
+        <n-form-item label="Логин" path="login">
+          <n-input
+            v-model:value="auth.login"
+            name="email"
+            autocomplete="username"
+            placeholder="Логин"
+            @keydown.enter.prevent="onSubmit"
+          />
+        </n-form-item>
 
-    el-form-item
-      el-button( type="primary" native-type="submit" :disabled="disabled") Войти
+        <n-form-item label="Пароль" path="password">
+          <n-input
+            v-model:value="auth.password"
+            type="password"
+            show-password-on="click"
+            autocomplete="current-password"
+            placeholder="Пароль"
+            @keydown.enter.prevent="onSubmit"
+          />
+        </n-form-item>
 
+        <n-form-item>
+          <n-button
+            type="primary"
+            attr-type="submit"
+            :loading="isLoading"
+            :disabled="disabled"
+            block
+            @click="onSubmit"
+          >
+            Войти
+          </n-button>
+        </n-form-item>
+      </n-form>
+    </n-spin>
+  </div>
 </template>
 
 <script>
-import { ElNotification } from 'element-plus';
+import {
+  NSpin,
+  NForm,
+  NFormItem,
+  NInput,
+  NButton,
+  NAlert,
+  useNotification,
+} from 'naive-ui';
+
 export default {
-    name: "Login",
-    created() {
-        if (this.$store.getters['auth/isAuthenticated']) {
-            this.$router.push("/");
-        }
+  name: 'Login',
+  components: {NSpin, NForm, NFormItem, NInput, NButton, NAlert},
+  setup() {
+    return {notification: useNotification()};
+  },
+  created() {
+    if (this.$store.getters['auth/isAuthenticated']) {
+      this.$router.push('/');
+    }
+  },
+  data() {
+    return {
+      auth: {login: '', password: ''},
+      serverError: '',
+      validationRules: {
+        login: [{required: true, message: 'Введите логин', trigger: ['blur']}],
+        password: [{required: true, message: 'Введите пароль', trigger: ['blur']}],
+      },
+    };
+  },
+  computed: {
+    disabled() {
+      return !this.auth.login || !this.auth.password || this.isLoading;
     },
-    data() {
-        return {
-            // isLoading: false,
-            auth: {
-                login: "",
-                password: "",
-            },
-            validationRules: {
-                login: [{
-                    required: true,
-                    message: "Введите логин",
-                    trigger: "blur",
-                }, {
-                    validator: (rule, value, callback) => {
-                        if (this.errors.text.login) {
-                            callback(new Error(this.errors.text.login));
-                            this.errors.text.login = "";
-                        } else {
-                            callback();
-                        }
-                    },
-                }],
-                password: [
-                    {
-                        required: true,
-                        message: "Введите пароль",
-                        trigger: "blur",
-                    }, {
-                        validator: (rule, value, callback) => {
-                            if (this.errors.text.password) {
-                                callback(new Error(this.errors.text.password));
-                                this.errors.text.password = "";
-                            } else {
-                                callback();
-                            }
-                        },
-                    }
-                ]
-            },
-            errors: {
-                text: {
-                    login: "",
-                    password: "",
-                },
-            }
-        };
+    isLoading() {
+      return this.$store.getters['auth/authStatus'] === 'loading';
     },
-    computed: {
-        disabled() {
-            return !(this.auth.login && this.auth.password);
-        },
-        isLoading() {
-            return this.$store.getters['auth/authStatus'] === "loading"
-        }
+  },
+  methods: {
+    onSubmit() {
+      this.serverError = '';
+      this.$refs.formRef
+        .validate()
+        .then(() => this.doLogin())
+        .catch(() => {});
     },
-    methods: {
-        login: function () {
-
-            let login = this.auth.login;
-            let password = this.auth.password;
-
-            this.$store
-                .dispatch("auth/login", {
-                    login,
-                    password,
-                })
-                .then((res) => {
-                    ElNotification({
-                        title: 'Ура',
-                        message: 'Вы вошли в аккаунт',
-                        type: 'success',
-                    });
-                    this.$router.push("/");
-                })
-                .catch((err) => {
-                    if (err.errors !== undefined) {
-                        for (let resKey in err.errors) {
-                            this.errors.text[resKey] = err.errors[resKey];
-                        }
-
-                        this.$refs.formRef.validate();
-                    }
-                });
-        }
+    doLogin() {
+      const {login, password} = this.auth;
+      this.$store
+        .dispatch('auth/login', {login, password})
+        .then(() => {
+          this.notification.success({
+            title: 'Ура',
+            content: 'Вы вошли в аккаунт',
+            duration: 4500,
+          });
+          this.$router.push('/');
+        })
+        .catch((err) => {
+          this.serverError = this.extractError(err);
+        });
     },
+    extractError(err) {
+      if (!err) return 'Не удалось войти. Попробуйте ещё раз.';
+      if (typeof err === 'string') return err;
+      if (err.errors && typeof err.errors === 'object') {
+        const messages = Object.values(err.errors).filter(Boolean);
+        if (messages.length) return messages.join(' ');
+      }
+      if (err.message) return err.message;
+      return 'Не удалось войти. Проверьте логин и пароль.';
+    },
+  },
 };
 </script>
 
 <style lang="scss" scoped>
-::v-deep .el-form--label-top {
-    .el-form-item__label {
-        padding: 0;
-    }
+.login-page {
+  max-width: 26rem;
+  margin: 0 auto;
+  padding-top: 1.5rem;
 }
 </style>

@@ -1,5 +1,7 @@
 import axios from "axios";
 import config from "../config/config";
+// TODO(stat-mock): убрать импорт и ветку в saveWall после подключения бэка
+import {isStatMockMode, mockSaveWall} from "./stat/mock";
 
 const baseUrl = config.getParam('apiDomain');
 
@@ -58,6 +60,21 @@ export const getWall = async (username) => {
                 resolve(res.data);
             } else {
                 reject();
+            }
+        }).catch(e => reject(e));
+    });
+}
+
+export const saveWall = async (description) => {
+    if (isStatMockMode()) {
+        return mockSaveWall(description);
+    }
+    return new Promise((resolve, reject) => {
+        axios.patch(`${baseUrl}v1/users/wall`, { description }).then(res => {
+            if (!res.data.errors) {
+                resolve(res.data);
+            } else {
+                reject(res.data);
             }
         }).catch(e => reject(e));
     });

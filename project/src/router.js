@@ -15,10 +15,16 @@ import loginKey from "./components/pages/user/loginKey.vue";
 import Logout from './components/pages/user/Logout.vue';
 import Wall from './components/pages/user/Wall.vue';
 import Profile from './components/pages/user/Profile.vue';
-import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage} from "./components/pages/user/Exchange";
+import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage, MaterialsShop} from "./components/pages/user/Exchange";
 
 import Saper from './components/pages/games/saper/Saper.vue';
 import Orel, {GamesHistoryPage, MyOrelGames, OrelGames} from "./components/pages/games/Orel";
+import Five, {FiveGames, MyFiveGames, FiveHistoryPage} from "./components/pages/games/five";
+import Duel, {DuelGames, MyDuelGames, DuelHistoryPage} from "./components/pages/games/duel";
+
+import Chat from './components/pages/chat/Chat.vue';
+import Craft from './components/pages/craft/Craft.vue';
+import City from './components/pages/city/City.vue';
 
 import {store} from './store/store';
 
@@ -50,6 +56,18 @@ const routes = [
             { path: 'history', component: GamesHistoryPage },
         ], meta: { requiresAuth: true } },
 
+        { path: '/games/duel', component: Duel, children: [
+            { path: '', component: DuelGames },
+            { path: 'my', component: MyDuelGames },
+            { path: 'history', component: DuelHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/games/five', component: Five, children: [
+            { path: '', component: FiveGames },
+            { path: 'my', component: MyFiveGames },
+            { path: 'history', component: FiveHistoryPage },
+        ], meta: { requiresAuth: true } },
+
         { path: '/games/saper', component: Saper, children: [
             { path: '', component: Saper },
             { path: 'my', component: Saper },
@@ -60,10 +78,18 @@ const routes = [
             { path: '', component: OrdersPage },
             { path: 'my', component: MyOrdersPage },
             { path: 'history', component: OrdersHistoryPage },
+            { path: 'shop', component: MaterialsShop },
         ], meta: { requiresAuth: true } },
 
         { path: '/wall/:login', component: Wall },
     ], meta: { requiresAuth: true } },
+
+    { path: '/chat', component: Chat, meta: { requiresAuth: true } },
+    { path: '/chat/:roomId', component: Chat, meta: { requiresAuth: true } },
+
+    { path: '/craft', component: Craft, meta: { requiresAuth: true } },
+
+    { path: '/city', component: City, meta: { requiresAuth: true } },
 
     { path: '/forum', component: Forum, children: [
         // { path: '', component: OrdersPage },

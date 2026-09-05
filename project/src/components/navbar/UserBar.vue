@@ -2,9 +2,10 @@
 import { computed } from '@vue/reactivity';
 import { useStore } from 'vuex';
 import UserAccounts from './UserAccounts.vue';
+import { NButton } from 'naive-ui';
 
 export default {
-    components: { UserAccounts },
+    components: { UserAccounts, NButton },
     setup() {
         const store = useStore();
         const user = computed(() => store.getters['auth/user']);
@@ -21,13 +22,13 @@ export default {
     .user-bar-left
       router-link(:to="'/wall/' + user.username")
         font-awesome-icon(icon='fa fa-id-card')
-        el-button(type='text') Стена {{ user.username }}
+        n-button(text) Стена {{ user.username }}
       router-link(to='/users/profile/')
         font-awesome-icon(icon='fa fa-user')
-        el-button(type='text') Профиль
+        n-button(text) Профиль
       router-link(to='/exchange')
         font-awesome-icon(icon='fa fa-exchange-alt')
-        el-button(type='text') Биржа кредитов
+        n-button(text) Биржа кредитов
 
 </template>
 
@@ -44,8 +45,8 @@ export default {
         align-items: center;
         gap: 0;
 
-        .el-divider {
-            display: none;            
+        .n-divider {
+            display: none;
         }
     }
 }

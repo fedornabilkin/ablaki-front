@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — чёрно-оранжевая тема</title>
+  <!-- Иконки — только Font Awesome (как в src/fontawesome.js). В мокапе через CDN; в приложении — <font-awesome-icon :icon="..."/>. -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <!--
+    Самодостаточный визуальный эталон новой темы. Открывается двойным кликом
+    в браузере, сборка не нужна. Источник правды по цветам — переменные :root
+    ниже; те же значения переносятся в src/index.scss (б.1) и в
+    themeOverrides у n-config-provider в src/App.vue (б.3).
+
+    Принципы, заложенные в макет:
+    - MOBILE-FIRST: базовые стили = мобильный экран; расширения только через
+      @media (min-width: …). Проверять в DevTools (360–414px), затем ≥48rem и ≥64rem.
+    - ВСЕ РАЗМЕРЫ В rem (база 16px: 1rem = 16px). Никаких px в размерах.
+    - STICKY-ХЕДЕР: прилипает к верху и слегка уменьшается при прокрутке
+      (класс .scrolled навешивается из <script> внизу). В приложении то же
+      поведение реализуется в src/components/navbar/NavBar.vue.
+    - Никаких alert()/confirm(): универсальное модальное окно (.modal-overlay).
+      В приложении — Naive UI: глобальный <n-modal>/useDialog()/useMessage()
+      из уже подключённых провайдеров в src/App.vue.
+  -->
+  <style>
+    :root {
+      /* фон */
+      --bg-base:      #121212;  /* фон #app / body */
+      --bg-surface:   #1c1c1c;  /* карточки, navbar, sidebar */
+      --bg-surface-2: #242424;  /* hover-строки, вложенные блоки */
+      --border:       #2e2e2e;  /* разделители, рамки */
+      /* акцент */
+      --primary:        #ff7a00;
+      --primary-hover:  #ff9433;
+      --primary-press:  #e66e00;
+      --primary-soft:   rgba(255, 122, 0, 0.14); /* фон активного пункта */
+      /* текст */
+      --text:        #e8e8e8;
+      --text-muted:  #9a9a9a;
+      --text-on-acc: #1a1200;  /* текст на оранжевой заливке */
+
+      /* размеры хедера (в rem) — управляют sticky-сжатием */
+      --nav-pad-y:      0.85rem;  /* паддинг ссылок в покое */
+      --nav-pad-y-min:  0.45rem;  /* паддинг ссылок после скролла */
+      --nav-logo:       1.15rem;  /* размер лого в покое */
+      --nav-logo-min:   1rem;     /* размер лого после скролла */
+    }
+
+    /* ============================================================
+       MOBILE-FIRST: базовые правила = мобильный экран.
+       Все размеры — в rem. Расширения — внизу в @media (min-width).
+       ============================================================ */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg-base);
+      color: var(--text);
+      font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    .container { width: 100%; margin: 0 auto; padding: 0 0.75rem; }
+
+    /* ---- navbar (мобайл: лого + бургер, меню скрыто) ---- */
+    .nav {
+      background: var(--bg-surface);
+      border-bottom: 0.0625rem solid var(--border);
+      box-shadow: 0 0.5rem 0.4375rem -0.125rem rgba(0, 0, 0, 0.45);
+      position: sticky; top: 0; z-index: 5;
+      transition: box-shadow 0.2s ease;
+    }
+    .nav.scrolled { box-shadow: 0 0.25rem 0.75rem -0.125rem rgba(0, 0, 0, 0.6); }
+    .nav .container { display: flex; justify-content: space-between; align-items: center; }
+    .nav-links { display: none; }                 /* на мобайле меню скрыто */
+    .nav-links.always { display: flex; align-items: center; } /* лого + бургер видны всегда */
+    .nav-link {
+      color: var(--text-muted);
+      padding: var(--nav-pad-y) 1rem;              /* sticky-сжатие меняет --nav-pad-y */
+      min-height: 2.75rem;                         /* тач-цель 44px */
+      font-weight: 600;
+      display: flex; align-items: center; gap: 0.5rem;
+      border-bottom: 0.125rem solid transparent;
+      transition: padding 0.2s ease, font-size 0.2s ease;
+    }
+    .nav-link:hover { color: var(--primary); }
+    .nav-link.active { color: var(--text); border-bottom-color: var(--primary); }
+    .nav-link.logo { color: var(--primary); font-size: var(--nav-logo); transition: font-size 0.2s ease; }
+    .balance { color: var(--primary); font-weight: 700; }
+    .burger {
+      display: flex; align-items: center; justify-content: center;
+      width: 2.75rem; height: 2.75rem;             /* тач-цель 44px */
+      background: none; border: none; cursor: pointer;
+      color: var(--text); font-size: 1.4rem;
+    }
+    /* sticky-сжатие: после скролла уменьшаем паддинг ссылок и размер лого */
+    .nav.scrolled { --nav-pad-y: var(--nav-pad-y-min); }
+    .nav.scrolled .nav-link.logo { font-size: var(--nav-logo-min); }
+    .nav.scrolled .nav-link { min-height: 2.25rem; }
+
+    /* ---- page header ---- */
+    .page-header {
+      background: var(--bg-surface);
+      border: 0.0625rem solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1.125rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .page-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+    .page-header .sub { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ---- cards / list (мобайл: один столбец) ---- */
+    .grid { display: grid; grid-template-columns: 1fr; gap: 0.875rem; }
+    .card {
+      background: var(--bg-surface);
+      border: 0.0625rem solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    .card:hover { border-color: var(--primary); }
+    .card h3 { margin: 0 0 0.5rem; }
+    .card .muted { color: var(--text-muted); font-size: 0.88rem; }
+    .card .actions { margin-top: 0.75rem; }
+    .tag {
+      display: inline-block;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 0.0625rem solid var(--primary);
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.5rem;
+      font-size: 0.78rem;
+    }
+
+    /* ---- buttons ---- */
+    .btn {
+      border: 0.0625rem solid var(--border);
+      background: var(--bg-surface-2);
+      color: var(--text);
+      border-radius: 0.375rem;
+      padding: 0.625rem 1rem;
+      min-height: 2.75rem;             /* тач-цель 44px */
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--text-on-acc);
+    }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: var(--text-on-acc); }
+
+    /* ---- form ---- */
+    .field { margin: 0.75rem 0; }
+    .field label { display: block; margin-bottom: 0.375rem; color: var(--text-muted); font-size: 0.85rem; }
+    .field input {
+      width: 100%;
+      background: var(--bg-base);
+      border: 0.0625rem solid var(--border);
+      color: var(--text);
+      border-radius: 0.375rem;
+      padding: 0.5625rem 0.75rem;
+      min-height: 2.75rem;             /* тач-цель 44px */
+    }
+    .field input:focus { outline: none; border-color: var(--primary); }
+
+    /* ---- sidebar demo (мобайл: сайдбар сверху, один столбец) ---- */
+    .layout { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 0.5rem; }
+    .sidebar {
+      display: flex; flex-wrap: wrap; gap: 0.375rem;   /* на мобайле — горизонтальные чипы */
+      background: var(--bg-surface);
+      border: 0.0625rem solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      height: fit-content;
+    }
+    .side-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5625rem 0.75rem; border-radius: 0.375rem;
+      min-height: 2.75rem;             /* тач-цель 44px */
+      color: var(--text-muted); font-weight: 600;
+      cursor: pointer;
+    }
+    .side-item:hover { background: var(--bg-surface-2); color: var(--text); }
+    .side-item.active { background: var(--primary-soft); color: var(--primary); }
+
+    .swatches { display: flex; gap: 0.625rem; flex-wrap: wrap; margin: 0.5rem 0 1.5rem; }
+    .sw { width: 6rem; border: 0.0625rem solid var(--border); border-radius: 0.375rem; overflow: hidden; font-size: 0.72rem; }
+    .sw .chip { height: 3rem; }
+    .sw .name { padding: 0.25rem 0.375rem; color: var(--text-muted); }
+
+    .spacer { height: 75vh; } /* чтобы было что прокручивать и увидеть sticky-сжатие */
+
+    /* ---- универсальное модальное окно (вместо alert) ---- */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem; z-index: 20;
+    }
+    .modal-overlay[hidden] { display: none; }
+    .modal {
+      background: var(--bg-surface);
+      border: 0.0625rem solid var(--border);
+      border-radius: 0.5rem;
+      width: 100%; max-width: 26rem;
+      box-shadow: 0 1rem 2rem -0.5rem rgba(0, 0, 0, 0.7);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem; border-bottom: 0.0625rem solid var(--border);
+      font-weight: 700;
+    }
+    .modal-body { padding: 1rem; color: var(--text-muted); line-height: 1.5; }
+    .modal-footer {
+      display: flex; justify-content: flex-end; gap: 0.5rem;
+      padding: 1rem; border-top: 0.0625rem solid var(--border);
+    }
+    .modal-close {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 1.1rem; width: 2rem; height: 2rem;
+    }
+    .modal-close:hover { color: var(--primary); }
+
+    /* ============================================================
+       РАСШИРЕНИЯ (min-width) — только увеличивают раскладку.
+       ============================================================ */
+
+    /* планшет (≥48rem = 768px) */
+    @media (min-width: 48rem) {
+      .container { max-width: 45rem; padding: 0 1rem; }
+      .nav-links { display: flex; align-items: center; } /* показываем меню */
+      .burger { display: none; }                          /* бургер прячем */
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .sidebar { flex-direction: column; flex-wrap: nowrap; }
+    }
+
+    /* десктоп (≥64rem = 1024px) */
+    @media (min-width: 64rem) {
+      .container { max-width: 57.5rem; }
+      .layout { grid-template-columns: 13.75rem 1fr; } /* сайдбар сбоку */
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav" id="nav">
+    <div class="container">
+      <!-- видно всегда: лого слева, бургер справа (мобайл) -->
+      <div class="nav-links always">
+        <a class="nav-link logo" href="#"><i class="fa-solid fa-fire"></i> ablakin</a>
+      </div>
+      <!-- меню: скрыто на мобайле, раскрывается с ≥48rem -->
+      <div class="nav-links">
+        <a class="nav-link active" href="#"><i class="fa-solid fa-dice"></i> Игры</a>
+        <a class="nav-link" href="#"><i class="fa-solid fa-comments"></i> Форум</a>
+        <a class="nav-link" href="#"><i class="fa-solid fa-right-left"></i> Биржа</a>
+        <span class="nav-link balance"><i class="fa-solid fa-coins"></i> 1 250 кр.</span>
+        <a class="nav-link" href="#"><i class="fa-solid fa-user"></i> Профиль</a>
+      </div>
+      <!-- бургер: виден только на мобайле -->
+      <div class="nav-links always">
+        <button class="burger" aria-label="Меню"><i class="fa-solid fa-bars"></i></button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>Чёрно-оранжевая тема — эталон</h1>
+      <div class="sub">Палитра и компоненты для нового дизайна. См. frontend/docs/plan/redesign-black-orange.md</div>
+    </div>
+
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#121212"></div><div class="name">--bg-base</div></div>
+      <div class="sw"><div class="chip" style="background:#1c1c1c"></div><div class="name">--bg-surface</div></div>
+      <div class="sw"><div class="chip" style="background:#242424"></div><div class="name">--bg-surface-2</div></div>
+      <div class="sw"><div class="chip" style="background:#2e2e2e"></div><div class="name">--border</div></div>
+      <div class="sw"><div class="chip" style="background:#ff7a00"></div><div class="name">--primary</div></div>
+      <div class="sw"><div class="chip" style="background:#ff9433"></div><div class="name">--primary-hover</div></div>
+      <div class="sw"><div class="chip" style="background:#e8e8e8"></div><div class="name">--text</div></div>
+      <div class="sw"><div class="chip" style="background:#9a9a9a"></div><div class="name">--text-muted</div></div>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="side-item active"><i class="fa-solid fa-coins"></i> Орёл и решка</div>
+        <div class="side-item"><i class="fa-solid fa-bomb"></i> Сапёр</div>
+        <div class="side-item"><i class="fa-solid fa-crosshairs"></i> Дуэль</div>
+        <div class="side-item"><i class="fa-solid fa-dice-five"></i> Пятёрка</div>
+      </aside>
+
+      <main>
+        <div class="grid">
+          <div class="card">
+            <h3>Игра #482 <span class="tag">открыта</span></h3>
+            <div class="muted">Ставка: 100 кр.</div>
+            <!-- открывает универсальную модалку-подтверждение, не alert() -->
+            <div class="actions">
+              <button class="btn btn-primary"
+                      onclick="openModal({title:'Присоединиться к игре #482', body:'Со счёта спишется 100 кр. Подтвердить участие?', okText:'Подтвердить'})">
+                <i class="fa-solid fa-plus"></i> Присоединиться
+              </button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Игра #481 <span class="tag">ожидание</span></h3>
+            <div class="muted">Ставка: 250 кр.</div>
+            <div class="actions">
+              <button class="btn"
+                      onclick="openModal({title:'Игра #481', body:'Ставка: 250 кр. Ожидает второго игрока.', okText:'Понятно', cancel:false})">
+                <i class="fa-solid fa-arrow-right"></i> Подробнее
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:0.875rem">
+          <h3>Новый ордер на бирже</h3>
+          <div class="field">
+            <label>Количество кредитов</label>
+            <input type="text" placeholder="0" />
+          </div>
+          <div class="field">
+            <label>Цена</label>
+            <input type="text" placeholder="0.00" />
+          </div>
+          <button class="btn btn-primary"
+                  onclick="openModal({title:'Создать ордер', body:'Создать заявку на бирже?', okText:'Создать'})">
+            <i class="fa-solid fa-check"></i> Создать ордер
+          </button>
+          <button class="btn"><i class="fa-solid fa-ban"></i> Отмена</button>
+        </div>
+      </main>
+    </div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <!-- Универсальное модальное окно. Один экземпляр, наполняется из openModal().
+       В приложении это роль глобального Naive UI <n-modal> / useDialog(). -->
+  <div class="modal-overlay" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <span id="modal-title">Заголовок</span>
+        <button class="modal-close" aria-label="Закрыть" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modal-body">Текст сообщения.</div>
+      <div class="modal-footer">
+        <button class="btn" id="modal-cancel" onclick="closeModal()"><i class="fa-solid fa-ban"></i> Отмена</button>
+        <button class="btn btn-primary" id="modal-ok" onclick="closeModal()"><i class="fa-solid fa-check"></i> ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- sticky-хедер: сжатие при прокрутке ----
+    var nav = document.getElementById('nav');
+    function onScroll() {
+      // 0.5rem порога ≈ 8px; добавляем класс .scrolled, который уменьшает хедер
+      nav.classList.toggle('scrolled', window.scrollY > 8);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // ---- универсальное модальное окно (замена alert/confirm) ----
+    var modal = document.getElementById('modal');
+    function openModal(opts) {
+      opts = opts || {};
+      document.getElementById('modal-title').textContent = opts.title || 'Сообщение';
+      document.getElementById('modal-body').textContent = opts.body || '';
+      document.getElementById('modal-ok').lastChild.textContent = ' ' + (opts.okText || 'ОК');
+      // cancel:false — режим info (одна кнопка), иначе confirm (две)
+      document.getElementById('modal-cancel').style.display = opts.cancel === false ? 'none' : '';
+      modal.hidden = false;
+    }
+    function closeModal() { modal.hidden = true; }
+    // клик по подложке и Esc — закрыть
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+    window.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+  </script>
+</body>
+</html>

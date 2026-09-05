@@ -3,9 +3,10 @@ import { ref } from '@vue/reactivity';
 import NewOrder from './NewOrder.vue';
 import PageHeader from '../../../PageHeader.vue';
 import { useRoute } from 'vue-router';
+import { NButton } from 'naive-ui';
 
 export default {
-    components: { NewOrder, PageHeader },
+    components: { NewOrder, PageHeader, NButton },
     setup() {
         const newOrderDialog = ref(false);
         const viewRef = ref(null);
@@ -38,6 +39,10 @@ export default {
         }, {
           link: '/exchange/history',
           title: 'История',
+        }, {
+          link: '/exchange/shop',
+          title: 'Магазин',
+          icon: 'fa fa-cart-shopping',
         },
       ]
 
@@ -56,8 +61,9 @@ export default {
 <template lang="pug">
   page-header(page-title='Биржа кредитов' :extra-links='extraLinks')
     template(v-slot:actions='')
-      el-button(type='primary' @click='openNewOrderDialog()' round)
-        font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-plus')
+      n-button(type='primary' @click='openNewOrderDialog()' round)
+        template(#icon)
+          font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-plus')
         | Добавить заявку
 
   new-order(:is-open='newOrderDialog' @created='onCreated' @close='closeNewOrderDialog')

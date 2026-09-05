@@ -3,6 +3,7 @@ import NewOrder from "./NewOrder.vue";
 import OrdersList from "./OrdersList.vue";
 import {exchange} from '@/services/api/exchange.js';
 import {useFetchOrders} from './hooks/useFetchOrders';
+import {NTag, NButton} from 'naive-ui';
 
 const {isLoading: isLoadingBuy, ordersList: ordersBuy} = useFetchOrders(exchange.getMyBuy);
 
@@ -42,29 +43,31 @@ const onCancel = (id, type) => {
       h5 Мои заявки на покупку
       orders-list(:orders='ordersSell' :isloading='isLoadingSell')
         template(v-slot:info='{ credit, amount }')
-          el-tag(type="success" effect="light")
+          n-tag(type="success")
             | {{ amount }} Кг
             font-awesome-icon.px-1(icon='fa fa-arrow-right')
-          el-tag(type="info" effect="light")
+          n-tag(type="info")
             font-awesome-icon(icon='fa fa-user')
         template(v-slot:action='{ orderId, isLoading, status }')
           .d-flex.text-success(v-if="status === 'success'")
             font-awesome-icon(icon='fa fa-check')
-          el-button(size='small' type='danger' @click="onCancel(orderId, 'buy')" :loading='isLoading' v-if='status === null')
-            font-awesome-icon(icon='fa fa-trash-alt')
+          n-button(size='small' type='error' @click="onCancel(orderId, 'buy')" :loading='isLoading' v-if='status === null')
+            template(#icon)
+              font-awesome-icon(icon='fa fa-trash-alt')
     .col-md-6
       h5 Мои заявки на продажу
       orders-list(:orders='ordersBuy' :isloading='isLoadingBuy')
         template(v-slot:info='{ credit, amount }')
-          el-tag(type="success" effect="light")
+          n-tag(type="success")
             | {{ credit }} Cr
             font-awesome-icon.px-1(icon='fa fa-arrow-right')
-          el-tag(type="info" effect="light")
+          n-tag(type="info")
             font-awesome-icon(icon='fa fa-user')
         template(v-slot:action='{ orderId, isLoading, status }')
           .d-flex.text-success(v-if="status === 'success'")
             font-awesome-icon(icon='fa fa-check')
-          el-button(size='small' type='danger' @click="onCancel(orderId, 'sell')" :loading='isLoading' v-if='status === null')
-            font-awesome-icon(icon='fa fa-trash-alt')
+          n-button(size='small' type='error' @click="onCancel(orderId, 'sell')" :loading='isLoading' v-if='status === null')
+            template(#icon)
+              font-awesome-icon(icon='fa fa-trash-alt')
 
 </template>

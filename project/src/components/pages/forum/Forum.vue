@@ -1,8 +1,16 @@
 <script lang="ts" setup>
 import PageHeader from "@/components/PageHeader.vue";
-import {ref} from 'vue'
+import {ref, h} from 'vue'
+import {RouterLink} from 'vue-router'
 import {themeApi} from "@/services/api/forum";
 import {ForumThemeBuilder} from "@/entities/forum/builder"
+import {
+  NForm,
+  NFormItem,
+  NInput,
+  NButton,
+  NDataTable,
+} from 'naive-ui'
 
 const isLoading = ref(false)
 const loadingData = ref(false)
@@ -55,40 +63,33 @@ const extraLinks = [
   },
 ]
 
+const columns = [
+  { title: '#', key: 'id', width: 60, render: (row: any) => row.getId?.() ?? row.id },
+  {
+    title: 'Название',
+    key: 'name',
+    width: 250,
+    render: (row: any) => h(
+      RouterLink,
+      { to: '/forum/read/' + (row.getId?.() ?? row.id) },
+      { default: () => row.getName?.() ?? row.name }
+    ),
+  },
+  { title: 'Дата', key: 'created_at_format', width: 160 },
+]
+
 </script>
 
 <template lang="pug">
   page-header(pageTitle="Форум" :extraLinks="extraLinks")
   .container
-    //el-collapse(v-model='collapseCreate')
-      el-collapse-item(title='Создать' name='create')
-        form.form
-          .row
-            .col-sm.label Тема
-            .col-sm
-              el-input(v-model='title')
-          .row.mt-4
-            .col-sm.label Комментарий
-            .col-sm
-              el-input(v-model='comment' type='textarea')
-          .mt-3
-            el-button(type='primary' @click='create' :disabled='!btnActive' :loading='isLoading') Создать
+    n-form(inline :model="item" @submit.prevent="saveItem()")
+      n-form-item
+        n-input(v-model:value="item.title" placeholder="Название темы" clearable)
+      n-form-item
+        n-button(type="success" :loading='isLoading' @click="saveItem") Создать
 
-    el-form(:inline="true" :model="item" @submit.prevent="saveItem()")
-      el-form-item
-        el-input(v-model="item.title" placeholder="Название темы" clearable)
-      //el-form-item
-        el-input(v-model="item.comment" placeholder="Сообщение" clearable)
-      el-form-item
-        el-button(type="success" :loading='isLoading' @click="saveItem") Создать
-
-    el-table(v-loading="loadingData" :data='themesList' stripe height='450' style="width: 100%")
-      el-table-column(prop='id' label='#' width='60')
-      el-table-column(prop='name' label='Название' width='250')
-        template(#default="scope")
-          router-link(:to="'/forum/read/' + scope.row.getId()")
-            el-link {{scope.row.getName()}}
-      el-table-column(prop='created_at_format' label='Дата' width='160')
+    n-data-table(:loading="loadingData" :data='themesList' :columns="columns" :max-height='450' style="width: 100%")
 
 
 </template>

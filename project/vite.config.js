@@ -33,13 +33,9 @@ export default defineConfig({
           ],
           utils: [],
           ui: [
-            'element-plus',
-            // 'bootstrap',
-            // 'bootstrap-vue',
-            // 'bootstrap-vue-3',
+            'naive-ui',
           ],
           icons: [
-            '@element-plus/icons-vue',
             '@fortawesome/fontawesome-svg-core',
             '@fortawesome/free-solid-svg-icons',
             '@fortawesome/vue-fontawesome',

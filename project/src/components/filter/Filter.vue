@@ -1,5 +1,12 @@
 <script setup>
 import {ref} from "@vue/reactivity";
+import {
+  NButtonGroup,
+  NInput,
+  NAutoComplete,
+  NSelect,
+  NDatePicker,
+} from 'naive-ui';
 
 const props = defineProps(['filters'])
 const emit = defineEmits(['changeFilter'])
@@ -8,7 +15,9 @@ const filters = props.filters
 const focusedFilter = ref(null)
 const setFocusedFilter = (filter) => focusedFilter.value = filter
 
-const queryAutocomplete = async (query, cb) => {
+const autoOptions = ref([])
+
+const queryAutocomplete = async (query) => {
   if (
       !focusedFilter.value
       || !focusedFilter.value.isAutocomplete()
@@ -17,16 +26,21 @@ const queryAutocomplete = async (query, cb) => {
 
   if (query.length > 2) {
     let params = focusedFilter.value.autocompleteParams(query)
-    cb(await focusedFilter.value.remoteSearch(params))
+    const items = await focusedFilter.value.remoteSearch(params)
+    autoOptions.value = (items || []).map(it => ({
+      label: it.name,
+      value: it.id,
+      raw: it,
+    }))
   }
   else if (query.length === 0) {
-    cb([])
+    autoOptions.value = []
     focusedFilter.value.clear()
   }
 }
 
-const selectAutocomplete = (item, filter) => {
-  filter.setValue(item.id)
+const selectAutocomplete = (value, filter) => {
+  filter.setValue(value)
   changeFilter(filter)
 }
 
@@ -57,60 +71,52 @@ const changeFilter = (filter) => {
 
 <template lang="pug">
   div
-    el-button-group
+    n-button-group
       .filter(v-for="(item, name) in filters")
-        el-input.meta-button.icon-large(
+        n-input.meta-button.icon-large(
           v-if="item.isCharField()"
           size="large"
-          v-model="item.value"
+          v-model:value="item.value"
           :placeholder="item.label"
           @focus="setFocusedFilter(item)"
-          @input="changeValue($event, item)"
+          @update:value="(v) => changeValue(v, item)"
           @clear="clearValue(item)"
           clearable
         )
 
-        el-autocomplete(
+        n-auto-complete(
           v-else-if="item.isAutocomplete()"
           size="large"
-          v-model="item.query"
+          v-model:value="item.query"
           :placeholder="item.label"
-          value-key="name"
-          :debounce="item.debouncer()"
-          :fetch-suggestions="queryAutocomplete"
+          :options="autoOptions"
           @focus="setFocusedFilter(item)"
-          @select="selectAutocomplete($event, item)"
-          @clear="clearValue(item)"
+          @update:value="queryAutocomplete"
+          @select="(v) => selectAutocomplete(v, item)"
           clearable
         )
 
-        el-select(
+        n-select(
           v-else-if="item.isDropdown()"
           size="large"
-          v-model='item.query'
+          v-model:value='item.query'
           :placeholder="item.label"
+          :options="item.getDropdownItems()"
           @focus="setFocusedFilter(item)"
-          @change="changeValue($event, item)"
+          @update:value="(v) => changeValue(v, item)"
           @clear="clearValue(item)"
           clearable
         )
-          el-option(
-            v-for='opt in item.getDropdownItems()'
-            :key='opt.value'
-            :label='opt.label'
-            :value='opt.value'
-          )
 
-        el-date-picker.date-range(
+        n-date-picker.date-range(
           v-else-if="item.isDateRange()"
           size="large"
-          v-model="item.value"
+          v-model:value="item.value"
           type="daterange"
           :start-placeholder="item.labelStart"
           :end-placeholder="item.labelEnd"
-          range-separator=""
           @focus="setFocusedFilter(item)"
-          @change="changeValue($event, item, true)"
+          @update:value="(v) => changeValue(v, item, true)"
           clearable
         )
 

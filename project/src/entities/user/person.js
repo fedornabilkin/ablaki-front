@@ -4,6 +4,7 @@ export class Person extends MainEntity {
   id = 0
   rating = 0
   refovod = 0
+  description = ''
   bonus = {
     rating: {count:0, updated_at: 0},
     balance: {count:0, updated_at: 0},
@@ -22,6 +23,9 @@ export class Person extends MainEntity {
   }
 
   getDescription() {
-    return this.description ?? 'Пользователь не добавил дополнительной информации'
+    if (this.description && this.description.trim() !== '') {
+      return this.description
+    }
+    return 'Пользователь не добавил дополнительной информации'
   }
 }

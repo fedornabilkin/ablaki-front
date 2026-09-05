@@ -1,13 +1,24 @@
 <template>
-  <div v-loading="isLoading"></div>
+  <n-spin :show="isLoading"><div></div></n-spin>
 </template>
 
 <script>
 import {useRoute} from "vue-router";
-import {ElNotification} from "element-plus";
+import {NSpin, useNotification} from "naive-ui";
 
 export default {
   name: "login-key",
+  components: {NSpin},
+  setup() {
+    return {
+      notification: useNotification(),
+    };
+  },
+  data() {
+    return {
+      isLoading: true,
+    };
+  },
   created() {
     if (this.$store.getters['auth/isAuthenticated']) {
       this.$router.push("/");
@@ -15,16 +26,15 @@ export default {
 
     const route = useRoute();
 
-    const isLoading = true;
     const key = route.params.key;
 
     this.$store
         .dispatch("auth/loginKey", {key})
         .then((res) => {
-          ElNotification({
+          this.notification.success({
             title: 'Ура',
-            message: 'Вы вошли в аккаунт',
-            type: 'success',
+            content: 'Вы вошли в аккаунт',
+            duration: 4500,
           });
           this.$router.push("/");
         })
@@ -36,6 +46,9 @@ export default {
 
             this.$refs.formRef.validate();
           }
+        })
+        .finally(() => {
+          this.isLoading = false;
         });
   },
 }

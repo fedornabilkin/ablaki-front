@@ -1,31 +1,37 @@
 <template lang="pug">
   .user-bar-right
     router-link(to='/balance/pay')
-      el-button(type='text')
-        el-tooltip(effect='dark' :content='balanceTooltipContent' placement='bottom' v-model:visible='balanceTooltipAnimation' :manual='true')
-          div
-            span Кг
-            span {{ roundBalance(user.person.balance) }}
-    el-divider(direction='vertical')
+      n-button(text)
+        n-tooltip(trigger="manual" :show='balanceTooltipAnimation' placement='bottom')
+          template(#trigger)
+            div
+              span Кг
+              span {{ roundBalance(user.person.balance) }}
+          | {{ balanceTooltipContent }}
+    n-divider(vertical)
 
 
-    el-button(v-if="checkAvailableBonusEvery()" type='text' @click="addBonus()")
-      font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-coins')
+    n-button(v-if="checkAvailableBonusEvery()" text @click="addBonus()")
+      template(#icon)
+        font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-coins')
     router-link(to='/exchange')
-      el-button(type='text')
-        el-tooltip(effect='dark' :content='creditsTooltipContent' placement='bottom' v-model:visible='creditsTooltipAnimation' :manual='true')
-          div
-            span Cr
-            span {{ roundCredits(user.person.credit) }}
-    el-divider(direction='vertical')
+      n-button(text)
+        n-tooltip(trigger="manual" :show='creditsTooltipAnimation' placement='bottom')
+          template(#trigger)
+            div
+              span Cr
+              span {{ roundCredits(user.person.credit) }}
+          | {{ creditsTooltipContent }}
+    n-divider(vertical)
 
-    el-button(v-if="checkAvailableRatingEvery()" type='text' @click="addRating()")
-      font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-star')
+    n-button(v-if="checkAvailableRatingEvery()" text @click="addRating()")
+      template(#icon)
+        font-awesome-icon.text-warning.jello-horizontal(icon='fa fa-star')
     font-awesome-icon.text-success(v-if="!checkAvailableRatingEvery()" icon='fa fa-star')
     router-link(to='/top')
-      el-button(type='text')
+      n-button(text)
         span {{ user.person.rating }}
-    el-divider(direction='vertical')
+    n-divider(vertical)
 </template>
 
 <script>
@@ -33,12 +39,14 @@ import { computed, ref } from '@vue/reactivity';
 import { useStore } from 'vuex';
 import { watch } from '@vue/runtime-core';
 import { ratingApi } from '@/services/api/rating';
-import {ElNotification} from "element-plus";
+import { NButton, NTooltip, NDivider, useNotification } from 'naive-ui';
 import {bonusApi} from "@/services/api/bonus.js";
 
 export default {
+    components: { NButton, NTooltip, NDivider },
     setup() {
         const store = useStore();
+        const notification = useNotification();
         const user = computed(() => store.getters['auth/user']);
         const isAvailableRatingEvery = ref(true);
         const isAvailableBonusEvery = ref(true);
@@ -79,52 +87,61 @@ export default {
         const roundCredits = (credits) => {
             return Math.round(credits * 10) / 10;
         }
-        
+
         const roundBalance = (credits) => {
             return Math.round(credits * 100) / 100;
         }
 
+      const notify = (payload) => {
+        const type = ['info', 'success', 'warning', 'error'].includes(payload.type) ? payload.type : 'info';
+        notification[type]({
+          title: payload.title,
+          content: payload.message,
+          duration: 4500,
+        });
+      }
+
       const addRating = () => {
-        const notify = {title: 'Рейтинг', message: 'Что-то пошло не так', type: 'info'}
+        const payload = {title: 'Рейтинг', message: 'Что-то пошло не так', type: 'info'}
         ratingApi.every()
             .then((response) => {
-              notify.type = 'success'
-              notify.message = 'Рейтинг успешно добавлен'
+              payload.type = 'success'
+              payload.message = 'Рейтинг успешно добавлен'
               if (response !== true && response.message !== undefined) {
-                notify.type = 'warning'
-                notify.message = response.message
+                payload.type = 'warning'
+                payload.message = response.message
               }
               isAvailableRatingEvery.value = false
             })
             .catch((err) => {
               console.log(err)
-              notify.type = 'error'
-              notify.message = err.message
+              payload.type = 'error'
+              payload.message = err.message
             })
             .finally(() => {
-              ElNotification(notify)
+              notify(payload)
             })
       }
 
       const addBonus = () => {
-        const notify = {title: 'Бонус', message: 'Что-то пошло не так', type: 'info'}
+        const payload = {title: 'Бонус', message: 'Что-то пошло не так', type: 'info'}
         bonusApi.every()
             .then((response) => {
-              notify.type = 'success'
-              notify.message = 'Бонус успешно получен'
+              payload.type = 'success'
+              payload.message = 'Бонус успешно получен'
               if (response !== true && response.message !== undefined) {
-                notify.type = 'warning'
-                notify.message = response.message
+                payload.type = 'warning'
+                payload.message = response.message
               }
               isAvailableBonusEvery.value = false
             })
             .catch((err) => {
               console.log(err)
-              notify.type = 'error'
-              notify.message = err.message
+              payload.type = 'error'
+              payload.message = err.message
             })
             .finally(() => {
-              ElNotification(notify)
+              notify(payload)
             })
       }
 
@@ -154,10 +171,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/mixins";
-
 .jello-horizontal{
   animation:jello-horizontal 5s linear both;
   animation-iteration-count: infinite;
@@ -179,21 +192,17 @@ export default {
     gap: .5rem;
     font-weight: 600;
 
-    @include media-breakpoint-down(sm) {
+    @media (max-width: 575.98px) {
         gap: 0rem;
         font-size: 1.1rem;
 
-        :deep(.el-button) {
+        :deep(.n-button) {
             font-size: 0.8rem;
         }
     }
 
-    .el-button {
+    .n-button {
         font-weight: 700;
-    }
-
-    .el-icon {
-        font-style: normal;
     }
 }
 </style>

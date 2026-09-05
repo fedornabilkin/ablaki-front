@@ -3,6 +3,7 @@ import { ref } from "@vue/reactivity";
 import CreateGame from "../CreateGame.vue";
 import PageHeader from '../../../PageHeader.vue';
 import {orel} from '@/services/api/games/orel';
+import { NButton } from 'naive-ui';
 
 const apiService = orel;
 
@@ -51,7 +52,9 @@ const konList = [10,20,50,100,200,500,1000]
 <template lang="pug">
   page-header(pageTitle='Орел-решка' :extraLinks='extraLinks')
     template(v-slot:actions='')
-      el-button(@click='dialogCreate = true' icon='Plus' type='success')
+      n-button(@click='dialogCreate = true' type='success')
+        template(#icon)
+          font-awesome-icon(icon='fa fa-plus')
   create-game(:isOpen='dialogCreate' :konList='konList' :kon='5' :apiService='apiService' @gameCreated='onGameCreated' @close='closeDialogCreate')
   .container
     router-view(@newGameClick='openDialogCreate' :reloadListTrigger='reloadListTrigger')

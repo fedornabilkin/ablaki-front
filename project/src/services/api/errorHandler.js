@@ -1,6 +1,8 @@
+import { showAlert } from "../dialog.js";
+
 export const errorHandler = (e, errors) => {
   if (!errors.hasOwnProperty("404")) {
-    errors['404'] = () => alert("something сломалось")
+    errors['404'] = () => showAlert("Что-то сломалось")
   }
 
   if (!e.response) {

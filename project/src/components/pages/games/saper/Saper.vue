@@ -3,9 +3,11 @@ import PageHeader from "@/components/PageHeader.vue";
 import CreateGame from "@/components/pages/games/CreateGame.vue";
 import {saper} from "@/services/api/games/saper";
 import PlayGame from "@/components/pages/games/saper/PlayGame.vue";
-import {ref} from "@vue/reactivity";
+import {ref, h} from "vue";
 import {SaperBuilder} from "@/entities/games/builder.js";
 import {UserBuilder} from "@/entities/user/builder.js";
+import {RouterLink} from 'vue-router';
+import {NButton, NDataTable} from 'naive-ui';
 
 const collection = ref([])
 const currentGame = ref({id:0, kon:0})
@@ -37,9 +39,9 @@ const getItems = () => {
     })
 }
 
-const btnPlay = (scope) => {
+const btnPlay = (row) => {
   dialogPlay.value = true
-  currentGame.value = scope.row
+  currentGame.value = row
 }
 
 const gameComplete = () => {
@@ -62,12 +64,29 @@ const extraLinks = [
     title: 'История',
     icon: 'fa fa-times-circle',
   },
-  // {
-  //   link: '/games/saper/remove',
-  //   title: 'Удалить',
-  //   icon: 'DocumentDelete',
-  //   type: 'danger',
-  // },
+]
+
+const columns = [
+  { title: 'Id', key: 'id', width: 120, render: (row) => row.getId?.() ?? row.id },
+  {
+    title: 'Игрок',
+    key: 'player',
+    render: (row) => h(
+      RouterLink,
+      { to: '/wall/' + getUserName(row) },
+      { default: () => getUserName(row) }
+    ),
+  },
+  { title: 'Кон', key: 'kon', width: 60 },
+  {
+    title: '',
+    key: 'actions',
+    render: (row) => h(
+      NButton,
+      { type: 'success', onClick: () => btnPlay(row) },
+      { default: () => 'Play' }
+    ),
+  },
 ]
 
 </script>
@@ -75,18 +94,12 @@ const extraLinks = [
 <template lang="pug">
   page-header(pageTitle="Сапер" :extraLinks="extraLinks")
     template(v-slot:actions)
-      el-button(icon="Plus" type="success" @click="dialogCreate=true")
+      n-button(type="success" @click="dialogCreate=true")
+        template(#icon)
+          font-awesome-icon(icon='fa fa-plus')
 
   .container
-    el-table(:data="collection" v-loading='isLoading')
-      el-table-column(prop="id" label="Id" width="120")
-      el-table-column(label="Игрок")
-        template(#default="scope")
-          router-link(:to="'/wall/' + getUserName(scope.row)") {{ getUserName(scope.row)}}
-      el-table-column(prop="kon" label="Кон" width="60")
-      el-table-column(label="")
-        template(#default="scope")
-          el-button(type="success" @click="btnPlay(scope)") Play
+    n-data-table(:data="collection" :columns="columns" :loading="isLoading")
 
     create-game(
       :isOpen="dialogCreate"

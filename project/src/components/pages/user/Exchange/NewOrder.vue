@@ -1,11 +1,31 @@
 <script>
 import {computed, ref} from "@vue/reactivity";
-import {ElNotification} from 'element-plus';
+import {
+  NModal,
+  NForm,
+  NFormItem,
+  NRadioGroup,
+  NRadioButton,
+  NInputNumber,
+  NInput,
+  NButton,
+  useNotification,
+} from 'naive-ui';
 
 import {exchange} from "@/services/api/exchange.js";
 import {errorHandler} from "@/services/api/errorHandler.js";
 
 export default {
+    components: {
+        NModal,
+        NForm,
+        NFormItem,
+        NRadioGroup,
+        NRadioButton,
+        NInputNumber,
+        NInput,
+        NButton,
+    },
     props: {
         isOpen: {
             type: Boolean,
@@ -19,6 +39,7 @@ export default {
         const price = ref(1);
         const count = ref(1);
         const isLoading = ref(false);
+        const notification = useNotification();
 
         const createOrder = () => {
             isLoading.value = true;
@@ -36,9 +57,10 @@ export default {
                 })
                 .finally(() => {
                   isLoading.value = false;
-                  ElNotification({
-                    message: notify.message,
-                    type: notify.type,
+                  const t = ['info', 'success', 'warning', 'error'].includes(notify.type) ? notify.type : 'info';
+                  notification[t]({
+                    content: notify.message,
+                    duration: 4500,
                   })
                 })
         };
@@ -47,8 +69,12 @@ export default {
             emit('close');
         };
 
+        const onUpdateShow = (v) => {
+            if (!v) closeDialog();
+        };
+
         const btnActive = computed(() => credit.value > 0 && price.value > 0 && count.value > 0);
-        
+
         const finalPrice = computed(() => Math.round(price.value / 1000 * credit.value * 10000) / 10000);
 
         return {
@@ -60,6 +86,7 @@ export default {
             isLoading,
             createOrder,
             closeDialog,
+            onUpdateShow,
             btnActive,
             finalPrice,
         };
@@ -68,56 +95,56 @@ export default {
 </script>
 
 <template>
-  <el-dialog :model-value="props.isOpen" title="Добавить заявку" destroy-on-close @close="closeDialog">
+  <n-modal :show="props.isOpen" preset="card" title="Добавить заявку" style="max-width: 600px;" @update:show="onUpdateShow">
 
-    <el-form label-position="top" @submit.prevent="createOrder" class="form-new-order">
+    <n-form label-placement="top" @submit.prevent="createOrder" class="form-new-order">
 
-      <el-radio-group v-model="type">
-        <el-radio-button label="buy">Продать</el-radio-button>
-        <el-radio-button label="sell">Купить</el-radio-button>
-      </el-radio-group>
+      <n-radio-group v-model:value="type">
+        <n-radio-button value="buy">Продать</n-radio-button>
+        <n-radio-button value="sell">Купить</n-radio-button>
+      </n-radio-group>
 
       <div class="row mt-3">
         <div class="col-6">
-          <el-form-item label="Кредитов" label-position="top">
-            <el-input-number v-model="credit" :min="1" controls-position="right"/>
-          </el-form-item>
+          <n-form-item label="Кредитов">
+            <n-input-number v-model:value="credit" :min="1"/>
+          </n-form-item>
         </div>
 
         <div class="col-6">
-          <el-form-item label="По курсу за 1000" label-position="top">
-            <el-input-number v-model="price" :min="0" :step="0.01" controls-position="right"/>
-          </el-form-item>
+          <n-form-item label="По курсу за 1000">
+            <n-input-number v-model:value="price" :min="0" :step="0.01"/>
+          </n-form-item>
         </div>
       </div>
 
       <div class="row">
         <div class="col-6">
-          <el-form-item label="Заявок" label-position="top">
-            <el-input-number v-model="count" :min="1" controls-position="right"/>
-          </el-form-item>
+          <n-form-item label="Заявок">
+            <n-input-number v-model:value="count" :min="1"/>
+          </n-form-item>
         </div>
 
         <div class="col-6">
-          <el-form-item label="Стоимость заявки" label-position="top">
-            <el-input v-model="finalPrice" disabled/>
-          </el-form-item>
+          <n-form-item label="Стоимость заявки">
+            <n-input :value="String(finalPrice)" disabled/>
+          </n-form-item>
         </div>
       </div>
 
       <div class="mt-3">
-        <el-button type="primary" :disabled="!btnActive" :loading="isLoading" native-type="submit">
+        <n-button type="primary" :disabled="!btnActive" :loading="isLoading" attr-type="submit">
           Добавить
-        </el-button>
+        </n-button>
       </div>
-    </el-form>
-  </el-dialog>
+    </n-form>
+  </n-modal>
 </template>
 
 <style lang="scss" scoped>
 .form-new-order {
   .label {display: flex; align-items: center;}
-  .el-input-number {max-width: unset;}
+  .n-input-number {max-width: unset;}
 }
 
 .tabs {

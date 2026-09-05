@@ -1,7 +1,9 @@
 <script>
-    import { computed, reactive, ref } from "@vue/reactivity";
+    import { computed, ref } from "@vue/reactivity";
+    import { NButtonGroup, NButton, NTooltip } from "naive-ui";
 
     export default {
+        components: { NButtonGroup, NButton, NTooltip },
         props: {
             konCount: {
                 type: Array,
@@ -12,12 +14,10 @@
         setup(props, { emit }) {
             const konFilter = ref();
 
-            const tooltipButtonRef = reactive({el: null, content: null});
-
             const isKonfilterVisible = computed(
                 () =>
                     props.konCount !== null &&
-                    props.konCount.length > 1 /* && props.gamesList.length >= 20*/
+                    props.konCount.length > 1
             );
 
             const onClickKonFilter = (kon) => {
@@ -25,18 +25,11 @@
                 emit("konFilter", konFilter.value);
             };
 
-            const onFilterBtnMouseover = (e, count) => {
-                tooltipButtonRef.el = e.currentTarget;
-                tooltipButtonRef.content = count;
-            };
-
             return {
                 props,
                 konFilter,
-                tooltipButtonRef,
                 isKonfilterVisible,
                 onClickKonFilter,
-                onFilterBtnMouseover,
             };
         }
     }
@@ -44,27 +37,22 @@
 
 <template>
     <div v-if="isKonfilterVisible" class="kon-filter">
-        <el-button-group class="kon-list">
-            <el-button
+        <n-button-group class="kon-list">
+            <n-tooltip
                 v-for="{ kon, count } in props.konCount"
-                v-bind:key="kon"
-                :class="{ selected: kon === konFilter }"
-                @click="onClickKonFilter(kon)"
-                @mouseover="(e) => onFilterBtnMouseover(e, count)"
-                >{{ kon }}</el-button
+                :key="kon"
+                trigger="hover"
+                placement="top"
             >
-        </el-button-group>
-
-        <el-tooltip
-            effect="dark"
-            placement="top"
-            :virtual-ref="tooltipButtonRef.el"
-            virtual-triggering
-        >
-            <template #content>
-                <span>{{tooltipButtonRef.content}} шт.</span>
-            </template>
-        </el-tooltip>
+                <template #trigger>
+                    <n-button
+                        :class="{ selected: kon === konFilter }"
+                        @click="onClickKonFilter(kon)"
+                    >{{ kon }}</n-button>
+                </template>
+                <span>{{ count }} шт.</span>
+            </n-tooltip>
+        </n-button-group>
     </div>
 </template>
 
@@ -76,8 +64,8 @@
             margin-bottom: 0.5rem;
 
             .selected {
-                background: var(--el-color-primary);
-                color: var(--el-color-white);
+                background: var(--primary);
+                color: var(--text-on-acc);
             }
         }
     }

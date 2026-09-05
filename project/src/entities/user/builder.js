@@ -45,6 +45,7 @@ export class PersonBuilder extends MainBuilder {
     this.entity.id = data.id
     this.entity.rating = data.rating
     this.entity.refovod = data.refovod
+    this.entity.description = data.description ?? ''
     this.entity.bonus.balance.count = data.bonus_count
   }
 }

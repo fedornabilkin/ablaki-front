@@ -8,16 +8,12 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/vue-fontawesome": "^3.0.8",
     "axios": "^1.7.2",
-    "bootstrap": "^5.3.3",
-    "bootstrap-vue": "^2.23.1",
-    "bootstrap-vue-3": "^0.5.1",
-    "element-plus": "^2.7.7",
     "moment": "^2.30.1",
+    "naive-ui": "^2.44.1",
     "pinia": "^2.1.7",
     "vue": "^3.4.32",
     "vue-axios": "^3.5.2",
