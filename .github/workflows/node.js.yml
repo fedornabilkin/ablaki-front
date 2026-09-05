@@ -15,6 +15,8 @@ jobs:
     name: Frontend checks
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
     defaults:
       run:
         working-directory: project
@@ -35,13 +37,30 @@ jobs:
       - name: Check deployment script syntax
         run: bash -n ../deploy/frontend-deploy.sh
 
+      - name: Validate API URL
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const value = process.env.VITE_API_URL;
+          try {
+            const url = new URL(value);
+            if (!['http:', 'https:'].includes(url.protocol) ||
+                url.username || url.password || url.search || url.hash ||
+                value !== value.trim() || !value.endsWith('/')) {
+              throw new Error('Invalid API URL');
+            }
+          } catch {
+            console.error('::error::Set repository variable VITE_API_URL to an absolute HTTP(S) API URL ending with / (not /api/).');
+            process.exit(1);
+          }
+          NODE
+
       - name: Run unit tests
         run: npm run test:unit
 
       - name: Build frontend
         run: npm run build
         env:
-          VITE_API_URL: /api/
           VITE_CRAFT_MOCK: '0'
           VITE_STAT_MOCK: '0'
           VITE_CITY_MOCK: '0'

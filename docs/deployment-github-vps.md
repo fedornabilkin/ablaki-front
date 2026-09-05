@@ -12,7 +12,7 @@
 
 Ниже предполагается новый VPS с Ubuntu 24.04 LTS, системным nginx и доступом администратора по SSH. Для действующего сервера сначала сохраните текущую конфигурацию nginx и файлы сайта. Не заменяйте существующие каталоги и пользователей вслепую.
 
-| Параметр | Значение; IP, порт и upstream уточнить перед запуском |
+| Параметр | Значение; IP, порт и адрес API уточнить перед запуском |
 |---|---|
 | Домен сайта | `ablakin.ru` — принят в примерах по имени web-root |
 | IP VPS | `203.0.113.10` |
@@ -20,8 +20,9 @@
 | Пользователь публикации | `deploy` |
 | Web-root nginx | `/var/www/ablakin.ru` |
 | Архивы, релизы и состояние | `/opt/ablaki-frontend` |
-| API на том же VPS | `http://127.0.0.1:3180/` |
-| Публичный адрес API | `https://ablakin.ru/api/` |
+| API | Отдельный хост, полный URL с завершающим `/` в Repository variable `VITE_API_URL` |
+
+В текущем локальном `project/.env` указан `http://94.250.251.94:3180/`. Код напрямую добавляет к нему `login`, `registration`, `v1/users/profile` и другие маршруты. Например, вход уходит на `http://94.250.251.94:3180/login`, а не на домен фронтенда. Этот локальный `.env` исключён из Git: для Actions адрес задаётся отдельно, как описано в шаге 6.
 
 В DNS домена создайте A-запись на IPv4 VPS. AAAA добавляйте только при настроенном IPv6. В firewall провайдера разрешите входящие TCP 80, 443 и ваш SSH-порт. SSH должен быть доступен используемому GitHub runner; ограничение только домашним IP не пропустит Actions.
 
@@ -148,19 +149,6 @@ server {
         try_files $uri =404;
     }
 
-    location = /api { return 308 /api/; }
-    location ^~ /api/ {
-        proxy_pass http://127.0.0.1:3180/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # До отдельной настройки WS неизвестные запросы не получают HTML SPA.
-    location = /ws { return 404; }
-    location ^~ /ws/ { return 404; }
-
     location = /index.html {
         add_header Cache-Control "no-store" always;
     }
@@ -182,7 +170,7 @@ server {
 }
 ```
 
-Завершающий `/` в `proxy_pass` преобразует `/api/v1/...` в `/v1/...`, как нужно маршрутам Yii. Неизвестный API-запрос остаётся в backend и не попадает в HTML фронтенда. Это поведение описано в [документации nginx](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass).
+Этот nginx раздаёт только фронтенд. Браузер отправляет запросы на отдельный адрес из `VITE_API_URL`; `proxy_pass`, преобразование API-маршрутов и прокси WebSocket здесь не нужны. В действующем HTTPS-vhost сохраните TLS-настройки и настройки раздачи статики.
 
 Включите конфигурацию:
 
@@ -195,7 +183,7 @@ curl -fsS http://ablakin.ru/deploy-version.txt
 
 Для новой заглушки должно вернуться `bootstrap`. Для существующего сайта проверьте его главную страницу; файл версии появится после первого релиза. Если vhost уже включён, пропустите создание ссылки и не создавайте дубликат `server_name`.
 
-Адрес `127.0.0.1:3180` — пример уже работающего API на том же VPS: подставьте фактический upstream. Если API пока нет, временно замените содержимое `location ^~ /api/` на `return 503;`. Это не мешает публикации статики. Маршруты AI и Node-RED из PCM Helper сюда не переносятся; настройка серверных приложений в эту инструкцию не входит.
+Из PCM Helper переносится механизм доставки статики и отката. Его маршруты AI, Node-RED и схема API на домене фронтенда не переносятся. Если ранее по первой версии этой инструкции добавили `location /api/` с проксированием, он не используется при корректном абсолютном `VITE_API_URL`; для frontend его можно убрать из vhost.
 
 ## 5. Включить HTTPS
 
@@ -231,16 +219,28 @@ Certbot запросит email и согласие с условиями. На �
 |---|---|
 | `FRONTEND_HEALTHCHECK_URL` | `https://ablakin.ru`, без пути |
 
-Как в PCM Helper, основные production-параметры сборки задаются прямо в workflow:
+В Settings → Secrets and variables → Actions → Variables добавьте **Repository variables**, доступные job сборки:
 
 | Variable | Значение |
 |---|---|
-| `VITE_API_URL` | `/api/` — завершающий слеш обязателен для текущего кода |
+| `VITE_API_URL` | Полный URL отдельного API-хоста с завершающим `/`; для HTTPS-сайта используйте доступный HTTPS API |
+| `VITE_WS_URL` | Адрес отдельного WS-сервиса, если чат подключён; для HTTPS-сайта — `wss://...` |
+
+Адрес API обязателен: workflow отклоняет пустое значение, относительный `/api/`, URL без завершающего `/`, с логином/паролем, query или hash. Например, `https://api.example.com/` — только пример формата, не адрес существующего API Ablaki. Не заменяйте `http` на `https` механически: сначала нужен работающий TLS на стороне API.
+
+В коде запросы строятся как `VITE_API_URL + маршрут`. При `VITE_API_URL=https://api.example.com/` запрос входа идёт на `https://api.example.com/login`, профиль — на `https://api.example.com/v1/users/profile`. Значение задаётся при сборке; файл `.env` на frontend-VPS готовую статику не меняет. [Документация Vite](https://vite.dev/guide/env-and-mode).
+
+Для прямого обращения с `https://ablakin.ru` API должен поддерживать HTTPS и CORS: разрешать origin сайта, используемые методы (включая PATCH) и заголовки `Content-Type` и `Authorization`, корректно отвечать на OPTIONS. HTTP API с HTTPS-страницы браузер блокирует как mixed content. Это условия доступа к уже работающему API; настройка backend не входит в текущий этап. [Mixed content](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Mixed_content), [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS).
+
+Флаги функций пока задаются прямо в workflow:
+
+| Параметр сборки | Значение |
+|---|---|
 | `VITE_CRAFT_MOCK` | `0` |
 | `VITE_STAT_MOCK` | `0` |
 | `VITE_CITY_MOCK` | `0` |
 
-Только `VITE_WS_URL` при необходимости создайте как **Repository variable** в Settings → Secrets and variables → Actions → Variables. Укажите адрес уже работающего WS-сервиса. Эта переменная нужна на этапе сборки, поэтому её не следует помещать только в environment deploy-job.
+Не помещайте `VITE_API_URL` и `VITE_WS_URL` только в environment `production-frontend`: environment подключён к deploy-job, а эти значения нужны раньше, при сборке.
 
 Все `VITE_*` попадают в публичную сборку. Они не подходят для паролей, закрытых ключей и серверных токенов.
 
@@ -484,6 +484,8 @@ jobs:
     name: Frontend checks
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
     defaults:
       run:
         working-directory: project
@@ -504,13 +506,30 @@ jobs:
       - name: Check deployment script syntax
         run: bash -n ../deploy/frontend-deploy.sh
 
+      - name: Validate API URL
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const value = process.env.VITE_API_URL;
+          try {
+            const url = new URL(value);
+            if (!['http:', 'https:'].includes(url.protocol) ||
+                url.username || url.password || url.search || url.hash ||
+                value !== value.trim() || !value.endsWith('/')) {
+              throw new Error('Invalid API URL');
+            }
+          } catch {
+            console.error('::error::Set repository variable VITE_API_URL to an absolute HTTP(S) API URL ending with / (not /api/).');
+            process.exit(1);
+          }
+          NODE
+
       - name: Run unit tests
         run: npm run test:unit
 
       - name: Build frontend
         run: npm run build
         env:
-          VITE_API_URL: /api/
           VITE_CRAFT_MOCK: '0'
           VITE_STAT_MOCK: '0'
           VITE_CITY_MOCK: '0'
@@ -618,7 +637,7 @@ jobs:
 
 Как в PCM Helper, Node.js 24 используется только в CI. Артефакт содержит `project/dist` и хранится 14 дней. Deploy скачивает эту сборку, добавляет файл версии, создаёт архив и checksum, затем передаёт их вместе со скриптом на VPS. Повторной сборки на сервере нет. nginx перезапускать при обычном релизе не требуется.
 
-Production-значения `/api/` и флаги `0` зафиксированы в workflow; WS-адрес берётся из Repository variable. До объединения в master проверьте готовность соответствующих функций. Флаги сборки не создают backend и не отключают автоматически незавершённые экраны.
+Адреса API и WS берутся из Repository variables; флаги `0` зафиксированы в workflow. До объединения в master проверьте значения переменных и готовность соответствующих функций. Флаги сборки не создают backend и не отключают автоматически незавершённые экраны.
 
 Если упала только deploy-job, используйте **Re-run failed jobs**: имя артефакта зависит от SHA, а не от номера попытки. После успешного деплоя повтор той же версии делайте новым ручным запуском из актуального master. Изменённой сборке нужен новый коммит: готовый каталог того же SHA скрипт использует повторно, даже если прислан другой архив.
 
@@ -643,7 +662,7 @@ Production-значения `/api/` и флаги `0` зафиксированы
 curl -fsS https://ablakin.ru/deploy-version.txt
 ```
 
-Она должна совпасть с SHA коммита в master. Для текущего этапа проверьте главную, прямое открытие существующего вложенного маршрута и JS/CSS. Запрос `/assets/does-not-exist.js` должен дать 404. Запросы `/api/does-not-exist` и `/ws/does-not-exist` не должны возвращать HTML Vue-приложения. Вход, выход и WS проверяйте дополнительно, если соответствующие сервисы уже подключены; их запуск не относится к этому этапу frontend-деплоя.
+Она должна совпасть с SHA коммита в master. Для текущего этапа проверьте главную, прямое открытие существующего вложенного маршрута и JS/CSS. Запрос `/assets/does-not-exist.js` должен дать 404. В DevTools → Network проверьте, что Request URL API-запросов содержит отдельный хост из `VITE_API_URL`, например `<API_HOST>/login`, а не `ablakin.ru/api/login`. Вход, выход и WS проверяйте дополнительно, если соответствующие сервисы уже подключены; их запуск не относится к этому этапу frontend-деплоя.
 
 Если тесты или сборка падают, исправьте причину. Не удаляйте проверки, чтобы получить зелёный deploy.
 
@@ -724,9 +743,10 @@ Rsync удаляет старые assets из web-root. Поэтому давн�
 | `Host key verification failed` | Совпадение HOST/PORT с проверенным known_hosts; не отключать проверку |
 | SSH timeout из Actions | Firewall VPS/провайдера, порт и доступность из runner |
 | `nginx` отдаёт 403 | Права чтения релиза и прохода по каталогам, наличие index.html |
-| `/api/` отвечает 502 | Запущен ли backend, правильный loopback-порт и upstream |
+| Запрос API заблокирован как Mixed Content | С HTTPS-фронтенда нужен HTTPS-адрес отдельного API |
+| Ошибка CORS или OPTIONS | Разрешены ли на API origin фронтенда, методы и заголовки Content-Type/Authorization |
 | Вложенный маршрут отвечает 404 | SPA fallback в location / |
-| API возвращает HTML фронтенда | Приоритет location /api/ и завершающий слеш proxy_pass |
+| API возвращает HTML фронтенда | Request URL должен содержать отдельный API-хост; проверьте VITE_API_URL и SHA опубликованной сборки |
 | Проверка SHA не проходит | DNS, HTTPS, web-root, deploy-version.txt, кеш CDN/proxy |
 | `Incomplete release directory` | Есть `releases/<sha>`, но нет `<sha>.ready`; проверить и переместить незавершённый каталог перед повтором |
 | Повтор SHA не применил изменения сборки | Готовый релиз того же SHA используется повторно; для изменённой сборки нужен новый коммит |

@@ -13,7 +13,7 @@
 
 ## Группа B: Проверки и артефакт
 - [x] B1. Создать workflow на основе PCM Helper с working-directory project и Node.js 24: `.github/workflows/node.js.yml`.
-- [ ] B2. Выполнять npm ci, test:unit и build для PR/master/release; включить проверку конфигурации.
+- [x] B2. Реализовать npm ci, test:unit и build для PR/master/release; проверять обязательный абсолютный VITE_API_URL с завершающим `/`. Запуск в GitHub Actions проверяется отдельно.
 - [ ] B3. Добавить typecheck и браузерные smoke-тесты, затем включить их в обязательные проверки.
 - [x] B4. Сохранять проверенный dist как артефакт commit SHA; не пересобирать на VPS. Реализовано в workflow, запуск в Actions ещё не проверен.
 - [x] B5. Ограничить автоматическую публикацию проверенным master, сериализовать deploy через concurrency. Реализовано в workflow.
@@ -22,7 +22,7 @@
 - [ ] C1. Подготовить пользователя deploy с отдельным ключом, минимальными правами и проверенным host key.
 - [ ] C2. Подготовить web-root и каталоги релизов; сохранить текущую статику.
 - [ ] C3. Настроить HTTPS/DNS, SPA fallback, asset 404, кеширование хешированных файлов и no-cache index.
-- [ ] C4. Настроить /api/ с явным преобразованием URI для Yii; неизвестные API не должны возвращать HTML SPA.
+- [ ] C4. Проверить прямые запросы браузера к отдельному API-хосту из Repository variable VITE_API_URL, HTTPS и CORS. Проксирование `/api/` на frontend nginx исключено по уточнению пользователя.
 - [ ] C5. Настроить WS только после готовности серверного чата.
 - [ ] C6. Добавить GitHub environment production-frontend и secrets/variables из соглашения.
 

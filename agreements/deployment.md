@@ -7,7 +7,7 @@
 - PR выполняет проверки. Production-публикация допускается из master после проверок; release/2026-09-05 предназначена для подготовки.
 - Базовое окружение CI — Node.js 24; npm ci → npm run test:unit → npm run build.
 - На VPS передавать только dist и скрипт релиза. Сборка на сервере не требуется.
-- Web-root — `/var/www/ablakin.ru`, deploy-root — `/opt/ablaki-frontend`. В инструкции используется домен `ablakin.ru`; SSH-доступ и API upstream нужно сверить с сервером до первого запуска.
+- Web-root — `/var/www/ablakin.ru`, deploy-root — `/opt/ablaki-frontend`. В инструкции используется домен `ablakin.ru`; SSH-доступ и адрес отдельного API-хоста нужно сверить до первого запуска.
 - Workflow: [.github/workflows/node.js.yml](../.github/workflows/node.js.yml). Серверный скрипт: [deploy/frontend-deploy.sh](../deploy/frontend-deploy.sh).
 
 ## Публикация и откат
@@ -22,8 +22,8 @@
 - Environment: production-frontend. Отдельный SSH-ключ deploy, проверенный known_hosts, минимальные права без sudo для обычного релиза.
 - Secrets: FRONTEND_DEPLOY_HOST, FRONTEND_DEPLOY_PORT, FRONTEND_DEPLOY_USER, FRONTEND_DEPLOY_SSH_KEY, FRONTEND_DEPLOY_KNOWN_HOSTS.
 - Variable FRONTEND_HEALTHCHECK_URL — публичный HTTPS origin.
-- VITE_API_URL и флаги функций задаются при сборке; VITE_* публичны.
-- Рекомендуемый API — /api/ на домене SPA с явным преобразованием URI в маршруты Yii.
+- `VITE_API_URL` задаётся как GitHub Repository variable: полный HTTP(S)-адрес отдельного API-хоста с завершающим `/`. Workflow проверяет адрес перед сборкой; пустое значение и относительный `/api/` не допускаются. `VITE_*` публичны и записываются в сборку.
+- Браузер напрямую обращается к отдельному API-хосту. Frontend nginx раздаёт статику и не проксирует API. Для frontend по HTTPS нужен HTTPS API, разрешающий CORS с origin `https://ablakin.ru`, используемые методы и заголовки `Content-Type`/`Authorization`.
 - Для доступного чата нужен готовый сервер WS и согласованный протокол; одного VITE_WS_URL недостаточно.
 - TLS, DNS, firewall, nginx и backend настраиваются отдельно от публикации статики.
 - Bash и workflow сохранять с LF.
