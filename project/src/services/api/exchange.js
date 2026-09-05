@@ -1,5 +1,6 @@
-import axios from "axios";
+import {apiClient as axios} from "@/services/httpClient";
 import config from "../../config/config";
+import { showAlert } from "../dialog.js";
 
 const baseUrl = config.getParam('apiDomain');
 
@@ -68,7 +69,7 @@ export const exchange = {
 
 export const errorHandler = (e, errors) => {
     if (!errors.hasOwnProperty("404")) {
-        errors['404'] = () => alert("something сломалось")
+        errors['404'] = () => showAlert("Что-то сломалось")
     }
     if (!e.response) {
         console.log("Ошибка Интернета");

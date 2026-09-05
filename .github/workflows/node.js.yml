@@ -1,0 +1,166 @@
+name: Frontend CI and production deploy
+
+on:
+  push:
+    branches: [master, 'release/**']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
+    defaults:
+      run:
+        working-directory: project
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check deployment script syntax
+        run: bash -n ../deploy/frontend-deploy.sh
+
+      - name: Validate API URL
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const value = process.env.VITE_API_URL;
+          try {
+            const url = new URL(value);
+            if (!['http:', 'https:'].includes(url.protocol) ||
+                url.username || url.password || url.search || url.hash ||
+                value !== value.trim() || !value.endsWith('/')) {
+              throw new Error('Invalid API URL');
+            }
+          } catch {
+            console.error('::error::Set repository variable VITE_API_URL to an absolute HTTP(S) API URL ending with / (not /api/).');
+            process.exit(1);
+          }
+          NODE
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_CRAFT_MOCK: '0'
+          VITE_STAT_MOCK: '0'
+          VITE_CITY_MOCK: '0'
+          VITE_WS_URL: ${{ vars.VITE_WS_URL }}
+
+      - name: Upload frontend artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: project/dist
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    name: Deploy frontend to production
+    needs: frontend
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production-frontend
+    concurrency:
+      group: production-frontend
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.FRONTEND_DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.FRONTEND_DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.FRONTEND_DEPLOY_KNOWN_HOSTS }}
+      HEALTHCHECK_URL: ${{ vars.FRONTEND_HEALTHCHECK_URL }}
+    steps:
+      - name: Check out deployment scripts
+        uses: actions/checkout@v7
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: release/dist
+
+      - name: Package frontend release
+        shell: bash
+        run: |
+          archive="frontend-${{ github.sha }}.tar.gz"
+          printf '%s\n' "${{ github.sha }}" > release/dist/deploy-version.txt
+          tar -C release/dist -czf "release/$archive" .
+          (
+            cd release
+            sha256sum "$archive" > "$archive.sha256"
+          )
+          cp deploy/frontend-deploy.sh release/
+
+      - name: Validate SSH settings
+        shell: bash
+        run: |
+          for name in DEPLOY_HOST DEPLOY_PORT DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS HEALTHCHECK_URL; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured"
+              exit 1
+            fi
+          done
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]]
+          healthcheck_url_pattern='^https://[A-Za-z0-9._:-]+/?$'
+          [[ "$HEALTHCHECK_URL" =~ $healthcheck_url_pattern ]]
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+
+      - name: Upload and activate frontend
+        shell: bash
+        run: |
+          archive="frontend-${{ github.sha }}.tar.gz"
+          remote_dir="/opt/ablaki-frontend/incoming/${{ github.sha }}"
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+            -o BatchMode=yes -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$remote_dir'"
+          scp -i "$HOME/.ssh/deploy_key" -P "$DEPLOY_PORT" \
+            -o BatchMode=yes -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "release/$archive" \
+            "release/$archive.sha256" \
+            "release/frontend-deploy.sh" \
+            "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/"
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+            -o BatchMode=yes -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash '$remote_dir/frontend-deploy.sh' \
+              --deploy-root '/opt/ablaki-frontend' \
+              --web-root '/var/www/ablakin.ru' \
+              --sha '${{ github.sha }}' \
+              --archive '$remote_dir/$archive' \
+              --healthcheck-url '$HEALTHCHECK_URL'"

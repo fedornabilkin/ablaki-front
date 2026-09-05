@@ -1,36 +1,33 @@
 <script setup>
 import NewOrder from "./NewOrder.vue";
 import OrdersList from "./OrdersList.vue";
+import RequestError from '@/components/RequestError.vue';
 import {exchange} from '@/services/api/exchange.js';
 import {useFetchOrders} from './hooks/useFetchOrders';
+import {NTag, NButton} from 'naive-ui';
+import {useStore} from 'vuex';
+import {errorHandler} from '@/services/api/errorHandler';
 
-const {isLoading: isLoadingBuy, ordersList: ordersBuy} = useFetchOrders(exchange.getMyBuy);
+const store = useStore();
 
-const {isLoading: isLoadingSell, ordersList: ordersSell} = useFetchOrders(exchange.getMySell);
+const {isLoading: isLoadingBuy, ordersList: ordersBuy, error: errorBuy, refetch: reloadBuy} = useFetchOrders(exchange.getMyBuy);
 
-const onCancel = (id, type) => {
-  if (type === "buy") {
-    let orderIndex = ordersSell.value.findIndex((order) => order.id === id);
-    ordersSell.value[orderIndex].isLoading = true;
+const {isLoading: isLoadingSell, ordersList: ordersSell, error: errorSell, refetch: reloadSell} = useFetchOrders(exchange.getMySell);
 
-    exchange.cancel(id).then(res => {
-      ordersSell.value[orderIndex].isLoading = false;
-      ordersSell.value[orderIndex].status = "success";
-
-      ordersSell.value.splice(orderIndex, 1);
-    });
-  }
-
-  if (type === "sell") {
-    let orderIndex = ordersBuy.value.findIndex((order) => order.id === id);
-    ordersBuy.value[orderIndex].isLoading = true;
-
-    exchange.cancel(id).then(res => {
-      ordersBuy.value[orderIndex].isLoading = false;
-      ordersBuy.value[orderIndex].status = "success";
-
-      ordersBuy.value.splice(orderIndex, 1);
-    });
+const onCancel = async (id, type) => {
+  const orders = type === 'buy' ? ordersSell : ordersBuy;
+  const order = orders.value.find(item => item.id === id);
+  if (!order || order.isLoading) return;
+  order.isLoading = true;
+  try {
+    await exchange.cancel(id);
+    const index = orders.value.indexOf(order);
+    if (index !== -1) orders.value.splice(index, 1);
+    await store.dispatch('auth/fetchData');
+  } catch (error) {
+    errorHandler(error);
+  } finally {
+    order.isLoading = false;
   }
 };
 
@@ -40,31 +37,35 @@ const onCancel = (id, type) => {
   .row.mt-2
     .col-md-6
       h5 Мои заявки на покупку
+      request-error(:failed="!!errorSell" @retry="reloadSell")
       orders-list(:orders='ordersSell' :isloading='isLoadingSell')
         template(v-slot:info='{ credit, amount }')
-          el-tag(type="success" effect="light")
+          n-tag(type="success")
             | {{ amount }} Кг
             font-awesome-icon.px-1(icon='fa fa-arrow-right')
-          el-tag(type="info" effect="light")
+          n-tag(type="info")
             font-awesome-icon(icon='fa fa-user')
         template(v-slot:action='{ orderId, isLoading, status }')
           .d-flex.text-success(v-if="status === 'success'")
             font-awesome-icon(icon='fa fa-check')
-          el-button(size='small' type='danger' @click="onCancel(orderId, 'buy')" :loading='isLoading' v-if='status === null')
-            font-awesome-icon(icon='fa fa-trash-alt')
+          n-button(size='small' type='error' @click="onCancel(orderId, 'buy')" :loading='isLoading' v-if='status === null')
+            template(#icon)
+              font-awesome-icon(icon='fa fa-trash-alt')
     .col-md-6
       h5 Мои заявки на продажу
+      request-error(:failed="!!errorBuy" @retry="reloadBuy")
       orders-list(:orders='ordersBuy' :isloading='isLoadingBuy')
         template(v-slot:info='{ credit, amount }')
-          el-tag(type="success" effect="light")
+          n-tag(type="success")
             | {{ credit }} Cr
             font-awesome-icon.px-1(icon='fa fa-arrow-right')
-          el-tag(type="info" effect="light")
+          n-tag(type="info")
             font-awesome-icon(icon='fa fa-user')
         template(v-slot:action='{ orderId, isLoading, status }')
           .d-flex.text-success(v-if="status === 'success'")
             font-awesome-icon(icon='fa fa-check')
-          el-button(size='small' type='danger' @click="onCancel(orderId, 'sell')" :loading='isLoading' v-if='status === null')
-            font-awesome-icon(icon='fa fa-trash-alt')
+          n-button(size='small' type='error' @click="onCancel(orderId, 'sell')" :loading='isLoading' v-if='status === null')
+            template(#icon)
+              font-awesome-icon(icon='fa fa-trash-alt')
 
 </template>

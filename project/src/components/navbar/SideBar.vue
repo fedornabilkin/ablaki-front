@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "@vue/reactivity";
 import { useStore } from "vuex";
+import { NButton } from "naive-ui";
 
 const store = useStore();
 const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
@@ -10,7 +11,7 @@ const menuItems = computed(() => {
         {anchor: 'Сапер', url: '/games/saper', title: 'Игра сапер', icon: 'fa fa-apple-alt'},
         {anchor: 'Орел-решка', url: '/games/orel', title: 'Игра Орел-решка', icon: 'fa fa-adjust'},
         {anchor: 'Дуэль', url: '/games/duel', title: 'Игра дуэль', icon: 'fa fa-crosshairs'},
-        {anchor: '5 яблок', url: '/games/fiveapple', title: 'Игра 5 яблок', icon: 'fa fa-graduation-cap'}
+        {anchor: '5 яблок', url: '/games/five', title: 'Игра 5 яблок', icon: 'fa fa-apple-alt'}
     ];
     if (isAuthenticated.value) {
         return [
@@ -30,69 +31,70 @@ const menuItems = computed(() => {
 </script>
 
 <template lang="pug">
-  .bg-white
+  .sidebar-bar
     .container.menu-games
       router-link.menu-games-item(v-for='item in menuItems' :key='item.url' :to='item.url')
-        el-button(type='text')
-          font-awesome-icon.mx-1(:icon='item.icon')
+        n-button(text)
+          template(#icon)
+            font-awesome-icon(:icon='item.icon')
           | {{ item.anchor }}
 
 </template>
 
 <style lang="scss" scoped>
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/mixins";
+.sidebar-bar {
+    background: var(--bg-surface);
+    border-bottom: 0.0625rem solid var(--border);
+}
 
 .menu-games {
     display: flex;
-    justify-content: flex-start;
+    // mobile-first: на узком экране пункты распределяются равномерно
+    justify-content: space-around;
     // margin: 0 2rem;
 
-    @include media-breakpoint-down(sm) {
-        justify-content: space-around;
+    @media (min-width: 36rem) {
+        justify-content: flex-start;
     }
 
     .menu-games-item {
-        font-size: 16px;
+        font-size: 1rem;
         position: relative;
 
         &.router-link-active {
-            // border-bottom: 1px solid var(--el-color-primary);
-            // border-bottom-color: var(--el-color-primary);
-
             &::after {
                 content: '';
                 position: absolute;
                 bottom: 0;
                 left: 10%;
                 width: 80%;
-                height: 4px;
-                // background: rgb(198 206 230);
-                background: #009688;
-                border-radius: 4px;
+                height: 0.25rem;
+                background: var(--primary);
+                border-radius: 0.25rem;
             }
         }
-        
-        :deep(.el-button) {
-            padding: 1rem;
+
+        :deep(.n-button) {
+            // mobile-first: на узком экране иконка над подписью
+            display: flex;
+            flex-direction: column;
+            padding: .8rem 0;
             font-size: inherit;
             height: auto;
 
-            @include media-breakpoint-down(sm) {
-                display: flex;
-                flex-direction: column;
-                padding: .8rem 0;
-
-                & [class*=el-icon] + span {
-                    margin-left: unset;
-                    font-size: .9rem;
-                }
+            & .n-button__icon + span {
+                margin-left: unset;
+                margin-top: .5rem;
+                font-size: .9rem;
             }
 
-            & > span {
-                @include media-breakpoint-down(sm) {
-                    margin-top: .5rem;
+            @media (min-width: 36rem) {
+                flex-direction: row;
+                padding: 1rem;
+
+                & .n-button__icon + span {
+                    margin-top: 0;
+                    font-size: inherit;
                 }
             }
         }

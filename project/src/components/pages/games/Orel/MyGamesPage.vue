@@ -4,11 +4,11 @@ import {watch} from "@vue/runtime-core";
 import {orel} from "../../../../services/api/games/orel";
 import GamesList from './GamesList.vue';
 
-import {ElNotification} from "element-plus";
+import { NButton, useNotification } from "naive-ui";
 import moment from "moment";
 
 export default {
-    components: { GamesList },
+    components: { GamesList, NButton },
     props: {
         reloadListTrigger: {
             type: Boolean,
@@ -20,6 +20,7 @@ export default {
         const gamesCount = ref(0);
         const isGamesLoading = ref(true);
         const currentPage = ref(1);
+        const notification = useNotification();
 
         const fetchGames = (page = 1, merge = false) => {
             isGamesLoading.value = true;
@@ -68,9 +69,9 @@ export default {
                 gamesList.value.splice(gameIndex, 1);
                 gamesCount.value--;
 
-                ElNotification({
-                    message: "Игра удалена",
-                    type: "info",
+                notification.info({
+                    content: "Игра удалена",
+                    duration: 4500,
                 });
             });
         };
@@ -99,6 +100,7 @@ export default {
             deleteGame,
             onPageChange,
             onCreateGameClicked,
+            notification,
         };
     },
 };
@@ -117,13 +119,16 @@ export default {
         <template v-slot:actionTitle>Удалить</template>
         
         <template v-slot:actionCol="{ gameId, isLoading }">
-            <el-button
-                icon="delete"
-                type="danger"
+            <n-button
+                type="error"
                 circle
                 :loading="isLoading"
                 @click="deleteGame(gameId)"
-            />
+            >
+                <template #icon>
+                    <font-awesome-icon icon="fa fa-trash-alt"/>
+                </template>
+            </n-button>
         </template>
 
         <template v-slot:dateCol="{ createdDate }">

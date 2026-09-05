@@ -15,12 +15,19 @@ import loginKey from "./components/pages/user/loginKey.vue";
 import Logout from './components/pages/user/Logout.vue';
 import Wall from './components/pages/user/Wall.vue';
 import Profile from './components/pages/user/Profile.vue';
-import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage} from "./components/pages/user/Exchange";
+import Exchange, {MyOrdersPage, OrdersHistoryPage, OrdersPage, MaterialsShop} from "./components/pages/user/Exchange";
 
 import Saper from './components/pages/games/saper/Saper.vue';
 import Orel, {GamesHistoryPage, MyOrelGames, OrelGames} from "./components/pages/games/Orel";
+import Five, {FiveGames, MyFiveGames, FiveHistoryPage} from "./components/pages/games/five";
+import Duel, {DuelGames, MyDuelGames, DuelHistoryPage} from "./components/pages/games/duel";
+
+import Chat from './components/pages/chat/Chat.vue';
+import Craft from './components/pages/craft/Craft.vue';
+import City from './components/pages/city/City.vue';
 
 import {store} from './store/store';
+import {createAuthGuard} from './services/authGuard';
 
 // 1. Определяем компоненты для маршрутов.
 // Они могут быть импортированы из других файлов
@@ -41,13 +48,25 @@ const routes = [
     { path: '/users/login', component: Login },
     { path: '/users/login-key/:key', component: loginKey },
     { path: '/users/logout', component: Logout },
-    { path: '/users/profile', component: Profile },
+    { path: '/users/profile', component: Profile, meta: { requiresAuth: true } },
 
     { path: '/', component: WithUser, children: [
         { path: '/games/orel', component: Orel, children: [
             { path: '', component: OrelGames },
             { path: 'my', component: MyOrelGames },
             { path: 'history', component: GamesHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/games/duel', component: Duel, children: [
+            { path: '', component: DuelGames },
+            { path: 'my', component: MyDuelGames },
+            { path: 'history', component: DuelHistoryPage },
+        ], meta: { requiresAuth: true } },
+
+        { path: '/games/five', component: Five, children: [
+            { path: '', component: FiveGames },
+            { path: 'my', component: MyFiveGames },
+            { path: 'history', component: FiveHistoryPage },
         ], meta: { requiresAuth: true } },
 
         { path: '/games/saper', component: Saper, children: [
@@ -60,10 +79,18 @@ const routes = [
             { path: '', component: OrdersPage },
             { path: 'my', component: MyOrdersPage },
             { path: 'history', component: OrdersHistoryPage },
+            { path: 'shop', component: MaterialsShop },
         ], meta: { requiresAuth: true } },
 
         { path: '/wall/:login', component: Wall },
     ], meta: { requiresAuth: true } },
+
+    { path: '/chat', component: Chat, meta: { requiresAuth: true } },
+    { path: '/chat/:roomId', component: Chat, meta: { requiresAuth: true } },
+
+    { path: '/craft', component: Craft, meta: { requiresAuth: true } },
+
+    { path: '/city', component: City, meta: { requiresAuth: true } },
 
     { path: '/forum', component: Forum, children: [
         // { path: '', component: OrdersPage },
@@ -83,18 +110,6 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach((to, from) => {
-    // instead of having to check every route record with
-    // to.matched.some(record => record.meta.requiresAuth)
-    // if (to.meta.requiresAuth && store.getters['auth/isAuthorized'] === false) {
-    //     // this route requires auth, check if logged in
-    //     // if not, redirect to login page.
-    //     return {
-    //         path: '/',
-    //         // save the location we were at to come back later
-    //         //query: { redirect: to.fullPath },
-    //     }
-    // }
-})
+router.beforeEach(createAuthGuard(store));
 
 export { router };

@@ -2,9 +2,10 @@
 
 import {ref, computed} from "@vue/reactivity";
 import {onMounted} from "vue";
+import {NModal, NButton} from 'naive-ui';
 
 const props = defineProps(['isOpen', 'apiService', 'game'])
-const emit = defineEmits(['gameComplete'])
+const emit = defineEmits(['gameComplete', 'close'])
 
 const isLoading = ref(false)
 const btnActive = ref(true)
@@ -75,6 +76,14 @@ const startGame = () => {
       })
 }
 
+const onUpdateShow = (v) => {
+  if (v) {
+    handleOpen()
+  } else {
+    emit('close')
+  }
+}
+
 const playGame = (row, col) => {
   setResponse('')
   const element = getClickElement(row, col)
@@ -103,22 +112,23 @@ const playGame = (row, col) => {
 </script>
 
 <template lang="pug">
-  el-dialog(
-    top="3rem"
-    :model-value="props.isOpen"
+  n-modal(
+    :show="props.isOpen"
+    preset="card"
     :title="title"
-    :modal="false"
-    destroy-on-close
-    @close="closeDialog"
-    @open="handleOpen")
+    :mask-closable="true"
+    style="max-width: 500px;"
+    @update:show="onUpdateShow")
 
     table
       tr(v-for="i in 5" :key="i")
         td(v-for="k in 7" :key="k")
-          el-button(class="play-game" icon="Apple" :type="getType(i, k)" @click="playGame(i, k)" :loading="getLoading(i, k)")
+          n-button(class="play-game" :type="getType(i, k)" @click="playGame(i, k)" :loading="getLoading(i, k)")
+            template(#icon)
+              font-awesome-icon(icon='fa fa-apple-alt')
 
     div.mt-3
-      el-button(type="primary" @click="startGame" :disabled="!btnActive" :loading="isLoading") Начать
+      n-button(type="primary" @click="startGame" :disabled="!btnActive" :loading="isLoading") Начать
       .d-inline.mx-1 {{response}}
 </template>
 

@@ -1,8 +1,10 @@
 <script>
     import { useRouter } from "vue-router";
+    import { NResult, NButton, NImage } from "naive-ui";
 
     export default {
         name: "PageNotFound",
+        components: { NResult, NButton, NImage },
 
         setup() {
             const router = useRouter();
@@ -19,12 +21,12 @@
 </script>
 
 <template>
-    <el-result title="Not Found" sub-title="Страница не найдена">
+    <n-result status="404" title="Not Found" description="Страница не найдена">
         <template #icon>
-            <el-image :src="'@/assets/logo.jpeg'"></el-image>
+            <n-image :src="'@/assets/logo.jpeg'"></n-image>
         </template>
-        <template #extra>
-            <el-button type="primary" @click="goBack">Назад</el-button>
+        <template #footer>
+            <n-button type="primary" @click="goBack">Назад</n-button>
         </template>
-    </el-result>
+    </n-result>
 </template>

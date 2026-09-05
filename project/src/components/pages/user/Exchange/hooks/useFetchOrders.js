@@ -6,6 +6,7 @@ export const useFetchOrders = (fun) => {
         isLoading,
         result: ordersList,
         refetch,
+        error,
     } = useFetch(
         fun, 
         [], 
@@ -23,5 +24,6 @@ export const useFetchOrders = (fun) => {
         isLoading,
         ordersList,
         refetch,
+        error,
     }
 }

@@ -3,156 +3,157 @@ import {
     login as apiLogin,
     loginKey as apiLoginKey,
     logout as apiLogout,
-    registration as apiRegistration
-} from "../services/api";
+    registration as apiRegistration,
+} from '../services/api';
 
-const AUTH_REQUEST = 'auth_request';
-const AUTH_SUCCESS = 'auth_success';
-const FETCH_USER_SUCCESS = 'fetch_user_success';
-const AUTH_ERROR = 'auth_error';
-const LOGOUT = 'logout';
+const pendingProfiles = new WeakMap();
+const persistToken = token => {
+    try {
+        if (token) localStorage.setItem('token', token);
+        else localStorage.removeItem('token');
+    } catch { /* Session remains usable when browser storage is unavailable. */ }
+};
+const readToken = () => {
+    try { return localStorage.getItem('token') || ''; }
+    catch { return ''; }
+};
 
-const auth = {
+async function authenticate({commit, state}, request) {
+    commit('logout');
+    persistToken('');
+    commit('auth_request');
+    const revision = state.revision;
+    try {
+        const response = await request();
+        if (revision !== state.revision) throw new Error('Вход отменён');
+        if (!response?.user?.id || typeof response.token !== 'string' || !response.token) {
+            throw new Error('Сервер вернул некорректные данные входа');
+        }
+        persistToken(response.token);
+        commit('auth_success', response);
+        return response;
+    } catch (error) {
+        if (revision === state.revision) {
+            persistToken('');
+            commit('auth_error');
+        }
+        throw error;
+    }
+}
+
+export const auth = {
     namespaced: true,
-    state: () => ({
-        status: null,
-        token: localStorage.getItem('token') || '',
-        user: null,
-    }),
+    state: () => ({status: null, token: readToken(), user: null, revision: 0}),
     getters: {
-        isAuthenticated: state => state.user !== null,
-        isAuthorized: state => state.token.length > 0,
+        isAuthenticated: state => state.status === 'user' && state.user !== null && !!state.token,
+        isAuthorized: state => !!state.token,
         authStatus: state => state.status,
         token: state => state.token,
-        headerToken: state => 'Bearer ' + state.token,
+        headerToken: state => state.token ? 'Bearer ' + state.token : '',
         user: state => state.user,
     },
     mutations: {
-        [AUTH_REQUEST]: (state) => {
-            if (state.status === null || state.status === "guest") {
-                state.status = 'loading';
-            }
+        auth_request(state) {
+            if (state.status !== 'user') state.status = 'loading';
         },
-        [AUTH_SUCCESS]: (state, payload) => {
+        auth_success(state, payload) {
             state.status = 'user';
-            if (payload !== undefined) {
-                state.token = payload.token;
-                state.user = {...payload.user};
-            }
+            state.token = payload.token;
+            state.user = {...payload.user};
         },
-        [FETCH_USER_SUCCESS]: (state, payload) => {
+        fetch_user_success(state, payload) {
             state.status = 'user';
             state.user = {...payload};
         },
-        [AUTH_ERROR]: (state) => {
-            state.status = 'guest';
-        },
-        [LOGOUT]: (state) => {
+        auth_error(state) {
             state.status = 'guest';
             state.token = '';
             state.user = null;
+            state.revision++;
+        },
+        profile_error(state) {
+            // A temporary refresh failure must not sign out an already verified session.
+            state.status = state.user ? 'user' : 'error';
+        },
+        logout(state) {
+            state.status = 'guest';
+            state.token = '';
+            state.user = null;
+            state.revision++;
         },
     },
     actions: {
-        login({commit}, {login, password}) {
-            return new Promise((resolve, reject) => {
-                commit(AUTH_REQUEST);
-
-                apiLogin(login, password).then(res => {
-                    localStorage.setItem('token', res.token);
-                    commit(AUTH_SUCCESS, res);
-                    resolve(res);
-                }).catch(e => {
-                    localStorage.removeItem('token');
-                    commit(AUTH_ERROR);
-                    reject(e);
-                });
-            })
+        login(context, {login, password}) {
+            return authenticate(context, () => apiLogin(login, password));
         },
-        loginKey({commit}, {key}) {
-            return new Promise((resolve, reject) => {
-                commit(AUTH_REQUEST);
-
-                apiLoginKey(key).then(res => {
-                    localStorage.setItem('token', res.token);
-                    commit(AUTH_SUCCESS, res);
-                    resolve(res);
-                }).catch(e => {
-                    localStorage.removeItem('token');
-                    commit(AUTH_ERROR);
-                    reject(e);
-                });
-            })
+        loginKey(context, {key}) {
+            return authenticate(context, () => apiLoginKey(key));
         },
-        registration({commit}, {username, email, password}) {
-            return new Promise((resolve, reject) => {
-                commit(AUTH_REQUEST);
-
-                apiRegistration(username, email, password).then(res => {
-                    commit(AUTH_SUCCESS);
-                    resolve(res);
-                }).catch(e => {
-                    commit(AUTH_ERROR);
-                    reject(e);
-                });
-            })
-        },
-        fetchData({commit, getters}) {
-            if (getters.token.length > 0) {
-                return new Promise((resolve, reject) => {
-
-                    commit(AUTH_REQUEST);
-
-                    apiGetProfile().then(res => {
-                        commit(FETCH_USER_SUCCESS, res);
-                        resolve(res);
-                    }).catch(e => {
-                        this.dispatch('auth/clearData');
-                        reject(e);
-                    });
-                
-                });
-            } else {
-                commit(AUTH_ERROR);
+        async registration({commit, state}, payload) {
+            commit('auth_request');
+            const revision = state.revision;
+            try {
+                return await apiRegistration(payload.username, payload.email, payload.password);
+            } finally {
+                // Registration does not issue an API session.
+                if (revision === state.revision) {
+                    persistToken('');
+                    commit('auth_error');
+                }
             }
         },
-        clearData({commit}) {
-            commit(LOGOUT);
-            localStorage.removeItem('token');
+        fetchData({commit, state, dispatch}) {
+            if (!state.token) {
+                if (state.status === null) commit('auth_error');
+                return Promise.resolve(null);
+            }
+            const revision = state.revision;
+            const pending = pendingProfiles.get(state);
+            if (pending?.revision === revision) return pending.promise;
+            commit('auth_request');
+            const request = {revision, promise: null};
+            request.promise = apiGetProfile().then(profile => {
+                if (revision !== state.revision) return null;
+                if (!profile?.id) throw new Error('Сервер вернул некорректный профиль');
+                commit('fetch_user_success', profile);
+                return profile;
+            }).catch(error => {
+                if (revision === state.revision) {
+                    if (error.response?.status === 401) dispatch('clearData');
+                    else commit('profile_error');
+                }
+                throw error;
+            }).finally(() => {
+                if (pendingProfiles.get(state) === request) pendingProfiles.delete(state);
+            });
+            pendingProfiles.set(state, request);
+            return request.promise;
         },
-        setData({commit,}, userData) {
-            commit(FETCH_USER_SUCCESS, userData);
+        clearData({commit}) {
+            commit('logout');
+            persistToken('');
+        },
+        setData({commit, state}, userData) {
+            if (state.token) commit('fetch_user_success', userData);
         },
         addCredit({commit, state}, credits) {
-            commit(FETCH_USER_SUCCESS, {
-                ...state.user,
-                person: {
-                    ...state.user.person,
-                    credit: state.user.person.credit + credits
-                }
-            });
+            if (!state.user) return;
+            commit('fetch_user_success', {...state.user, person: {
+                ...state.user.person, credit: Number(state.user.person.credit) + credits,
+            }});
         },
         addBalance({commit, state}, balance) {
-            commit(FETCH_USER_SUCCESS, {
-                ...state.user,
-                person: {
-                    ...state.user.person,
-                    balance: state.user.person.balance + balance
-                }
-            });
+            if (!state.user) return;
+            commit('fetch_user_success', {...state.user, person: {
+                ...state.user.person, balance: Number(state.user.person.balance) + balance,
+            }});
         },
-        logout({commit}) {
-            return new Promise((resolve, reject) => {
-                apiLogout().then(res => {
-                    this.dispatch('auth/clearData');
-                    resolve(res);
-                }).catch(err => {
-                    this.dispatch('auth/clearData');
-                    reject(err)
-                })
-            })
-        }
-    }
+        async logout({state, dispatch}) {
+            const revision = state.revision;
+            try { return await apiLogout(); }
+            finally {
+                if (revision === state.revision) await dispatch('clearData');
+            }
+        },
+    },
 };
-
-export { auth };

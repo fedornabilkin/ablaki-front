@@ -1,55 +1,75 @@
 <template>
     <div class="container">
         <h1>Регистрация</h1>
-        <el-alert
+        <n-alert
             title="Получив халявные кредиты и Кг, потрать их с максимальной выгодой, а не как закалялась сталь."
             type="info"
             :closable="false"
         />
 
-        <el-form
-            v-loading="isLoading"
-            :model="form"
-            ref="formRef"
-            :rules="rules"
-            label-position="top"
-            class="mt-3"
-            @submit.prevent="submit"
-            size="large"
-        >
-            <el-form-item label="Логин" prop="username">
-                <el-input v-model="form.username"></el-input>
-            </el-form-item>
-            <el-form-item label="Email" prop="email">
-                <el-input v-model="form.email"></el-input>
-            </el-form-item>
-            <el-form-item label="Пароль" prop="password">
-                <el-input type="password" v-model="form.password"></el-input>
-            </el-form-item>
-            <el-form-item label="Пароль еще раз" prop="passwordRepeat">
-                <el-input type="password" v-model="form.passwordRepeat"></el-input>
-            </el-form-item>
-            <el-form-item label="" prop="rules">
-                <el-checkbox v-model="form.rules" class="rules-checkbox">Согласен со всем, что вы там понаписали</el-checkbox>
-            </el-form-item>
+        <n-spin :show="isLoading">
+            <n-form
+                :model="form"
+                ref="formRef"
+                :rules="rules"
+                label-placement="top"
+                class="mt-3"
+                @submit.prevent="submit"
+                size="large"
+            >
+                <n-form-item label="Логин" path="username">
+                    <n-input v-model:value="form.username"></n-input>
+                </n-form-item>
+                <n-form-item label="Email" path="email">
+                    <n-input v-model:value="form.email"></n-input>
+                </n-form-item>
+                <n-form-item label="Пароль" path="password">
+                    <n-input type="password" v-model:value="form.password"></n-input>
+                </n-form-item>
+                <n-form-item label="Пароль еще раз" path="passwordRepeat">
+                    <n-input type="password" v-model:value="form.passwordRepeat"></n-input>
+                </n-form-item>
+                <n-form-item label="" path="rules">
+                    <n-checkbox v-model:checked="form.rules" class="rules-checkbox">Согласен со всем, что вы там понаписали</n-checkbox>
+                </n-form-item>
 
-            <el-form-item>
-                <el-button type="primary" native-type="submit" :disabled="!btnEnabled" class="submit-button">Регистрация</el-button>
-            </el-form-item>
-        </el-form>
+                <n-form-item>
+                    <n-button type="primary" attr-type="submit" :disabled="!btnEnabled" class="submit-button">Регистрация</n-button>
+                </n-form-item>
+            </n-form>
+        </n-spin>
     </div>
 </template>
 
 <script>
 import { computed, ref } from "vue";
-import { ElNotification } from 'element-plus'
+import {
+  NAlert,
+  NSpin,
+  NForm,
+  NFormItem,
+  NInput,
+  NCheckbox,
+  NButton,
+  useNotification,
+} from 'naive-ui';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 
 export default {
+    components: {
+        NAlert,
+        NSpin,
+        NForm,
+        NFormItem,
+        NInput,
+        NCheckbox,
+        NButton,
+    },
     setup() {
         const store = useStore();
         const router = useRouter();
+        const notification = useNotification();
 
         const formRef = ref();
         const form = ref({
@@ -64,6 +84,15 @@ export default {
 
         const isLoading = computed(() => store.getters['auth/authStatus'] === "loading");
 
+        const makeServerErrorValidator = (key) => (rule, value) => {
+            if (errors[key]) {
+                const msg = errors[key];
+                errors[key] = "";
+                return new Error(msg);
+            }
+            return true;
+        };
+
         const rules = {
             username: [
                 {
@@ -76,14 +105,8 @@ export default {
                     message: "Логин должен быть не менее 3х символов",
                     trigger: "blur",
                 }, {
-                    validator: (rule, value, callback) => {
-                        if (errors.username) {
-                            callback(new Error(errors?.username));
-                            errors.username = "";
-                        } else {
-                            callback();
-                        }
-                    }
+                    validator: makeServerErrorValidator('username'),
+                    trigger: ["blur", "input"],
                 }
             ],
             email: [
@@ -93,17 +116,8 @@ export default {
                     message: "Введите корректный Email",
                     trigger: "blur",
                 }, {
-                    message: "Введите Email",
-                    trigger: "blur",
-                }, {
-                    validator: (rule, value, callback) => {
-                        if (errors.email) {
-                            callback(new Error(errors?.email));
-                            errors.email = "";
-                        } else {
-                            callback();
-                        }
-                    }
+                    validator: makeServerErrorValidator('email'),
+                    trigger: ["blur", "input"],
                 }
             ],
             password: [
@@ -112,14 +126,8 @@ export default {
                     message: "Введите пароль",
                     trigger: "blur",
                 }, {
-                    validator: (rule, value, callback) => {
-                        if (errors.password) {
-                            callback(new Error(errors?.password));
-                            errors.password = "";
-                        } else {
-                            callback();
-                        }
-                    }
+                    validator: makeServerErrorValidator('password'),
+                    trigger: ["blur", "input"],
                 }
             ],
             passwordRepeat: [
@@ -128,26 +136,24 @@ export default {
                     message: "Введите пароль повторно",
                     trigger: "blur",
                 }, {
-                    validator: (rule, value, callback) => {
+                    validator: (rule, value) => {
                         if (value !== form.value.password) {
-                            callback(new Error('Пароли должны совпадать'));
-                        } else {
-                            callback();
+                            return new Error('Пароли должны совпадать');
                         }
-                    }, 
+                        return true;
+                    },
+                    trigger: ["blur", "input"],
                 }
             ],
             rules: [
                 {
-                    required: true
-                }, {
-                    validator: (rule, value, callback) => {
+                    validator: (rule, value) => {
                         if (value === false) {
-                            callback(new Error('С этим придеться согласиться'));
-                        } else {
-                            callback();
+                            return new Error('С этим придеться согласиться');
                         }
-                    }
+                        return true;
+                    },
+                    trigger: ["blur", "change"],
                 }
             ]
         };
@@ -158,8 +164,8 @@ export default {
         }
 
         const submit = () => {
-            formRef.value.validate(async (valid) => {
-                if (valid === true) {
+            formRef.value.validate((errs) => {
+                if (!errs) {
                     let username = form.value.username;
                     let email = form.value.email;
                     let password = form.value.password;
@@ -169,20 +175,20 @@ export default {
                         email,
                         password,
                     }).then((res) => {
-                        ElNotification({
+                        notification.success({
                             title: 'Успешно',
-                            message: 'Письмо с подтверждением отправлено на Email',
-                            type: 'success',
+                            content: 'Письмо с подтверждением отправлено на Email',
+                            duration: 4500,
                         });
 
-                        this.$router.push("/");
+                        router.push("/");
                     }).catch(e => {
                         for (const errorKey in e.errors) {
                             errors[errorKey] = e.errors[errorKey]
                         }
 
                         console.log("errors", errors);
-                        formRef.value.validate();
+                        formRef.value.validate(() => {});
                     })
                 }
             });
@@ -203,12 +209,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-::v-deep .el-form--label-top {
-    .el-form-item__label {
-        padding: 0;
-    }
-}
-
 .rules-checkbox {
     height: auto;
     margin: 0.5rem 0 0;

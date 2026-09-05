@@ -1,16 +1,25 @@
-@forward 'element-plus/theme-chalk/src/common/var.scss' with (
-    $alert: (
-        'title-font-size': '15px',
-    ),
-    $colors: (
-        'primary': (
-            'base': #33a004,
-        ),
-    )
-);
+:root {
+    /* фон */
+    --bg-base:      #121212;  /* фон #app / body */
+    --bg-surface:   #1c1c1c;  /* карточки, navbar, sidebar */
+    --bg-surface-2: #242424;  /* hover-строки, вложенные блоки */
+    --border:       #2e2e2e;  /* разделители, рамки */
+    /* акцент */
+    --primary:        #ff7a00;
+    --primary-hover:  #ff9433;
+    --primary-press:  #e66e00;
+    --primary-soft:   rgba(255, 122, 0, 0.14); /* фон активного пункта */
+    /* текст */
+    --text:        #e8e8e8;
+    --text-muted:  #9a9a9a;
+    --text-on-acc: #1a1200;  /* текст на оранжевой заливке */
 
-@use "element-plus/theme-chalk/src/index.scss" as *;
-@import "bootstrap";
+    /* размеры хедера (в rem) — управляют sticky-сжатием */
+    --nav-pad-y:      0.85rem;  /* паддинг ссылок в покое */
+    --nav-pad-y-min:  0.45rem;  /* паддинг ссылок после скролла */
+    --nav-logo:       1.15rem;  /* размер лого в покое */
+    --nav-logo-min:   1rem;     /* размер лого после скролла */
+}
 
 html,
 body {
@@ -29,7 +38,8 @@ body {
 }
 
 #app {
-    background-color: #f4f7f8;
+    background-color: var(--bg-base);
+    color: var(--text);
     height: 100%;
 }
 
@@ -38,34 +48,21 @@ body {
 }
 
 a {
+    color: var(--primary);
     text-decoration: none;
-}
 
-.el-notification__content {
-    text-align: left;
-}
-.el-form--label-top {
-    .el-form-item__label {
-        line-height: unset;
+    &:hover {
+        color: var(--primary-hover);
     }
-}
-.el-input-number {
-    width: auto;
-    max-width: 180px;
 }
 
 hr {
     margin: 0.5rem 0;
 }
 
-.el-dialog {
-    max-width: 500px;
-    width: 98%;
-}
-
 .list-group {
     .list-group-item-title {
-        color: rgb(144, 147, 153);
+        color: var(--text-muted);
         font-weight: bold;
     }
 

@@ -1,24 +1,40 @@
 <script setup>
+import {h} from 'vue';
+import {NDataTable} from 'naive-ui';
 
 const props = defineProps(['orders', 'isLoading'])
+const slots = defineSlots()
 
+const columns = [
+  { title: '#', key: 'id', width: 60 },
+  { title: '*1000', key: 'price', width: 80, render: (row) => `${row.price} Кг` },
+  {
+    title: '',
+    key: 'info',
+    render: (row) => slots.info
+      ? slots.info({ credit: row.credit, amount: row.amount, datetime: row.updated_at })
+      : null,
+  },
+  {
+    title: '',
+    key: 'action',
+    width: 60,
+    render: (row) => slots.action
+      ? slots.action({
+          orderId: row.id,
+          isLoading: row.loading,
+          status: row.status,
+          type: row.type,
+        })
+      : null,
+  },
+]
 </script>
 
-<template lang="pug">
-  el-table(:data='props.orders' v-loading='props.isLoading' stripe empty-text='Заявки не найдены')
-    el-table-column(prop='id' label='#' width='60')
-    el-table-column(prop='price' :formatter='(row) => `${row.price} Кг`' label='*1000' width='80')
-    el-table-column(label='')
-      template(#default='scope')
-        slot(name='info' :credit='scope.row.credit' :amount='scope.row.amount' :datetime='scope.row.updated_at')
-    el-table-column(label='' width='60')
-      template(#default='scope')
-        slot(
-          name='action'
-          :orderId='scope.row.id'
-          :isloading='scope.row.loading'
-          :status='scope.row.status'
-          :type='scope.row.type'
-        )
-
+<template>
+  <n-data-table
+    :data="props.orders"
+    :columns="columns"
+    :loading="props.isLoading"
+  />
 </template>

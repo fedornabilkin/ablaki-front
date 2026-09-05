@@ -1,12 +1,18 @@
-<template lang="pug">main
-  nav-bar
+<template lang="pug">n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides")
+  n-loading-bar-provider
+    n-dialog-provider
+      n-notification-provider
+        n-message-provider
+          naive-api-registrar
+          main
+            nav-bar
 
-  div(v-if="dataFetched")
-  //user-bar(v-if="isAuthenticated")
+            div(v-if="dataFetched")
+            //user-bar(v-if="isAuthenticated")
 
-  side-bar(v-if="isAuthenticated")
+            side-bar(v-if="isAuthenticated")
 
-  router-view
+            router-view
 
 </template>
 
@@ -14,9 +20,17 @@
 import UserBar from "./components/navbar/UserBar.vue"
 import NavBar from "./components/navbar/NavBar.vue";
 import SideBar from "./components/navbar/SideBar.vue";
+import NaiveApiRegistrar from "./components/NaiveApiRegistrar.vue";
 
-import axios from 'axios';
-import {getProfile} from './services/api.js';
+import {
+  darkTheme,
+  NConfigProvider,
+  NLoadingBarProvider,
+  NDialogProvider,
+  NNotificationProvider,
+  NMessageProvider,
+} from 'naive-ui';
+
 import {mapGetters} from 'vuex';
 
 export default {
@@ -25,22 +39,14 @@ export default {
     NavBar,
     UserBar,
     SideBar,
+    NaiveApiRegistrar,
+    NConfigProvider,
+    NLoadingBarProvider,
+    NDialogProvider,
+    NNotificationProvider,
+    NMessageProvider,
   },
 
-  created: function () {
-    if (this.$store.state.auth.token) {
-      axios.defaults.headers.common['Authorization'] = this.headerToken;
-    }
-
-    this.$store.dispatch('auth/fetchData').catch(e => {
-      this.$router.push('/')
-    });
-  },
-  watch: {
-    'headerToken': function () {
-      axios.defaults.headers.common['Authorization'] = this.headerToken;
-    }
-  },
   computed: {
     ...mapGetters('auth', [
       'isAuthenticated',
@@ -72,7 +78,33 @@ export default {
   },
   data() {
     return {
-      authStatus: true,
+      darkTheme,
+      themeOverrides: {
+        common: {
+          primaryColor: '#ff7a00',
+          primaryColorHover: '#ff9433',
+          primaryColorPressed: '#e66e00',
+          primaryColorSuppl: '#ff9433',
+          // только чёрный/оранжевый/белый: info/success — оранжевые,
+          // warning — светло-оранжевый, error — нейтральный (без красного)
+          infoColor: '#ff7a00',
+          infoColorHover: '#ff9433',
+          infoColorPressed: '#e66e00',
+          infoColorSuppl: '#ff9433',
+          successColor: '#ff7a00',
+          successColorHover: '#ff9433',
+          successColorPressed: '#e66e00',
+          successColorSuppl: '#ff9433',
+          warningColor: '#ffab5e',
+          warningColorHover: '#ffbd80',
+          warningColorPressed: '#e6924a',
+          warningColorSuppl: '#ffbd80',
+          errorColor: '#ff7a00',
+          errorColorHover: '#ff9433',
+          errorColorPressed: '#e66e00',
+          errorColorSuppl: '#ff9433',
+        },
+      },
     }
   }
 }
@@ -88,11 +120,10 @@ export default {
 }
 
 #app {
-  $mainColor: #3B90D1;
   font-family: 'Open Sans', 'Apercu Mono Pro', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  color: var(--text);
   margin-top: 0;
 
   &.pre {

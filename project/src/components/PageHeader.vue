@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from '@vue/reactivity';
 import { useRoute } from 'vue-router';
+import { NButton } from 'naive-ui';
 
 const props = defineProps(['pageTitle', 'extraLinks'])
 
@@ -25,29 +26,26 @@ const isCurrentLink = (link) => {
             div.actions
               slot(name="actions")
             router-link(:to="extraLink.link" v-for="extraLink in props.extraLinks")
-              el-button(
+              n-button(
                 :class="['btn-tab', {'active': isCurrentLink(extraLink.link)}]"
                 :type="extraLink.type"
               )
-                font-awesome-icon(v-if="extraLink.icon" :icon='extraLink.icon')
+                template(#icon v-if="extraLink.icon")
+                  font-awesome-icon(:icon='extraLink.icon')
                 span.px-1(class="d-none d-sm-block") {{extraLink.title}}
 </template>
 
 <style lang="scss" scoped>
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/mixins";
-
 .page-header {
     position: relative;
-    background: linear-gradient(109.12deg,#f5f6fa -.72%,#e7f0fe);
+    background: linear-gradient(109.12deg, var(--bg-surface) -.72%, var(--bg-surface-2));
+    border-bottom: 0.0625rem solid var(--border);
 
     &::after {
         content: '';
         position: absolute;
         inset: 0;
-        // background: linear-gradient(180deg, transparent 0%, transparent 90%, #f4f7f8 100%);
-        box-shadow: 0 2px 6px -2px rgb(67 95 138 / 7%);
+        box-shadow: 0 0.125rem 0.375rem -0.125rem rgba(0, 0, 0, 0.45);
         z-index: 0;
     }
 
@@ -78,24 +76,21 @@ const isCurrentLink = (link) => {
                 display: flex;
 
                 .extra-tabs {
-                    background-color: rgba(30,58,138,.2);
+                    background-color: var(--bg-base);
                     display: flex;
                     overflow: auto;
-
-                    @include media-breakpoint-down(sm) {
-                        // flex-direction: column;
-                    }
 
                     .btn-tab {
                         //border-radius: 8px;
                         margin-left: unset;
                         background-color: transparent;
-                        color: rgb(108, 103, 129);
+                        color: var(--text-muted);
                         border: none;
 
                         &.active {
-                            background: #fff;
-                            box-shadow: #0000002b 0 1px 3px;
+                            background: var(--bg-surface);
+                            color: var(--primary);
+                            box-shadow: rgba(0, 0, 0, 0.5) 0 0.0625rem 0.1875rem;
                         }
                     }
                 }

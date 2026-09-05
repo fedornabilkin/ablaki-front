@@ -5,6 +5,13 @@ import {commentApi, themeApi} from "@/services/api/forum";
 import {useRoute} from "vue-router";
 import {ForumThemeBuilder, ForumCommentBuilder} from "@/entities/forum/builder"
 import {UserBuilder} from "@/entities/user/builder"
+import {
+  NForm,
+  NFormItem,
+  NInput,
+  NButton,
+  NDataTable,
+} from 'naive-ui'
 
 const theme = ref({});
 const comments = ref([]);
@@ -74,29 +81,25 @@ const extraLinks = [
   },
 ]
 
+const columns = [
+  { title: '#', key: 'id', width: 60, render: (row: any) => row.getId?.() ?? row.id },
+  { title: 'Автор', key: 'author', width: 120, render: (row: any) => row?.created_by?.getUserName?.() ?? '' },
+  { title: 'Комментарий', key: 'comment', width: 450, render: (row: any) => row.getComment?.() ?? row.comment },
+  { title: 'Дата', key: 'created_at_format', width: 160 },
+]
+
 </script>
 
 <template lang="pug">
   page-header(:pageTitle="theme.getName()" :extraLinks="extraLinks")
   .container
-    //.row
-      .col-sm {{theme.getName()}}
+    n-form(inline :model="item" @submit.prevent="saveItem()")
+      n-form-item
+        n-input(v-model:value="item.comment" type="textarea" placeholder="Сообщение" clearable)
+      n-form-item
+        n-button(type="success" :loading='isLoading' @click="saveItem") Создать
 
-    el-form(:inline="true" :model="item" @submit.prevent="saveItem()")
-      el-form-item
-        el-input(v-model="item.comment" type="textarea" placeholder="Сообщение" clearable)
-      el-form-item
-        el-button(type="success" :loading='isLoading' @click="saveItem") Создать
-
-    el-table(v-loading="loadingData" :data='comments' stripe height='450' style="width: 100%")
-      el-table-column(prop='id' label='#' width='60')
-      el-table-column(label='Автор' width='120')
-        template(#default="scope")
-          | {{scope.row?.created_by?.getUserName()}}
-      el-table-column(prop='name' label='Комментарий' width='450')
-        template(#default="scope")
-          | {{scope.row.getComment()}}
-      el-table-column(prop='created_at_format' label='Дата' width='160')
+    n-data-table(:loading="loadingData" :data='comments' :columns="columns" :max-height='450' style="width: 100%")
 
 </template>
 

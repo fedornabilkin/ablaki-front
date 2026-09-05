@@ -1,41 +1,51 @@
 <template>
-  <div v-loading="isLoading"></div>
+  <n-spin :show="isLoading"><div></div></n-spin>
 </template>
 
 <script>
-import {useRoute} from "vue-router";
-import {ElNotification} from "element-plus";
+import {NSpin, useNotification} from "naive-ui";
 
 export default {
   name: "login-key",
+  components: {NSpin},
+  setup() {
+    return {
+      notification: useNotification(),
+    };
+  },
+  data() {
+    return {
+      isLoading: true,
+    };
+  },
   created() {
     if (this.$store.getters['auth/isAuthenticated']) {
       this.$router.push("/");
+      return;
     }
 
-    const route = useRoute();
-
-    const isLoading = true;
-    const key = route.params.key;
+    const key = this.$route.params.key;
 
     this.$store
         .dispatch("auth/loginKey", {key})
         .then((res) => {
-          ElNotification({
+          this.notification.success({
             title: 'Ура',
-            message: 'Вы вошли в аккаунт',
-            type: 'success',
+            content: 'Вы вошли в аккаунт',
+            duration: 4500,
           });
-          this.$router.push("/");
+          this.$router.replace("/");
         })
         .catch((err) => {
-          if (err.errors !== undefined) {
-            for (let resKey in err.errors) {
-              this.errors.text[resKey] = err.errors[resKey];
-            }
-
-            this.$refs.formRef.validate();
-          }
+          this.notification.error({
+            title: 'Не удалось войти',
+            content: 'Ссылка недействительна или сервер недоступен. Войдите с логином и паролем.',
+            duration: 4500,
+          });
+          this.$router.replace('/users/login');
+        })
+        .finally(() => {
+          this.isLoading = false;
         });
   },
 }

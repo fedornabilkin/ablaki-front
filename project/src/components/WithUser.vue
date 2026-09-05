@@ -16,7 +16,7 @@ export default {
 </script>
 
 <template>
-    <div v-loading="authStatus !== 'user'">
+    <div>
         <router-view v-if="authStatus === 'user'" />
     </div>
     
