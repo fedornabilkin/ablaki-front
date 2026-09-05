@@ -17,7 +17,7 @@ const formatDatetime = (timestamp) => {
 <template lang="pug">
   h5.mt-2 История сделок
   request-error(:failed="!!error" @retry="refetch")
-  orders-list(:orders='orders' :isloading='isLoading')
+  orders-list(:orders='orders' :is-loading='isLoading')
     template(v-slot:info='{credit, amount, datetime}')
       n-tag(type="success")
         span(v-if="type === 'sell'") {{ credit }} Cr

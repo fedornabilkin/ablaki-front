@@ -2,6 +2,7 @@ import {createApp} from 'vue';
 import {createPinia} from 'pinia';
 
 import './index.scss';
+import {applyThemeTokens} from './theme/tokens';
 import App from './App.vue';
 import {router} from './router';
 import {store} from './store/store';
@@ -11,6 +12,7 @@ import {IconManager} from './fontawesome.js'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 const _ = new IconManager()
 
+applyThemeTokens();
 const app = createApp(App);
 
 configureApiSession(() => store.getters['auth/token'], () => {

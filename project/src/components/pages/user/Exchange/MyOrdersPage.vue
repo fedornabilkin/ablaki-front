@@ -38,7 +38,7 @@ const onCancel = async (id, type) => {
     .col-md-6
       h5 Мои заявки на покупку
       request-error(:failed="!!errorSell" @retry="reloadSell")
-      orders-list(:orders='ordersSell' :isloading='isLoadingSell')
+      orders-list(:orders='ordersSell' :is-loading='isLoadingSell')
         template(v-slot:info='{ credit, amount }')
           n-tag(type="success")
             | {{ amount }} Кг
@@ -54,7 +54,7 @@ const onCancel = async (id, type) => {
     .col-md-6
       h5 Мои заявки на продажу
       request-error(:failed="!!errorBuy" @retry="reloadBuy")
-      orders-list(:orders='ordersBuy' :isloading='isLoadingBuy')
+      orders-list(:orders='ordersBuy' :is-loading='isLoadingBuy')
         template(v-slot:info='{ credit, amount }')
           n-tag(type="success")
             | {{ credit }} Cr
