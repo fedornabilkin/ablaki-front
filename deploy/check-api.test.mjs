@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { validateEndpoints, waitForApiReady } from './check-api.mjs';
 
 const revision = 'a'.repeat(40);
-const health = { status: 'ok', revision, portalListsVersion: 1 };
+const health = { status: 'ok', revision, portalListsVersion: 1, environment: 'production' };
 const frontendUrl = 'http://frontend.example/';
 const fast = { timeoutMs: 500, requestTimeoutMs: 100, retryIntervalMs: 10 };
 const oneAttempt = { timeoutMs: 150, requestTimeoutMs: 100, retryIntervalMs: 150 };
@@ -153,4 +153,18 @@ test('accepts populated pages with gifts and rejects a fabricated zero presence 
   assert.equal((await waitForApiReady({ apiUrl, frontendUrl }, fast)).revision, revision);
   invalidOnline = true;
   await assert.rejects(waitForApiReady({ apiUrl, frontendUrl }, oneAttempt), /invalid public presence response/);
+});
+
+test('test deployment cannot pass readiness through an alias of the production API', async t => {
+  const apiUrl = await localApi(t, serveReady);
+  await assert.rejects(waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'test' }, oneAttempt), /environment does not match test/);
+  assert.equal((await waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'production' }, fast)).environment, 'production');
+});
+
+test('the test environment passes readiness only when its API reports test', async t => {
+  const apiUrl = await localApi(t, (request, response) => {
+    if (request.url.startsWith('/health')) return json(request, response, { ...health, environment: 'test' });
+    serveReady(request, response);
+  });
+  assert.equal((await waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'test' }, fast)).environment, 'test');
 });

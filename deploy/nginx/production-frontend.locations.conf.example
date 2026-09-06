@@ -1,0 +1,20 @@
+# Reference for the existing ablakin.ru server block. This is not a second vhost.
+# Keep existing listen/server_name/TLS configuration and certificate paths.
+root /var/www/ablakin.ru;
+index index.html;
+
+location ^~ /.well-known/acme-challenge/ { try_files $uri =404; }
+location = /index.html { add_header Cache-Control "no-store" always; }
+location = /deploy-version.txt {
+    add_header Cache-Control "no-store" always;
+    try_files $uri =404;
+}
+location ^~ /assets/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+location / {
+    try_files $uri $uri/ /index.html;
+    add_header Cache-Control "no-cache" always;
+}
+location ~ /\. { deny all; }

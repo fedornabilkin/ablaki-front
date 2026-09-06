@@ -1,4 +1,4 @@
-name: Frontend CI and production deploy
+name: Frontend CI and deploy
 
 on:
   push:
@@ -6,23 +6,82 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        type: choice
+        options: [test, production]
+        default: test
+        required: true
+      branch:
+        description: Source branch for test; production requires master
+        type: string
+        default: master
+        required: true
 
 permissions:
   contents: read
 
 jobs:
+  configuration:
+    name: Select deployment target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      target: ${{ steps.target.outputs.target }}
+      environment: ${{ steps.target.outputs.environment }}
+      deploy_root: ${{ steps.target.outputs.deploy_root }}
+      web_root: ${{ steps.target.outputs.web_root }}
+      secret_prefix: ${{ steps.target.outputs.secret_prefix }}
+      api_variable: ${{ steps.target.outputs.api_variable }}
+      ws_variable: ${{ steps.target.outputs.ws_variable }}
+      health_variable: ${{ steps.target.outputs.health_variable }}
+      checkout_ref: ${{ steps.target.outputs.checkout_ref }}
+      deploy_enabled: ${{ steps.target.outputs.deploy_enabled }}
+    steps:
+      - name: Check out workflow configuration
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Resolve target and source
+        id: target
+        run: node deploy/deployment-target.mjs plan
+        env:
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+
   frontend:
     name: Frontend checks
+    needs: configuration
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      VITE_API_URL: ${{ vars.VITE_API_URL }}
+      DEPLOY_TARGET: ${{ needs.configuration.outputs.target }}
+      VITE_API_URL: ${{ vars[needs.configuration.outputs.api_variable] }}
+      PRODUCTION_API_URL: ${{ vars.VITE_API_URL }}
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+      api_url: ${{ steps.build-config.outputs.api_url }}
     defaults:
       run:
         working-directory: project
     steps:
-      - name: Check out repository
+      - name: Check out selected application branch or commit
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.configuration.outputs.checkout_ref }}
+
+      - name: Record exact source commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out deployment automation from workflow revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: automation
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -35,28 +94,14 @@ jobs:
         run: npm ci
 
       - name: Check deployment script syntax
-        run: bash -n ../deploy/frontend-deploy.sh
+        run: bash -n ../automation/deploy/frontend-deploy.sh
 
-      - name: Test API readiness gate
-        run: node --test ../deploy/check-api.test.mjs
+      - name: Test deployment targets and API readiness gate
+        run: node --test ../automation/deploy/*.test.mjs
 
       - name: Validate API URL
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          const value = process.env.VITE_API_URL;
-          try {
-            const url = new URL(value);
-            if (!['http:', 'https:'].includes(url.protocol) ||
-                url.username || url.password || url.search || url.hash ||
-                value !== value.trim() || !value.endsWith('/')) {
-              throw new Error('Invalid API URL');
-            }
-          } catch {
-            console.error('::error::Set repository variable VITE_API_URL to an absolute HTTP(S) API URL ending with / (not /api/).');
-            process.exit(1);
-          }
-          NODE
+        id: build-config
+        run: node ../automation/deploy/deployment-target.mjs validate-build
 
       - name: Run unit tests
         run: npm run test:unit
@@ -67,34 +112,41 @@ jobs:
           VITE_CRAFT_MOCK: '0'
           VITE_STAT_MOCK: '0'
           VITE_CITY_MOCK: '0'
-          VITE_WS_URL: ${{ vars.VITE_WS_URL }}
+          VITE_WS_URL: ${{ vars[needs.configuration.outputs.ws_variable] }}
 
       - name: Upload frontend artifact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        if: needs.configuration.outputs.deploy_enabled == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: frontend-dist-${{ github.sha }}
+          name: frontend-${{ needs.configuration.outputs.target }}-${{ steps.source.outputs.sha }}
           path: project/dist
           if-no-files-found: error
           retention-days: 14
 
   deploy:
-    name: Deploy frontend to production
-    needs: frontend
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    name: Deploy frontend (${{ needs.configuration.outputs.target }})
+    needs: [configuration, frontend]
+    if: needs.configuration.outputs.deploy_enabled == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production-frontend
+    environment: ${{ needs.configuration.outputs.environment }}
     concurrency:
-      group: production-frontend
+      group: ${{ needs.configuration.outputs.environment }}
       cancel-in-progress: false
     env:
-      DEPLOY_HOST: ${{ secrets.FRONTEND_DEPLOY_HOST }}
-      DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
-      DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.FRONTEND_DEPLOY_SSH_KEY }}
-      DEPLOY_KNOWN_HOSTS: ${{ secrets.FRONTEND_DEPLOY_KNOWN_HOSTS }}
-      HEALTHCHECK_URL: ${{ vars.FRONTEND_HEALTHCHECK_URL }}
+      DEPLOY_TARGET: ${{ needs.configuration.outputs.target }}
+      DEPLOY_ROOT: ${{ needs.configuration.outputs.deploy_root }}
+      WEB_ROOT: ${{ needs.configuration.outputs.web_root }}
+      SOURCE_SHA: ${{ needs.frontend.outputs.source_sha }}
+      DEPLOY_HOST: ${{ secrets[format('{0}HOST', needs.configuration.outputs.secret_prefix)] }}
+      DEPLOY_PORT: ${{ secrets[format('{0}PORT', needs.configuration.outputs.secret_prefix)] }}
+      DEPLOY_USER: ${{ secrets[format('{0}USER', needs.configuration.outputs.secret_prefix)] }}
+      DEPLOY_SSH_KEY: ${{ secrets[format('{0}SSH_KEY', needs.configuration.outputs.secret_prefix)] }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets[format('{0}KNOWN_HOSTS', needs.configuration.outputs.secret_prefix)] }}
+      HEALTHCHECK_URL: ${{ vars[needs.configuration.outputs.health_variable] }}
+      VITE_API_URL: ${{ needs.frontend.outputs.api_url }}
+      PRODUCTION_API_URL: ${{ vars.VITE_API_URL }}
+      PRODUCTION_HEALTHCHECK_URL: ${{ vars.FRONTEND_HEALTHCHECK_URL }}
     steps:
       - name: Check out deployment scripts
         uses: actions/checkout@v7
@@ -107,20 +159,24 @@ jobs:
       - name: Download frontend artifact
         uses: actions/download-artifact@v8
         with:
-          name: frontend-dist-${{ github.sha }}
+          name: frontend-${{ needs.configuration.outputs.target }}-${{ needs.frontend.outputs.source_sha }}
           path: release/dist
 
       - name: Package frontend release
         shell: bash
         run: |
-          archive="frontend-${{ github.sha }}.tar.gz"
-          printf '%s\n' "${{ github.sha }}" > release/dist/deploy-version.txt
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          archive="frontend-$SOURCE_SHA.tar.gz"
+          printf '%s\n' "$SOURCE_SHA" > release/dist/deploy-version.txt
           tar -C release/dist -czf "release/$archive" .
           (
             cd release
             sha256sum "$archive" > "$archive.sha256"
           )
           cp deploy/frontend-deploy.sh release/
+
+      - name: Validate environment isolation and fixed paths
+        run: node deploy/deployment-target.mjs validate-deploy
 
       - name: Validate SSH settings
         shell: bash
@@ -132,6 +188,8 @@ jobs:
             fi
           done
           [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.:-]+$ ]]
           healthcheck_url_pattern='^https://[A-Za-z0-9._:-]+/?$'
           [[ "$HEALTHCHECK_URL" =~ $healthcheck_url_pattern ]]
 
@@ -147,14 +205,13 @@ jobs:
         timeout-minutes: 4
         run: node deploy/check-api.mjs
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          FRONTEND_HEALTHCHECK_URL: ${{ vars.FRONTEND_HEALTHCHECK_URL }}
+          FRONTEND_HEALTHCHECK_URL: ${{ env.HEALTHCHECK_URL }}
 
       - name: Upload and activate frontend
         shell: bash
         run: |
-          archive="frontend-${{ github.sha }}.tar.gz"
-          remote_dir="/opt/ablaki-frontend/incoming/${{ github.sha }}"
+          archive="frontend-$SOURCE_SHA.tar.gz"
+          remote_dir="$DEPLOY_ROOT/incoming/$SOURCE_SHA"
           ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
             -o BatchMode=yes -o ConnectTimeout=15 \
             -o StrictHostKeyChecking=yes \
@@ -174,8 +231,9 @@ jobs:
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "bash '$remote_dir/frontend-deploy.sh' \
-              --deploy-root '/opt/ablaki-frontend' \
-              --web-root '/var/www/ablakin.ru' \
-              --sha '${{ github.sha }}' \
+              --target '$DEPLOY_TARGET' \
+              --deploy-root '$DEPLOY_ROOT' \
+              --web-root '$WEB_ROOT' \
+              --sha '$SOURCE_SHA' \
               --archive '$remote_dir/$archive' \
               --healthcheck-url '$HEALTHCHECK_URL'"

@@ -10,7 +10,7 @@ class ReadinessError extends Error {}
 export function validateEndpoints(apiUrl, frontendUrl) {
   function parse(value, name) {
     try {
-      if (typeof value !== 'string' || value !== value.trim()) throw new Error();
+      if (typeof value !== 'string' || /\s/.test(value)) throw new Error();
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error();
       return url;
@@ -72,7 +72,7 @@ async function getJson(api, path, origin, timeoutMs) {
   }
 }
 
-async function probe(api, origin, deadline, requestTimeoutMs) {
+async function probe(api, origin, deadline, requestTimeoutMs, expectedEnvironment) {
   const get = path => {
     const remaining = deadline - performance.now();
     check(remaining > 0, 'API readiness deadline reached.');
@@ -81,6 +81,7 @@ async function probe(api, origin, deadline, requestTimeoutMs) {
   const health = await get('health');
   check(object(health) && health.status === 'ok' && typeof health.revision === 'string' && /^[a-f\d]{40}$/i.test(health.revision) && health.portalListsVersion === REQUIRED_PORTAL_LISTS_VERSION,
     'health: running API does not expose the required revision and portal lists contract.');
+  if (expectedEnvironment) check(health.environment === expectedEnvironment, `health: API environment does not match ${expectedEnvironment}.`);
   const online = await get('v1/users/online-count');
   check(object(online) && integer(online.count) && integer(online.windowSeconds, 1), 'online-count: invalid public presence response.');
   const comments = await get('v1/forum-comment?envelope=1&per-page=1');
@@ -94,8 +95,9 @@ async function probe(api, origin, deadline, requestTimeoutMs) {
 }
 
 /** Read-only gate: no upload or activation may run until this promise succeeds. */
-export async function waitForApiReady({ apiUrl, frontendUrl }, { timeoutMs = 180_000, requestTimeoutMs = 5_000, retryIntervalMs = 5_000, log = () => {} } = {}) {
+export async function waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment }, { timeoutMs = 180_000, requestTimeoutMs = 5_000, retryIntervalMs = 5_000, log = () => {} } = {}) {
   const { api, origin } = validateEndpoints(apiUrl, frontendUrl);
+  check(expectedEnvironment === undefined || ['production', 'test'].includes(expectedEnvironment), 'Expected API environment must be production or test.');
   check(integer(timeoutMs, 1) && timeoutMs <= 180_000, 'Readiness timeout must be between 1 and 180000 milliseconds.');
   check(integer(requestTimeoutMs, 1) && requestTimeoutMs <= 10_000, 'Request timeout must be between 1 and 10000 milliseconds.');
   check(integer(retryIntervalMs, 1) && retryIntervalMs <= 10_000, 'Retry interval must be between 1 and 10000 milliseconds.');
@@ -105,7 +107,7 @@ export async function waitForApiReady({ apiUrl, frontendUrl }, { timeoutMs = 180
   while (performance.now() < deadline) {
     attempts++;
     try {
-      const health = await probe(api, origin, deadline, requestTimeoutMs);
+      const health = await probe(api, origin, deadline, requestTimeoutMs, expectedEnvironment);
       log(`API is ready: revision ${health.revision}, portal lists v${health.portalListsVersion}.`);
       return health;
     } catch (error) {
@@ -125,7 +127,7 @@ export async function waitForApiReady({ apiUrl, frontendUrl }, { timeoutMs = 180
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   try {
-    await waitForApiReady({ apiUrl: process.env.VITE_API_URL, frontendUrl: process.env.FRONTEND_HEALTHCHECK_URL }, { log: console.log });
+    await waitForApiReady({ apiUrl: process.env.VITE_API_URL, frontendUrl: process.env.FRONTEND_HEALTHCHECK_URL, expectedEnvironment: process.env.DEPLOY_TARGET }, { log: console.log });
   } catch (error) {
     console.error(`::error::${error instanceof Error ? error.message : 'API readiness check failed.'}`);
     process.exitCode = 1;

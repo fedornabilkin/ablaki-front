@@ -16,9 +16,14 @@ web_root=''
 sha=''
 archive=''
 healthcheck_url=''
+target='production'
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --target)
+      target="${2:-}"
+      shift 2
+      ;;
     --deploy-root)
       deploy_root="${2:-}"
       shift 2
@@ -45,6 +50,19 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+case "$target" in
+  production)
+    expected_deploy_root='/opt/ablaki-frontend'
+    expected_web_root='/var/www/ablakin.ru'
+    ;;
+  test)
+    expected_deploy_root='/opt/ablaki-frontend-test'
+    expected_web_root='/var/code/ablaki-front/project/dist'
+    ;;
+  *) die 'Unknown deployment target' ;;
+esac
+[[ "$deploy_root" = "$expected_deploy_root" && "$web_root" = "$expected_web_root" ]] || die 'Deployment paths do not match selected target'
+
 [[ "$deploy_root" =~ ^/[A-Za-z0-9._/-]+$ ]] || die 'Invalid deployment root'
 [[ "$web_root" =~ ^/[A-Za-z0-9._/-]+$ ]] || die 'Invalid web root'
 [[ "$deploy_root" != *..* && "$web_root" != *..* ]] || die 'Paths must not contain ..'
@@ -61,6 +79,7 @@ done
 
 deploy_root="$(readlink -f "$deploy_root")"
 web_root="$(readlink -f "$web_root")"
+[[ "$deploy_root" = "$expected_deploy_root" && "$web_root" = "$expected_web_root" ]] || die 'Deployment paths resolve outside selected target'
 archive="$(readlink -f "$archive")"
 [ "$deploy_root" != '/' ] && [ "$web_root" != '/' ] || die 'Resolved target cannot be the root filesystem'
 case "$web_root/" in
