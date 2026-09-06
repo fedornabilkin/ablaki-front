@@ -1,6 +1,6 @@
 <script setup>
 import {ref, computed} from 'vue';
-import {NInput, NTabs, NTabPane, NEmpty} from 'naive-ui';
+import {NButton, NInput, NTabs, NTabPane, NEmpty} from 'naive-ui';
 import {useCraftStore} from '@/store/craft';
 import RecipeCard from './RecipeCard.vue';
 
@@ -34,13 +34,20 @@ const tabLabel = (key) => key === 'all' ? 'Все' : key;
                 <font-awesome-icon icon="fa fa-scroll"/>
                 <span>Рецепты</span>
             </div>
-            <n-input
-                v-model:value="search"
-                placeholder="Поиск рецепта…"
-                clearable
-                size="small"
-                class="recipe-list-search"
-            />
+            <div class="recipe-list-search">
+                <n-input
+                    v-model:value="search"
+                    placeholder="Поиск рецепта…"
+                    :input-props="{ 'aria-label': 'Поиск рецепта' }"
+                    clearable
+                    size="small"
+                />
+                <n-button quaternary circle size="small" :disabled="!search && activeTab === 'all'"
+                    title="Сбросить поиск и фильтры" aria-label="Сбросить поиск и фильтры"
+                    @click="search = ''; activeTab = 'all'">
+                    <template #icon><font-awesome-icon icon="fa fa-times" aria-hidden="true" /></template>
+                </n-button>
+            </div>
         </header>
 
         <n-tabs v-model:value="activeTab" type="segment" size="small">
@@ -85,7 +92,13 @@ const tabLabel = (key) => key === 'all' ? 'Все' : key;
 }
 
 .recipe-list-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
     max-width: 14rem;
+
+    .n-button { flex-shrink: 0; }
 }
 
 .recipe-list-grid {

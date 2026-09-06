@@ -132,8 +132,9 @@ export default {
     extractError(err) {
       if (!err) return 'Не удалось войти. Попробуйте ещё раз.';
       if (typeof err === 'string') return err;
-      if (err.errors && typeof err.errors === 'object') {
-        const messages = Object.values(err.errors).filter(Boolean);
+      const errors = err.response?.data?.errors ?? err.errors;
+      if (errors && typeof errors === 'object') {
+        const messages = Object.values(errors).filter(Boolean);
         if (messages.length) return messages.join(' ');
       }
       if (err.message) return err.message;
