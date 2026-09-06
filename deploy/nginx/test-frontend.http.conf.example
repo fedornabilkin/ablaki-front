@@ -1,8 +1,8 @@
-# HTTP bootstrap only. Replace TEST_FRONTEND_HOST with the chosen test domain.
-# Do not enable TLS configuration until this host has a valid certificate.
+# Test frontend: http://94.250.251.94:3181; API uses the separate port 3180.
+# This HTTP vhost requires no DNS or certificate setup.
 server {
-    listen 80;
-    server_name TEST_FRONTEND_HOST;
+    listen 3181;
+    server_name 94.250.251.94;
     root /var/code/ablaki-front/project/dist;
     index index.html;
 

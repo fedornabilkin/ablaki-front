@@ -29,13 +29,13 @@ export function resolveTarget({ eventName, ref, sha, target: inputTarget, branch
 }
 function cleanHost(host) { return host.toLowerCase().replace(/\.$/, ''); }
 function normalizedOrigin(url) { return `${url.protocol}//${cleanHost(url.hostname)}${url.port ? ':' + url.port : ''}`; }
-function parseApi(value) {
-  // Both configured sites use TLS. The shared parser also forbids credentials and query strings.
-  return validateEndpoints(value, 'https://validation.invalid/').api;
+function parseApi(value, target = 'production') {
+  // Test can use an HTTP IP/port; production still requires TLS.
+  return validateEndpoints(value, `${target === 'test' ? 'http' : 'https'}://validation.invalid/`, { target }).api;
 }
 export function validateBuild({ target, apiUrl, productionApiUrl }) {
   checkedTarget(target);
-  const api = parseApi(apiUrl);
+  const api = parseApi(apiUrl, target);
   if (target === 'test') {
     check(cleanHost(api.hostname) !== 'api.ablakin.ru', 'Test frontend must not use the production API host.');
     if (productionApiUrl) check(normalizedOrigin(api) !== normalizedOrigin(parseApi(productionApiUrl)), 'Test API origin must differ from VITE_API_URL.');
@@ -45,8 +45,7 @@ export function validateBuild({ target, apiUrl, productionApiUrl }) {
 export function validateDeployment({ target, apiUrl, frontendUrl, productionApiUrl, productionFrontendUrl, deployRoot, webRoot }) {
   const config = checkedTarget(target);
   validateBuild({ target, apiUrl, productionApiUrl });
-  const { api, origin } = validateEndpoints(apiUrl, frontendUrl);
-  check(origin.startsWith('https://'), 'Frontend healthcheck must use HTTPS.');
+  const { api, origin } = validateEndpoints(apiUrl, frontendUrl, { target });
   check(api.origin !== origin, 'Frontend and API must use separate origins.');
   check(deployRoot === config.deploy_root && webRoot === config.web_root, 'Deployment paths do not match the selected target.');
   if (target === 'test') {

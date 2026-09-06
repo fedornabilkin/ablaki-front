@@ -68,7 +68,10 @@ esac
 [[ "$deploy_root" != *..* && "$web_root" != *..* ]] || die 'Paths must not contain ..'
 [[ "$deploy_root" != '/' && "$web_root" != '/' ]] || die 'Root filesystem cannot be a deployment target'
 [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || die 'Invalid Git commit SHA'
-healthcheck_url_pattern='^https?://[A-Za-z0-9._:-]+/?$'
+healthcheck_url_pattern='^https://[A-Za-z0-9._:-]+/?$'
+if [[ "$target" = test ]]; then
+  healthcheck_url_pattern='^https?://[A-Za-z0-9._:-]+/?$'
+fi
 [[ "$healthcheck_url" =~ $healthcheck_url_pattern ]] || die 'Invalid healthcheck URL'
 [ -f "$archive" ] || die "Release archive does not exist: $archive"
 [ -f "$archive.sha256" ] || die "Checksum file does not exist: $archive.sha256"

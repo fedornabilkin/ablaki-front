@@ -53,8 +53,24 @@ test('test deployment rejects production site origins and a checkout-root destin
   for (const webRoot of ['/var/code/ablaki-front', '/var/www/ablakin.ru']) assert.throws(() => validateDeployment({ ...testUrls, webRoot }), /paths/);
   assert.throws(() => validateDeployment({ ...testUrls, deployRoot: '/opt/ablaki-frontend' }), /paths/);
 });
-test('separate test origins and fixed test paths are accepted, but plaintext API is rejected', () => {
+test('separate test origins and fixed test paths are accepted, but mixed content is rejected', () => {
   assert.equal(validateDeployment(testUrls).health_url, 'https://test.example');
   assert.throws(() => validateDeployment({ ...testUrls, apiUrl: 'http://api-test.example/' }), /HTTPS/);
   assert.throws(() => validateDeployment({ ...testUrls, frontendUrl: 'https://api-test.example/' }), /separate origins/);
+});
+
+test('test accepts the configured HTTP IP with separate frontend and API ports', () => {
+  const config = { ...testUrls, apiUrl: 'http://94.250.251.94:3180/', frontendUrl: 'http://94.250.251.94:3181' };
+  assert.equal(validateBuild(config).api_url, 'http://94.250.251.94:3180/');
+  assert.deepEqual(validateDeployment(config), { api_url: config.apiUrl, health_url: config.frontendUrl });
+  assert.throws(() => validateDeployment({ ...config, frontendUrl: 'http://94.250.251.94:3180' }), /separate origins/);
+  assert.throws(() => validateBuild({ ...config, apiUrl: 'http://api.ablakin.ru/' }), /production API host/);
+});
+
+test('production rejects HTTP for either endpoint before deployment', () => {
+  const config = { target: 'production', apiUrl: 'https://api.ablakin.ru/', frontendUrl: 'https://ablakin.ru/', deployRoot: targets.production.deploy_root, webRoot: targets.production.web_root };
+  assert.equal(validateDeployment(config).health_url, 'https://ablakin.ru');
+  assert.throws(() => validateBuild({ ...config, apiUrl: 'http://api.ablakin.ru/' }), /HTTPS/);
+  assert.throws(() => validateDeployment({ ...config, frontendUrl: 'http://ablakin.ru/' }), /HTTPS/);
+  assert.throws(() => validateDeployment({ ...config, apiUrl: 'http://api.ablakin.ru/', frontendUrl: 'http://ablakin.ru/' }), /HTTPS/);
 });

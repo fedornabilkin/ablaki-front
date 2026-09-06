@@ -1,5 +1,5 @@
-# Replace TEST_FRONTEND_HOST. Enable only after certificate issuance.
-# Replace the bootstrap vhost; do not enable both copies simultaneously.
+# Optional future TLS example; unused by the current HTTP IP/port test setup.
+# Replace TEST_FRONTEND_HOST and enable only after choosing a domain/certificate.
 server {
     listen 80;
     server_name TEST_FRONTEND_HOST;

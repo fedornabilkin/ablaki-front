@@ -191,6 +191,9 @@ jobs:
           [[ "$DEPLOY_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]
           [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.:-]+$ ]]
           healthcheck_url_pattern='^https://[A-Za-z0-9._:-]+/?$'
+          if [[ "$DEPLOY_TARGET" = test ]]; then
+            healthcheck_url_pattern='^https?://[A-Za-z0-9._:-]+/?$'
+          fi
           [[ "$HEALTHCHECK_URL" =~ $healthcheck_url_pattern ]]
 
       - name: Configure SSH

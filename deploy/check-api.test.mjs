@@ -158,13 +158,30 @@ test('accepts populated pages with gifts and rejects a fabricated zero presence 
 test('test deployment cannot pass readiness through an alias of the production API', async t => {
   const apiUrl = await localApi(t, serveReady);
   await assert.rejects(waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'test' }, oneAttempt), /environment does not match test/);
-  assert.equal((await waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'production' }, fast)).environment, 'production');
 });
 
 test('the test environment passes readiness only when its API reports test', async t => {
+  const testFrontend = 'http://94.250.251.94:3181';
   const apiUrl = await localApi(t, (request, response) => {
+    assert.equal(request.headers.origin, testFrontend);
     if (request.url.startsWith('/health')) return json(request, response, { ...health, environment: 'test' });
     serveReady(request, response);
   });
-  assert.equal((await waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'test' }, fast)).environment, 'test');
+  assert.equal((await waitForApiReady({ apiUrl, frontendUrl: testFrontend, expectedEnvironment: 'test' }, fast)).environment, 'test');
+});
+
+test('production readiness rejects HTTP before contacting the server', async t => {
+  let requests = 0;
+  const apiUrl = await localApi(t, (request, response) => { requests++; serveReady(request, response); });
+  await assert.rejects(waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'production' }, fast), /Production frontend and API must use HTTPS/);
+  assert.equal(requests, 0);
+  assert.throws(() => validateEndpoints('https://api.ablakin.ru/', frontendUrl, { target: 'production' }), /HTTPS/);
+});
+
+test('HTTP test still rejects health without an explicit test environment', async t => {
+  const apiUrl = await localApi(t, (request, response) => {
+    const { environment, ...withoutEnvironment } = health;
+    json(request, response, withoutEnvironment);
+  });
+  await assert.rejects(waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment: 'test' }, oneAttempt), /environment does not match test/);
 });

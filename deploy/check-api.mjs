@@ -7,7 +7,7 @@ const REQUIRED_PORTAL_LISTS_VERSION = 1;
 const MAX_RESPONSE_BYTES = 65_536;
 class ReadinessError extends Error {}
 
-export function validateEndpoints(apiUrl, frontendUrl) {
+export function validateEndpoints(apiUrl, frontendUrl, { target } = {}) {
   function parse(value, name) {
     try {
       if (typeof value !== 'string' || /\s/.test(value)) throw new Error();
@@ -18,8 +18,10 @@ export function validateEndpoints(apiUrl, frontendUrl) {
   }
   const api = parse(apiUrl, 'VITE_API_URL');
   const frontend = parse(frontendUrl, 'FRONTEND_HEALTHCHECK_URL');
+  check(target === undefined || ['production', 'test'].includes(target), 'Expected API environment must be production or test.');
   if (!apiUrl.endsWith('/')) throw new ReadinessError('VITE_API_URL must end with /.');
   if (frontend.pathname !== '/') throw new ReadinessError('FRONTEND_HEALTHCHECK_URL must contain the frontend origin only.');
+  if (target === 'production' && (frontend.protocol !== 'https:' || api.protocol !== 'https:')) throw new ReadinessError('Production frontend and API must use HTTPS.');
   if (frontend.protocol === 'https:' && api.protocol !== 'https:') throw new ReadinessError('An HTTPS frontend requires an HTTPS API; browsers block mixed content.');
   return { api, origin: frontend.origin };
 }
@@ -96,7 +98,7 @@ async function probe(api, origin, deadline, requestTimeoutMs, expectedEnvironmen
 
 /** Read-only gate: no upload or activation may run until this promise succeeds. */
 export async function waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment }, { timeoutMs = 180_000, requestTimeoutMs = 5_000, retryIntervalMs = 5_000, log = () => {} } = {}) {
-  const { api, origin } = validateEndpoints(apiUrl, frontendUrl);
+  const { api, origin } = validateEndpoints(apiUrl, frontendUrl, { target: expectedEnvironment });
   check(expectedEnvironment === undefined || ['production', 'test'].includes(expectedEnvironment), 'Expected API environment must be production or test.');
   check(integer(timeoutMs, 1) && timeoutMs <= 180_000, 'Readiness timeout must be between 1 and 180000 milliseconds.');
   check(integer(requestTimeoutMs, 1) && requestTimeoutMs <= 10_000, 'Request timeout must be between 1 and 10000 milliseconds.');
@@ -127,6 +129,7 @@ export async function waitForApiReady({ apiUrl, frontendUrl, expectedEnvironment
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   try {
+    check(['production', 'test'].includes(process.env.DEPLOY_TARGET), 'DEPLOY_TARGET must be production or test.');
     await waitForApiReady({ apiUrl: process.env.VITE_API_URL, frontendUrl: process.env.FRONTEND_HEALTHCHECK_URL, expectedEnvironment: process.env.DEPLOY_TARGET }, { log: console.log });
   } catch (error) {
     console.error(`::error::${error instanceof Error ? error.message : 'API readiness check failed.'}`);
