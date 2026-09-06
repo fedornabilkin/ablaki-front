@@ -1,6 +1,7 @@
 <template>
-    <div class="container">
-        <h1>Регистрация</h1>
+    <div class="container page registration-page">
+      <n-card>
+        <template #header><h1>Регистрация</h1></template>
         <n-alert
             title="Получив халявные кредиты и Кг, потрать их с максимальной выгодой, а не как закалялась сталь."
             type="info"
@@ -18,16 +19,16 @@
                 size="large"
             >
                 <n-form-item label="Логин" path="username">
-                    <n-input v-model:value="form.username"></n-input>
+                    <n-input v-model:value="form.username" placeholder="Логин" :input-props="{ autocomplete: 'username', 'aria-label': 'Логин' }"></n-input>
                 </n-form-item>
                 <n-form-item label="Email" path="email">
-                    <n-input v-model:value="form.email"></n-input>
+                    <n-input v-model:value="form.email" placeholder="Email" :input-props="{ type: 'email', autocomplete: 'email', 'aria-label': 'Email' }"></n-input>
                 </n-form-item>
                 <n-form-item label="Пароль" path="password">
-                    <n-input type="password" v-model:value="form.password"></n-input>
+                    <n-input type="password" v-model:value="form.password" placeholder="Пароль" show-password-on="click" :input-props="{ autocomplete: 'new-password', 'aria-label': 'Пароль' }"></n-input>
                 </n-form-item>
                 <n-form-item label="Пароль еще раз" path="passwordRepeat">
-                    <n-input type="password" v-model:value="form.passwordRepeat"></n-input>
+                    <n-input type="password" v-model:value="form.passwordRepeat" placeholder="Повторите пароль" show-password-on="click" :input-props="{ autocomplete: 'new-password', 'aria-label': 'Повторите пароль' }"></n-input>
                 </n-form-item>
                 <n-form-item label="" path="rules">
                     <n-checkbox v-model:checked="form.rules" class="rules-checkbox">Согласен со всем, что вы там понаписали</n-checkbox>
@@ -38,6 +39,7 @@
                 </n-form-item>
             </n-form>
         </n-spin>
+      </n-card>
     </div>
 </template>
 
@@ -45,6 +47,7 @@
 import { computed, ref } from "vue";
 import {
   NAlert,
+  NCard,
   NSpin,
   NForm,
   NFormItem,
@@ -59,6 +62,7 @@ import { useRouter } from 'vue-router';
 export default {
     components: {
         NAlert,
+        NCard,
         NSpin,
         NForm,
         NFormItem,
@@ -209,6 +213,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.registration-page { max-width: 34rem; }
+.registration-page h1 { margin: 0; font-size: 1.5rem; }
 .rules-checkbox {
     height: auto;
     margin: 0.5rem 0 0;

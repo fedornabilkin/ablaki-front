@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../src/services/httpClient';
-import { checkMutation, detail, list, mutate, pageData } from '../src/services/api/portal';
+import { checkMutation, detail, list, mutate, onlineUsers, pageData } from '../src/services/api/portal';
 
 afterEach(() => vi.restoreAllMocks());
 describe('portal API contracts', () => {
+  it('loads the complete online list without pagination and rejects error responses', async () => {
+    const users = Array.from({ length: 125 }, (_, i) => ({ id: i + 1, username: `user${i}`, is_online: true }));
+    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: users });
+    expect(await onlineUsers()).toHaveLength(125);
+    expect(get).toHaveBeenCalledWith(expect.stringMatching(/v1\/users\/online$/), { params: { all: 1 } });
+    get.mockResolvedValue({ data: { errors: ['unavailable'] } });
+    await expect(onlineUsers()).rejects.toThrow('invalid-response');
+  });
   it('preserves pagination and handles missing CORS-exposed headers without inventing a total', () => {
     expect(pageData([{ id: '12' }], { 'x-pagination-total-count': '45', 'x-pagination-per-page': '10' })).toEqual({ items: [{ id: 12 }], total: 45, pageSize: 10 });
     expect(pageData([], {}).total).toBeNull();

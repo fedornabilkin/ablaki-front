@@ -8,6 +8,7 @@ const token = 'local-fixture-only';
 const user = { id: 99, username: 'preview', email: 'preview@example.test', created_at: now() - 864000, last_login_at: now(), person: { balance: 120, credit: 60, rating: 3, bonus_count: 0, description: 'Локальный тестовый участник', refovod: 1 } };
 const members = Array.from({ length: 45 }, (_, i) => ({ id: i + 1, username: `member${String(i + 1).padStart(2, '0')}`, created_at: now() - (46 - i) * 3600, last_login_at: now() - i, last_seen_at: now() - i, person: { rating: (i + 1) / 10, description: `Описание участника ${i + 1}`, refovod: 99 } }));
 const users = [...members, user];
+for (const member of users) member.is_online = true;
 const byId = id => users.find(value => value.id === Number(id));
 const username = id => byId(id)?.username ?? null;
 const themes = Array.from({ length: 45 }, (_, i) => ({ id: i + 1, user_id: 99, title: `Тема ${String(i + 1).padStart(2, '0')}: обсуждение возможностей сайта`, view: i, created_at: now() - (46 - i) * 60, last_post: now() - (46 - i) * 30 }));
@@ -73,6 +74,7 @@ function pageData(values, params) {
 const gameDto = game => ({ ...game, username: username(game.user_id), username_gamer: username(game.user_gamer) });
 const orderDto = order => ({ ...order, username: username(order.user_id), username_client: username(order.user_client) });
 const commentDto = comment => ({ ...comment, user: byId(comment.user_id), gift_count: gifts.filter(gift => gift.comment_id === comment.id).length, gifted_by_me: gifts.some(gift => gift.comment_id === comment.id && gift.donor_id === 99) });
+const themeDto = theme => ({ ...theme, comment_count: comments.filter(comment => comment.theme_id === theme.id && comment.active === 1).length });
 
 createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -102,6 +104,7 @@ createServer(async (req, res) => {
     }
     if (path === '/v1/tips/random') return send(tips[randomInt(tips.length)]);
     if (path === '/v1/users/profile') return requireAuth() && send(user);
+    if (path === '/v1/users/online' && url.searchParams.get('all') === '1') return send(users);
     if (path === '/v1/users/last' || path === '/v1/users' || path === '/v1/users/online') return sendPage(users);
     if (path === '/v1/users/referrals') return requireAuth() && sendPage(members);
     if (path.startsWith('/v1/users/wall/')) {
@@ -132,13 +135,13 @@ createServer(async (req, res) => {
       const theme = { id: nextId(themes), title: body.title, user_id: 99, created_at: now(), last_post: now(), view: 0 };
       themes.push(theme);
       if (body.comment) comments.push({ id: nextId(comments), theme_id: theme.id, user_id: 99, active: 1, comment: body.comment, created_at: now() });
-      return send(theme, 201);
+      return send(themeDto(theme), 201);
     }
     if (path === '/v1/forum-theme' || path === '/v1/forum-theme/my') {
       if (path.endsWith('/my') && !requireAuth()) return;
-      return sendPage(themes);
+      return sendPage(themes.map(themeDto));
     }
-    if (/^\/v1\/forum-theme\/\d+$/.test(path)) { const theme = themes.find(value => value.id === Number(path.split('/').pop())); return theme ? send(theme) : fail('Not found', 404); }
+    if (/^\/v1\/forum-theme\/\d+$/.test(path)) { const theme = themes.find(value => value.id === Number(path.split('/').pop())); return theme ? send(themeDto(theme)) : fail('Not found', 404); }
     const giftMatch = /^\/v1\/forum-comment\/(\d+)\/(gift|gifts)$/.exec(path);
     if (giftMatch) {
       const id = Number(giftMatch[1]); const comment = comments.find(value => value.id === id);

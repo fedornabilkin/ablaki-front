@@ -7,7 +7,8 @@ import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
 import ListFilters from '@/components/ListFilters.vue';
-import { list, emptyPage, field, date, mutate, record, errorText } from '@/services/api/portal';
+import { list, emptyPage, mutate, record, errorText } from '@/services/api/portal';
+import ForumThemeList from '@/components/forum/ForumThemeList.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 const route = useRoute();
@@ -56,11 +57,7 @@ page-header(page-title="Форум" :extra-links="links")
   n-card
     list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
-      .record-row(v-for="theme in data.items" :key="theme.id")
-        div
-          router-link.record-title(:to="'/forum/read/' + theme.id") {{ field(theme.title) }}
-          .muted Последняя активность: {{ date(theme.last_post || theme.created_at) }}
-        span.muted {{ field(theme.view) }} просмотров
+      forum-theme-list(:themes="data.items")
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
 n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :style="{ width: 'min(35rem, calc(100vw - 2rem))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
   n-form(@submit.prevent="create")

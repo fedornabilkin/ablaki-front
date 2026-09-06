@@ -36,11 +36,14 @@ const selectedGiftId = computed(() => {
 });
 const showGifts = computed({ get: () => selectedGiftId.value !== null, set: value => { if (!value) void openGifts(null); } });
 async function openGifts(commentId: number | null) {
+  await router.push(giftsTarget(commentId));
+}
+function giftsTarget(commentId: number | null) {
   const query = { ...route.query };
   for (const key of Object.keys(query)) if (key.startsWith('gifts_')) delete query[key];
   if (commentId === null) delete query.gift;
   else query.gift = String(commentId);
-  await router.replace({ query });
+  return { path: route.path, query, hash: route.hash };
 }
 function giftCount(item: RecordData): number {
   return Number.isSafeInteger(Number(item.gift_count)) && Number(item.gift_count) >= 0 ? Number(item.gift_count) : 0;
@@ -106,7 +109,8 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
             time.muted {{ date(item.created_at) }}
           .pre-wrap {{ field(item.comment) }}
           .toolbar.mt-3
-            n-button(secondary @click="openGifts(item.id)") Передали кредит: {{ giftCount(item) }}
+            router-link(:to="giftsTarget(item.id)" custom v-slot="{ href, navigate }")
+              n-button(tag="a" :href="href" secondary @click="navigate") Передали кредит: {{ giftCount(item) }}
             n-button(v-if="item.gifted_by_me === true" disabled) Вы передали 1 Cr
             n-popconfirm(v-else-if="authenticated && Number(item.user_id) !== userId" @positive-click="give(item)" :positive-button-props="{ disabled: giving !== null }")
               template(#trigger)

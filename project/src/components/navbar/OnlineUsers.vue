@@ -3,12 +3,10 @@ import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { NButton, NModal } from 'naive-ui';
-import ListFilters from '@/components/ListFilters.vue';
-import PagePager from '@/components/PagePager.vue';
+import UserList from '@/components/user/UserList.vue';
 import RequestState from '@/components/RequestState.vue';
-import { useListQuery } from '@/hooks/useListQuery';
 import { usePageRequest } from '@/hooks/usePageRequest';
-import { emptyPage, field, list } from '@/services/api/portal';
+import { onlineUsers, type RecordData } from '@/services/api/portal';
 import { createPresenceHeartbeat, heartbeat, onlineCount } from '@/services/api/header';
 const store = useStore();
 const route = useRoute();
@@ -25,11 +23,11 @@ const show = computed({
       delete query.online;
       for (const key of Object.keys(query)) if (key.startsWith('online_')) delete query[key];
     }
-    void router.replace({ query, hash: route.hash }).catch(() => { /* Keep the current route on cancelled navigation. */ });
+    void router.push({ query, hash: route.hash }).catch(() => { /* Keep the current route on cancelled navigation. */ });
   },
 });
-const { page, search, filters, params, reset } = useListQuery({}, { prefix: 'online' });
-const { data, loading, error, refresh } = usePageRequest(() => show.value ? list('users/online', page.value, params.value) : Promise.resolve(emptyPage()), emptyPage(), [show, page, params]);
+const onlineTarget = computed(() => ({ path: route.path, query: { ...route.query, online: '1' }, hash: route.hash }));
+const { data, loading, error, refresh } = usePageRequest(() => show.value ? onlineUsers() : Promise.resolve([]), [] as RecordData[], [show]);
 let disposed = false;
 let lastActivity = Date.now();
 let countPending = false;
@@ -79,21 +77,19 @@ onScopeDispose(() => {
 });
 </script>
 <template lang="pug">
-n-button.online-button(quaternary @click="show = true" title="Пользователи онлайн" :aria-label="count === null ? 'Посмотреть пользователей онлайн' : 'Онлайн: ' + count + '. Посмотреть пользователей'")
-  span.online-dot(aria-hidden="true")
-  span.online-label Онлайн: 
-  span {{ count === null ? '—' : count }}
+router-link(:to="onlineTarget" custom v-slot="{ href, navigate }")
+  n-button.online-button(tag="a" :href="href" quaternary @click="navigate" title="Пользователи онлайн" :aria-label="count === null ? 'Посмотреть пользователей онлайн' : 'Онлайн: ' + count + '. Посмотреть пользователей'")
+    template(#icon)
+      font-awesome-icon(icon="users" aria-hidden="true")
+    | {{ count === null ? '—' : count }}
 n-modal(v-model:show="show" preset="card" title="Пользователи онлайн" :style="{ width: 'min(38.75rem, calc(100vw - 1.5rem))' }")
   .stack
     p.muted(v-if="windowSeconds") Активность за последние {{ Math.ceil(windowSeconds / 60) }} мин.
-    list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
-    request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
-      .record-row(v-for="user in data.items" :key="user.id")
-        router-link.record-title(:to="'/wall/' + encodeURIComponent(field(user.username))") {{ field(user.username) }}
-        span.muted Онлайн
-    page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
+    .online-scroll(role="region" aria-label="Список пользователей онлайн" tabindex="0")
+      request-state(:loading="loading" :error="error" :empty="!data.length" @retry="refresh")
+        user-list(:users="data" :online="true" :show-joined="false")
 </template>
 <style scoped>
 .online-button { flex-shrink: 0; }
-.online-dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--primary); margin-right: .5rem; }
+.online-scroll { max-height: min(60vh, 32rem); overflow-y: auto; overscroll-behavior: contain; padding-inline: .25rem; }
 </style>

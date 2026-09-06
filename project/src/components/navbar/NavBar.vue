@@ -34,8 +34,7 @@ header.site-header(:class="{ compact }")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")
         | {{ link.title }}
     .nav-account
-      router-link.nav-item.account-link(v-if="user" to="/users/profile") {{ user.username }}
-      router-link.nav-item(v-else :to="loginTarget") Войти
+      router-link.nav-item(v-if="!user" :to="loginTarget") Войти
       n-button.menu-button(quaternary aria-label="Открыть меню" :aria-expanded="open" aria-controls="mobile-navigation" @click="open = true")
         template(#icon)
           font-awesome-icon(icon="bars")

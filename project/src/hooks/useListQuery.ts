@@ -39,7 +39,7 @@ export function useListQuery(defaultFilters: Record<string, string> = {}, option
       if (disposed || current !== revision || pendingPath !== route.path || !pending) return;
       const query = pending;
       pending = null;
-      void router.replace({ path: route.path, query, hash: route.hash }).catch(() => { /* Navigation cancellation preserves the current URL. */ });
+      void router.push({ path: route.path, query, hash: route.hash }).catch(() => { /* Navigation cancellation preserves the current URL. */ });
     });
   }
 

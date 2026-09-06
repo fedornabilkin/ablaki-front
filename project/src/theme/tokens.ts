@@ -4,6 +4,7 @@ import type { GlobalThemeOverrides } from 'naive-ui';
 export const colors = {
   'bg-base': '#121212', 'bg-surface': '#1c1c1c', 'bg-surface-2': '#242424',
   border: '#2e2e2e', primary: '#ff7a00', 'primary-hover': '#ff9433',
+  'input-border': '#626262',
   'primary-press': '#e66e00', 'primary-soft': 'rgba(255, 122, 0, 0.14)',
   text: '#e8e8e8', 'text-muted': '#9a9a9a', 'text-on-acc': '#1a1200',
   success: '#ff9433', warning: '#ffbd80', error: '#ff7a00',
@@ -33,7 +34,7 @@ export const themeOverrides: GlobalThemeOverrides = {
     textColorPrimary: colors['text-on-acc'], textColorHoverPrimary: colors['text-on-acc'],
     textColorPressedPrimary: colors['text-on-acc'], textColorFocusPrimary: colors['text-on-acc'],
   },
-  Input: { heightSmall: '2.75rem', heightMedium: '2.75rem', heightLarge: '3rem', color: colors['bg-base'], colorFocus: colors['bg-base'], fontSizeSmall: '1rem', fontSizeMedium: '1rem', fontSizeLarge: '1rem' },
+  Input: { heightSmall: '2.75rem', heightMedium: '2.75rem', heightLarge: '3rem', color: colors['bg-base'], colorFocus: colors['bg-base'], border: `1px solid ${colors['input-border']}`, borderHover: `1px solid ${colors.primary}`, borderFocus: `1px solid ${colors.primary}`, placeholderColor: '#ababab', fontSizeSmall: '1rem', fontSizeMedium: '1rem', fontSizeLarge: '1rem' },
   InternalSelection: { heightSmall: '2.75rem', heightMedium: '2.75rem', heightLarge: '3rem' },
   Card: { paddingSmall: '1rem', paddingMedium: '1rem', paddingLarge: '1.25rem', borderRadius: '.5rem', closeSize: '2.75rem' },
   Drawer: { closeSize: '2.75rem' },

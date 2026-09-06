@@ -8,7 +8,7 @@ let scope: EffectScope;
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   context.route = reactive({ path: '/games/orel', query: { page: '3', kon: '5', q: 'alice', online: '1' }, hash: '' });
-  context.router = { replace: vi.fn(async target => { context.route.query = target.query; }) };
+  context.router = { push: vi.fn(async target => { context.route.query = target.query; }) };
   scope = effectScope();
 });
 afterEach(() => { scope.stop(); vi.useRealTimers(); });
@@ -27,10 +27,10 @@ describe('list URL state', () => {
     await vi.advanceTimersByTimeAsync(200);
     state.search.value = 'bobby'; await flush();
     await vi.advanceTimersByTimeAsync(349);
-    expect(context.router.replace).not.toHaveBeenCalled();
+    expect(context.router.push).not.toHaveBeenCalled();
     expect(state.params.value.q).toBe('alice');
     await vi.advanceTimersByTimeAsync(1); await flush();
-    expect(context.router.replace).toHaveBeenCalledOnce();
+    expect(context.router.push).toHaveBeenCalledOnce();
     expect(context.route.query).toEqual({ kon: '5', q: 'bobby', online: '1' });
     expect(state.page.value).toBe(1);
   });
@@ -42,7 +42,7 @@ describe('list URL state', () => {
     expect(state.search.value).toBe('previous');
     expect(state.page.value).toBe(2);
     expect(state.filters.value.kon).toBe('10');
-    expect(context.router.replace).not.toHaveBeenCalled();
+    expect(context.router.push).not.toHaveBeenCalled();
   });
   it('keeps other lists and unrelated query keys on filter changes and reset', async () => {
     context.route.query = { page: '3', q: 'alice', recent_page: '4', recent_kon: '5', online: '1' };
@@ -56,7 +56,7 @@ describe('list URL state', () => {
     const state = scope.run(() => useListQuery())!;
     state.search.value = 'pending'; await flush(); scope.stop();
     await vi.advanceTimersByTimeAsync(500);
-    expect(context.router.replace).not.toHaveBeenCalled();
+    expect(context.router.push).not.toHaveBeenCalled();
   });
   it('does not reissue a list query when a separate list changes its URL state', async () => {
     const state = scope.run(() => useListQuery({ kon: '' }))!;

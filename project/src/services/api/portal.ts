@@ -53,6 +53,11 @@ export async function list(path: string, page = 1, params: Record<string, unknow
 export async function detail(path: string): Promise<RecordData> {
   return record((await apiClient.get(url(path))).data);
 }
+export async function onlineUsers(): Promise<RecordData[]> {
+  const response = await apiClient.get(url('users/online'), { params: { all: 1 } });
+  if (!Array.isArray(response.data)) throw new Error('invalid-response');
+  return response.data.map(record);
+}
 // Some Yii actions report validation failures with HTTP 200; never treat them as success.
 export function checkMutation(data: unknown): unknown {
   if (data === '' || data === null || data === undefined || data === true) return data;

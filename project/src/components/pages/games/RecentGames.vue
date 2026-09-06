@@ -33,7 +33,7 @@ n-card(title="Последние завершённые игры")
             font-awesome-icon.winner(v-if="winnerName(game) === game.username_gamer" icon="crown" title="Победитель" aria-label="Победитель")
           small.muted №{{ game.id }} · {{ date(game.completed_at ?? game.updated_at ?? game.time_over_at) }}
         strong Кон: {{ field(game.kon) }} {{ unit }}
-    page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
+    page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading" query-prefix="recent")
 </template>
 <style scoped lang="scss">
 .players { gap: .25rem; }

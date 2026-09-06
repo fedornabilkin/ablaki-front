@@ -8,6 +8,7 @@ defineProps<{ compact: boolean }>();
 const store = useStore();
 const message = useMessage();
 const account = computed(() => person(store.getters['auth/user']));
+const username = computed(() => store.getters['auth/user']?.username ?? '');
 const claiming = ref<'bonus' | 'rating' | null>(null);
 let disposed = false;
 onScopeDispose(() => { disposed = true; });
@@ -28,36 +29,45 @@ async function claim(kind: 'bonus' | 'rating') {
 </script>
 <template lang="pug">
 .account-overview(:class="{ compact }" aria-label="Мой счёт")
-  .account-metrics
-    router-link.metric-link(to="/balance" :aria-label="'Баланс: ' + formatAccountNumber(account.balance) + ' Кг. История счёта'")
-      span.metric-label Баланс
-      strong {{ formatAccountNumber(account.balance) }} #[span.unit Кг]
-    router-link.metric-link(to="/exchange" :aria-label="'Кредиты: ' + formatAccountNumber(account.credit) + ' Cr. Биржа'")
-      span.metric-label Кредиты
-      strong {{ formatAccountNumber(account.credit) }} #[span.unit Cr]
-    router-link.metric-link(to="/rating" :aria-label="'Рейтинг: ' + formatAccountNumber(account.rating) + '. История рейтинга'")
-      span.metric-label Рейтинг
-      strong #[font-awesome-icon.metric-star(icon="fa fa-star")] {{ formatAccountNumber(account.rating) }}
+  .identity-metrics
+    router-link.account-login(to="/users/profile") {{ username }}
+    .account-metrics
+      router-link.metric-link(to="/rating" title="Рейтинг" :aria-label="'Рейтинг: ' + formatAccountNumber(account.rating) + '. История рейтинга'")
+        font-awesome-icon(icon="star" aria-hidden="true")
+        strong {{ formatAccountNumber(account.rating) }}
+      router-link.metric-link(to="/balance" title="Баланс, Кг" :aria-label="'Баланс: ' + formatAccountNumber(account.balance) + ' Кг. История счёта'")
+        font-awesome-icon(icon="cube" aria-hidden="true")
+        strong {{ formatAccountNumber(account.balance) }}
+      router-link.metric-link(to="/exchange" title="Кредиты, Cr" :aria-label="'Кредиты: ' + formatAccountNumber(account.credit) + ' Cr. Биржа'")
+        font-awesome-icon(icon="coins" aria-hidden="true")
+        strong {{ formatAccountNumber(account.credit) }}
   .daily-actions(aria-label="Ежедневные награды")
-    n-button(secondary :loading="claiming === 'bonus'" :disabled="claiming !== null" @click="claim('bonus')" aria-label="Получить ежедневный кредит" title="Получить ежедневный кредит")
+    n-button.bonus-button(secondary :loading="claiming === 'bonus'" :disabled="claiming !== null" @click="claim('bonus')" aria-label="Получить ежедневный кредит" title="Получить ежедневный кредит")
       template(#icon)
         font-awesome-icon(icon="fa fa-coins")
+      span.bonus-shine(aria-hidden="true")
       | Бонус
-    n-button(secondary :loading="claiming === 'rating'" :disabled="claiming !== null" @click="claim('rating')" aria-label="Получить ежедневный рейтинг" title="Получить ежедневный рейтинг")
+    n-button.bonus-button(secondary :loading="claiming === 'rating'" :disabled="claiming !== null" @click="claim('rating')" aria-label="Получить ежедневный рейтинг" title="Получить ежедневный рейтинг")
       template(#icon)
         font-awesome-icon(icon="fa fa-star")
+      span.bonus-shine(aria-hidden="true")
       | Рейтинг
     slot
 </template>
 <style scoped lang="scss">
-.account-overview { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; min-width: 0; }
+.account-overview { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .25rem .75rem; min-width: 0; width: 100%; }
+.identity-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .65rem; min-width: 0; }
+.account-login { font-weight: 700; overflow-wrap: anywhere; }
 .account-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
-.metric-link { display: grid; align-content: center; min-height: 2.75rem; padding: .25rem .35rem; border-radius: .5rem; color: var(--primary); }
+.metric-link { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.75rem; padding: .25rem .35rem; border-radius: .5rem; color: var(--primary); }
 .metric-link:hover { background: var(--primary-soft); }
 .metric-link strong { font-size: .95rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.metric-label, .unit { font-size: .7rem; color: var(--text-muted); font-weight: 400; }
-.metric-star { color: var(--primary); font-size: .75rem; }
+.metric-link svg { font-size: .75rem; }
 .daily-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
-.compact .metric-label { display: none; }
+.bonus-button { overflow: hidden; }
+.bonus-shine { position: absolute; pointer-events: none; top: -50%; bottom: -50%; left: -80%; width: 45%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent); transform: skewX(-20deg); animation: bonus-shine 6s ease-in-out infinite; }
+.bonus-button:nth-child(2) .bonus-shine { animation-delay: 1s; }
+@keyframes bonus-shine { 25%, 100% { left: 160%; } }
+@media (prefers-reduced-motion: reduce) { .bonus-shine { animation: none; display: none; } }
 @media (min-width: 48rem) { .metric-link { padding-inline: .6rem; } }
 </style>

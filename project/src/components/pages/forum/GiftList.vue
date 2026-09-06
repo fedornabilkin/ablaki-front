@@ -19,5 +19,5 @@ const { data, loading, error, refresh } = usePageRequest(() => list(`forum-comme
     .record-row(v-for="gift in data.items" :key="gift.id")
       router-link(:to="'/wall/' + encodeURIComponent(field(gift.username))") {{ field(gift.username) }}
       time.muted {{ date(gift.created_at) }}
-  page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
+  page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading" query-prefix="gifts")
 </template>
