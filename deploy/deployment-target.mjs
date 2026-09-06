@@ -5,7 +5,7 @@ import { validateEndpoints } from './check-api.mjs';
 
 export const targets = Object.freeze({
   production: Object.freeze({ environment: 'production-frontend', deploy_root: '/opt/ablaki-frontend', web_root: '/var/www/ablakin.ru', secret_prefix: 'FRONTEND_DEPLOY_', api_variable: 'VITE_API_URL', ws_variable: 'VITE_WS_URL', health_variable: 'FRONTEND_HEALTHCHECK_URL' }),
-  test: Object.freeze({ environment: 'test-frontend', deploy_root: '/opt/ablaki-frontend-test', web_root: '/var/code/ablaki-front/project/dist', secret_prefix: 'TEST_FRONTEND_DEPLOY_', api_variable: 'TEST_VITE_API_URL', ws_variable: 'TEST_VITE_WS_URL', health_variable: 'TEST_FRONTEND_HEALTHCHECK_URL' }),
+  test: Object.freeze({ environment: 'test-frontend', deploy_root: '/opt/ablaki-frontend-test', web_root: '/var/code/ablaki-front', secret_prefix: 'TEST_FRONTEND_DEPLOY_', api_variable: 'TEST_VITE_API_URL', ws_variable: 'TEST_VITE_WS_URL', health_variable: 'TEST_FRONTEND_HEALTHCHECK_URL' }),
 });
 function check(condition, message) { if (!condition) throw new Error(message); }
 function checkedTarget(target) { check(Object.hasOwn(targets, target), 'Unknown frontend deployment target.'); return targets[target]; }

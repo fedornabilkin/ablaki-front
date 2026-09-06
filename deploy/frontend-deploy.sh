@@ -57,7 +57,7 @@ case "$target" in
     ;;
   test)
     expected_deploy_root='/opt/ablaki-frontend-test'
-    expected_web_root='/var/code/ablaki-front/project/dist'
+    expected_web_root='/var/code/ablaki-front'
     ;;
   *) die 'Unknown deployment target' ;;
 esac
@@ -93,6 +93,11 @@ case "$deploy_root/" in
 esac
 [ -d "$web_root" ] || die "Web root does not exist: $web_root"
 [ -w "$web_root" ] || die "Web root is not writable by $(id -un)"
+
+# The former test checkout must be moved aside before this root holds only static files.
+if [[ "$target" = test ]] && [[ -e "$web_root/.git" || -L "$web_root/.git" || -d "$web_root/project" || -f "$web_root/package.json" ]]; then
+  die 'Test web root still contains a source checkout; move it outside /var/code/ablaki-front before deployment'
+fi
 
 case "$archive" in
   "$deploy_root"/incoming/*) ;;

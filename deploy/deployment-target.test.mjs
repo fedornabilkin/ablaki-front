@@ -4,7 +4,7 @@ import { resolveTarget, targets, validateBuild, validateDeployment } from './dep
 const sha = 'a'.repeat(40);
 const production = { eventName: 'push', ref: 'refs/heads/master', sha };
 const testEvent = { eventName: 'workflow_dispatch', ref: 'refs/heads/master', sha, target: 'test', branch: 'feature/check-pages' };
-const testUrls = { target: 'test', apiUrl: 'https://api-test.example/', frontendUrl: 'https://test.example/', productionApiUrl: 'https://api.ablakin.ru/', productionFrontendUrl: 'https://ablakin.ru/', deployRoot: '/opt/ablaki-frontend-test', webRoot: '/var/code/ablaki-front/project/dist' };
+const testUrls = { target: 'test', apiUrl: 'https://api-test.example/', frontendUrl: 'https://test.example/', productionApiUrl: 'https://api.ablakin.ru/', productionFrontendUrl: 'https://ablakin.ru/', deployRoot: '/opt/ablaki-frontend-test', webRoot: '/var/code/ablaki-front' };
 
 test('master push retains production automation and exact current directories', () => {
   const value = resolveTarget(production);
@@ -18,14 +18,14 @@ test('PR and release-branch pushes run checks without deployment', () => {
   assert.equal(resolveTarget({ ...production, eventName: 'pull_request', ref: 'refs/pull/7/merge' }).deploy_enabled, 'false');
   assert.equal(resolveTarget({ ...production, ref: 'refs/heads/release/check' }).deploy_enabled, 'false');
 });
-test('manual test chooses an existing branch ref with a separate namespace and dist-only destination', () => {
+test('manual test chooses an existing branch ref and publishes directly to the test web root', () => {
   const value = resolveTarget(testEvent);
   assert.equal(value.checkout_ref, 'refs/heads/feature/check-pages');
   assert.equal(value.environment, 'test-frontend');
   assert.equal(value.secret_prefix, 'TEST_FRONTEND_DEPLOY_');
   assert.equal(value.api_variable, 'TEST_VITE_API_URL');
   assert.equal(value.health_variable, 'TEST_FRONTEND_HEALTHCHECK_URL');
-  assert.equal(value.web_root, '/var/code/ablaki-front/project/dist');
+  assert.equal(value.web_root, '/var/code/ablaki-front');
   assert.equal(value.deploy_enabled, 'true');
 });
 test('production dispatch cannot use test source or a non-master workflow ref', () => {
@@ -46,11 +46,11 @@ test('test API cannot point at production via hostname, port, trailing dot, or c
     assert.throws(() => validateBuild({ target: 'test', apiUrl, productionApiUrl: 'https://custom-production.example/' }));
   }
 });
-test('test deployment rejects production site origins and a checkout-root destination', () => {
+test('test deployment rejects production site origins and the former nested destination', () => {
   for (const frontendUrl of ['https://ablakin.ru/', 'https://www.ablakin.ru/', 'https://production.example/']) {
     assert.throws(() => validateDeployment({ ...testUrls, frontendUrl, productionFrontendUrl: 'https://production.example/' }));
   }
-  for (const webRoot of ['/var/code/ablaki-front', '/var/www/ablakin.ru']) assert.throws(() => validateDeployment({ ...testUrls, webRoot }), /paths/);
+  for (const webRoot of ['/var/code/ablaki-front/project/dist', '/var/code/ablaki-front/project', '/var/www/ablakin.ru']) assert.throws(() => validateDeployment({ ...testUrls, webRoot }), /paths/);
   assert.throws(() => validateDeployment({ ...testUrls, deployRoot: '/opt/ablaki-frontend' }), /paths/);
 });
 test('separate test origins and fixed test paths are accepted, but mixed content is rejected', () => {

@@ -3,7 +3,7 @@
 server {
     listen 80;
     server_name TEST_FRONTEND_HOST;
-    root /var/code/ablaki-front/project/dist;
+    root /var/code/ablaki-front;
     location ^~ /.well-known/acme-challenge/ { try_files $uri =404; }
     location / { return 301 https://TEST_FRONTEND_HOST$request_uri; }
 }
@@ -13,7 +13,7 @@ server {
     server_name TEST_FRONTEND_HOST;
     ssl_certificate /etc/letsencrypt/live/TEST_FRONTEND_HOST/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/TEST_FRONTEND_HOST/privkey.pem;
-    root /var/code/ablaki-front/project/dist;
+    root /var/code/ablaki-front;
     index index.html;
 
     location ^~ /.well-known/acme-challenge/ { try_files $uri =404; }

@@ -9,7 +9,7 @@
 - На VPS передавать только dist и скрипт релиза. Сборка на сервере не требуется.
 - Web-root — `/var/www/ablakin.ru`, deploy-root — `/opt/ablaki-frontend`. В инструкции используется домен `ablakin.ru`; SSH-доступ и адрес отдельного API-хоста нужно сверить до первого запуска.
 - Test публикуется тем же workflow вручную: `workflow_dispatch`, `target=test`, существующая `branch` (по умолчанию master). Production manual разрешён только из master с branch master. PR/release push выполняют проверки без deployment.
-- Test environment — `test-frontend`, deploy-root — `/opt/ablaki-frontend-test`, web-root — строго `/var/code/ablaki-front/project/dist`. Checkout `/var/code/ablaki-front` не синхронизируется и не является rsync-delete целью. Обе пары путей проверяются до файловых операций и после readlink.
+- Test environment — `test-frontend`, deploy-root — `/opt/ablaki-frontend-test`, web-root — строго `/var/code/ablaki-front` по уточнению владельца от 2026-09-06. Как в production, в web-root находятся только файлы сборки. Прежний checkout один раз переносится за пределы web-root; при оставшихся исходниках test-скрипт останавливается до rsync. Обе пары путей проверяются до файловых операций и после readlink.
 - Production backend — `/var/www/api.ablakin.ru`, test backend — `/var/code/ablaki`; frontend workflow их не изменяет. Test frontend — `http://94.250.251.94:3181`, API — `http://94.250.251.94:3180/`, backend admin — `http://94.250.251.94:3195`.
 - Workflow: [.github/workflows/node.js.yml](../.github/workflows/node.js.yml). Серверный скрипт: [deploy/frontend-deploy.sh](../deploy/frontend-deploy.sh).
 
@@ -30,7 +30,7 @@
 - Variable FRONTEND_HEALTHCHECK_URL — публичный HTTPS origin production. Для test задаются `TEST_FRONTEND_HEALTHCHECK_URL=http://94.250.251.94:3181` и `TEST_VITE_API_URL=http://94.250.251.94:3180/`.
 - `VITE_API_URL` задаётся как GitHub Repository variable: полный HTTP(S)-адрес отдельного API-хоста с завершающим `/`. Workflow проверяет адрес перед сборкой; пустое значение и относительный `/api/` не допускаются. `VITE_*` публичны и записываются в сборку.
 - Браузер напрямую обращается к отдельному API-хосту. Frontend nginx раздаёт статику и не проксирует API. Для frontend по HTTPS нужен HTTPS API, разрешающий CORS с origin `https://ablakin.ru`, используемые методы и заголовки `Content-Type`/`Authorization`.
-- Test использует `deploy/nginx/test-frontend.http.conf.example`: системный nginx слушает порт 3181 и раздаёт только `/var/code/ablaki-front/project/dist`. DNS/TLS для этого IP/port сценария не требуются. Production vhost и web-root сохраняются. API разрешает CORS с точным test frontend origin, включая порт.
+- Test использует `deploy/nginx/test-frontend.http.conf.example`: системный nginx слушает порт 3181 и раздаёт `/var/code/ablaki-front`. DNS/TLS для этого IP/port сценария не требуются. Production vhost и web-root сохраняются. API разрешает CORS с точным test frontend origin, включая порт.
 - Для доступного чата нужен готовый сервер WS и согласованный протокол; одного VITE_WS_URL недостаточно.
 - TLS, DNS, firewall, nginx и backend настраиваются отдельно от публикации статики.
 - Bash и workflow сохранять с LF.

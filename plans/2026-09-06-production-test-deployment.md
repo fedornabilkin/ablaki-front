@@ -2,6 +2,10 @@
 
 Дата: 2026-09-06.
 
+Уточнение владельца: test web-root перенесён непосредственно в
+`/var/code/ablaki-front`. Первоначальные решения ниже описывают прежний путь;
+актуальные изменения и проверки — в [новом плане](2026-09-06-test-frontend-root.md).
+
 ## Цель и контекст
 Сохранить действующий push master → production и добавить ручной test-deploy выбранной ветки. Production frontend остаётся в `/var/www/ablakin.ru`; test checkout — `/var/code/ablaki-front`, управляемая статика только в `project/dist`. Backend production находится в `/var/www/api.ablakin.ru`, backend test — в `/var/code/ablaki`; этот план не меняет backend.
 

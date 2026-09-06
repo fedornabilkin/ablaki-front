@@ -3,7 +3,7 @@
 server {
     listen 3181;
     server_name 94.250.251.94;
-    root /var/code/ablaki-front/project/dist;
+    root /var/code/ablaki-front;
     index index.html;
 
     location ^~ /.well-known/acme-challenge/ { try_files $uri =404; }
