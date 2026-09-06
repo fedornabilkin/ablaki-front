@@ -47,7 +47,7 @@ API URL обязательны; для обоих HTTPS-сайтов нужен 
 
 Production `VITE_API_URL` дополнительно используется только для сравнения origins: test API не может совпасть с ним или с хостом `api.ablakin.ru`. Test frontend не может иметь production origin из `FRONTEND_HEALTHCHECK_URL`, если variable доступна, либо хост `ablakin.ru`, `www.ablakin.ru` или `api.ablakin.ru`. Если production health variable хранится только в `production-frontend`, она недоступна из `test-frontend`; для проверки нестандартного production alias скопируйте публичное значение в Repository variables. Никакие production адреса не используются как test fallback.
 
-API дополнительно сообщает окружение через `health.environment`, поэтому другой DNS alias production API не проходит test readiness. В backend необходимо правильно задать `APP_ENVIRONMENT` и изолировать тестовые БД, Redis и сервисы по его инструкции.
+API дополнительно сообщает окружение через `health.environment`, поэтому другой DNS alias production API не проходит test readiness. В backend необходимо правильно задать `APP_ENVIRONMENT` и сохранить отдельные существующие настройки окружений: production использует MySQL по `MYSQL_DB_*`, test — PostgreSQL по `PG_DB_*`. Публикация frontend не меняет их БД, Redis или сервисы.
 
 Production environment разрешает публикации только из master. Для test обычно также запускают сам workflow из master, а исходную ветку выбирают полем `branch`. Защита environment оценивает ветку workflow, а не отдельный checkout приложения. Обязательные PR для работы владельца не вводятся.
 
@@ -164,6 +164,8 @@ Test: GitHub → Actions → **Frontend CI and deploy** → **Run workflow**. В
 7. Передача архива с checksum по SSH; публикация через releases/<sha> и rsync; проверка публичного deploy-version.txt. При ошибке активации восстанавливается предыдущая статика.
 
 Сначала выпустите backend нужного окружения. Старый backend без `health.environment` не пропускается. Если backend ещё публикуется, frontend ждёт; после исчерпания лимита текущая статика остаётся. Для повтора упавшей deploy-job используйте **Re-run failed jobs**, пока артефакт доступен.
+
+Backend обновляет код и vendor, затем выполняет обычный `make up` с миграциями существующей БД, без backup/dump перед деплоем. Frontend продолжает проверять полный `/health` и совместимость списков: ошибка миграций или неподготовленная схема не пропускает новую статику. Создание и копирование БД между окружениями не входят в этот процесс.
 
 Пример публичных read-only проверок после test публикации:
 
