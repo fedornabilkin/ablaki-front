@@ -37,6 +37,9 @@ jobs:
       - name: Check deployment script syntax
         run: bash -n ../deploy/frontend-deploy.sh
 
+      - name: Test API readiness gate
+        run: node --test ../deploy/check-api.test.mjs
+
       - name: Validate API URL
         shell: bash
         run: |
@@ -96,6 +99,11 @@ jobs:
       - name: Check out deployment scripts
         uses: actions/checkout@v7
 
+      - name: Set up deployment Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
       - name: Download frontend artifact
         uses: actions/download-artifact@v8
         with:
@@ -134,6 +142,13 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+
+      - name: Wait for compatible API before activating frontend
+        timeout-minutes: 4
+        run: node deploy/check-api.mjs
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          FRONTEND_HEALTHCHECK_URL: ${{ vars.FRONTEND_HEALTHCHECK_URL }}
 
       - name: Upload and activate frontend
         shell: bash

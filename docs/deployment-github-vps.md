@@ -4,7 +4,9 @@
 
 Инструкция относится только к Vue-фронтенду из `fedornabilkin/ablaki-front`: подготовке статики, GitHub Actions и frontend-VPS. Web-root согласован: `/var/www/ablakin.ru`. Домен в примерах — `ablakin.ru`, служебный каталог релизов — `/opt/ablaki-frontend`.
 
-Схема PCM Helper: `push в master → тесты → сборка → артефакт dist → архив → SSH → releases/<sha> → rsync в web-root → проверка HTTPS → запись .current или откат`.
+Схема PCM Helper: `push в master → тесты → сборка → артефакт dist → архив → готовность API → SSH → releases/<sha> → rsync в web-root → проверка HTTPS → запись .current или откат`.
+
+С 6 сентября 2026 года перед публикацией проверяется совместимый backend: `GET health`, online-count и envelope комментариев, JSON, CORS и HTTPS. Ожидание ограничено тремя минутами; при отказе текущая статика сохраняется. Backend обновляется отдельным workflow из своего репозитория в `/var/code/ablaki`. После его первого успешного деплоя повторите frontend workflow, если он ранее остановился на ожидании API. Для health необходимы новые миграции и SHA, который backend записывает при `make up`.
 
 Образцы прочитаны из соседнего проекта: [инструкция PCM Helper](../../../pcm-helper/deploy/README.md), [workflow](../../../pcm-helper/.github/workflows/node.js.yml), [скрипт](../../../pcm-helper/deploy/frontend-deploy.sh) и [пример nginx](../../../pcm-helper/deploy/nginx/pcmhelper.ru.conf.example). Ниже всё необходимое приведено в самой инструкции. Также учтены [соглашение Ablaki](../agreements/deployment.md) и [план настройки](../plans/2026-09-05-frontend-deployment.md).
 
