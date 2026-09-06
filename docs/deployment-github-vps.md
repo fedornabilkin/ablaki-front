@@ -2,7 +2,7 @@
 
 Обновлено 6 сентября 2026 года. Production frontend уже работает и остаётся в `/var/www/ablakin.ru`. Test использует HTTP по IP и отдельным портам; DNS и сертификаты для него не нужны. Настройка VPS и GitHub environment выполняется отдельно по командам ниже.
 
-[Workflow](../.github/workflows/node.js.yml), [карта target](../deploy/deployment-target.mjs), [серверный скрипт](../deploy/frontend-deploy.sh), [проверка API](../deploy/check-api.mjs). Настройка backend описана отдельно в [его инструкции](https://github.com/fedornabilkin/ablaki/blob/master/docs/production-test-deployment.md).
+[Workflow](../.github/workflows/node.js.yml), [карта target](../deploy/deployment-target.mjs), [серверный скрипт](../deploy/frontend-deploy.sh), [общая валидация URL](../deploy/check-api.mjs). Настройка backend описана отдельно в [его инструкции](https://github.com/fedornabilkin/ablaki/blob/master/docs/production-test-deployment.md).
 
 ## 1. Параметры окружений
 
@@ -18,7 +18,6 @@
 | Frontend origin | `https://ablakin.ru` | `http://94.250.251.94:3181` |
 | API URL | `https://api.ablakin.ru/` | `http://94.250.251.94:3180/` |
 | Backend admin | Не изменяется этим workflow | `http://94.250.251.94:3195` |
-| Backend health.environment | `production` | `test` |
 
 Тестовые frontend и API имеют один IP, но разные origins из-за портов `3181` и `3180`. Поэтому API должен разрешать CORS именно для `http://94.250.251.94:3181`. Порт `3195` относится к админке backend; frontend workflow её не публикует.
 
@@ -50,7 +49,7 @@ API URL обязательны. Все `VITE_*` публичны и попада
 
 Production `VITE_API_URL` дополнительно используется только для сравнения origins: test API не может совпасть с ним или с хостом `api.ablakin.ru`. Test frontend не может иметь production origin из `FRONTEND_HEALTHCHECK_URL`, если variable доступна, либо хост `ablakin.ru`, `www.ablakin.ru` или `api.ablakin.ru`. Если production health variable хранится только в `production-frontend`, она недоступна из `test-frontend`; для проверки нестандартного production alias скопируйте публичное значение в Repository variables. Никакие production адреса не используются как test fallback.
 
-API дополнительно сообщает окружение через `health.environment`, поэтому другой DNS alias production API не проходит test readiness. В backend необходимо правильно задать `APP_ENVIRONMENT` и сохранить отдельные существующие настройки окружений: production использует MySQL по `MYSQL_DB_*`, test — PostgreSQL по `PG_DB_*`. Публикация frontend не меняет их БД, Redis или сервисы.
+Workflow проверяет настроенные API и frontend origins без обращения к backend `/health`. Фактический API нужного окружения и CORS проверяются отдельно в браузере. Production использует существующую MySQL по `MYSQL_DB_*`, test — PostgreSQL по `PG_DB_*`; публикация frontend не меняет их БД, Redis или сервисы. `FRONTEND_HEALTHCHECK_URL` и его test-аналог нужны для проверки файла версии самой статики, а не backend health.
 
 Production environment разрешает публикации только из master. Для test обычно также запускают сам workflow из master, а исходную ветку выбирают полем `branch`. Защита environment оценивает ветку workflow, а не отдельный checkout приложения. Обязательные PR для работы владельца не вводятся.
 
@@ -141,12 +140,10 @@ Test: GitHub → Actions → **Frontend CI and deploy** → **Run workflow**. В
 3. Node.js 24, npm ci, deployment tests, unit tests и build. Моки craft/stat/city выключены.
 4. Артефакт `frontend-<target>-<source_sha>`, срок хранения 14 дней.
 5. Deploy-job получает только environment выбранного target и его secrets. API URL берётся из результата той же сборки.
-6. Проверка каталогов, origins и readiness API. До загрузки/активации статики ожидаются HTTP 200, JSON, совместимый `portalListsVersion`, SHA backend, правильное `health.environment`, online-count и envelope комментариев. Каждый публичный ответ должен разрешать CORS frontend origin. Общий лимит ожидания — 180 секунд.
+6. Проверка каталогов, формата URL, допустимых протоколов и разделения настроенных origins production/test. Запрос к backend `/health` не выполняется.
 7. Передача архива с checksum по SSH; публикация через releases/<sha> и rsync; проверка публичного deploy-version.txt. При ошибке активации восстанавливается предыдущая статика.
 
-Сначала выпустите backend нужного окружения. Старый backend без `health.environment` не пропускается. Если backend ещё публикуется, frontend ждёт; после исчерпания лимита текущая статика остаётся. Для повтора упавшей deploy-job используйте **Re-run failed jobs**, пока артефакт доступен.
-
-Backend обновляет код и vendor, затем выполняет обычный `make up` с миграциями существующей БД, без backup/dump перед деплоем. Frontend продолжает проверять полный `/health` и совместимость списков: ошибка миграций или неподготовленная схема не пропускает новую статику. Создание и копирование БД между окружениями не входят в этот процесс.
+Первоначальный frontend-deploy не требовал backend `/health`; добавленное обязательное ожидание удалено. Backend разворачивается отдельно, а frontend workflow публикует статику без требования нового health-контракта или SHA-маркера backend. `check-api.mjs` сохранён для общего валидатора адресов, его сетевые проверки workflow не запускает. Проверка `deploy-version.txt` самой статики и откат при ошибке её публикации остаются. Для повтора упавшей deploy-job используйте **Re-run failed jobs**, пока артефакт доступен.
 
 Пример публичных read-only проверок после test публикации:
 
@@ -154,7 +151,6 @@ Backend обновляет код и vendor, затем выполняет об�
 curl -fsS http://94.250.251.94:3181/deploy-version.txt
 curl -I http://94.250.251.94:3181/forum
 curl -I http://94.250.251.94:3181/assets/does-not-exist.js
-curl -fsS -H 'Origin: http://94.250.251.94:3181' http://94.250.251.94:3180/health
 ```
 
 Файл версии должен совпасть с фактическим source SHA, прямой маршрут SPA — открываться, отсутствующий asset — возвращать 404. В браузере проверьте Request URL: тестовая сборка обращается к тестовому API. Затем подтвердите, что SHA production сайта не изменился от test deployment.
@@ -169,16 +165,15 @@ Releases production и test хранятся отдельно. Готовый к
 
 `.current` и `.deploy.lock` находятся в `<deploy-root>/releases`. `.well-known` не удаляется. При первом сбое возвращается `pre-automation-*`; такие каталоги не являются commit SHA. Автоматической очистки releases нет: сохраняйте текущий, предыдущий рабочий и первоначальный backup до проверки восстановления. Не храните пользовательские загрузки в управляемом dist/web-root.
 
-## 7. Если deployment остановился
+## 7. Если deployment остановился или страницы не работают
 
 | Сообщение/симптом | Проверить |
 |---|---|
-| Test API совпадает с production | TEST_VITE_API_URL, отдельный API origin и backend APP_ENVIRONMENT=test |
-| API environment не совпадает | Нужный vhost/upstream, environment backend, свежий health endpoint |
+| Test API совпадает с production | TEST_VITE_API_URL и отдельный API origin |
 | Test variable/secret пуст | Именно TEST_* namespace и environment test-frontend; fallback отсутствует |
 | Deployment paths do not match | Выбранный target и фиксированные пары путей; checkout root недопустим |
 | Paths resolve outside selected target | Символьные ссылки и readlink; нельзя направлять test dist в production |
-| CORS/HTML/старый контракт | Test API :3180, разрешённый origin http://94.250.251.94:3181, миграции и readiness endpoint |
+| API-запросы в браузере не работают | Test API :3180, разрешённый CORS origin http://94.250.251.94:3181 и совместимость API со страницей |
 | HTTP rejected | HTTP допустим только для target=test; production frontend и API требуют HTTPS |
 | SSH denied/host key mismatch | Отдельный ключ, пользователь, authorized_keys, PORT и проверенный known_hosts |
 | nginx duplicate default server | Не добавлять default_server к test vhost; не включать две копии vhost |

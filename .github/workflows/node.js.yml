@@ -96,7 +96,7 @@ jobs:
       - name: Check deployment script syntax
         run: bash -n ../automation/deploy/frontend-deploy.sh
 
-      - name: Test deployment targets and API readiness gate
+      - name: Test deployment targets and URL validation
         run: node --test ../automation/deploy/*.test.mjs
 
       - name: Validate API URL
@@ -203,12 +203,6 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
-
-      - name: Wait for compatible API before activating frontend
-        timeout-minutes: 4
-        run: node deploy/check-api.mjs
-        env:
-          FRONTEND_HEALTHCHECK_URL: ${{ env.HEALTHCHECK_URL }}
 
       - name: Upload and activate frontend
         shell: bash

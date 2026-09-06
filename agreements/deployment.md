@@ -16,8 +16,8 @@
 ## Публикация и откат
 - Артефакт привязан к commit SHA, проверяется SHA-256.
 - Публикации сериализуются GitHub concurrency и серверным flock.
-- Перед публикацией статики `deploy/check-api.mjs` проверяет совместимый health-контракт backend, JSON списков, CORS и соответствие протоколов target: production требует HTTPS, test допускает HTTP; mixed content запрещён. Ожидание ограничено 180 секундами; при отказе текущая статика сохраняется. После обновления backend frontend workflow повторяется отдельно.
-- `health.environment` должен соответствовать выбранному target. Test API запрещено направлять на production API host/origin, test frontend — на production origin. Артефакт и SHA относятся к фактически выбранному source checkout; deployment scripts берутся из ревизии workflow.
+- Первоначальный frontend-deploy не требовал backend `/health`. Обязательное ожидание этого endpoint удалено из workflow; публикация статики не зависит от health-контракта, SHA-маркера или `APP_ENVIRONMENT` backend. `check-api.mjs` сохранён как источник общего валидатора URL, его сетевой сценарий workflow не запускает.
+- До публикации проверяются формат URL и протоколы: production требует HTTPS, test допускает HTTP; mixed content запрещён. Test API запрещено направлять на настроенный production API host/origin, test frontend — на production origin. Артефакт и SHA относятся к фактически выбранному source checkout; deployment scripts берутся из ревизии workflow.
 - Перед первым релизом сохранять предыдущую статику; предусмотреть проверенный автоматический и ручной откат.
 - Скрипт публикует статику через `rsync --delete-after --delay-updates`, сохраняет `.well-known` и предыдущую статику для отката. Файл `releases/.current` содержит SHA успешного релиза. Пользовательские загрузки нельзя размещать в управляемом web-root.
 - Проверка deploy-version.txt подтверждает SHA публикации; дополнительно проверять SPA, API и WebSocket.
