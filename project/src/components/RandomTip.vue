@@ -15,7 +15,7 @@ aside.random-tip.container(v-if="data" aria-label="Случайная подск
     p {{ data.title }}
 </template>
 <style scoped>
-.random-tip { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; margin-bottom: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; }
+.random-tip { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; margin-bottom: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: .5rem; }
 .tip-icon { flex-shrink: 0; margin-top: .2rem; color: var(--primary); }
 .random-tip strong { display: block; margin-bottom: .25rem; font-size: .8rem; color: var(--text-muted); }
 .random-tip p { margin: 0; white-space: pre-wrap; }

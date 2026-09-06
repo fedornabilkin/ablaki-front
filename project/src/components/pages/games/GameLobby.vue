@@ -139,7 +139,7 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'" :extra-links="
           n-button(v-else :disabled="busy || !canPlay(game)" @click="selected = game") Играть
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
   recent-games(:key="kind" :kind="kind" :version="overviewVersion")
-n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(440px, calc(100vw - 32px))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
+n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
     n-form-item(:label="'Ставка, ' + unit" :label-props="{ for: 'game-kon' }")
@@ -149,7 +149,7 @@ n-modal(v-model:show="showCreate" preset="card" title="Создать игру" 
     p Итого: {{ kon && count ? kon * count : 0 }} {{ unit }}
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     n-button(type="primary" attr-type="submit" :loading="busy" :disabled="!validCreate") Создать и списать ставку
-n-modal(:show="!saper && !!selected" preset="card" title="Орёл или решка?" :style="{ width: 'min(440px, calc(100vw - 32px))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && (selected = null)")
+n-modal(:show="!saper && !!selected" preset="card" title="Орёл или решка?" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && (selected = null)")
   template(v-if="selected")
     p Игра №{{ selected.id }} · Ставка {{ field(selected.kon) }} Cr
     p.muted Выбор стороны сразу отправляет ход и списывает ставку.

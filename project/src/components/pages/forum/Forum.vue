@@ -62,7 +62,7 @@ page-header(page-title="Форум" :extra-links="links")
           .muted Последняя активность: {{ date(theme.last_post || theme.created_at) }}
         span.muted {{ field(theme.view) }} просмотров
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
-n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :style="{ width: 'min(560px, calc(100vw - 32px))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
+n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :style="{ width: 'min(35rem, calc(100vw - 2rem))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
   n-form(@submit.prevent="create")
     n-form-item(label="Заголовок" :label-props="{ for: 'theme-title' }")
       n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")

@@ -52,13 +52,12 @@ async function claim(kind: 'bonus' | 'rating') {
 <style scoped lang="scss">
 .account-overview { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; min-width: 0; }
 .account-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
-.metric-link { display: grid; align-content: center; min-height: 44px; padding: .25rem .6rem; border-radius: 8px; color: var(--text); }
+.metric-link { display: grid; align-content: center; min-height: 2.75rem; padding: .25rem .35rem; border-radius: .5rem; color: var(--primary); }
 .metric-link:hover { background: var(--primary-soft); }
 .metric-link strong { font-size: .95rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .metric-label, .unit { font-size: .7rem; color: var(--text-muted); font-weight: 400; }
 .metric-star { color: var(--primary); font-size: .75rem; }
 .daily-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
-.daily-actions :deep(.n-button) { padding-inline: .6rem; }
 .compact .metric-label { display: none; }
-@media (max-width: 380px) { .metric-link { padding-inline: .35rem; } }
+@media (min-width: 48rem) { .metric-link { padding-inline: .6rem; } }
 </style>

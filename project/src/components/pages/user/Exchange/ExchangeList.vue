@@ -111,5 +111,5 @@ async function act(order: ExchangeOrder) {
 .order-amounts { font-size: 1.1rem; font-weight: 600; }
 .order-action { display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; }
 .order-action small { max-width: 16rem; }
-@media (min-width: 680px) { .order-action { align-items: flex-end; text-align: right; } }
+@media (min-width: 42.5rem) { .order-action { align-items: flex-end; text-align: right; } }
 </style>

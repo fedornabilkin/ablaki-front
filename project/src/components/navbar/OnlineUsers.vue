@@ -83,7 +83,7 @@ n-button.online-button(quaternary @click="show = true" title="Пользоват
   span.online-dot(aria-hidden="true")
   span.online-label Онлайн: 
   span {{ count === null ? '—' : count }}
-n-modal(v-model:show="show" preset="card" title="Пользователи онлайн" :style="{ width: 'min(620px, calc(100vw - 24px))' }")
+n-modal(v-model:show="show" preset="card" title="Пользователи онлайн" :style="{ width: 'min(38.75rem, calc(100vw - 1.5rem))' }")
   .stack
     p.muted(v-if="windowSeconds") Активность за последние {{ Math.ceil(windowSeconds / 60) }} мин.
     list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
@@ -96,5 +96,4 @@ n-modal(v-model:show="show" preset="card" title="Пользователи онл
 <style scoped>
 .online-button { flex-shrink: 0; }
 .online-dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--primary); margin-right: .5rem; }
-@media (max-width: 600px) { .online-label { display: none; } }
 </style>

@@ -16,7 +16,7 @@ watch(() => [props.result.currentPage, props.disabled, props.result.total] as co
 nav.pager(aria-label="Страницы списка")
   template(v-if="pages !== null")
     .muted Всего: {{ result.total }} · Страница {{ page }} из {{ pages }}
-    n-pagination(:page="page" @update:page="$emit('update:page', $event)" :page-count="pages" :page-slot="5" :disabled="disabled")
+    n-pagination(:page="page" @update:page="$emit('update:page', $event)" :page-count="pages" simple :disabled="disabled")
   template(v-else-if="page > 1 || next")
     n-button(:disabled="disabled || page <= 1" @click="$emit('update:page', page - 1)") Назад
     span Страница {{ page }}

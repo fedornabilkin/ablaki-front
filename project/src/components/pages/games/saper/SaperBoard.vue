@@ -81,16 +81,18 @@ n-card(:title="'Игра №' + game.id")
     n-alert(v-if="error" type="error") {{ error }}
     n-alert(v-if="uncertain" type="warning") Статус операции не подтверждён. Продолжение остановлено, чтобы не отправить ход повторно. Номер игры: {{ game.id }}.
     n-alert(v-if="message" :type="lostCell ? 'warning' : 'success'") {{ message }}
-    .minefield(role="group" aria-label="Игровое поле")
-      template(v-for="r in 5" :key="r")
-        n-button(v-for="col in 7" :key="r + '-' + col" :aria-label="'Ряд ' + r + ', клетка ' + col" :type="moves[r] === col ? 'primary' : 'default'" :disabled="busy || !started || complete || uncertain || row !== r" @click="play(col)")
-          | {{ moves[r] === col ? '✓' : lostCell === col && row === r ? '×' : '·' }}
+    .minefield-scroll(role="region" aria-label="Игровое поле, прокрутка по горизонтали" tabindex="0")
+      .minefield(role="group" aria-label="Игровое поле")
+        template(v-for="r in 5" :key="r")
+          n-button(v-for="col in 7" :key="r + '-' + col" :aria-label="'Ряд ' + r + ', клетка ' + col" :type="moves[r] === col ? 'primary' : 'default'" :disabled="busy || !started || complete || uncertain || row !== r" @click="play(col)")
+            | {{ moves[r] === col ? '✓' : lostCell === col && row === r ? '×' : '·' }}
     .toolbar
       n-button(v-if="!started && !uncertain" type="primary" :loading="busy" @click="start") Начать за {{ field(game.kon) }} Кг
       n-button(v-if="!started || complete" :disabled="busy" @click="$emit('close')") К списку
       span(v-if="started && !complete && !uncertain") Сейчас ряд {{ row }}
 </template>
 <style scoped lang="scss">
-.minefield { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; max-width: 420px; }
-.minefield :deep(.n-button) { padding: 0; height: 44px; font-size: 1.25rem; }
+.minefield-scroll { overflow-x: auto; padding: .25rem; }
+.minefield { display: grid; grid-template-columns: repeat(7, minmax(2.75rem, 1fr)); gap: .25rem; min-width: 20.75rem; max-width: 26.25rem; }
+.minefield :deep(.n-button) { padding: 0; font-size: 1.25rem; }
 </style>

@@ -114,6 +114,6 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
               | Передать автору сообщения 1 Cr? Каждому сообщению можно передать кредит один раз.
             router-link(v-else-if="!authenticated" :to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войти и передать 1 Cr
       page-pager(v-if="!comments.error.value" v-model:page="page" :result="comments.data.value" :disabled="comments.loading.value")
-n-modal(v-model:show="showGifts" preset="card" :title="'Благодарности сообщению №' + selectedGiftId" :style="{ width: 'min(640px, calc(100vw - 24px))' }")
+n-modal(v-model:show="showGifts" preset="card" :title="'Благодарности сообщению №' + selectedGiftId" :style="{ width: 'min(40rem, calc(100vw - 1.5rem))' }")
   gift-list(v-if="selectedGiftId" :key="selectedGiftId" :comment-id="selectedGiftId")
 </template>

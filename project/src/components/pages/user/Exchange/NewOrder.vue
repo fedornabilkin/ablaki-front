@@ -31,7 +31,7 @@ async function create() {
 }
 </script>
 <template lang="pug">
-n-modal(:show="isOpen" preset="card" title="Добавить заявку" :style="{ width: 'min(520px, calc(100vw - 32px))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && $emit('close')")
+n-modal(:show="isOpen" preset="card" title="Добавить заявку" :style="{ width: 'min(32.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && $emit('close')")
   n-form(@submit.prevent="create")
     n-radio-group.mb-3(v-model:value="type" :disabled="busy" aria-label="Тип заявки")
       n-radio-button(value="buy") Продать кредиты
