@@ -17,14 +17,15 @@ export function resolveTarget({ eventName, ref, sha, target: inputTarget, branch
   check(typeof sha === 'string' && /^[a-f\d]{40}$/i.test(sha), 'Workflow commit SHA is invalid.');
   const manual = eventName === 'workflow_dispatch';
   check(['push', 'pull_request', 'workflow_dispatch'].includes(eventName), 'Unsupported workflow event.');
-  const target = manual ? inputTarget : 'production';
+  const testPush = eventName === 'push' && ref === 'refs/heads/test';
+  const target = manual ? inputTarget : (testPush ? 'test' : 'production');
   const config = checkedTarget(target);
-  const branch = manual ? checkedBranch(inputBranch) : 'master';
+  const branch = manual ? checkedBranch(inputBranch) : (testPush ? 'test' : 'master');
   if (manual && target === 'production') check(ref === 'refs/heads/master' && branch === 'master', 'Production can only be dispatched from master using branch master.');
   return {
     target, ...config,
     checkout_ref: manual && target === 'test' ? `refs/heads/${branch}` : sha,
-    deploy_enabled: String(manual || (eventName === 'push' && ref === 'refs/heads/master')),
+    deploy_enabled: String(manual || (eventName === 'push' && (ref === 'refs/heads/master' || testPush))),
   };
 }
 function cleanHost(host) { return host.toLowerCase().replace(/\.$/, ''); }
