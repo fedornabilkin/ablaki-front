@@ -3,6 +3,7 @@ export const navigation = [
   { to: '/forum', title: 'Форум' },
   { to: '/users', title: 'Участники' },
   { to: '/exchange', title: 'Биржа' },
+  { to: '/craft', title: 'Крафт' },
   { to: '/balance', title: 'История счёта', account: true },
   { to: '/transfer', title: 'Переводы', account: true },
 ];

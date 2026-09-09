@@ -19,13 +19,14 @@ export const routes: RouteRecordRaw[] = [
   { path: '/balance', component: history, meta: { requiresAuth: true } },
   { path: '/rating', component: history, meta: { requiresAuth: true } },
   { path: '/transfer', component: () => import('./components/pages/user/Transfers.vue'), meta: { requiresAuth: true } },
+  { path: '/craft', component: () => import('./components/pages/craft/Craft.vue'), meta: { requiresAuth: true } },
   { path: '/exchange', component: () => import('./components/pages/user/Exchange/Exchange.vue'), meta: { requiresAuth: true }, children: [
     { path: '', component: () => import('./components/pages/user/Exchange/OrdersPage.vue') },
     { path: 'my', component: () => import('./components/pages/user/Exchange/MyOrdersPage.vue') },
     { path: 'history', component: () => import('./components/pages/user/Exchange/OrdersHistoryPage.vue') },
   ] },
   // Preserve old URLs without presenting unconnected mock economies as live features.
-  ...['/games/duel/:rest(.*)*', '/games/five/:rest(.*)*', '/chat/:rest(.*)*', '/craft', '/city', '/exchange/shop', '/top', '/statistic'].map(path => ({ path, component: unavailable })),
+  ...['/games/duel/:rest(.*)*', '/games/five/:rest(.*)*', '/chat/:rest(.*)*', '/city', '/exchange/shop', '/top', '/statistic'].map(path => ({ path, component: unavailable })),
   { path: '/games/saper/my', redirect: '/games/saper' },
   { path: '/games/saper/history', redirect: '/balance' },
   { path: '/balance/pay', redirect: '/balance' },

@@ -44,6 +44,7 @@ export const useCraftStore = defineStore('craft', {
         buying: null,
         loading: false,
         loaded: false,
+        loadError: null,
         shopLoaded: false,
         lastResult: null,
         lastPurchase: null,
@@ -63,18 +64,23 @@ export const useCraftStore = defineStore('craft', {
 
     actions: {
         async load() {
+            if (this.loading) return;
             this.loading = true;
+            this.loadError = null;
             try {
                 const [items, recipes, inv] = await Promise.all([
-                    itemApi.index().catch(() => []),
-                    recipeApi.index().catch(() => []),
-                    inventoryApi.my().catch(() => []),
+                    itemApi.index(),
+                    recipeApi.index(),
+                    inventoryApi.my(),
                 ]);
                 this.items = buildItems(items);
                 this.recipes = buildRecipes(recipes);
                 this.inventory = buildInventory(inv);
-            } finally {
                 this.loaded = true;
+            } catch (e) {
+                this.loadError = 'Не удалось загрузить материалы и рецепты. Попробуйте ещё раз.';
+                this.loaded = false;
+            } finally {
                 this.loading = false;
             }
         },

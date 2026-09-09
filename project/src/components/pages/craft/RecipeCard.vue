@@ -10,7 +10,7 @@ const props = defineProps({
 
 const craft = useCraftStore();
 
-const canCraft = computed(() => props.recipe.canCraft(craft.inventoryMap, 99999));
+const canCraft = computed(() => props.recipe.canCraft(craft.inventoryMap, craft.balance));
 const isCrafting = computed(() => craft.crafting === props.recipe.id);
 
 const onCraft = () => {
@@ -72,7 +72,8 @@ const haveOf = (itemId) => craft.inventoryMap.get(itemId) || 0;
             <n-button
                 type="primary"
                 :loading="isCrafting"
-                :disabled="!canCraft.ok || isCrafting"
+                :disabled="!canCraft.ok || craft.crafting !== null"
+                :title="canCraft.reason || 'Создать предмет'"
                 @click="onCraft"
             >
                 <template #icon>

@@ -1,6 +1,8 @@
 <script setup>
 import {onMounted, ref} from 'vue';
-import {NTabs, NTabPane} from 'naive-ui';
+import {NTabs, NTabPane, NAlert, NButton} from 'naive-ui';
+import PageHeader from '@/components/PageHeader.vue';
+import Workshop from './Workshop.vue';
 import {useCraftStore} from '@/store/craft';
 
 import InventoryGrid from './InventoryGrid.vue';
@@ -10,6 +12,7 @@ import CraftResultModal from './CraftResultModal.vue';
 const craft = useCraftStore();
 
 const mobileTab = ref('recipes');
+const localWorkshop = ref(false);
 
 onMounted(() => {
     if (!craft.loaded) craft.load();
@@ -17,7 +20,17 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="craft-page">
+    <page-header page-title="Крафт">
+        <template #actions>
+            <n-button @click="localWorkshop = !localWorkshop">{{ localWorkshop ? 'К инвентарю аккаунта' : 'Попробовать крафт' }}</n-button>
+        </template>
+    </page-header>
+    <workshop v-if="localWorkshop" />
+    <n-alert v-else-if="craft.loadError" type="error" class="container">
+        {{ craft.loadError }}
+        <n-button @click="craft.load()" :loading="craft.loading">Повторить</n-button>
+    </n-alert>
+    <div v-else class="craft-page">
         <div class="craft-mobile">
             <n-tabs v-model:value="mobileTab" type="segment">
                 <n-tab-pane name="recipes" tab="Рецепты">

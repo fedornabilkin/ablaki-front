@@ -37,11 +37,11 @@ const seedRecipes = (items) => {
     const byCode = Object.fromEntries(items.map(i => [i.code, i]));
     return [
         {
-            id: 1, name: 'Факел', description: 'Палка плюс ткань, пропитанная смолой.',
+            id: 1, name: 'Факел', description: 'Палка + уголь = факел.',
             output: byCode.torch, output_qty: 1, cost_credits: 0, time_seconds: 0, category: 'tools',
             ingredients: [
                 {item: byCode.sticks, qty: 1},
-                {item: byCode.cloth, qty: 1},
+                {item: byCode.coal, qty: 1},
             ],
         },
         {
