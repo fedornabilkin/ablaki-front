@@ -14,6 +14,15 @@ test('master push retains production automation and exact current directories', 
   assert.equal(value.deploy_root, '/opt/ablaki-frontend');
   assert.equal(value.web_root, '/var/www/ablakin.ru');
 });
+test('test push selects test automation and test directories', () => {
+  const value = resolveTarget({ eventName: 'push', ref: 'refs/heads/test', sha });
+  assert.equal(value.target, 'test');
+  assert.equal(value.deploy_enabled, 'true');
+  assert.equal(value.checkout_ref, sha);
+  assert.equal(value.environment, 'test-frontend');
+  assert.equal(value.api_variable, 'TEST_VITE_API_URL');
+  assert.equal(value.web_root, '/var/code/ablaki-front');
+});
 test('PR and release-branch pushes run checks without deployment', () => {
   assert.equal(resolveTarget({ ...production, eventName: 'pull_request', ref: 'refs/pull/7/merge' }).deploy_enabled, 'false');
   assert.equal(resolveTarget({ ...production, ref: 'refs/heads/release/check' }).deploy_enabled, 'false');
