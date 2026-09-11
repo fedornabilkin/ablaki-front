@@ -44,6 +44,11 @@ page-header(:page-title="login" :extra-links="[{ link: '/users', title: '← У�
     n-card(v-if="data" title="Об участнике")
       p.muted В сообществе с {{ date(data.created_at) }}
       p Рейтинг: {{ field(person(data).rating) }}
+      .wall-statistics
+        n-card(title="??????????")
+          .wall-stat
+            strong {{ field(person(data).forum_credits_sent) }}
+            span ???????? ???????? ?? ??????
       .pre-wrap(v-if="!editing") {{ person(data).description || 'Участник пока ничего не рассказал о себе.' }}
       n-button.mt-3(v-if="own && !editing" @click="edit") Редактировать описание
       n-form.mt-3(v-if="own && editing" @submit.prevent="save")
@@ -54,3 +59,8 @@ page-header(:page-title="login" :extra-links="[{ link: '/users', title: '← У�
           n-button(:disabled="saving" @click="editing = false") Отмена
       n-alert.mt-3(v-if="saveError" type="error") {{ saveError }}
 </template>
+
+<style scoped>
+.wall-statistics { margin-top: 1rem; }
+.wall-stat { display: flex; flex-direction: column; gap: .25rem; }
+</style>
