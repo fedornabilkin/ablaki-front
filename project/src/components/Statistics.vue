@@ -14,11 +14,11 @@ import { getStatistics, type Statistics, type PeriodStats } from '@/services/api
 const summary = usePageRequest(getStatistics, null as Statistics | null);
 const { page, search, filters, params, reset } = useListQuery({ period: 'all' }, { defaultSort: '-rating' });
 const periods = [
-  { label: 'Всё врем$f', value: 'all' },
-  { label: 'Сего#4н$f', value: 'day' },
+  { label: 'Всё время', value: 'all' },
+  { label: 'Сегодня', value: 'day' },
   { label: 'Неделя', value: 'week' },
-  { label: 'М#5$1$f$6', value: 'month' },
-  { label: 'П#e#b#3#e#4#0', value: 'half-year' },
+  { label: 'Месяц', value: 'month' },
+  { label: 'Полгода', value: 'half-year' },
 ];
 const ranking = usePageRequest(() => list('stat/top', page.value, { ...params.value, period: filters.value.period, 'filter[period]': undefined }), emptyPage(), [page, params]);
 function choosePeriod(value: string) { if (filters.value.period !== value) { filters.value.period = value; page.value = 1; } }
