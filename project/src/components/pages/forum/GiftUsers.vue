@@ -38,7 +38,7 @@ function parts(username: unknown) {
 </template>
 <style scoped>
 .gift-users { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
-.gift-users-modal { display: flex; flex-direction: column; gap: .5rem; max-height: min(24rem, 60vh); overflow-y: auto; }
+.gift-users-modal { display: flex; flex-direction: row; flex-wrap: wrap; gap: .5rem; max-height: min(24rem, 60vh); overflow-y: auto; }
 .gift-user { display: block; padding: .35rem .25rem; }
 .gift-user mark { border-radius: .2rem; background: color-mix(in srgb, var(--primary-color, #18a058) 25%, transparent); }
 </style>

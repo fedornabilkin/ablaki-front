@@ -34,7 +34,9 @@ header.site-header(:class="{ compact }")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")
         | {{ link.title }}
     .nav-account
-      router-link.nav-item(v-if="!user" :to="loginTarget") Войти
+      router-link.nav-item.login-link(v-if="!user" :to="loginTarget" aria-label="Войти" title="Войти")
+        font-awesome-icon(icon="sign-in-alt" aria-hidden="true")
+        span.login-label Войти
       n-button.menu-button(quaternary aria-label="Открыть меню" :aria-expanded="open" aria-controls="mobile-navigation" @click="open = true")
         template(#icon)
           font-awesome-icon(icon="bars")
@@ -51,7 +53,9 @@ header.site-header(:class="{ compact }")
           | {{ link.title }}
         router-link.nav-item(v-if="user" to="/users/profile") Мой профиль
         router-link.nav-item(v-if="user" to="/users/logout") Выйти
-        router-link.nav-item(v-else :to="loginTarget") Войти
+        router-link.nav-item.login-link(v-else :to="loginTarget" aria-label="Войти" title="Войти")
+          font-awesome-icon(icon="sign-in-alt" aria-hidden="true")
+          span.login-label Войти
         router-link.nav-item(v-if="!user" to="/users/registration") Регистрация
 </template>
 <style scoped lang="scss">
@@ -70,6 +74,8 @@ header.site-header(:class="{ compact }")
 .desktop-nav .nav-item { border-radius: 0; border-bottom: .125rem solid transparent; padding-inline: .5rem; white-space: nowrap; }
 .desktop-nav .router-link-active { border-bottom-color: var(--primary); color: var(--text); background: transparent; }
 .nav-account { min-width: 0; }
+.login-link { display: inline-flex; align-items: center; gap: .35rem; }
 .mobile-nav { display: grid; gap: .5rem; }
+@media (max-width: 47.99rem) { .login-label { display: none; } }
 @media (min-width: 64rem) { .desktop-nav { display: flex; } .account-link { max-width: 8rem; } }
 </style>

@@ -99,6 +99,5 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
               template(#trigger)
                 n-button(:disabled="giving !== null" :loading="giving === item.id") Передать 1 Cr
               | Передать автору сообщения 1 Cr? Каждому сообщению можно передать кредит один раз.
-            router-link(v-else-if="!authenticated" :to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войти и передать 1 Cr
       page-pager(v-if="!comments.error.value" v-model:page="page" :result="comments.data.value" :disabled="comments.loading.value")
 </template>
