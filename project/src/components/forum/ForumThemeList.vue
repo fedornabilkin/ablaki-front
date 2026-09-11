@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { date, field, type RecordData } from '@/services/api/portal';
+import UserAvatar from '@/components/user/UserAvatar.vue';
 defineProps<{ themes: RecordData[] }>();
+function themeUser(theme: RecordData): RecordData | null {
+  if (theme.user && typeof theme.user === 'object' && !Array.isArray(theme.user)) return theme.user as RecordData;
+  if (typeof theme.first_comment_username === 'string' && theme.first_comment_username) {
+    return { id: Number(theme.first_comment_user_id) || theme.id, username: theme.first_comment_username, person: { rating: 0 } } as RecordData;
+  }
+  return null;
+}
 </script>
 <template lang="pug">
 ul.theme-list
   li.record-row(v-for="theme in themes" :key="theme.id")
+    .theme-author(v-if="themeUser(theme)")
+      user-avatar(:user="themeUser(theme)")
     .theme-description
       router-link.record-title(:to="'/forum/read/' + theme.id") {{ field(theme.title) }}
       .theme-preview(v-if="theme.last_comment_text") {{ field(theme.last_comment_text) }}
@@ -23,6 +33,7 @@ ul.theme-list
 .theme-list { list-style: none; margin: 0; padding: 0; }
 .record-row:last-child { border-bottom: 0; }
 .theme-description { flex: 1 1 12rem; }
+.theme-author { flex: 0 1 15rem; min-width: 12rem; }
 .theme-preview { margin-top: .35rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-meta { display: flex; flex-wrap: wrap; gap: .5rem; font-size: .8rem; margin-top: .3rem; }
 .theme-stats, .theme-stats span { display: flex; align-items: center; gap: .4rem; }

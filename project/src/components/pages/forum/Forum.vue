@@ -17,7 +17,7 @@ const store = useStore();
 const authenticated = computed(() => store.getters['auth/isAuthenticated']);
 const mine = computed(() => route.path === '/forum/my');
 const { page, search, filters, params, reset } = useListQuery();
-const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, params.value), emptyPage(), [mine, page, params]);
+const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, { ...params.value, expand: 'user' }), emptyPage(), [mine, page, params]);
 const links = computed(() => [{ link: '/forum', title: 'Все темы' }, ...(authenticated.value ? [{ link: '/forum/my', title: 'Мои темы' }] : [])]);
 const showCreate = ref(false);
 const title = ref('');
