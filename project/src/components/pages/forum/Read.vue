@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch, onScopeDispose } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NModal, NPopconfirm } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
 import ListFilters from '@/components/ListFilters.vue';
-import GiftList from './GiftList.vue';
+import GiftUsers from './GiftUsers.vue';
 import { list, detail, emptyPage, field, date, mutate, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 import { giveCommentCredit } from '@/services/api/community';
 const route = useRoute();
-const router = useRouter();
 const store = useStore();
 const id = computed(() => String(route.params.theme_id));
 const { page, search, filters, params, reset } = useListQuery();
@@ -30,21 +29,6 @@ onScopeDispose(() => { disposed = true; });
 watch(id, () => { comment.value = ''; saveError.value = ''; giftError.value = ''; giftNotice.value = ''; });
 const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id.value)), null as RecordData | null, [id]);
 const comments = usePageRequest(() => list('forum-comment', page.value, { ...params.value, 'filter[theme_id]': id.value, expand: 'user' }), emptyPage(), [id, page, params]);
-const selectedGiftId = computed(() => {
-  const raw = route.query.gift;
-  return typeof raw === 'string' && /^[1-9]\d*$/.test(raw) && Number.isSafeInteger(Number(raw)) ? Number(raw) : null;
-});
-const showGifts = computed({ get: () => selectedGiftId.value !== null, set: value => { if (!value) void openGifts(null); } });
-async function openGifts(commentId: number | null) {
-  await router.push(giftsTarget(commentId));
-}
-function giftsTarget(commentId: number | null) {
-  const query = { ...route.query };
-  for (const key of Object.keys(query)) if (key.startsWith('gifts_')) delete query[key];
-  if (commentId === null) delete query.gift;
-  else query.gift = String(commentId);
-  return { path: route.path, query, hash: route.hash };
-}
 function giftCount(item: RecordData): number {
   return Number.isSafeInteger(Number(item.gift_count)) && Number(item.gift_count) >= 0 ? Number(item.gift_count) : 0;
 }
@@ -109,8 +93,7 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
             time.muted {{ date(item.created_at) }}
           .pre-wrap {{ field(item.comment) }}
           .toolbar.mt-3
-            router-link(:to="giftsTarget(item.id)" custom v-slot="{ href, navigate }")
-              n-button(tag="a" :href="href" secondary @click="navigate") Передали кредит: {{ giftCount(item) }}
+            gift-users(:comment-id="item.id" :count="giftCount(item)")
             n-button(v-if="item.gifted_by_me === true" disabled) Вы передали 1 Cr
             n-popconfirm(v-else-if="authenticated && Number(item.user_id) !== userId" @positive-click="give(item)" :positive-button-props="{ disabled: giving !== null }")
               template(#trigger)
@@ -118,6 +101,4 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
               | Передать автору сообщения 1 Cr? Каждому сообщению можно передать кредит один раз.
             router-link(v-else-if="!authenticated" :to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войти и передать 1 Cr
       page-pager(v-if="!comments.error.value" v-model:page="page" :result="comments.data.value" :disabled="comments.loading.value")
-n-modal(v-model:show="showGifts" preset="card" :title="'Благодарности сообщению №' + selectedGiftId" :style="{ width: 'min(40rem, calc(100vw - 1.5rem))' }")
-  gift-list(v-if="selectedGiftId" :key="selectedGiftId" :comment-id="selectedGiftId")
 </template>
