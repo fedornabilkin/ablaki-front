@@ -8,6 +8,7 @@ import RequestState from '@/components/RequestState.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { list, emptyPage, field } from '@/services/api/portal';
+import { formatAccountNumber } from '@/services/api/header';
 import { getStatistics, type Statistics, type PeriodStats } from '@/services/api/statistics';
 const summary = usePageRequest(getStatistics, null as Statistics | null);
 const { page, search, filters, params, reset } = useListQuery({ period: 'all' }, { defaultSort: '-rating' });
@@ -66,7 +67,7 @@ page-header(page-title="Статистика")
         .toolbar
           span.muted {{ (page - 1) * ranking.data.value.pageSize + index + 1 }}.
           router-link.record-title(:to="'/wall/' + encodeURIComponent(field(user.username))") {{ field(user.username) }}
-        strong {{ field(user.rating) }}
+        strong {{ formatAccountNumber(user.rating) }}
     page-pager(v-if="!ranking.error.value" v-model:page="page" :result="ranking.data.value" :disabled="ranking.loading.value")
 </template>
 <style scoped>
