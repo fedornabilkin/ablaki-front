@@ -12,10 +12,11 @@ export function decodeStatistics(raw: unknown): Statistics {
     return value;
   };
   const periods = (value: unknown): PeriodStats => {
+    if (typeof value === 'number') return { total: count(value), today: 0, yesterday: 0 };
     if (!value || typeof value !== 'object') throw new Error('invalid-statistics');
     const stats = value as Record<string, unknown>;
     return { total: count(stats.total), today: count(stats.today), yesterday: count(stats.yesterday) };
   };
-  return { users: periods(data.users), games: { orel: periods(games?.orel), saper: periods(games?.saper) }, forum: { themes: periods(forum?.themes), comments: periods(forum?.comments) }, transfers: periods(data.transfers), exchange: periods(data.exchange) };
+  return { users: periods(data.users), games: { orel: periods(games?.orel), saper: periods(games?.saper) }, forum: { themes: periods(forum?.themes), comments: periods(forum?.comments) }, transfers: periods(data.transfers ?? 0), exchange: periods(data.exchange) };
 }
 export async function getStatistics() { return decodeStatistics((await apiClient.get(config.makeApiUrl('v1/stat'))).data); }

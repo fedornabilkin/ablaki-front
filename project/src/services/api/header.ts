@@ -28,7 +28,10 @@ export async function randomTip(): Promise<Tip | null> {
 }
 export function formatAccountNumber(value: unknown): string {
   if ((typeof value !== 'number' && typeof value !== 'string') || String(value).trim() === '' || !Number.isFinite(Number(value))) return '—';
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 4 }).format(Number(value));
+  const number = Number(value);
+  const absolute = Math.abs(number);
+  const maximumFractionDigits = absolute > 100 ? 0 : absolute > 50 ? 1 : 2;
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits }).format(number);
 }
 
 /** Visibility/activity is supplied by the owning component; failures also respect the rate limit. */

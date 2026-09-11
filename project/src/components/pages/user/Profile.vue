@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { field, date, person, claimDaily, errorText } from '@/services/api/portal';
+import { formatAccountNumber } from '@/services/api/header';
 const store = useStore();
 const user = computed(() => store.getters['auth/user']);
 const account = computed(() => person(user.value));
@@ -42,15 +43,15 @@ page-header(page-title="Мой профиль")
           router-link.nav-item(to="/users/logout") Выйти
       .cards
         n-card(title="Баланс")
-          .metric {{ field(account.balance) }} Кг
+          .metric {{ formatAccountNumber(account.balance) }} Кг
           router-link(to="/balance") История баланса →
         n-card(title="Кредиты")
-          .metric {{ field(account.credit) }} Cr
+          .metric {{ formatAccountNumber(account.credit) }} Cr
           .toolbar
             router-link(to="/exchange") Биржа →
             router-link(to="/transfer") Переводы →
         n-card(title="Рейтинг")
-          .metric {{ field(account.rating) }}
+          .metric {{ formatAccountNumber(account.rating) }}
           router-link(to="/rating") История рейтинга →
       n-card(title="Ежедневные награды")
         .toolbar
