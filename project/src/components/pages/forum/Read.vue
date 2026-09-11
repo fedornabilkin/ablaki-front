@@ -8,6 +8,7 @@ import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
 import ListFilters from '@/components/ListFilters.vue';
 import GiftUsers from './GiftUsers.vue';
+import UserAvatar from '@/components/user/UserAvatar.vue';
 import { list, detail, emptyPage, field, date, mutate, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
@@ -48,9 +49,9 @@ async function give(item: RecordData) {
     if (!disposed && themeId === id.value && revision === store.state.auth.revision) giftError.value = errorText(cause);
   } finally { giving.value = null; }
 }
-function author(item: RecordData) {
+function messageUser(item: RecordData): RecordData | null {
   const user = item.user;
-  return user && typeof user === 'object' && 'username' in user ? field(user.username) : '';
+  return user && typeof user === 'object' && !Array.isArray(user) && 'username' in user ? user as RecordData : null;
 }
 async function submit() {
   if (saving.value || !comment.value.trim()) return;
@@ -88,7 +89,7 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
       request-state(:loading="comments.loading.value" :error="comments.error.value" :empty="!comments.data.value.items.length" @retry="comments.refresh")
         n-card(v-for="item in comments.data.value.items" :key="item.id")
           .toolbar.mb-3
-            router-link(v-if="author(item)" :to="'/wall/' + encodeURIComponent(author(item))") {{ author(item) }}
+            user-avatar(v-if="messageUser(item)" :user="messageUser(item)")
             span.muted(v-else) Участник №{{ item.user_id }}
             time.muted {{ date(item.created_at) }}
           .pre-wrap {{ field(item.comment) }}
