@@ -7,6 +7,9 @@ function themeUser(theme: RecordData): RecordData | null {
   if (typeof theme.first_comment_username === 'string' && theme.first_comment_username) {
     return { id: Number(theme.first_comment_user_id) || theme.id, username: theme.first_comment_username, person: { rating: 0 } } as RecordData;
   }
+  if (typeof theme.last_comment_username === 'string' && theme.last_comment_username) {
+    return { id: Number(theme.user_id) || theme.id, username: theme.last_comment_username, person: { rating: 0 } } as RecordData;
+  }
   return null;
 }
 </script>
@@ -19,7 +22,9 @@ ul.theme-list
       router-link.record-title(:to="'/forum/read/' + theme.id") {{ field(theme.title) }}
       .theme-preview(v-if="theme.last_comment_text") {{ field(theme.last_comment_text) }}
       .muted.theme-meta
-        span(v-if="theme.last_comment_username") Последнее сообщение: {{ field(theme.last_comment_username) }}
+        span(v-if="theme.last_comment_username") Последнее сообщение:
+          | {{ ' ' }}
+          router-link(:to="'/wall/' + encodeURIComponent(field(theme.last_comment_username))") {{ field(theme.last_comment_username) }}
         span {{ date(theme.last_comment_created_at || theme.last_post || theme.created_at) }}
     .theme-stats
       span(:aria-label="'Комментарии: ' + field(theme.comment_count)" title="Комментарии")
