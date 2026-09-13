@@ -5,6 +5,7 @@ const unavailable = () => import('./components/pages/Unavailable.vue');
 export const routes: RouteRecordRaw[] = [
   { path: '/', component: () => import('./components/pages/Main.vue') },
   { path: '/games', component: () => import('./components/pages/games/Games.vue') },
+  ...['duel', 'five'].map(kind => ({ path: `/games/${kind}/history`, component: () => import('./components/pages/games/GameHistoryPage.vue'), props: { kind }, meta: { requiresAuth: true } })),
   ...['/games/orel', '/games/orel/my', '/games/orel/history', '/games/saper', '/games/saper/my', '/games/saper/history'].map(path => ({ path, component: gameLobby, meta: { requiresAuth: true } })),
   { path: '/users', component: () => import('./components/pages/user/Members.vue') },
   { path: '/users/registration', component: () => import('./components/pages/user/Registration.vue') },
