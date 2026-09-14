@@ -20,9 +20,8 @@ page-header(page-title="Игры")
             | Открыть игру
   n-card(title="Другие игры")
     .toolbar
-      n-tag Дуэль
       n-tag Пятёрочка
-    p.muted.mt-3 Эти игры пока недоступны на сервере. Они появятся здесь после подключения.
+    p.muted.mt-3 Эта игра появится здесь после подключения.
 </template>
 <style scoped>
 .game-icon { color: var(--primary); font-size: 1.5rem; }
