@@ -5,8 +5,8 @@ const unavailable = () => import('./components/pages/Unavailable.vue');
 export const routes: RouteRecordRaw[] = [
   { path: '/', component: () => import('./components/pages/Main.vue') },
   { path: '/games', component: () => import('./components/pages/games/Games.vue') },
-  ...['duel', 'five'].map(kind => ({ path: `/games/${kind}/history`, component: () => import('./components/pages/games/GameHistoryPage.vue'), props: { kind }, meta: { requiresAuth: true } })),
-  ...['/games/orel', '/games/orel/my', '/games/orel/history', '/games/saper', '/games/saper/my', '/games/saper/history'].map(path => ({ path, component: gameLobby, meta: { requiresAuth: true } })),
+  ...['orel', 'saper', 'duel', 'five'].map(kind => ({ path: `/games/${kind}/history`, component: () => import('./components/pages/games/GameHistoryPage.vue'), props: { kind }, meta: { requiresAuth: true } })),
+  ...['/games/orel', '/games/orel/my', '/games/saper', '/games/saper/my'].map(path => ({ path, component: gameLobby, meta: { requiresAuth: true } })),
   { path: '/games/duel', component: () => import('./components/pages/games/duel/index.js').then(module => module.default), meta: { requiresAuth: true }, children: [
     { path: '', component: () => import('./components/pages/games/duel/index.js').then(module => module.DuelGames) },
     { path: 'my', component: () => import('./components/pages/games/duel/index.js').then(module => module.MyDuelGames) },

@@ -1,32 +1,38 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useStore } from 'vuex';
-import { NCard } from 'naive-ui';
-import ListFilters from '@/components/ListFilters.vue';
+import { NButton, NCard } from 'naive-ui';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
 import GameHistoryList from './GameHistoryList.vue';
-import { useListQuery } from '@/hooks/useListQuery';
-import { usePageRequest } from '@/hooks/usePageRequest';
-import { list, emptyPage } from '@/services/api/portal';
-import type { HistoryGameKind } from '@/services/api/gameHistory';
+import { useGameHistory } from '@/hooks/useGameHistory';
+import { formatAccountNumber } from '@/services/api/header';
+import { historyPeriods, type HistoryGameKind, type HistoryScope } from '@/services/api/gameHistory';
 
-const props = defineProps<{ kind: HistoryGameKind; reloadListTrigger?: boolean }>();
+const props = withDefaults(defineProps<{ kind: HistoryGameKind; reloadListTrigger?: boolean | number; scope?: HistoryScope }>(), { scope: 'history' });
 const store = useStore();
 const kind = computed(() => props.kind);
-const reload = computed(() => props.reloadListTrigger);
 const session = computed(() => store.state.auth.revision);
-const { page, search, filters, params, reset } = useListQuery({ kon: '' }, {
-  defaultSort: props.kind === 'saper' ? '-time_over_at,-id' : '-updated_at,-id',
-});
-const definitions = [{ key: 'kon', label: 'Ставка', type: 'number' as const }];
-const history = usePageRequest(() => list(`${kind.value}/history`, page.value, params.value), emptyPage(), [kind, page, params, reload, session]);
+const { page, period, kon, kons, history, selectPeriod, selectKon, prefix } = useGameHistory(kind, props.scope, computed(() => props.reloadListTrigger), session);
 </script>
 <template lang="pug">
-n-card
+n-card(:title="scope === 'recent' ? 'Последние завершённые игры' : undefined")
   .stack
-    list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="history.loading.value" placeholder="Игрок или номер игры" @reset="reset")
+    .history-buttons(role="group" aria-label="Период истории")
+      n-button(v-for="item in historyPeriods" :key="item.value" :type="period === item.value ? 'primary' : 'default'" :aria-pressed="period === item.value" @click="selectPeriod(item.value)") {{ item.label }}
+    .history-buttons(role="group" aria-label="Ставка")
+      n-button(:type="!kon ? 'primary' : 'default'" :aria-pressed="!kon" @click="selectKon('')") Все ставки
+      span.muted(v-if="kons.loading.value" role="status") Загрузка ставок…
+      template(v-else-if="kons.error.value")
+        span(role="alert") {{ kons.error.value }}
+        n-button(@click="kons.refresh") Повторить
+      template(v-else)
+        n-button(v-for="item in kons.data.value" :key="item.kon" :type="Number(kon) === Number(item.kon) ? 'primary' : 'default'" :aria-pressed="Number(kon) === Number(item.kon)" @click="selectKon(item.kon)") {{ formatAccountNumber(item.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }} ({{ item.count }})
+        span.muted(v-if="!kons.data.value.length") За этот период игр нет
     request-state(:loading="history.loading.value" :error="history.error.value" :empty="!history.data.value.items.length" @retry="history.refresh")
       game-history-list(:games="history.data.value.items" :kind="kind")
-    page-pager(v-if="!history.error.value" v-model:page="page" :result="history.data.value" :disabled="history.loading.value")
+    page-pager(v-if="!history.error.value" v-model:page="page" :result="history.data.value" :disabled="history.loading.value" :query-prefix="prefix")
 </template>
+<style scoped>
+.history-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+</style>
