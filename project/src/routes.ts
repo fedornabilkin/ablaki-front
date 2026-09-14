@@ -11,6 +11,7 @@ export const routes: RouteRecordRaw[] = [
     { path: '', component: () => import('./components/pages/games/duel/index.js').then(module => module.DuelGames) },
     { path: 'my', component: () => import('./components/pages/games/duel/index.js').then(module => module.MyDuelGames) },
   ] },
+  ...['/games/five', '/games/five/my'].map(path => ({ path, component: () => import('./components/pages/games/five/FiveLobby.vue'), meta: { requiresAuth: true } })),
   { path: '/users', component: () => import('./components/pages/user/Members.vue') },
   { path: '/users/registration', component: () => import('./components/pages/user/Registration.vue') },
   { path: '/users/login', component: () => import('./components/pages/user/Login.vue') },
@@ -33,7 +34,7 @@ export const routes: RouteRecordRaw[] = [
     { path: 'history', component: () => import('./components/pages/user/Exchange/OrdersHistoryPage.vue') },
   ] },
   // Preserve old URLs without presenting unconnected mock economies as live features.
-  ...['/games/five/:rest(.*)*', '/chat/:rest(.*)*', '/craft', '/city', '/exchange/shop'].map(path => ({ path, component: unavailable })),
+  ...['/chat/:rest(.*)*', '/craft', '/city', '/exchange/shop'].map(path => ({ path, component: unavailable })),
   { path: '/balance/pay', redirect: '/balance' },
   { path: '/wiki', component: () => import('./components/pages/Wiki.vue') },
   { path: '/:pathMatch(.*)*', component: () => import('./components/pages/PageNotFound.vue') },
