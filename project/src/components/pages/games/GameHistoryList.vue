@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import { formatAccountNumber } from '@/services/api/header';
 import { type RecordData } from '@/services/api/portal';
-import { historyWinner, historyPlayer, historyCompletedAt, historyTime, type HistoryGameKind } from '@/services/api/gameHistory';
+import { historyWinner, historyPlayer, historyCompletedAt, historyDateParts, type HistoryGameKind } from '@/services/api/gameHistory';
 
 const props = defineProps<{ games: RecordData[]; kind: HistoryGameKind }>();
 const rows = computed(() => props.games.map(game => ({
@@ -15,32 +15,44 @@ const rows = computed(() => props.games.map(game => ({
 })));
 </script>
 <template lang="pug">
-ul.game-history(aria-label="История завершённых игр")
-  li.history-row(v-for="row in rows" :key="row.game.id")
-    .history-stake
-      small.muted Игра №{{ row.game.id }}
-      strong Ставка: {{ formatAccountNumber(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
-      span.muted(v-if="row.winner === 'draw'") Ничья
-      span.muted(v-else-if="row.winner === null") Результат недоступен
-    .history-participant(v-for="participant in row.participants" :key="participant.side")
-      small.muted {{ participant.label }}
-      .participant-details
-        user-avatar(v-if="participant.user" :user="participant.user")
-        span.muted(v-else) Участник недоступен
-        font-awesome-icon.winner(v-if="row.winner === participant.side" icon="trophy" role="img" title="Победитель" :aria-label="participant.label + ': победитель'")
-    .history-time
-      small.muted Завершена (МСК)
-      time(v-if="row.completedAt !== null" :datetime="new Date(row.completedAt * 1000).toISOString()") {{ historyTime(row.completedAt) }}
-      span(v-else) —
+.history-scroll(role="region" aria-label="История завершённых игр" tabindex="0")
+  table.game-history
+    thead
+      tr
+        th(scope="col") Номер
+        th(scope="col") Ставка
+        th(scope="col") Создатель
+        th(scope="col") Игрок
+        th(scope="col") Дата и время (МСК)
+    tbody
+      tr(v-for="row in rows" :key="row.game.id")
+        td {{ row.game.id }}
+        td
+          strong {{ formatAccountNumber(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
+          small.result.muted(v-if="row.winner === 'draw'") Ничья
+          small.result.muted(v-else-if="row.winner === null") Результат недоступен
+        td(v-for="participant in row.participants" :key="participant.side")
+          .participant-details
+            user-avatar(v-if="participant.user" :user="participant.user")
+            span.muted(v-else) Участник недоступен
+            font-awesome-icon.winner(v-if="row.winner === participant.side" icon="trophy" role="img" title="Победитель" :aria-label="participant.label + ': победитель'")
+        td.history-time
+          time(v-if="row.completedAt !== null" :datetime="new Date(row.completedAt * 1000).toISOString()")
+            span {{ historyDateParts(row.completedAt).date }}
+            span.muted {{ historyDateParts(row.completedAt).time }}
+          span(v-else) —
 </template>
 <style scoped>
-.game-history { list-style: none; margin: 0; padding: 0; }
-.history-row { display: grid; grid-template-columns: minmax(8rem, .8fr) repeat(2, minmax(0, 1.1fr)) minmax(10rem, 1fr); gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--border); }
-.history-row:last-child { border-bottom: 0; }
-.history-stake, .history-participant, .history-time { display: grid; gap: .4rem; min-width: 0; }
+.history-scroll { overflow-x: auto; }
+.game-history { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: .85rem .75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th { font-weight: 600; white-space: nowrap; }
+th:first-child, td:first-child { padding-left: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+.result { display: block; }
 .participant-details { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.participant-details :deep(.user-avatar) { min-width: 9rem; }
 .winner { color: var(--primary); flex: 0 0 auto; font-size: 1.2rem; }
-.history-time { font-variant-numeric: tabular-nums; }
-@media (max-width: 900px) { .history-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .history-stake { grid-column: 1 / -1; } .history-time { grid-column: 1 / -1; } }
-@media (max-width: 480px) { .history-row { grid-template-columns: minmax(0, 1fr); } }
+.history-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.history-time time { display: grid; gap: .2rem; }
 </style>

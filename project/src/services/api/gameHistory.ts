@@ -1,7 +1,29 @@
 import type { RecordData } from './portal';
+import { apiClient } from '@/services/httpClient';
+import config from '@/config/config';
 
 export type HistoryGameKind = 'orel' | 'saper' | 'duel' | 'five';
 export type GameSide = 'creator' | 'player';
+export type HistoryScope = 'history' | 'recent';
+export const historyPeriods = [
+  { value: 'today', label: 'Сегодня' }, { value: 'yesterday', label: 'Вчера' },
+  { value: 'week', label: 'Неделя' }, { value: 'month', label: 'Месяц' }, { value: 'all', label: 'Все' },
+] as const;
+export type HistoryPeriod = typeof historyPeriods[number]['value'];
+export interface HistoryKon { kon: string; count: number; }
+export function historyPeriod(value: string): HistoryPeriod {
+  return historyPeriods.find(period => period.value === value)?.value ?? 'all';
+}
+export async function historyKons(kind: HistoryGameKind, period: HistoryPeriod, scope: HistoryScope): Promise<HistoryKon[]> {
+  const { data } = await apiClient.get(config.makeApiUrl(`v1/${kind}/history-kons`), { params: { period, scope } });
+  if (!Array.isArray(data)) throw new Error('invalid-response');
+  return data.map((item: unknown) => {
+    if (!item || typeof item !== 'object' || !('kon' in item) || !('count' in item) ||
+      !['string', 'number'].includes(typeof item.kon) || !['string', 'number'].includes(typeof item.count) ||
+      !Number.isFinite(Number(item.kon)) || Number(item.kon) <= 0 || !Number.isSafeInteger(Number(item.count)) || Number(item.count) < 1) throw new Error('invalid-response');
+    return { kon: String(item.kon), count: Number(item.count) };
+  });
+}
 
 export function historyWinner(game: RecordData, kind: HistoryGameKind): GameSide | 'draw' | null {
   if (kind === 'duel' || kind === 'five') {
@@ -35,4 +57,12 @@ export function historyTime(timestamp: number | null): string {
     timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
+}
+
+export function historyDateParts(timestamp: number): { date: string; time: string } {
+  const value = new Date(timestamp * 1000);
+  return {
+    date: value.toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric' }),
+    time: value.toLocaleTimeString('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+  };
 }
