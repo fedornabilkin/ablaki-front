@@ -9,10 +9,11 @@ import RequestState from '@/components/RequestState.vue';
 import ListFilters from '@/components/ListFilters.vue';
 import SaperBoard from './saper/SaperBoard.vue';
 import RecentGames from './RecentGames.vue';
+import GameHistoryList from './GameHistoryList.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
-import { gameSummary, playerOutcome, signedAmount, type GameSummary } from '@/services/api/gameOverview';
+import { gameSummary, signedAmount, type GameSummary } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
@@ -121,18 +122,16 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'" :extra-links="
     list-filters.mb-3(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="loading" @reset="reset")
     p.muted(v-if="!mode") Поиск по игроку или номеру игры. Ставка списывается при участии.
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
-      .record-row(v-for="game in data.items" :key="game.id")
+      game-history-list(v-if="mode === 'history'" :games="data.items" :kind="kind")
+      .record-row(v-for="game in (mode === 'history' ? [] : data.items)" :key="game.id")
         div
           strong Игра №{{ game.id }} · {{ field(game.kon) }} {{ unit }}
           .muted
             router-link(v-if="typeof game.username === 'string' && game.username" :to="'/wall/' + encodeURIComponent(game.username)") {{ game.username }}
             span(v-else) Участник недоступен
-            |  · {{ date(mode === 'history' ? (game.completed_at ?? game.updated_at) : game.created_at) }}
+            |  · {{ date(game.created_at) }}
         .toolbar
-          template(v-if="mode === 'history'")
-            font-awesome-icon.winner(v-if="playerOutcome(game, store.getters['auth/user']) === 'Победа'" icon="crown" title="Победа" aria-label="Победа")
-            span {{ playerOutcome(game, store.getters['auth/user']) }}
-          n-popconfirm(v-else-if="mode === 'my'" @positive-click="act(kind + '/' + game.id, 'delete')")
+          n-popconfirm(v-if="mode === 'my'" @positive-click="act(kind + '/' + game.id, 'delete')")
             template(#trigger)
               n-button(:disabled="busy") Отменить
             | Отменить игру №{{ game.id }}?
@@ -162,5 +161,4 @@ n-modal(:show="!saper && !!selected" preset="card" title="Орёл или реш
 .game-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
 .game-totals > div { display: flex; flex-direction: column; gap: .25rem; }
 .game-totals strong { font-size: clamp(1rem, 3vw, 1.5rem); overflow-wrap: anywhere; }
-.winner { color: var(--primary); }
 </style>

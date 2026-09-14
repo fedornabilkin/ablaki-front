@@ -5,7 +5,13 @@ const unavailable = () => import('./components/pages/Unavailable.vue');
 export const routes: RouteRecordRaw[] = [
   { path: '/', component: () => import('./components/pages/Main.vue') },
   { path: '/games', component: () => import('./components/pages/games/Games.vue') },
-  ...['/games/orel', '/games/orel/my', '/games/orel/history', '/games/saper', '/games/saper/my', '/games/saper/history'].map(path => ({ path, component: gameLobby, meta: { requiresAuth: true } })),
+  ...['orel', 'saper', 'duel', 'five'].map(kind => ({ path: `/games/${kind}/history`, component: () => import('./components/pages/games/GameHistoryPage.vue'), props: { kind }, meta: { requiresAuth: true } })),
+  ...['/games/orel', '/games/orel/my', '/games/saper', '/games/saper/my'].map(path => ({ path, component: gameLobby, meta: { requiresAuth: true } })),
+  { path: '/games/duel', component: () => import('./components/pages/games/duel/index.js').then(module => module.default), meta: { requiresAuth: true }, children: [
+    { path: '', component: () => import('./components/pages/games/duel/index.js').then(module => module.DuelGames) },
+    { path: 'my', component: () => import('./components/pages/games/duel/index.js').then(module => module.MyDuelGames) },
+  ] },
+  ...['/games/five', '/games/five/my'].map(path => ({ path, component: () => import('./components/pages/games/five/FiveLobby.vue'), meta: { requiresAuth: true } })),
   { path: '/users', component: () => import('./components/pages/user/Members.vue') },
   { path: '/users/registration', component: () => import('./components/pages/user/Registration.vue') },
   { path: '/users/login', component: () => import('./components/pages/user/Login.vue') },
@@ -28,7 +34,7 @@ export const routes: RouteRecordRaw[] = [
     { path: 'history', component: () => import('./components/pages/user/Exchange/OrdersHistoryPage.vue') },
   ] },
   // Preserve old URLs without presenting unconnected mock economies as live features.
-  ...['/games/duel/:rest(.*)*', '/games/five/:rest(.*)*', '/chat/:rest(.*)*', '/craft', '/city', '/exchange/shop'].map(path => ({ path, component: unavailable })),
+  ...['/chat/:rest(.*)*', '/craft', '/city', '/exchange/shop'].map(path => ({ path, component: unavailable })),
   { path: '/balance/pay', redirect: '/balance' },
   { path: '/wiki', component: () => import('./components/pages/Wiki.vue') },
   { path: '/:pathMatch(.*)*', component: () => import('./components/pages/PageNotFound.vue') },
