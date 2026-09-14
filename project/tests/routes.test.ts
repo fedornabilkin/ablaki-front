@@ -3,7 +3,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { routes } from '../src/routes';
 const router = createRouter({ history: createMemoryHistory(), routes });
 describe('portal route access', () => {
-  it.each(['/forum/my', '/users/profile', '/balance', '/rating', '/transfer', '/games/orel', '/games/orel/my', '/games/saper', '/exchange/my'])('requires a verified session for %s', path => {
+  it.each(['/forum/my', '/users/profile', '/balance', '/rating', '/transfer', '/games/orel', '/games/orel/my', '/games/saper', '/exchange/my', '/craft', '/exchange/shop'])('requires a verified session for %s', path => {
     expect(router.resolve(path).matched.some(record => record.meta.requiresAuth)).toBe(true);
   });
   it.each(['/', '/games', '/forum', '/forum/read/1', '/users', '/wall/preview'])('allows public discovery of %s', path => {

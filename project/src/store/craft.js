@@ -2,7 +2,6 @@ import {defineStore} from 'pinia';
 import {itemApi, recipeApi, inventoryApi, craftApi, shopApi} from '@/services/api/craft';
 import {ItemBuilder, RecipeBuilder} from '@/entities/craft/builder';
 import {store as vuexStore} from '@/store/store';
-import {isCraftMockMode} from '@/services/craft/mock';
 
 const buildItems = (raw = []) => {
     const list = [];
@@ -140,11 +139,6 @@ export const useCraftStore = defineStore('craft', {
             this.buying = item.id;
             this.lastError = null;
             try {
-                // В моке списание кредитов — на нашей стороне; на бэке транзакцию
-                // делает /craft-shop/{id}/buy и сам возвращает обновлённый баланс.
-                if (isCraftMockMode()) {
-                    vuexStore.dispatch('auth/addCredit', -cost);
-                }
                 const res = await shopApi.buy(item.id, q);
                 if (Array.isArray(res?.inventory)) {
                     this.inventory = buildInventory(res.inventory);
@@ -157,10 +151,6 @@ export const useCraftStore = defineStore('craft', {
                     cost,
                 };
             } catch (e) {
-                // откат списания кредитов в моке
-                if (isCraftMockMode()) {
-                    vuexStore.dispatch('auth/addCredit', cost);
-                }
                 this.lastError = e?.errors?.reason || e?.message || 'Не удалось купить';
                 this.lastPurchase = null;
             } finally {
