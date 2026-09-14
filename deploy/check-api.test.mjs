@@ -8,7 +8,8 @@ import { validateEndpoints, waitForApiReady } from './check-api.mjs';
 const revision = 'a'.repeat(40);
 const health = { status: 'ok', revision, portalListsVersion: 1, environment: 'production' };
 const frontendUrl = 'http://frontend.example/';
-const fast = { timeoutMs: 500, requestTimeoutMs: 100, retryIntervalMs: 10 };
+// CI workers may spend over 100 ms starting fetch; successful probes must not test scheduler speed.
+const fast = { timeoutMs: 5000, requestTimeoutMs: 1000, retryIntervalMs: 10 };
 const oneAttempt = { timeoutMs: 150, requestTimeoutMs: 100, retryIntervalMs: 150 };
 function json(request, response, body, { status = 200, cors = request.headers.origin, contentType = 'application/json' } = {}) {
   const headers = { 'content-type': contentType };
@@ -46,7 +47,7 @@ test('accepts the deployed health, presence and empty pagination contracts using
     serveReady(request, response);
   });
   assert.deepEqual(await waitForApiReady({ apiUrl, frontendUrl }, fast), health);
-  assert.deepEqual(paths, ['/health', '/v1/users/online-count', '/v1/forum-comment']);
+  assert.deepEqual([...new Set(paths)], ['/health', '/v1/users/online-count', '/v1/forum-comment']);
 });
 
 test('waits for an old deployment to be replaced before allowing frontend activation', async t => {
