@@ -5,7 +5,9 @@
 
 ## Группа A: Проверка
 - [x] A1. Сверить состав релиза с test и разрешить конфликты проверенными версиями файлов.
-- [ ] A2. Пройти unit/сборку и проверить production API URL в сборке.
+- [x] A2. Пройти unit/сборку и проверить production API URL в сборке.
+
+Результат A: 119 unit-тестов / 18 файлов и production-сборка с https://api.ablakin.ru/ прошли локально. [CI 34889959052](https://github.com/fedornabilkin/ablaki-front/actions/runs/34889959052) успешно выполнил проверки и test deploy.
 
 ## Группа B: Production
 - [ ] B1. Влить release-ветку в master после успешного backend deploy.
