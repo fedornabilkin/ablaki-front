@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NButton, NCard, NTag } from 'naive-ui';
+import { NButton, NCard } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import { games } from '@/config/navigation';
 </script>
@@ -18,11 +18,6 @@ page-header(page-title="Игры")
             template(#icon)
               font-awesome-icon(icon="arrow-right")
             | Открыть игру
-  n-card(title="Другие игры")
-    .toolbar
-      n-tag Дуэль
-      n-tag Пятёрочка
-    p.muted.mt-3 Эти игры пока недоступны на сервере. Они появятся здесь после подключения.
 </template>
 <style scoped>
 .game-icon { color: var(--primary); font-size: 1.5rem; }

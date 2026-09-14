@@ -42,7 +42,7 @@ const extraLinks = [
 </script>
 
 <template lang="pug">
-  page-header(pageTitle='Пять яблок' :extraLinks='extraLinks')
+  page-header(pageTitle='5 яблок' :extraLinks='extraLinks')
     template(v-slot:actions='')
       n-button(@click='dialogCreate = true' type='success')
         template(#icon)

@@ -9,6 +9,7 @@ export const navigation = [
   { to: '/users/referrals', title: 'Рефералы', icon: 'users', account: true },
 ];
 export const games = [
+  { to: '/games/five', title: '5 яблок', icon: 'apple-alt', description: 'Выбирайте яблоки, набирайте очки и первым достигните 21.', badge: 'До 21' },
   { to: '/games/orel', title: 'Орлянка', icon: 'coins', description: 'Выберите орла или решку, создайте свою игру или присоединитесь к чужой.', badge: '1 из 2' },
   { to: '/games/saper', title: 'Сапёр', icon: 'bomb', description: 'Пройдите пять рядов поля, выбирая безопасную клетку в каждом.', badge: '5 × 7' },
 ];
