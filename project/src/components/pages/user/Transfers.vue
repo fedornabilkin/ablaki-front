@@ -27,7 +27,7 @@ const receiveCode = ref('');
 const busy = ref(false);
 const actionError = ref('');
 const notice = ref('');
-const canCreate = computed(() => amount.value !== null && Number.isFinite(amount.value) && amount.value > 0 && Number.isFinite(Number(balance.value)) && Number(balance.value) >= amount.value);
+const canCreate = computed(() => amount.value !== null && Number.isSafeInteger(amount.value) && amount.value > 0 && Number.isFinite(Number(balance.value)) && Number(balance.value) >= amount.value);
 async function act(path: string, method: 'post' | 'put' | 'delete', body?: unknown) {
   if (busy.value) return;
   if (method === 'post' && !canCreate.value) return;
@@ -57,7 +57,7 @@ page-header(page-title="Переводы кредитов")
       p.muted Создайте перевод и передайте получателю номер и хэш из списка «Не получены». Кредиты будут зарезервированы. У новых переводов хэш содержит 32 символа.
       n-form(@submit.prevent)
         n-form-item(label="Сумма, Cr" :label-props="{ for: 'transfer-amount' }")
-          n-input-number(:input-props="{ id: 'transfer-amount' }" v-model:value="amount" :min="0.01" :disabled="busy" placeholder="Сумма")
+          n-input-number(:input-props="{ id: 'transfer-amount' }" v-model:value="amount" :min="1" :precision="0" :disabled="busy" placeholder="Целое количество кредитов")
         n-popconfirm(@positive-click="act('transfer', 'post', { amount, count: 1 })" :positive-button-props="{ disabled: busy }")
           template(#trigger)
             n-button(type="primary" :loading="busy" :disabled="!canCreate") Создать перевод
