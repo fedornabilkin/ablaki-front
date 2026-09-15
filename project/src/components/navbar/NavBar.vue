@@ -76,5 +76,10 @@ header.site-header(:class="{ compact }")
 .guest-actions { flex-wrap: wrap; justify-content: flex-end; }
 .login-link { display: inline-flex; align-items: center; gap: .35rem; }
 .mobile-nav { display: grid; gap: .5rem; }
+@media (max-width: 47.99rem) {
+  .navbar > .nav-account { flex-basis: 100%; }
+  .compact .navbar { flex-wrap: nowrap; }
+  .compact .navbar > .nav-account { flex-basis: auto; }
+}
 @media (min-width: 64rem) { .desktop-nav { display: flex; margin-right: auto; } }
 </style>
