@@ -3,7 +3,6 @@ import { NCard } from 'naive-ui';
 import GameTypeCards from '@/components/pages/games/GameTypeCards.vue';
 import RandomTip from '@/components/RandomTip.vue';
 import PrizeFund from '@/components/home/PrizeFund.vue';
-import DailyActivityList from '@/components/home/DailyActivityList.vue';
 import { list, emptyPage } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import RequestState from '@/components/RequestState.vue';
@@ -32,9 +31,6 @@ const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-
         router-link(to="/users") Все участники →
       request-state(:loading="users.loading.value" :error="users.error.value" :empty="!users.data.value.items.length" @retry="users.refresh")
         user-list(:users="users.data.value.items")
-  .cards
-    daily-activity-list(kind="visitors")
-    daily-activity-list(kind="bonuses")
   random-tip
 </template>
 <style scoped lang="scss">

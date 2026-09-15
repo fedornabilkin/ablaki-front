@@ -5,10 +5,10 @@ defineProps<{ themes: RecordData[] }>();
 function themeUser(theme: RecordData): RecordData | null {
   if (theme.user && typeof theme.user === 'object' && !Array.isArray(theme.user)) return theme.user as RecordData;
   if (typeof theme.first_comment_username === 'string' && theme.first_comment_username) {
-    return { id: Number(theme.first_comment_user_id) || theme.id, username: theme.first_comment_username, person: { rating: 0 } } as RecordData;
+    return { id: Number(theme.first_comment_user_id) || theme.id, username: theme.first_comment_username } as RecordData;
   }
   if (typeof theme.last_comment_username === 'string' && theme.last_comment_username) {
-    return { id: Number(theme.user_id) || theme.id, username: theme.last_comment_username, person: { rating: 0 } } as RecordData;
+    return { id: Number(theme.user_id) || theme.id, username: theme.last_comment_username } as RecordData;
   }
   return null;
 }

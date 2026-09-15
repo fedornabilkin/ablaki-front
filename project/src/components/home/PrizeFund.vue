@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useStore } from 'vuex';
-import { NButton, NCard } from 'naive-ui';
+import { NButton, NCard, NPopover } from 'naive-ui';
 import RequestState from '@/components/RequestState.vue';
 import FormattedNumber from '@/components/FormattedNumber.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
@@ -15,7 +15,13 @@ const { data, loading, error, refresh } = usePageRequest(() => prizeFund(authent
 <template lang="pug">
 n-card(title="Призовой фонд")
   template(#header-extra)
-    n-button(quaternary :loading="loading" @click="refresh") Обновить
+    n-popover(trigger="click" :width="300")
+      template(#trigger)
+        n-button(quaternary circle aria-label="Как рассчитывается призовой фонд")
+          font-awesome-icon(icon="question-circle" aria-hidden="true")
+      p Фонд на сегодня — кредитные комиссии за вчера, на завтра — комиссии за сегодня. Сутки считаются по московскому времени.
+      p Доля зависит от вашего рейтинга относительно суммы положительных рейтингов и округляется вверх. Завтрашний фонд меняется в течение дня.
+      p Это прогноз; ежедневный бонус пока составляет 1 Cr.
   request-state(:loading="loading" :error="error" :empty="!data" @retry="refresh")
     .fund-days(v-if="data")
       .fund-day
@@ -36,7 +42,6 @@ n-card(title="Призовой фонд")
           | Ваша расчётная доля: 
           formatted-number(:value="data.user_tomorrow")
           |  Cr
-    p.muted Фонд формируется из кредитных комиссий игр. Доля зависит от рейтинга; сумма на завтра меняется в течение дня. Это прогноз, ежедневный бонус — 1 Cr.
     p(v-if="!authenticated")
       router-link(:to="{ path: '/users/login', query: { redirect: '/' } }") Войдите, чтобы увидеть свою долю.
 </template>
