@@ -8,6 +8,7 @@ import RequestState from '@/components/RequestState.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { onlineUsers, type RecordData } from '@/services/api/portal';
 import { createPresenceHeartbeat, heartbeat, onlineCount } from '@/services/api/header';
+defineProps<{ collapsed?: boolean }>();
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
@@ -77,11 +78,11 @@ onScopeDispose(() => {
 });
 </script>
 <template lang="pug">
-router-link(:to="onlineTarget" custom v-slot="{ href, navigate }")
+router-link(v-if="!collapsed && count !== null && count > 0" :to="onlineTarget" custom v-slot="{ href, navigate }")
   n-button.online-button(tag="a" :href="href" quaternary @click="navigate" title="Пользователи онлайн" :aria-label="count === null ? 'Посмотреть пользователей онлайн' : 'Онлайн: ' + count + '. Посмотреть пользователей'")
     template(#icon)
       font-awesome-icon(icon="users" aria-hidden="true")
-    | {{ count === null ? '—' : count }}
+    | {{ count }}
 n-modal(v-model:show="show" preset="card" title="Пользователи онлайн" :style="{ width: 'min(38.75rem, calc(100vw - 1.5rem))' }")
   .stack
     p.muted(v-if="windowSeconds") Активность за последние {{ Math.ceil(windowSeconds / 60) }} мин.
