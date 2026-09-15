@@ -10,14 +10,17 @@ import { list, emptyPage, mutate, date, field, errorText, person } from '@/servi
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 const store = useStore();
+const userId = computed(() => Number(store.getters['auth/user']?.id));
+const sessionRevision = computed(() => store.state.auth.revision);
 const balance = computed(() => person(store.getters['auth/user']).credit);
 const { page, search, filters, params, reset } = useListQuery({ mode: 'active' });
 const mode = computed(() => filters.value.mode === 'history' ? 'history' : 'active');
 const definitions = [{ key: 'mode', label: 'Список переводов', options: [{ label: 'Не получены', value: 'active' }, { label: 'История', value: 'history' }] }];
 const { data, loading, error, refresh } = usePageRequest(() => {
+  if (!userId.value) return Promise.resolve(emptyPage());
   const { 'filter[mode]': _mode, ...query } = params.value;
   return list(mode.value === 'active' ? 'transfer' : 'transfer/history', page.value, query);
-}, emptyPage(), [mode, page, params]);
+}, emptyPage(), [mode, page, params, sessionRevision]);
 const amount = ref<number | null>(null);
 const receiveId = ref<number | null>(null);
 const busy = ref(false);
@@ -76,9 +79,20 @@ page-header(page-title="Переводы кредитов")
           .muted {{ date(entry.created_at) }}
           p(v-if="entry.amount !== undefined") {{ field(entry.amount) }} Cr
           p.muted(v-else) Сумма не передана сервером
+          p(v-if="mode === 'active' && Number(entry.user_id) === userId && Number(entry.user_buyer) === 0 && typeof entry.password === 'string' && entry.password.trim()")
+            span.muted Хэш получения:
+            code.transfer-code {{ entry.password.trim() }}
         n-popconfirm(v-if="mode === 'active'" @positive-click="act('transfer/' + entry.id, 'delete')")
           template(#trigger)
             n-button(:disabled="busy") Отменить
           | Отменить перевод №{{ entry.id }} и вернуть кредиты?
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
 </template>
+
+<style scoped>
+.transfer-code {
+  margin-left: 0.35em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+</style>
