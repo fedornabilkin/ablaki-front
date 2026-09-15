@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { randomTip, type Tip } from '@/services/api/header';
-const route = useRoute();
-const pathname = computed(() => route.path);
-const { data } = usePageRequest(randomTip, null as Tip | null, [pathname]);
+const { data } = usePageRequest(randomTip, null as Tip | null);
 </script>
 <template lang="pug">
-aside.random-tip.container(v-if="data" aria-label="Случайная подсказка")
+aside.random-tip(v-if="data" aria-label="Случайный факт")
   font-awesome-icon.tip-icon(icon="fa fa-question-circle" aria-hidden="true")
   div
-    strong Подсказка
+    strong Случайный факт
     p {{ data.title }}
 </template>
 <style scoped>

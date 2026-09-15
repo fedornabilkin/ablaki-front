@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { NButton, NCard, NTag } from 'naive-ui';
+import { NCard } from 'naive-ui';
 import GameTypeCards from '@/components/pages/games/GameTypeCards.vue';
+import RandomTip from '@/components/RandomTip.vue';
 import { list, emptyPage } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import RequestState from '@/components/RequestState.vue';
@@ -12,16 +13,8 @@ const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-
 <template lang="pug">
 .container.page.stack
   section.hero
-    n-tag(type="primary" :bordered="false") Сообщество Ablakin
     h1 Играйте. Общайтесь.<br>Возвращайтесь к своим.
     p.muted Игры с другими участниками, обсуждения на форуме и обмен кредитами — всё в одном месте.
-    .toolbar
-      router-link(to="/games" custom v-slot="{ href, navigate }")
-        n-button(tag="a" :href="href" @click="navigate" type="primary" size="large")
-          template(#icon)
-            font-awesome-icon(icon="dice")
-          | Выбрать игру
-      router-link.nav-item(to="/forum") Открыть форум
   section.stack(aria-labelledby="games-heading")
     h2#games-heading Игры
     game-type-cards
@@ -36,6 +29,7 @@ const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-
         router-link(to="/users") Все участники →
       request-state(:loading="users.loading.value" :error="users.error.value" :empty="!users.data.value.items.length" @retry="users.refresh")
         user-list(:users="users.data.value.items")
+  random-tip
 </template>
 <style scoped lang="scss">
 .hero { padding: 1rem 0 2rem; max-width: 45rem; }
