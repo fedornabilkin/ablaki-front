@@ -10,6 +10,7 @@ defineProps<{ pageTitle: string; extraLinks?: { link: string; title: string; ico
         slot(name="actions")
     nav.tab-links(v-if="extraLinks?.length" aria-label="Разделы страницы")
       router-link.nav-item(v-for="link in extraLinks" :key="link.link" :to="link.link" active-class="" exact-active-class="selected") {{ link.title }}
+    slot
 </template>
 <style scoped lang="scss">
 .page-header { margin-top: 1.25rem; padding: 1.125rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: .5rem; }

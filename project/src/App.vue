@@ -20,3 +20,9 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
 <style scoped>
 #content { scroll-margin-top: 13rem; }
 </style>
+<style>
+.n-message, .n-notification {
+  border: 1px solid var(--primary);
+  box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .5), 0 0 .75rem var(--primary-soft) !important;
+}
+</style>

@@ -6,6 +6,7 @@ import ListFilters from '@/components/ListFilters.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
 import FormattedNumber from '@/components/FormattedNumber.vue';
+import DailyActivityList from '@/components/home/DailyActivityList.vue';
 import { field } from '@/services/api/portal';
 import { rankingPeriods, useStatisticsPage } from '@/hooks/useStatisticsPage';
 
@@ -28,6 +29,9 @@ const cards = computed(() => {
 <template lang="pug">
 page-header(page-title="Статистика")
 .container.page.stack
+  .cards
+    daily-activity-list(kind="visitors")
+    daily-activity-list(kind="bonuses")
   request-state(:loading="summary.loading.value" :error="summary.error.value" @retry="summary.refresh")
     .cards(v-if="summary.data.value")
       n-card(v-for="card in cards" :key="card.title" :title="card.title")

@@ -5,6 +5,7 @@ import { useStore } from 'vuex';
 import { NButton, NDrawer, NDrawerContent } from 'naive-ui';
 import { navigation } from '@/config/navigation';
 import HeaderAccount from './HeaderAccount.vue';
+import DailyRewards from './DailyRewards.vue';
 import OnlineUsers from './OnlineUsers.vue';
 const store = useStore();
 const route = useRoute();
@@ -30,14 +31,15 @@ header.site-header(:class="{ compact }")
     router-link.brand(to="/" aria-label="Ablakin — главная")
       font-awesome-icon(icon="fire" aria-hidden="true")
       span(v-if="!compact") ablakin
-    online-users(:collapsed="compact")
     .nav-account
       header-account(v-if="user" :compact="compact")
       .guest-actions(v-else)
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
-  .container.header-nav(v-if="!compact")
+  .container.header-nav(v-show="!compact")
+    online-users(:collapsed="compact")
+    daily-rewards(v-if="user")
     nav.desktop-nav(aria-label="Основная навигация")
       router-link.nav-item(v-for="link in desktopLinks" :key="link.to" :to="link.to")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")
@@ -65,7 +67,9 @@ header.site-header(:class="{ compact }")
 .navbar { min-height: 4.5rem; flex-wrap: wrap; padding-block: .35rem; transition: min-height .18s ease; }
 .compact .navbar { min-height: 3.25rem; }
 .compact { box-shadow: 0 .375rem 1.125rem var(--bg-base); }
-.header-nav { justify-content: flex-end; padding-bottom: .35rem; }
+.header-nav { justify-content: flex-start; padding-bottom: .35rem; overflow-x: auto; }
+.header-nav > * { flex-shrink: 0; }
+.header-nav .menu-button { margin-left: auto; }
 .brand { display: inline-flex; align-items: center; gap: .5rem; min-height: 2.75rem; font-size: 1.4rem; font-weight: 800; letter-spacing: -.04em; color: var(--primary); transition: font-size .18s ease; }
 .compact .brand { font-size: 1.2rem; }
 .desktop-nav { display: none; }
