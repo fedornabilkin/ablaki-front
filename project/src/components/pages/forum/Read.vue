@@ -28,8 +28,10 @@ const giftNotice = ref('');
 let disposed = false;
 onScopeDispose(() => { disposed = true; });
 watch(id, () => { comment.value = ''; saveError.value = ''; giftError.value = ''; giftNotice.value = ''; });
-const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id.value)), null as RecordData | null, [id]);
-const comments = usePageRequest(() => list('forum-comment', page.value, { ...params.value, 'filter[theme_id]': id.value, expand: 'user' }), emptyPage(), [id, page, params]);
+const session = computed(() => store.state.auth.revision);
+const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id.value) + '?expand=first_comment'), null as RecordData | null, [id, session]);
+const starter = computed(() => theme.data.value?.first_comment as RecordData | null);
+const comments = usePageRequest(() => list('forum-comment', page.value, { ...params.value, 'filter[theme_id]': id.value, expand: 'user' }), emptyPage(), [id, page, params, session]);
 function giftCount(item: RecordData): number {
   return Number.isSafeInteger(Number(item.gift_count)) && Number(item.gift_count) >= 0 ? Number(item.gift_count) : 0;
 }
@@ -42,6 +44,9 @@ async function give(item: RecordData) {
     const result = await giveCommentCredit(item.id);
     if (disposed || themeId !== id.value || revision !== store.state.auth.revision) return;
     comments.data.value = { ...comments.data.value, items: comments.data.value.items.map(entry => entry.id === result.commentId ? { ...entry, gift_count: result.giftCount, gifted_by_me: true } : entry) };
+    if (starter.value?.id === result.commentId && theme.data.value) {
+      theme.data.value = { ...theme.data.value, first_comment: { ...starter.value, gift_count: result.giftCount, gifted_by_me: true } };
+    }
     giftNotice.value = result.alreadyGiven ? 'Вы уже передавали кредит этому сообщению. Повторного списания нет.' : 'Автору сообщения передан 1 Cr.';
     try { await store.dispatch('auth/fetchData'); }
     catch { if (!disposed && themeId === id.value && revision === store.state.auth.revision) giftError.value = 'Кредит передан, но счёт не обновился. Обновите профиль.'; }
@@ -70,7 +75,19 @@ async function submit() {
 }
 </script>
 <template lang="pug">
-page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'Обсуждение'" :extra-links="[{ link: '/forum', title: '← Все темы' }]")
+page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'Обсуждение'")
+  n-card.starting-message(v-if="starter" title="Стартовое сообщение")
+    .toolbar.mb-3
+      user-avatar(v-if="messageUser(starter)" :user="messageUser(starter)")
+      time.muted {{ date(starter.created_at) }}
+    .pre-wrap {{ field(starter.comment) }}
+    .toolbar.mt-3
+      gift-users(:comment-id="starter.id" :count="giftCount(starter)")
+      n-button(v-if="starter.gifted_by_me === true" disabled) Вы передали 1 Cr
+      n-popconfirm(v-else-if="authenticated && Number(starter.user_id) !== userId" @positive-click="give(starter)" :positive-button-props="{ disabled: giving !== null }")
+        template(#trigger)
+          n-button(:disabled="giving !== null" :loading="giving === starter.id") Передать 1 Cr
+        | Передать автору сообщения 1 Cr?
 .container.page.stack
   request-state(:loading="theme.loading.value" :error="theme.error.value" @retry="theme.refresh")
     template(v-if="theme.data.value")
@@ -102,3 +119,6 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
               | Передать автору сообщения 1 Cr? Каждому сообщению можно передать кредит один раз.
       page-pager(v-if="!comments.error.value" v-model:page="page" :result="comments.data.value" :disabled="comments.loading.value")
 </template>
+<style scoped>
+.starting-message { border-color: var(--primary); background: var(--primary-soft); }
+</style>
