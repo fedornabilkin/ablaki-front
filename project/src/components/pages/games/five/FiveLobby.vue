@@ -2,17 +2,18 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCard, NInputNumber, NModal } from 'naive-ui';
+import { NAlert, NButton, NCard, NInputNumber, NModal, NPopconfirm } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
 import ListFilters from '@/components/ListFilters.vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import FiveBoard from './FiveBoard.vue';
+import GameToolbar from '../GameToolbar.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useFiveGame } from '@/hooks/useFiveGame';
-import { list, emptyPage, person } from '@/services/api/portal';
+import { list, emptyPage, person, mutate, errorText } from '@/services/api/portal';
 import { fiveGame } from '@/services/api/fiveGame';
 import { historyPlayer } from '@/services/api/gameHistory';
 import { formatAccountNumber } from '@/services/api/header';
@@ -31,12 +32,25 @@ const games = usePageRequest(async () => {
 }, emptyPage(), [mine, page, params, session]);
 const play = useFiveGame(session, () => store.dispatch('auth/fetchData'), games.refresh);
 const showCreate = ref(false);
+const deleting = ref(false);
+const deleteError = ref('');
+watch(() => route.query.create, value => { if (value === '1') showCreate.value = true; }, { immediate: true });
+async function remove(id: number) {
+  if (deleting.value || play.busy.value) return;
+  deleting.value = true; deleteError.value = '';
+  const revision = session.value;
+  try {
+    await mutate('five/' + id, 'delete');
+    if (session.value !== revision) return;
+    await games.refresh();
+    await store.dispatch('auth/fetchData');
+  } catch (cause) { if (session.value === revision) deleteError.value = errorText(cause); }
+  finally { deleting.value = false; }
+}
 const stake = ref<number | null>(10);
 const firstBall = ref(3);
 const validCreate = computed(() => stake.value !== null && Number.isFinite(stake.value) && stake.value >= 1 && stake.value <= credit.value);
-const links = [ { link: '/games', title: '← Игры' }, { link: '/games/five', title: 'Доступные игры' },
-  { link: '/games/five/my', title: 'Мои игры' }, { link: '/games/five/history', title: 'История' } ];
-watch([mine, session], () => { play.close(); showCreate.value = false; });
+watch([mine, session], () => { play.close(); showCreate.value = route.query.create === '1'; });
 async function create() {
   if (!validCreate.value || stake.value === null) return;
   const currentSession = session.value;
@@ -46,9 +60,8 @@ async function create() {
 }
 </script>
 <template lang="pug">
-page-header(page-title="5 яблок" :extra-links="links")
-  template(#actions)
-    n-button(type="primary" :disabled="play.busy.value" @click="showCreate = true") Создать игру
+page-header(page-title="5 яблок")
+  game-toolbar(kind="five" :busy="play.busy.value || deleting" @create="showCreate = true" @changed="games.refresh(); play.close()")
 .container.page.stack
   .toolbar
     strong Доступно: {{ formatAccountNumber(available) }} Cr
@@ -56,11 +69,10 @@ page-header(page-title="5 яблок" :extra-links="links")
   p.muted Каждый раунд оба игрока выбирают от 1 до 5 яблок. Равные числа — ничья. При разнице в одно яблоко меньшее число получает сумму чисел очками; иначе большее число получает разность. Побеждает первый, набравший 21 очко. Выплата — две ставки за вычетом комиссии 5%.
   n-alert(v-if="play.error.value" type="error" title="Не удалось обновить игру") {{ play.error.value }} Обновите состояние перед следующим ходом.
   n-alert(v-if="play.notice.value" type="info") {{ play.notice.value }}
+  n-alert(v-if="deleteError" type="error") {{ deleteError }}
   template(v-if="play.game.value")
     .toolbar
       n-button(:disabled="play.busy.value" @click="play.close()") К списку игр
-      router-link(to="/games/five/my") Мои игры
-      router-link(to="/games/five/history") История
     five-board(:game="play.game.value" :user-id="userId" :credit="credit" :busy="play.busy.value" :blocked="play.loading.value || !!play.error.value" @move="play.move" @cancel="play.cancel")
   n-card(v-else :title="mine ? 'Мои игры' : 'Доступные игры'")
     .stack
@@ -72,6 +84,10 @@ page-header(page-title="5 яблок" :extra-links="links")
           span {{ formatAccountNumber(game.kon) }} Cr
           span {{ game.status === 'free' ? 'Ждём соперника' : 'Идёт игра' }}
           n-button(type="primary" secondary :disabled="play.busy.value" @click="play.open(fiveGame(game))") {{ mine ? 'Открыть' : 'Участвовать' }}
+          n-popconfirm(v-if="mine && game.status === 'free' && Number(game.user_id) === userId" @positive-click="remove(game.id)")
+            template(#trigger)
+              n-button(:disabled="deleting || play.busy.value") Удалить
+            | Удалить игру №{{ game.id }} и вернуть ставку?
       page-pager(v-if="!games.error.value" v-model:page="page" :result="games.data.value" :disabled="games.loading.value")
 n-modal(:show="showCreate" preset="card" title="Новая игра «5 яблок»" style="width: min(500px, 95vw)" :mask-closable="!play.busy.value" :closable="!play.busy.value" @update:show="value => { if (!play.busy.value) showCreate = value; }")
   .stack

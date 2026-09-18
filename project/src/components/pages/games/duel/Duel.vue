@@ -1,10 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "@vue/reactivity";
 import CreateDuelGame from "./CreateDuelGame.vue";
 import PageHeader from '../../../PageHeader.vue';
-import { NButton } from 'naive-ui';
+import { watch } from 'vue';
+import { useRoute } from 'vue-router';
+import GameToolbar from '../GameToolbar.vue';
 
 const dialogCreate = ref(false);
+const route = useRoute();
+watch(() => route.query.create, value => { if (value === '1') dialogCreate.value = true; }, { immediate: true });
 
 // триггер, заставляющий перезапросить инфу для страницы, который слушают все
 // страницы в дочернем router-view
@@ -22,31 +26,11 @@ const onGameCreated = () => {
   reloadListTrigger.value = !reloadListTrigger.value;
 };
 
-const extraLinks = [
-  {
-    link: '/games/duel',
-    title: 'Все схватки',
-    icon: 'fa fa-adjust',
-  },
-  {
-    link: '/games/duel/my',
-    title: 'Мои схватки',
-    icon: 'fa fa-user',
-  },
-  {
-    link: '/games/duel/history',
-    title: 'История',
-    icon: 'fa fa-times-circle',
-  },
-]
 </script>
 
 <template lang="pug">
-  page-header(pageTitle='Дуэль' :extraLinks='extraLinks')
-    template(v-slot:actions='')
-      n-button(@click='dialogCreate = true' type='success')
-        template(#icon)
-          font-awesome-icon(icon='fa fa-plus')
+  page-header(pageTitle='Дуэль')
+    game-toolbar(kind="duel" @create="dialogCreate = true" @changed="onGameCreated")
   create-duel-game(:isOpen='dialogCreate' @gameCreated='onGameCreated' @close='closeDialogCreate')
   .container
     .duel-rules

@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "@vue/reactivity";
 import { watch } from "vue";
+import { useStore } from 'vuex';
 import moment from "moment";
 import { NCard, NButton, NSpin, useNotification } from 'naive-ui';
 import { duel } from '@/services/api/games/duel.js';
@@ -14,6 +15,7 @@ const props = defineProps({
 const emit = defineEmits(['newGameClick']);
 
 const notification = useNotification();
+const store = useStore();
 const gamesList = ref([]);
 const isLoading = ref(true);
 
@@ -38,11 +40,13 @@ const fetchGames = () => {
 watch(() => props.reloadListTrigger, fetchGames);
 
 const onDelete = (row) => {
+  if (row.isDeleting) return;
   row.isDeleting = true;
   duel.delete(row.id)
-      .then(() => {
+      .then(async () => {
         notification.success({ content: 'Схватка удалена, ставка возвращена', duration: 4500 });
         fetchGames();
+        await store.dispatch('auth/fetchData');
       })
       .catch((e) => {
         row.isDeleting = false;

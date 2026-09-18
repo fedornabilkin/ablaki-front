@@ -30,7 +30,7 @@ const onInput = (v) => {
 };
 
 const onKeydown = async (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.isComposing && !e.repeat && (!e.shiftKey || e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         await submit();
     }

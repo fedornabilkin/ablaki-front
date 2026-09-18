@@ -6,7 +6,7 @@ import { isAxiosError } from 'axios';
 import { NAlert, NButton, NCard, useDialog } from 'naive-ui';
 import { startSaper, mutate, field, errorText, type RecordData } from '@/services/api/portal';
 const props = defineProps<{ game: RecordData }>();
-const emit = defineEmits<{ close: []; 'account-change': [] }>();
+const emit = defineEmits<{ close: []; 'account-change': []; complete: [] }>();
 const dialog = useDialog();
 const store = useStore();
 const row = ref(5);
@@ -43,14 +43,14 @@ async function play(col: number) {
     if (disposed || revision !== store.state.auth.revision) return;
     moves.value[row.value] = col;
     row.value--;
-    if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('account-change'); }
+    if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('account-change'); emit('complete'); }
   } catch (cause) {
     if (disposed || revision !== store.state.auth.revision) return;
     const response = isAxiosError(cause) ? cause.response : undefined;
     // The existing backend signals a confirmed loss with a specific 400 response.
     const lost = response?.status === 400 && ['Game lost', 'Игра проиграна'].includes(response.data?.message);
     if (lost) {
-      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('account-change');
+      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('account-change'); emit('complete');
     } else {
       error.value = errorText(cause);
       uncertain.value = true;

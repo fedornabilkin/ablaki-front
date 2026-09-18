@@ -1,6 +1,7 @@
 <script setup>
 import {ref, computed, h} from 'vue';
 import {NDropdown, NModal, NInput, NButton, NPopconfirm} from 'naive-ui';
+import { submitShortcut } from '@/services/submitShortcut';
 
 const props = defineProps({
     canEdit: {type: Boolean, default: false},
@@ -48,6 +49,7 @@ const submitEdit = () => {
                 type="textarea"
                 :autosize="{minRows: 2, maxRows: 6}"
                 placeholder="Текст сообщения"
+                @keydown="submitShortcut($event, submitEdit)"
             />
             <template #footer>
                 <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">

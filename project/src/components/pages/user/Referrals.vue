@@ -12,7 +12,7 @@ const { page, search, filters, params, reset } = useListQuery();
 const { data, loading, error, refresh } = usePageRequest(() => list('users/referrals', page.value, params.value), emptyPage(), [page, params]);
 </script>
 <template lang="pug">
-page-header(page-title="Мои рефералы" :extra-links="[{ link: '/users/profile', title: 'Мой профиль' }]")
+page-header(page-title="Мои рефералы")
 .container.page.stack
   p.muted Участники, которые зарегистрировались по вашему приглашению.
   n-card

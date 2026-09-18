@@ -10,6 +10,8 @@ import ListFilters from '@/components/ListFilters.vue';
 import SaperBoard from './saper/SaperBoard.vue';
 import RecentGames from './RecentGames.vue';
 import GameHistoryList from './GameHistoryList.vue';
+import GameToolbar from './GameToolbar.vue';
+import SaperSuggestions from './saper/SaperSuggestions.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
@@ -28,12 +30,6 @@ const filterDefinitions = [{ key: 'kon', label: 'Кон', type: 'number' as cons
 const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, params.value), emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
 const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, overviewVersion, session]);
-const links = computed(() => [
-  { link: '/games', title: '← Игры' },
-  { link: '/games/' + kind.value, title: 'Доступные игры' },
-  { link: '/games/' + kind.value + '/my', title: 'Мои игры' },
-  { link: '/games/' + kind.value + '/history', title: 'История' },
-]);
 const showCreate = ref(false);
 const kon = ref<number | null>(5);
 const count = ref<number | null>(1);
@@ -42,7 +38,10 @@ const actionError = ref('');
 const notice = ref('');
 const noticeType = ref<'success' | 'warning' | 'info'>('info');
 const selected = ref<RecordData | null>(null);
-watch([kind, mode], () => { selected.value = null; showCreate.value = false; actionError.value = ''; notice.value = ''; });
+const completed = ref(false);
+watch(selected, () => { completed.value = false; });
+watch(() => route.query.create, value => { if (value === '1') showCreate.value = true; }, { immediate: true });
+watch([kind, mode, session], () => { selected.value = null; showCreate.value = route.query.create === '1'; actionError.value = ''; notice.value = ''; });
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
 const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
@@ -85,14 +84,14 @@ function refreshAll() {
 async function accountChange() {
   const revision = session.value;
   overviewVersion.value++;
+  void refresh();
   try { await store.dispatch('auth/fetchData'); }
   catch { if (!disposed && revision === session.value) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
 }
 </script>
 <template lang="pug">
-page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'" :extra-links="links")
-  template(#actions)
-    n-button(type="primary" :disabled="busy || !!selected" @click="showCreate = true") Создать игру
+page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
+  game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
 .container.page.stack
   .toolbar
     strong Доступно: {{ field(available) }} {{ unit }}
@@ -117,8 +116,9 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'" :extra-links="
         p.muted(v-else) У вас пока нет доступных игр.
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
-  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange")
-  n-card(v-else)
+  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
+  saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
+  n-card
     list-filters.mb-3(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="loading" @reset="reset")
     p.muted(v-if="!mode") Поиск по игроку или номеру игры. Ставка списывается при участии.
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
@@ -133,9 +133,9 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'" :extra-links="
         .toolbar
           n-popconfirm(v-if="mode === 'my'" @positive-click="act(kind + '/' + game.id, 'delete')")
             template(#trigger)
-              n-button(:disabled="busy") Отменить
+              n-button(:disabled="busy") Удалить
             | Отменить игру №{{ game.id }}?
-          n-button(v-else :disabled="busy || !canPlay(game)" @click="selected = game") Играть
+          n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
   recent-games(:key="kind" :kind="kind" :version="overviewVersion")
 n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")

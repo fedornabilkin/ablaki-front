@@ -7,6 +7,8 @@ import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
 import ListFilters from '@/components/ListFilters.vue';
+import MessageComposer from '@/components/MessageComposer.vue';
+import CreateButton from '@/components/CreateButton.vue';
 import { list, emptyPage, mutate, record, errorText } from '@/services/api/portal';
 import ForumThemeList from '@/components/forum/ForumThemeList.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
@@ -49,10 +51,12 @@ async function create() {
 }
 </script>
 <template lang="pug">
-page-header(page-title="Форум" :extra-links="links")
-  template(#actions)
-    n-button(v-if="authenticated" type="primary" @click="showCreate = true") Создать тему
+page-header(page-title="Форум")
+  .toolbar
+    create-button(v-if="authenticated" label="Добавить тему" @click="showCreate = true")
     router-link.nav-item(v-else :to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войти для обсуждения
+    router-link(v-for="link in links" :key="link.link" :to="link.link" custom v-slot="{ href, navigate, isExactActive }")
+      n-button(tag="a" :href="href" :type="isExactActive ? 'primary' : 'default'" @click="navigate") {{ link.title }}
 .container.page
   n-card
     list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
@@ -64,7 +68,7 @@ n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :sty
     n-form-item(label="Заголовок" :label-props="{ for: 'theme-title' }")
       n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
     n-form-item(label="Первое сообщение" :label-props="{ for: 'theme-message' }")
-      n-input(:input-props="{ id: 'theme-message' }" v-model:value="comment" type="textarea" :autosize="{ minRows: 4, maxRows: 12 }" :disabled="saving" placeholder="Начните обсуждение")
+      message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" placeholder="Начните обсуждение" @submit="create")
     n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
     p(v-if="createdThemeId") Тема уже создана. Повторная отправка добавит только сообщение.
     n-button(type="primary" attr-type="submit" :loading="saving" :disabled="!title.trim() || !comment.trim()") Опубликовать

@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import { detail, field, date, person, mutate, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
+import { submitShortcut } from '@/services/submitShortcut';
 const route = useRoute();
 const store = useStore();
 const login = computed(() => String(route.params.login));
@@ -38,22 +39,22 @@ async function save() {
 }
 </script>
 <template lang="pug">
-page-header(:page-title="login" :extra-links="[{ link: '/users', title: '← Участники' }]")
+page-header(:page-title="login")
 .container.page.stack
   request-state(:loading="loading" :error="error" @retry="refresh")
     n-card(v-if="data" title="Об участнике")
       p.muted В сообществе с {{ date(data.created_at) }}
       p Рейтинг: {{ field(person(data).rating) }}
       .wall-statistics
-        n-card(title="??????????")
+        n-card(title="Статистика")
           .wall-stat
             strong {{ field(person(data).forum_credits_sent) }}
-            span ???????? ???????? ?? ??????
+            span Передано кредитов на форуме
       .pre-wrap(v-if="!editing") {{ person(data).description || 'Участник пока ничего не рассказал о себе.' }}
       n-button.mt-3(v-if="own && !editing" @click="edit") Редактировать описание
       n-form.mt-3(v-if="own && editing" @submit.prevent="save")
         n-form-item(label="О себе" :label-props="{ for: 'description' }")
-          n-input(:input-props="{ id: 'description' }" v-model:value="description" type="textarea" :autosize="{ minRows: 4, maxRows: 12 }" :disabled="saving")
+          n-input(:input-props="{ id: 'description' }" v-model:value="description" type="textarea" :autosize="{ minRows: 4, maxRows: 12 }" :disabled="saving" @keydown="submitShortcut($event, save)")
         .toolbar
           n-button(type="primary" attr-type="submit" :loading="saving") Сохранить
           n-button(:disabled="saving" @click="editing = false") Отмена

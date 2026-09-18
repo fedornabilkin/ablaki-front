@@ -55,13 +55,14 @@ page-header(page-title="Переводы кредитов")
   .cards
     n-card(title="Создать перевод")
       p.muted Создайте перевод и передайте получателю номер и хэш из списка «Не получены». Кредиты будут зарезервированы. У новых переводов хэш содержит 32 символа.
+      n-alert.mb-3(type="warning") Каждый перевод может получить только один пользователь. После получения вернуть кредиты нельзя. Передавайте номер и хэш только адресату. За полученный перевод отправителю начисляется рейтинг — он зависит от суммы и текущего рейтинга, как в кредитных играх.
       n-form(@submit.prevent)
         n-form-item(label="Сумма, Cr" :label-props="{ for: 'transfer-amount' }")
           n-input-number(:input-props="{ id: 'transfer-amount' }" v-model:value="amount" :min="1" :precision="0" :disabled="busy" placeholder="Целое количество кредитов")
         n-popconfirm(@positive-click="act('transfer', 'post', { amount, count: 1 })" :positive-button-props="{ disabled: busy }")
           template(#trigger)
             n-button(type="primary" :loading="busy" :disabled="!canCreate") Создать перевод
-          | Зарезервировать {{ amount }} Cr для перевода?
+          | Зарезервировать {{ amount }} Cr? Перевод может получить один пользователь. После получения кредиты вернуть нельзя.
     n-card(title="Получить перевод")
       p.muted Введите номер и хэш перевода, полученные от отправителя. Нужны оба значения. Для старых переводов используйте прежний хэш без изменений.
       n-form(@submit.prevent)
