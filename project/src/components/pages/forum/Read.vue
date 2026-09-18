@@ -2,11 +2,11 @@
 import { computed, ref, watch, onScopeDispose } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NModal, NPopconfirm } from 'naive-ui';
+import { NAlert, NButton, NCard, NForm, NFormItem, NPopconfirm } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
-import ListFilters from '@/components/ListFilters.vue';
+import MessageComposer from '@/components/MessageComposer.vue';
 import GiftUsers from './GiftUsers.vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import { list, detail, emptyPage, field, date, mutate, errorText, type RecordData } from '@/services/api/portal';
@@ -16,7 +16,7 @@ import { giveCommentCredit } from '@/services/api/community';
 const route = useRoute();
 const store = useStore();
 const id = computed(() => String(route.params.theme_id));
-const { page, search, filters, params, reset } = useListQuery();
+const { page } = useListQuery();
 const comment = ref('');
 const saving = ref(false);
 const saveError = ref('');
@@ -31,7 +31,7 @@ watch(id, () => { comment.value = ''; saveError.value = ''; giftError.value = ''
 const session = computed(() => store.state.auth.revision);
 const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id.value) + '?expand=first_comment'), null as RecordData | null, [id, session]);
 const starter = computed(() => theme.data.value?.first_comment as RecordData | null);
-const comments = usePageRequest(() => list('forum-comment', page.value, { ...params.value, 'filter[theme_id]': id.value, expand: 'user' }), emptyPage(), [id, page, params, session]);
+const comments = usePageRequest(() => list('forum-comment', page.value, { 'filter[theme_id]': id.value, expand: 'user', exclude_starter: 1 }), emptyPage(), [id, page, session]);
 function giftCount(item: RecordData): number {
   return Number.isSafeInteger(Number(item.gift_count)) && Number(item.gift_count) >= 0 ? Number(item.gift_count) : 0;
 }
@@ -68,6 +68,7 @@ async function submit() {
     await mutate('forum-comment', 'post', { theme_id: Number(themeId), comment: comment.value.trim() });
     if (disposed || themeId !== id.value || revision !== store.state.auth.revision) return;
     comment.value = '';
+    await theme.refresh();
     if (page.value !== 1) page.value = 1;
     else await comments.refresh();
   } catch (cause) { if (!disposed && themeId === id.value && revision === store.state.auth.revision) saveError.value = errorText(cause); }
@@ -76,7 +77,7 @@ async function submit() {
 </script>
 <template lang="pug">
 page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'Обсуждение'")
-  n-card.starting-message(v-if="starter" title="Стартовое сообщение")
+  n-card.starting-message(v-if="starter" title="Стартовое сообщение" :bordered="false")
     .toolbar.mb-3
       user-avatar(v-if="messageUser(starter)" :user="messageUser(starter)")
       time.muted {{ date(starter.created_at) }}
@@ -91,16 +92,14 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
 .container.page.stack
   request-state(:loading="theme.loading.value" :error="theme.error.value" @retry="theme.refresh")
     template(v-if="theme.data.value")
-      p.muted Создано {{ date(theme.data.value.created_at) }} · Новые сообщения сверху
       n-card(v-if="authenticated" title="Ваш ответ")
         n-form(@submit.prevent="submit")
           n-form-item(label="Сообщение" :label-props="{ for: 'reply' }")
-            n-input(:input-props="{ id: 'reply' }" v-model:value="comment" type="textarea" :maxlength="3000" :autosize="{ minRows: 3, maxRows: 12 }" :disabled="saving" placeholder="Напишите ответ")
+            message-composer(:key="id + ':' + session" id="reply" v-model="comment" :disabled="saving" placeholder="Напишите ответ" @submit="submit")
           n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
           n-button(type="primary" attr-type="submit" :loading="saving" :disabled="!comment.trim()") Отправить
       n-alert(v-else type="info")
         router-link(:to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войдите, чтобы ответить
-      list-filters(v-model:search="search" v-model:values="filters" :loading="comments.loading.value" @reset="reset")
       n-alert(v-if="giftError" type="error") {{ giftError }}
       n-alert(v-if="giftNotice" type="success") {{ giftNotice }}
       request-state(:loading="comments.loading.value" :error="comments.error.value" :empty="!comments.data.value.items.length" @retry="comments.refresh")
@@ -120,5 +119,5 @@ page-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'О�
       page-pager(v-if="!comments.error.value" v-model:page="page" :result="comments.data.value" :disabled="comments.loading.value")
 </template>
 <style scoped>
-.starting-message { border-color: var(--primary); background: var(--primary-soft); }
+.starting-message { background: transparent; }
 </style>

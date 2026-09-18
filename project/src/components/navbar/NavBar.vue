@@ -37,7 +37,7 @@ header.site-header(:class="{ compact }")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
-  .container.header-nav(v-show="!compact")
+  .container.header-nav(v-if="!compact")
     online-users(:collapsed="compact")
     daily-rewards(v-if="user")
     nav.desktop-nav(aria-label="Основная навигация")
@@ -64,7 +64,7 @@ header.site-header(:class="{ compact }")
 <style scoped lang="scss">
 .site-header { position: sticky; top: 0; z-index: 50; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
 .navbar, .nav-account, .desktop-nav, .header-nav, .guest-actions { display: flex; align-items: center; gap: .5rem; }
-.navbar { min-height: 4.5rem; flex-wrap: wrap; padding-block: .35rem; transition: min-height .18s ease; }
+.navbar { min-height: 4.5rem; flex-wrap: nowrap; padding-block: .35rem; transition: min-height .18s ease; }
 .compact .navbar { min-height: 3.25rem; }
 .compact { box-shadow: 0 .375rem 1.125rem var(--bg-base); }
 .header-nav { justify-content: flex-start; padding-bottom: .35rem; overflow-x: auto; }
@@ -81,7 +81,8 @@ header.site-header(:class="{ compact }")
 .login-link { display: inline-flex; align-items: center; gap: .35rem; }
 .mobile-nav { display: grid; gap: .5rem; }
 @media (max-width: 47.99rem) {
-  .navbar > .nav-account { flex-basis: 100%; }
+  .brand { font-size: 1rem; gap: .25rem; flex-shrink: 0; }
+  .navbar { gap: .25rem; }
   .compact .navbar { flex-wrap: nowrap; }
   .compact .navbar > .nav-account { flex-basis: auto; }
 }
