@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="appleBase" cx="38%" cy="30%" r="78%">
+      <stop offset="0%" stop-color="#ffd34a"/>
+      <stop offset="18%" stop-color="#ff9a00"/>
+      <stop offset="48%" stop-color="#ff5a00"/>
+      <stop offset="78%" stop-color="#e93600"/>
+      <stop offset="100%" stop-color="#8f1600"/>
+    </radialGradient>
+
+    <linearGradient id="hot" x1="0" y1="1" x2="0.65" y2="0">
+      <stop offset="0%" stop-color="#ff3a00"/>
+      <stop offset="38%" stop-color="#ff7a00"/>
+      <stop offset="72%" stop-color="#ffc400"/>
+      <stop offset="100%" stop-color="#fff27a"/>
+    </linearGradient>
+
+    <linearGradient id="hot2" x1="0.15" y1="1" x2="0.8" y2="0">
+      <stop offset="0%" stop-color="#ff5400"/>
+      <stop offset="46%" stop-color="#ff9a00"/>
+      <stop offset="100%" stop-color="#ffe96a"/>
+    </linearGradient>
+
+    <linearGradient id="leaf" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e63500"/>
+      <stop offset="40%" stop-color="#ff6a00"/>
+      <stop offset="75%" stop-color="#ffa700"/>
+      <stop offset="100%" stop-color="#ffe45e"/>
+    </linearGradient>
+
+    <linearGradient id="stem" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffae00"/>
+      <stop offset="35%" stop-color="#8d3200"/>
+      <stop offset="65%" stop-color="#4b1900"/>
+      <stop offset="100%" stop-color="#ff7b00"/>
+    </linearGradient>
+
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="16" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <clipPath id="appleClip">
+      <path d="M503 350
+        C454 317 384 314 333 349
+        C269 393 250 486 277 593
+        C303 699 367 824 460 860
+        C486 870 507 873 525 862
+        C548 877 574 873 603 860
+        C699 818 763 694 783 589
+        C803 486 784 398 724 352
+        C671 312 597 317 548 348
+        C531 359 516 361 503 350 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- halo -->
+  <path d="M503 350
+    C454 317 384 314 333 349
+    C269 393 250 486 277 593
+    C303 699 367 824 460 860
+    C486 870 507 873 525 862
+    C548 877 574 873 603 860
+    C699 818 763 694 783 589
+    C803 486 784 398 724 352
+    C671 312 597 317 548 348
+    C531 359 516 361 503 350 Z"
+    fill="#ff4a00" opacity="0.23" filter="url(#softGlow)"/>
+
+  <!-- outer flame tongues -->
+  <g fill="url(#hot)" filter="url(#glow)">
+    <path d="M286 427 C220 389 210 329 251 284 C239 333 272 345 296 315 C287 358 288 397 286 427Z"/>
+    <path d="M300 322 C286 275 308 228 354 198 C329 248 350 278 385 274 C348 300 325 318 300 322Z"/>
+    <path d="M742 367 C790 334 804 289 786 251 C831 289 838 350 801 390 C781 411 758 402 742 367Z"/>
+    <path d="M786 479 C837 460 865 418 856 378 C893 428 882 497 829 526 C810 536 791 516 786 479Z"/>
+    <path d="M764 676 C816 659 850 620 850 575 C876 631 847 695 790 718 C772 725 758 706 764 676Z"/>
+    <path d="M698 817 C747 809 784 776 794 738 C808 790 770 845 712 856 C694 859 687 839 698 817Z"/>
+    <path d="M327 817 C280 809 247 779 236 741 C224 789 259 839 314 854 C334 859 342 840 327 817Z"/>
+    <path d="M265 677 C215 656 189 619 192 578 C163 626 186 689 243 719 C261 728 278 709 265 677Z"/>
+  </g>
+
+  <!-- apple body -->
+  <path d="M503 350
+    C454 317 384 314 333 349
+    C269 393 250 486 277 593
+    C303 699 367 824 460 860
+    C486 870 507 873 525 862
+    C548 877 574 873 603 860
+    C699 818 763 694 783 589
+    C803 486 784 398 724 352
+    C671 312 597 317 548 348
+    C531 359 516 361 503 350 Z"
+    fill="url(#appleBase)"
+    stroke="#ffcc28" stroke-width="9" stroke-linejoin="round"
+    filter="url(#glow)"/>
+
+  <!-- internal flames -->
+  <g clip-path="url(#appleClip)">
+    <path d="M286 595
+      C267 531 284 455 335 409
+      C318 458 342 484 373 460
+      C357 501 362 544 392 571
+      C420 596 426 626 410 660
+      C391 700 405 744 452 793
+      C375 759 318 682 286 595Z"
+      fill="url(#hot2)" opacity="0.96"/>
+
+    <path d="M376 802
+      C350 744 361 705 404 670
+      C427 651 435 629 427 599
+      C469 632 477 671 458 704
+      C447 724 451 748 470 762
+      C488 775 503 763 515 738
+      C521 771 507 807 475 833Z"
+      fill="#ffb400" opacity="0.9"/>
+
+    <path d="M455 848
+      C425 803 431 758 461 721
+      C492 684 505 650 494 608
+      C543 654 547 703 521 739
+      C505 762 508 788 527 804
+      C544 818 566 807 579 777
+      C584 822 556 856 525 866Z"
+      fill="url(#hot)" opacity="0.98"/>
+
+    <path d="M560 844
+      C592 799 588 761 568 728
+      C548 695 556 654 591 617
+      C581 669 614 693 643 666
+      C628 704 635 742 659 768
+      C682 793 672 825 629 849Z"
+      fill="url(#hot2)" opacity="0.96"/>
+
+    <path d="M640 812
+      C688 761 716 694 721 628
+      C735 675 728 738 694 791
+      C678 817 659 832 640 812Z"
+      fill="#ff8c00" opacity="0.9"/>
+
+    <path d="M309 521
+      C319 470 351 429 390 413
+      C369 438 373 465 396 476
+      C421 487 446 471 455 441
+      C464 487 429 527 389 531
+      C355 534 328 530 309 521Z"
+      fill="#ffd12f" opacity="0.94"/>
+
+    <path d="M585 394
+      C627 377 673 383 707 412
+      C672 401 649 418 648 447
+      C646 469 663 485 690 492
+      C646 507 601 480 585 445
+      C576 425 576 408 585 394Z"
+      fill="#ff9c00" opacity="0.84"/>
+
+    <path d="M648 515
+      C692 486 727 500 741 532
+      C713 517 692 529 691 552
+      C690 570 703 582 724 589
+      C684 600 648 575 648 545Z"
+      fill="#ffd72a" opacity="0.9"/>
+
+    <!-- dark red flame shadows -->
+    <path d="M391 572 C423 535 456 511 489 495 C468 531 469 560 492 583 C515 606 519 640 505 672 C479 630 441 599 391 572Z"
+          fill="#b71b00" opacity="0.72"/>
+    <path d="M559 548 C590 516 628 500 666 501 C637 526 630 551 644 575 C658 600 653 625 629 649 C611 604 587 571 559 548Z"
+          fill="#bf2000" opacity="0.66"/>
+    <path d="M391 745 C417 711 440 700 463 700 C446 725 447 746 463 767 C477 785 474 808 455 830 C427 799 406 771 391 745Z"
+          fill="#c52a00" opacity="0.78"/>
+
+    <!-- highlights -->
+    <path d="M330 417 C359 371 418 351 472 365 C409 369 370 400 346 455 C331 488 324 530 329 575 C307 523 308 459 330 417Z"
+          fill="#fff09a" opacity="0.43"/>
+    <path d="M349 447 C365 415 391 396 421 389 C394 408 375 435 366 470 C360 492 359 512 363 533 C344 509 339 478 349 447Z"
+          fill="#fffbe6" opacity="0.66"/>
+    <path d="M615 373 C663 359 713 380 738 420 C700 393 656 392 620 413 C601 424 586 438 574 456 C580 419 594 389 615 373Z"
+          fill="#ffd95b" opacity="0.33"/>
+  </g>
+
+  <!-- stem -->
+  <path d="M507 352
+    C509 305 497 261 469 223
+    C477 207 492 198 506 203
+    C539 242 547 290 539 349
+    C533 374 516 383 507 352Z"
+    fill="url(#stem)" stroke="#ff9a00" stroke-width="7"
+    filter="url(#glow)"/>
+  <path d="M489 224 C500 215 508 215 514 219" fill="none" stroke="#ffd44f" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- leaf -->
+  <path d="M531 343
+    C576 238 663 142 806 105
+    C789 229 706 316 559 356
+    C596 305 654 244 739 171
+    C665 207 598 261 531 343Z"
+    fill="url(#leaf)" stroke="#ffd93d" stroke-width="8"
+    stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M555 340 C617 291 686 226 772 138" fill="none" stroke="#fff07c" stroke-width="5" stroke-linecap="round"/>
+  <path d="M624 283 C656 275 688 273 721 276" fill="none" stroke="#ffda45" stroke-width="4" opacity="0.85"/>
+  <path d="M657 247 C686 240 714 238 741 241" fill="none" stroke="#ffda45" stroke-width="4" opacity="0.8"/>
+
+  <!-- sparks -->
+  <g fill="#ffd83d" filter="url(#glow)">
+    <circle cx="364" cy="249" r="8"/>
+    <circle cx="322" cy="283" r="5"/>
+    <circle cx="761" cy="276" r="7"/>
+    <circle cx="807" cy="410" r="5"/>
+    <circle cx="213" cy="652" r="6"/>
+    <circle cx="274" cy="835" r="7"/>
+    <circle cx="718" cy="829" r="6"/>
+    <circle cx="661" cy="863" r="4"/>
+  </g>
+
+  <g fill="#fff06b">
+    <circle cx="346" cy="463" r="5"/>
+    <circle cx="401" cy="431" r="4"/>
+    <circle cx="451" cy="447" r="5"/>
+    <circle cx="532" cy="438" r="4"/>
+    <circle cx="596" cy="402" r="5"/>
+    <circle cx="657" cy="432" r="4"/>
+    <circle cx="324" cy="550" r="4"/>
+    <circle cx="387" cy="612" r="4"/>
+    <circle cx="439" cy="666" r="5"/>
+    <circle cx="493" cy="610" r="4"/>
+    <circle cx="552" cy="594" r="5"/>
+    <circle cx="622" cy="561" r="4"/>
+    <circle cx="688" cy="520" r="5"/>
+    <circle cx="374" cy="721" r="4"/>
+    <circle cx="440" cy="760" r="5"/>
+    <circle cx="509" cy="730" r="4"/>
+    <circle cx="579" cy="704" r="5"/>
+    <circle cx="626" cy="752" r="4"/>
+  </g>
+
+  <!-- a few free flame petals -->
+  <g fill="url(#hot)" filter="url(#glow)">
+    <path d="M367 184 C348 155 358 124 382 104 C377 133 393 143 405 128 C403 157 390 177 367 184Z"/>
+    <path d="M822 327 C850 309 864 281 860 253 C884 281 879 321 849 343 C836 352 824 344 822 327Z"/>
+    <path d="M744 859 C764 846 776 826 775 806 C792 828 785 858 761 871 C751 876 744 870 744 859Z"/>
+  </g>
+</svg>

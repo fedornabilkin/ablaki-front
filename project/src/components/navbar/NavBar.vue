@@ -29,7 +29,7 @@ watch(compact, value => { if (value) open.value = false; });
 header.site-header(:class="{ compact }")
   .container.navbar
     router-link.brand(to="/" aria-label="Ablakin — главная")
-      font-awesome-icon(icon="fire" aria-hidden="true")
+      img.brand-logo(src="/ablakin-fire-logo.png" alt="" width="40" height="40" decoding="async")
       span(v-if="!compact") ablakin
     .nav-account
       header-account(v-if="user" :compact="compact")
@@ -72,6 +72,8 @@ header.site-header(:class="{ compact }")
 .header-nav .menu-button { margin-left: auto; }
 .brand { display: inline-flex; align-items: center; gap: .5rem; min-height: 2.75rem; font-size: 1.4rem; font-weight: 800; letter-spacing: -.04em; color: var(--primary); transition: font-size .18s ease; }
 .compact .brand { font-size: 1.2rem; }
+.brand-logo { display: block; width: 2.5rem; height: 2.5rem; object-fit: contain; flex-shrink: 0; }
+.compact .brand-logo { width: 2rem; height: 2rem; }
 .desktop-nav { display: none; }
 .menu-button { width: 2.75rem; }
 .desktop-nav .nav-item { border-radius: 0; border-bottom: .125rem solid transparent; padding-inline: .5rem; white-space: nowrap; }
@@ -82,6 +84,7 @@ header.site-header(:class="{ compact }")
 .mobile-nav { display: grid; gap: .5rem; }
 @media (max-width: 47.99rem) {
   .brand { font-size: 1rem; gap: .25rem; flex-shrink: 0; }
+  .brand-logo { width: 2rem; height: 2rem; }
   .navbar { gap: .25rem; }
   .compact .navbar { flex-wrap: nowrap; }
   .compact .navbar > .nav-account { flex-basis: auto; }
