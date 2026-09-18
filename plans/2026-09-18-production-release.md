@@ -6,9 +6,11 @@
 
 ## Группа A: Публикация
 - [x] A1. Проверить чистоту дерева, актуальность веток и результаты test CI.
-- [ ] A2. После подтверждения backend влить рабочую ветку в master и дождаться production CI/deploy.
-- [ ] A3. Подтвердить deploy-version.txt, SPA-маршруты и production API в опубликованной сборке.
-- [ ] A4. Удалить вошедшие в master рабочие ветки и записать результат.
+- [x] A2. После подтверждения backend влить рабочую ветку в master и дождаться production CI/deploy.
+- [x] A3. Подтвердить deploy-version.txt, SPA-маршруты и production API в опубликованной сборке.
+- [x] A4. Удалить вошедшие в master рабочие ветки и записать результат.
+
+Результат: опубликован `06869de9fdbf27864c4eefc4a331c26116e2cdd9`, [production CI 35352374540](https://github.com/fedornabilkin/ablaki-front/actions/runs/35352374540) — success. Маркер версии совпал, /games, /stat, /transfer и /forum/read/669 вернули HTTP 200 и SPA. В загруженных пяти JS-файлах подтверждён `https://api.ablakin.ru`, адрес тестового API отсутствует. WebSocket URL в стартовых чанках не найден; интерактивная работа чата не проверялась. Ветки forum-batch, forum-layout, game-tiles и transfer-code удалены локально и в origin; frontend/crafting сохранена.
 
 Критерий готовности: production CI/deploy успешны, версия и API назначения подтверждены.
 
