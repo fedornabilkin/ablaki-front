@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { darkTheme, ruRU, dateRuRU, NConfigProvider, NLoadingBarProvider, NDialogProvider, NNotificationProvider, NMessageProvider } from 'naive-ui';
 import NavBar from '@/components/navbar/NavBar.vue';
+import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import NaiveApiRegistrar from '@/components/NaiveApiRegistrar.vue';
 import { themeOverrides } from '@/theme/tokens';
 </script>
@@ -14,6 +15,7 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
           a.skip-link(href="#content") К содержимому
           nav-bar
           main#content(tabindex="-1")
+            breadcrumbs
             router-view
           footer.site-footer.container Ablakin — каждый день!
 </template>

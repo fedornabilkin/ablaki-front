@@ -29,7 +29,7 @@ watch(compact, value => { if (value) open.value = false; });
 header.site-header(:class="{ compact }")
   .container.navbar
     router-link.brand(to="/" aria-label="Ablakin — главная")
-      font-awesome-icon(icon="fire" aria-hidden="true")
+      img.brand-logo(src="/ablakin-fire-logo.png" alt="" width="40" height="40" decoding="async")
       span(v-if="!compact") ablakin
     .nav-account
       header-account(v-if="user" :compact="compact")
@@ -37,7 +37,7 @@ header.site-header(:class="{ compact }")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
-  .container.header-nav(v-show="!compact")
+  .container.header-nav(v-if="!compact")
     online-users(:collapsed="compact")
     daily-rewards(v-if="user")
     nav.desktop-nav(aria-label="Основная навигация")
@@ -64,7 +64,7 @@ header.site-header(:class="{ compact }")
 <style scoped lang="scss">
 .site-header { position: sticky; top: 0; z-index: 50; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
 .navbar, .nav-account, .desktop-nav, .header-nav, .guest-actions { display: flex; align-items: center; gap: .5rem; }
-.navbar { min-height: 4.5rem; flex-wrap: wrap; padding-block: .35rem; transition: min-height .18s ease; }
+.navbar { min-height: 4.5rem; flex-wrap: nowrap; padding-block: .35rem; transition: min-height .18s ease; }
 .compact .navbar { min-height: 3.25rem; }
 .compact { box-shadow: 0 .375rem 1.125rem var(--bg-base); }
 .header-nav { justify-content: flex-start; padding-bottom: .35rem; overflow-x: auto; }
@@ -72,6 +72,8 @@ header.site-header(:class="{ compact }")
 .header-nav .menu-button { margin-left: auto; }
 .brand { display: inline-flex; align-items: center; gap: .5rem; min-height: 2.75rem; font-size: 1.4rem; font-weight: 800; letter-spacing: -.04em; color: var(--primary); transition: font-size .18s ease; }
 .compact .brand { font-size: 1.2rem; }
+.brand-logo { display: block; width: 2.5rem; height: 2.5rem; object-fit: contain; flex-shrink: 0; }
+.compact .brand-logo { width: 2rem; height: 2rem; }
 .desktop-nav { display: none; }
 .menu-button { width: 2.75rem; }
 .desktop-nav .nav-item { border-radius: 0; border-bottom: .125rem solid transparent; padding-inline: .5rem; white-space: nowrap; }
@@ -81,7 +83,9 @@ header.site-header(:class="{ compact }")
 .login-link { display: inline-flex; align-items: center; gap: .35rem; }
 .mobile-nav { display: grid; gap: .5rem; }
 @media (max-width: 47.99rem) {
-  .navbar > .nav-account { flex-basis: 100%; }
+  .brand { font-size: 1rem; gap: .25rem; flex-shrink: 0; }
+  .brand-logo { width: 2rem; height: 2rem; }
+  .navbar { gap: .25rem; }
   .compact .navbar { flex-wrap: nowrap; }
   .compact .navbar > .nav-account { flex-basis: auto; }
 }
