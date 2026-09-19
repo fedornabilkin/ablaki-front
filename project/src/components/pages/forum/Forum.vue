@@ -68,8 +68,7 @@ n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :sty
     n-form-item(label="Заголовок" :label-props="{ for: 'theme-title' }")
       n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
     n-form-item(label="Первое сообщение" :label-props="{ for: 'theme-message' }")
-      message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" placeholder="Начните обсуждение" @submit="create")
+      message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" :submit-disabled="!title.trim()" submit-label="Опубликовать" placeholder="Начните обсуждение" @submit="create")
     n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
     p(v-if="createdThemeId") Тема уже создана. Повторная отправка добавит только сообщение.
-    n-button(type="primary" attr-type="submit" :loading="saving" :disabled="!title.trim() || !comment.trim()") Опубликовать
 </template>
