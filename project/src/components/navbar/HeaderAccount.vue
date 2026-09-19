@@ -28,7 +28,7 @@ const session = computed(() => store.state.auth.revision);
 <style scoped lang="scss">
 .account-overview { display: flex; justify-content: flex-end; align-items: center; min-width: 0; width: 100%; }
 .identity-metrics { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: .25rem .65rem; min-width: 0; margin-left: auto; }
-.account-login { font-weight: 700; overflow-wrap: anywhere; text-align: right; max-width: 12rem; }
+.account-login { font-weight: 700; text-align: right; white-space: nowrap; flex-shrink: 0; }
 .account-metrics { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: .25rem; }
 .metric-link { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.75rem; padding: .25rem .35rem; border-radius: .5rem; color: var(--primary); }
 .metric-link:hover { background: var(--primary-soft); }
@@ -47,6 +47,6 @@ const session = computed(() => store.state.auth.revision);
   .identity-metrics { gap: .2rem; overflow-x: auto; }
   .metric-link { gap: .2rem; padding-inline: .15rem; min-height: 2rem; white-space: nowrap; }
   .metric-link :deep(strong) { font-size: .75rem; overflow-wrap: normal; }
-  .account-login { font-size: .8rem; max-width: 5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+  .account-login { font-size: .8rem; }
 }
 </style>

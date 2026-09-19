@@ -6,7 +6,7 @@ import { list, emptyPage, field } from '@/services/api/portal';
 const props = defineProps<{ commentId: number; count: number }>();
 const showAll = ref(false); const search = ref('');
 const commentId = computed(() => props.commentId);
-const { data, loading } = usePageRequest(() => list(`forum-comment/${commentId.value}/gifts`, 1, { 'per-page': 1000 }), emptyPage(), [commentId]);
+const { data, loading } = usePageRequest(() => list(`forum-comment/${commentId.value}/gifts`, 1, { 'per-page': 1000 }), emptyPage(), [commentId, () => props.count]);
 const users = computed(() => data.value.items);
 const visibleUsers = computed(() => users.value.slice(0, 5));
 const hiddenCount = computed(() => Math.max(0, props.count - visibleUsers.value.length));
@@ -26,6 +26,7 @@ function parts(username: unknown) {
     template(v-for="(user, index) in visibleUsers" :key="user.id")
       | {{ index ? ', ' : ' ' }}
       router-link(:to="'/wall/' + encodeURIComponent(field(user.username))") {{ field(user.username) }}
+      small.muted {{ Number(user.amount) || 1 }} Cr
     n-button(v-if="hiddenCount > 0" text size="small" @click="showAll = true") +{{ hiddenCount }}
   n-modal(v-model:show="showAll" preset="card" title="Кто передал кредит" :style="{ width: 'min(32rem, calc(100vw - 1.5rem))' }")
     n-input(v-if="users.length > 10" v-model:value="search" clearable placeholder="Поиск пользователей")
@@ -34,6 +35,7 @@ function parts(username: unknown) {
         template(v-for="part in parts(user.username)" :key="part.text + String(part.match)")
           mark(v-if="part.match") {{ part.text }}
           span(v-else) {{ part.text }}
+        small.muted  {{ Number(user.amount) || 1 }} Cr
       span.muted(v-if="!filteredUsers.length") Ничего не найдено
 </template>
 <style scoped>
