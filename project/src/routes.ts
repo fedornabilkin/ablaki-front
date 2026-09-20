@@ -34,7 +34,8 @@ export const routes: RouteRecordRaw[] = [
     { path: 'history', component: () => import('./components/pages/user/Exchange/OrdersHistoryPage.vue') },
   ] },
   // Preserve old URLs without presenting unconnected mock economies as live features.
-  ...['/chat/:rest(.*)*', '/craft', '/city', '/exchange/shop'].map(path => ({ path, component: unavailable })),
+  { path: '/craft', component: () => import('./components/pages/craft/Workshop.vue'), meta: { requiresAuth: true } },
+  ...['/chat/:rest(.*)*', '/city', '/exchange/shop'].map(path => ({ path, component: unavailable })),
   { path: '/balance/pay', redirect: '/balance' },
   { path: '/wiki', component: () => import('./components/pages/Wiki.vue') },
   { path: '/:pathMatch(.*)*', component: () => import('./components/pages/PageNotFound.vue') },
