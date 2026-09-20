@@ -27,6 +27,22 @@ beforeEach(() => {
 });
 
 describe('session lifecycle', () => {
+    it('renders public routes while restoration is pending but keeps protected routes waiting', async () => {
+        localStorage.setItem('token', 'saved');
+        const request = deferred();
+        vi.mocked(api.getProfile).mockReturnValue(request.promise);
+        const store = makeStore();
+        const guard = createAuthGuard(store);
+        await expect(guard({matched: [{meta: {}}], fullPath: '/forum'} as never, {} as never, vi.fn())).resolves.toBeUndefined();
+        expect(store.getters['auth/authStatus']).toBe('loading');
+        let finished = false;
+        const protectedNavigation = Promise.resolve(guard({matched: [{meta: {requiresAuth: true}}], fullPath: '/transfer'} as never, {} as never, vi.fn())).then(result => { finished = true; return result; });
+        await Promise.resolve();
+        expect(finished).toBe(false);
+        request.resolve({id: 7});
+        await expect(protectedNavigation).resolves.toBeUndefined();
+        expect(api.getProfile).toHaveBeenCalledTimes(1);
+    });
     it('restores a stored session once for concurrent consumers', async () => {
         localStorage.setItem('token', 'saved');
         const request = deferred();

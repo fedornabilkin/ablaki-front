@@ -4,7 +4,7 @@ export const navigation = [
   { to: '/users', title: 'Участники', icon: 'users' },
   { to: '/statistic', title: 'Статистика', icon: 'trophy' },
   { to: '/exchange', title: 'Биржа', icon: 'exchange-alt' },
-  { to: '/balance', title: 'История счёта', icon: 'coins', account: true },
+  { to: '/balance', title: 'История', icon: 'coins', account: true },
   { to: '/transfer', title: 'Переводы', icon: 'arrow-right', account: true },
   { to: '/users/referrals', title: 'Рефералы', icon: 'users', account: true },
 ];

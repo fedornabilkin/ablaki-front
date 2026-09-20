@@ -11,6 +11,7 @@ const store = useStore();
 const route = useRoute();
 const open = ref(false);
 const user = computed(() => store.getters['auth/user']);
+const guest = computed(() => ['guest', 'error'].includes(store.getters['auth/authStatus']) && !user.value);
 const links = computed(() => navigation.filter(link => !link.account || user.value));
 const desktopLinks = computed(() => links.value.filter(link => !link.account));
 const compact = ref(false);
@@ -33,7 +34,7 @@ header.site-header(:class="{ compact }")
       span.brand-name(v-if="!compact") ablakin
     .nav-account
       header-account(v-if="user" :compact="compact")
-      .guest-actions(v-else)
+      .guest-actions(v-else-if="guest")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
@@ -56,10 +57,10 @@ header.site-header(:class="{ compact }")
           | {{ link.title }}
         router-link.nav-item(v-if="user" to="/users/profile") Мой профиль
         router-link.nav-item(v-if="user" to="/users/logout") Выйти
-        router-link.nav-item.login-link(v-else :to="loginTarget" aria-label="Войти" title="Войти")
+        router-link.nav-item.login-link(v-else-if="guest" :to="loginTarget" aria-label="Войти" title="Войти")
           font-awesome-icon(icon="sign-in-alt" aria-hidden="true")
           span.login-label Войти
-        router-link.nav-item(v-if="!user" to="/users/registration") Регистрация
+        router-link.nav-item(v-if="guest" to="/users/registration") Регистрация
 </template>
 <style scoped lang="scss">
 .site-header { position: sticky; top: 0; z-index: 50; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
