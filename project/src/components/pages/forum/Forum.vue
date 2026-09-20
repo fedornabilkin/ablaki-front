@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NModal } from 'naive-ui';
@@ -13,6 +13,7 @@ import { list, emptyPage, mutate, record, errorText } from '@/services/api/porta
 import ForumThemeList from '@/components/forum/ForumThemeList.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
+import { useForumDraft, forumDraftKey } from '@/hooks/useForumDraft';
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
@@ -22,16 +23,22 @@ const { page, search, filters, params, reset } = useListQuery();
 const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, { ...params.value, expand: 'user' }), emptyPage(), [mine, page, params]);
 const links = computed(() => [{ link: '/forum', title: 'Все темы' }, ...(authenticated.value ? [{ link: '/forum/my', title: 'Мои темы' }] : [])]);
 const showCreate = ref(false);
-const title = ref('');
-const comment = ref('');
+const draftKey = (part: string) => computed(() => forumDraftKey(store.getters['auth/user']?.id, 'new-theme:' + part));
+const titleDraft = useForumDraft(draftKey('title'), 250);
+const messageDraft = useForumDraft(draftKey('message'));
+const pendingTheme = useForumDraft(draftKey('created-id'), 20);
+const title = titleDraft.text;
+const comment = messageDraft.text;
 const saving = ref(false);
 const saveError = ref('');
-const createdThemeId = ref<number | null>(null);
+const createdThemeId = computed({ get: () => /^[1-9][0-9]*$/.test(pendingTheme.text.value) && Number.isSafeInteger(Number(pendingTheme.text.value)) ? Number(pendingTheme.text.value) : null, set: (id: number | null) => { pendingTheme.text.value = id ? String(id) : ''; } });
+watch(() => store.state.auth.revision, () => { showCreate.value = false; saveError.value = ''; });
 async function create() {
   if (saving.value || !title.value.trim() || !comment.value.trim()) return;
   saving.value = true;
   saveError.value = '';
   const revision = store.state.auth.revision;
+  const sentTitle = titleDraft.snapshot(), sentMessage = messageDraft.snapshot();
   try {
     if (!createdThemeId.value) {
       const theme = record(await mutate('forum-theme', 'post', { title: title.value.trim(), view: 0 }));
@@ -40,9 +47,9 @@ async function create() {
     }
     // The API creates themes and messages separately. Keep the created ID on failure.
     await mutate('forum-comment', 'post', { theme_id: createdThemeId.value, comment: comment.value.trim() });
+    titleDraft.clearSubmitted(sentTitle); messageDraft.clearSubmitted(sentMessage);
     if (revision !== store.state.auth.revision) return;
     showCreate.value = false;
-    title.value = ''; comment.value = '';
     const target = createdThemeId.value;
     createdThemeId.value = null;
     await router.push('/forum/read/' + target);
@@ -67,9 +74,8 @@ n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :sty
   n-form(@submit.prevent="create")
     n-form-item(label="Заголовок" :label-props="{ for: 'theme-title' }")
       n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
-    n-form-item(label="Первое сообщение" :label-props="{ for: 'theme-message' }")
-      message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" placeholder="Начните обсуждение" @submit="create")
+    message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" :submit-disabled="!title.trim()" submit-label="Опубликовать" placeholder="Начните обсуждение" @submit="create")
+    n-alert(v-if="messageDraft.storageError.value || titleDraft.storageError.value" type="warning") {{ messageDraft.storageError.value || titleDraft.storageError.value }}
     n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
     p(v-if="createdThemeId") Тема уже создана. Повторная отправка добавит только сообщение.
-    n-button(type="primary" attr-type="submit" :loading="saving" :disabled="!title.trim() || !comment.trim()") Опубликовать
 </template>

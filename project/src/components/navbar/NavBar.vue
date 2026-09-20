@@ -11,6 +11,7 @@ const store = useStore();
 const route = useRoute();
 const open = ref(false);
 const user = computed(() => store.getters['auth/user']);
+const guest = computed(() => ['guest', 'error'].includes(store.getters['auth/authStatus']) && !user.value);
 const links = computed(() => navigation.filter(link => !link.account || user.value));
 const desktopLinks = computed(() => links.value.filter(link => !link.account));
 const compact = ref(false);
@@ -30,10 +31,10 @@ header.site-header(:class="{ compact }")
   .container.navbar
     router-link.brand(to="/" aria-label="Ablakin — главная")
       img.brand-logo(src="/ablakin-fire-logo.png" alt="" width="40" height="40" decoding="async")
-      span(v-if="!compact") ablakin
+      span.brand-name(v-if="!compact") ablakin
     .nav-account
       header-account(v-if="user" :compact="compact")
-      .guest-actions(v-else)
+      .guest-actions(v-else-if="guest")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
@@ -56,17 +57,17 @@ header.site-header(:class="{ compact }")
           | {{ link.title }}
         router-link.nav-item(v-if="user" to="/users/profile") Мой профиль
         router-link.nav-item(v-if="user" to="/users/logout") Выйти
-        router-link.nav-item.login-link(v-else :to="loginTarget" aria-label="Войти" title="Войти")
+        router-link.nav-item.login-link(v-else-if="guest" :to="loginTarget" aria-label="Войти" title="Войти")
           font-awesome-icon(icon="sign-in-alt" aria-hidden="true")
           span.login-label Войти
-        router-link.nav-item(v-if="!user" to="/users/registration") Регистрация
+        router-link.nav-item(v-if="guest" to="/users/registration") Регистрация
 </template>
 <style scoped lang="scss">
 .site-header { position: sticky; top: 0; z-index: 50; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
 .navbar, .nav-account, .desktop-nav, .header-nav, .guest-actions { display: flex; align-items: center; gap: .5rem; }
 .navbar { min-height: 4.5rem; flex-wrap: nowrap; padding-block: .35rem; transition: min-height .18s ease; }
 .compact .navbar { min-height: 3.25rem; }
-.compact { box-shadow: 0 .375rem 1.125rem var(--bg-base); }
+.compact { box-shadow: none; }
 .header-nav { justify-content: flex-start; padding-bottom: .35rem; overflow-x: auto; }
 .header-nav > * { flex-shrink: 0; }
 .header-nav .menu-button { margin-left: auto; }
@@ -85,6 +86,7 @@ header.site-header(:class="{ compact }")
 @media (max-width: 47.99rem) {
   .brand { font-size: 1rem; gap: .25rem; flex-shrink: 0; }
   .brand-logo { width: 2rem; height: 2rem; }
+  .brand-name { display: none; }
   .navbar { gap: .25rem; }
   .compact .navbar { flex-wrap: nowrap; }
   .compact .navbar > .nav-account { flex-basis: auto; }

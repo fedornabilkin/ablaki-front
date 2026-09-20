@@ -17,7 +17,7 @@ describe('community API', () => {
     const request = vi.spyOn(apiClient, 'request').mockResolvedValue({ data: response });
     await expect(giveCommentCredit(8)).resolves.toEqual(response);
     expect(request).toHaveBeenCalledOnce();
-    expect(request).toHaveBeenCalledWith({ url: expect.stringMatching(/v1\/forum-comment\/8\/gift$/), method: 'post', data: undefined });
+    expect(request).toHaveBeenCalledWith({ url: expect.stringMatching(/v1\/forum-comment\/8\/gift$/), method: 'post', data: { amount: 1 } });
   });
   it('accepts idempotent acknowledgement and rejects uncertain or wrong-message responses', () => {
     const response = { commentId: 8, alreadyGiven: true, giftCount: 3, giftedByMe: true, credit: 9 };
@@ -29,6 +29,7 @@ describe('community API', () => {
   it('does not send invalid gift IDs to the API', async () => {
     const request = vi.spyOn(apiClient, 'request');
     await expect(giveCommentCredit(0)).rejects.toThrow();
+    for (const amount of [0, 4, -1, 1.5]) await expect(giveCommentCredit(8, amount)).rejects.toThrow();
     expect(request).not.toHaveBeenCalled();
   });
 });

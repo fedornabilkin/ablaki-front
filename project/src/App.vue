@@ -4,6 +4,9 @@ import NavBar from '@/components/navbar/NavBar.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import NaiveApiRegistrar from '@/components/NaiveApiRegistrar.vue';
 import { themeOverrides } from '@/theme/tokens';
+import { useRoute } from 'vue-router';
+import RequestState from '@/components/RequestState.vue';
+const route = useRoute();
 </script>
 <template lang="pug">
 n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="ruRU" :date-locale="dateRuRU")
@@ -16,7 +19,9 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
           nav-bar
           main#content(tabindex="-1")
             breadcrumbs
-            router-view
+            .container.page(v-if="!route.matched.length")
+              request-state(:loading="true" error="")
+            router-view(v-else)
           footer.site-footer.container Ablakin — каждый день!
 </template>
 <style scoped>
