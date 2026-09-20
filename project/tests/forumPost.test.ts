@@ -38,4 +38,8 @@ it('places send, shortcut hint and microphone in that order', async () => {
   expect(html.indexOf('>Отправить</button>')).toBeLessThan(html.indexOf('Ctrl+Enter'));
   expect(html.indexOf('Ctrl+Enter')).toBeLessThan(html.indexOf('voice-button'));
   expect(html).toContain('<svg');
+  expect(html).toContain('<textarea');
+  expect(html).toContain('aria-describedby="reply-limit"');
+  expect(html).toContain('4 / 3000');
+  expect(html).not.toContain('autosize');
 });

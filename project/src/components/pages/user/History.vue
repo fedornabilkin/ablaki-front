@@ -1,31 +1,45 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { NAlert, NButton, NCard } from 'naive-ui';
+import { NAlert, NCard, NSkeleton } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
-import ListFilters from '@/components/ListFilters.vue';
+import ActionButton from '@/components/ActionButton.vue';
+import { historyPresentation } from '@/services/historyPresentation';
 import { list, emptyPage, field, date } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 import { historyTypes, type HistoryType } from '@/services/api/community';
 const route = useRoute();
 const rating = computed(() => route.path === '/rating');
-const { page, search, filters, params, reset } = useListQuery({ type: '' });
+const { page, filters, params } = useListQuery({ type: '' });
 const types = usePageRequest(() => historyTypes(rating.value ? 'rating' : 'balance'), [] as HistoryType[], [rating]);
-const definitions = computed(() => [{ key: 'type', label: 'Тип операции', options: types.data.value }]);
-const { data, loading, error, refresh } = usePageRequest(() => list(rating.value ? 'history/rating' : 'history/balance', page.value, params.value), emptyPage(), [rating, page, params]);
+const choices = computed(() => types.data.value.map(type => ({ value: type.value, ...historyPresentation(type.value), count: type.label.match(/ \(\d+\)$/)?.[0] || '' })));
+const { data, loading, error, refresh } = usePageRequest(() => {
+  const { q: _search, ...query } = params.value;
+  return list(rating.value ? 'history/rating' : 'history/balance', page.value, query);
+}, emptyPage(), [rating, page, params]);
 function change(value: unknown) { return value === null || value === undefined || !Number.isFinite(Number(value)) ? '—' : (Number(value) > 0 ? '+' : '') + field(value); }
 </script>
 <template lang="pug">
-page-header(page-title="История счёта" :extra-links="[{ link: '/balance', title: 'Баланс и кредиты' }, { link: '/rating', title: 'Рейтинг' }]")
+page-header(page-title="История")
 .container.page
+  nav.history-tabs(aria-label="Раздел истории")
+    router-link(to="/balance" :aria-current="!rating ? 'page' : undefined" :class="{ selected: !rating }")
+      font-awesome-icon(icon="coins" aria-hidden="true")
+      | Баланс
+    router-link(to="/rating" :aria-current="rating ? 'page' : undefined" :class="{ selected: rating }")
+      font-awesome-icon(icon="star" aria-hidden="true")
+      | Рейтинг
   n-card
-    list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="loading" @reset="reset")
+    .history-types(role="group" aria-label="Тип операции")
+      action-button(icon="scroll" label="Все" :aria-pressed="!filters.type" :type="!filters.type ? 'primary' : 'default'" @click="filters = { type: '' }")
+      action-button(v-for="choice in choices" :key="choice.value" :icon="choice.icon" :label="choice.label + choice.count" :aria-pressed="filters.type === choice.value" :type="filters.type === choice.value ? 'primary' : 'default'" @click="filters = { type: filters.type === choice.value ? '' : choice.value }")
+      n-skeleton(v-if="types.loading.value" width="12rem" height="34px" aria-label="Загрузка типов операций")
     n-alert.mb-3(v-if="types.error.value" type="warning")
       | Не удалось загрузить типы операций.
-      n-button(text @click="types.refresh") Повторить
+      action-button(icon="arrow-right" label="Повторить" text @click="types.refresh")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       article.record-row(v-for="entry in data.items" :key="entry.id")
         div
@@ -39,3 +53,8 @@ page-header(page-title="История счёта" :extra-links="[{ link: '/bala
           span.muted После: {{ field(entry.balance) }} Кг · {{ field(entry.credit) }} Cr
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
 </template>
+<style scoped>
+.history-tabs, .history-types { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.history-tabs a { display: inline-flex; align-items: center; gap: .5rem; padding: .75rem 1rem; border-bottom: 2px solid transparent; }
+.history-tabs .selected { color: var(--primary); border-bottom-color: var(--primary); }
+</style>

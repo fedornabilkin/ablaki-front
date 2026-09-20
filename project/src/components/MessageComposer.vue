@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue';
-import { NInput, NButton, NAlert } from 'naive-ui';
+import { NButton, NAlert } from 'naive-ui';
 import { useDictation } from '@/hooks/useDictation';
 import { submitShortcut } from '@/services/submitShortcut';
 const props = withDefaults(defineProps<{ modelValue: string; disabled?: boolean; submitDisabled?: boolean; submitLabel?: string; id: string; placeholder?: string; maxlength?: number }>(), { maxlength: 3000, placeholder: 'Напишите сообщение', submitLabel: 'Отправить' });
@@ -10,10 +10,12 @@ const voice = useDictation(text => {
 });
 watch(() => props.disabled, disabled => { if (disabled) voice.cancel(); });
 function submit() { if (!props.disabled && !props.submitDisabled && props.modelValue.trim()) { voice.cancel(); emit('submit'); } }
+function input(event: Event) { emit('update:modelValue', (event.target as HTMLTextAreaElement).value); }
 </script>
 <template lang="pug">
 .message-composer
-  n-input(:input-props="{ id }" :value="modelValue" @update:value="emit('update:modelValue', $event)" type="textarea" :maxlength="maxlength" :autosize="{ minRows: 3, maxRows: 12 }" :disabled="disabled" :placeholder="placeholder" @keydown="submitShortcut($event, submit)")
+  small.character-limit.muted(:id="id + '-limit'" :aria-label="'Символов: ' + modelValue.length + ' из ' + maxlength") {{ modelValue.length }} / {{ maxlength }}
+  textarea.composer-input(:id="id" :value="modelValue" @input="input" :maxlength="maxlength" rows="5" :disabled="disabled" :placeholder="placeholder" :aria-label="placeholder" :aria-describedby="id + '-limit'" @keydown="submitShortcut($event, submit)")
   .composer-tools
     n-button(size="small" type="primary" :loading="disabled" :disabled="disabled || submitDisabled || !modelValue.trim()" @click="submit") {{ submitLabel }}
     small.muted(title="Ctrl+Enter — отправить") Ctrl+Enter
@@ -27,6 +29,10 @@ function submit() { if (!props.disabled && !props.submitDisabled && props.modelV
 </template>
 <style scoped>
 .message-composer { width: 100%; display: grid; gap: .5rem; }
+.character-limit { justify-self: end; font-variant-numeric: tabular-nums; }
+.composer-input { box-sizing: border-box; width: 100%; min-height: 8rem; resize: vertical; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--bg-surface); color: var(--text); font: inherit; font-size: 16px; line-height: 1.5; }
+.composer-input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.composer-input:disabled { opacity: .65; }
 .composer-tools { display: flex; align-items: center; flex-wrap: nowrap; gap: .5rem; }
 .composer-tools small { white-space: nowrap; font-size: .7rem; }
 .voice-button { margin-left: auto; flex-shrink: 0; }

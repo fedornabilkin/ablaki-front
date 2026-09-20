@@ -8,7 +8,7 @@ import { usePageRequest } from '@/hooks/usePageRequest';
 import RequestState from '@/components/RequestState.vue';
 import ForumThemeList from '@/components/forum/ForumThemeList.vue';
 import UserList from '@/components/user/UserList.vue';
-const forum = usePageRequest(() => list('forum-theme', 1, { sort: '-id', 'per-page': 10 }), emptyPage());
+const forum = usePageRequest(() => list('forum-theme', 1, { sort: '-last_comment_created_at', 'per-page': 5 }), emptyPage());
 const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-page': 10 }), emptyPage());
 </script>
 <template lang="pug">
@@ -18,7 +18,7 @@ const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-
     p.muted Игры с другими участниками, обсуждения на форуме и обмен кредитами — всё в одном месте.
   section.stack(aria-labelledby="games-heading")
     h2#games-heading Игры
-    game-type-cards
+    game-type-cards(recent)
   prize-fund
   .split
     n-card(title="Обсуждения")
