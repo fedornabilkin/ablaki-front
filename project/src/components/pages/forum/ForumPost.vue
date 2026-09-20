@@ -30,7 +30,7 @@ async function save() {
   const sent = draft.snapshot();
   saving.value = true; error.value = '';
   try {
-    const updated = record(await mutate('forum-comment/' + props.item.id, 'patch', { comment: sent.text.trim() }));
+    const updated = record(await mutate('forum-comment/' + props.item.id, 'put', { comment: sent.text.trim() }));
     draft.clearSubmitted(sent);
     if (disposed || revision !== store.state.auth.revision) return;
     emit('updated', { ...props.item, ...updated }); editing.value = false;
