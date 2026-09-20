@@ -29,7 +29,9 @@ function keys(event: KeyboardEvent) {
     .map-legend
       span.ready-dot Можно создать
       span Открыт · нужны ресурсы
-      span 🔒 Нужны исследования
+      span
+        font-awesome-icon(icon="lock")
+        |  Нужны исследования
     .zoom-tools
       n-button(size="small" aria-label="Уменьшить карту" :disabled="zoom <= .5" @click="zoom = Math.max(.5, zoom - .1)") −
       span {{ Math.round(zoom * 100) }}%
