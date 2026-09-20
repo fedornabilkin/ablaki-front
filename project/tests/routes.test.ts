@@ -3,6 +3,9 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { routes } from '../src/routes';
 const router = createRouter({ history: createMemoryHistory(), routes });
 describe('portal route access', () => {
+  it('requires authentication for the live craft workshop', () => {
+    expect(router.resolve('/craft').meta.requiresAuth).toBe(true);
+  });
   it.each(['/forum/my', '/users/profile', '/users/referrals', '/balance', '/rating', '/transfer', '/games/orel', '/games/orel/my', '/games/saper', '/games/saper/my', '/games/saper/history', '/exchange/my'])('requires a verified session for %s', path => {
     expect(router.resolve(path).matched.some(record => record.meta.requiresAuth)).toBe(true);
   });

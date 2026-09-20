@@ -59,6 +59,7 @@ import {
   faSun,
   faMoon,
   faHammer,
+  faFlask,
   faTree,
   faCube,
   faCubes,
@@ -85,6 +86,7 @@ import {
 
 export class IconManager {
   constructor() {
+    library.add(faFlask);
     library.add(faBars, faBomb);
     library.add(faUser, faUsers, faDice, faHouse, faCity, faSeedling, faStore, faIndustry, faLandmark, faUserCheck, faSignInAlt, faSignOutAlt, faPlus, faIdCard, faStar, faCoins, faTrophy, faComments, faComment, faCrown, faPaperPlane, faEllipsisV, faQuestionCircle, faDollarSign, faGraduationCap, faAdjust, faAppleAlt, faCrosshairs, faArrowAltCircleRight, faArrowDown, faArrowUp, faArrowRight, faArrowLeft, faCheck, faPencilAlt, faClone, faEye, faEyeSlash, faExclamationCircle, faFileExcel, faCogs, faCog, faSpinner, faExchangeAlt, faPowerOff, faLock, faSearch, faCircle, faCheckCircle, faTrashAlt, faBan, faTimesCircle, faBox, faTimes, faSun, faMoon, faHammer, faTree, faCube, faCubes, faLink, faScroll, faFire, faFireFlameCurved, faGem, faBullseye, faToolbox, faMountain, faGripLines, faWrench, faRing, faAnchor, faBottleWater, faPenNib, faShirt, faShield, faShieldHalved, faCartShopping, faBagShopping);
   }

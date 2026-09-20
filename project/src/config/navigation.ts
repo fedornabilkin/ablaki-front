@@ -1,5 +1,6 @@
 export const navigation = [
   { to: '/games', title: 'Игры', icon: 'dice' },
+  { to: '/craft', title: 'Мастерская', icon: 'hammer', account: true },
   { to: '/forum', title: 'Форум', icon: 'comments' },
   { to: '/users', title: 'Участники', icon: 'users' },
   { to: '/statistic', title: 'Статистика', icon: 'trophy' },
