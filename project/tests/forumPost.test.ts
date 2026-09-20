@@ -4,6 +4,7 @@ import { createStore } from 'vuex';
 import { renderToString } from '@vue/server-renderer';
 import ForumPost from '../src/components/pages/forum/ForumPost.vue';
 import MessageComposer from '../src/components/MessageComposer.vue';
+import * as portal from '../src/services/api/portal';
 vi.mock('naive-ui', () => ({
   NButton: { inheritAttrs: true, setup: (_, { slots }) => () => h('button', slots.default?.()) },
   NAlert: { setup: (_, { slots }) => () => h('aside', slots.default?.()) },
@@ -13,6 +14,19 @@ vi.mock('naive-ui', () => ({
 vi.mock('../src/components/pages/forum/GiftUsers.vue', () => ({ default: { render: () => null } }));
 vi.mock('../src/components/user/UserAvatar.vue', () => ({ default: { render: () => h('span', 'Author') } }));
 const item = { id: 1, user_id: 2, user: { id: 2, username: 'Author' }, comment: '[b]Message[/b]', created_at: Math.floor(Date.now() / 1000) - 60, gift_count: 0, gifted_by_me: false };
+it('saves edits using the PUT method allowed by the deployed CORS policy', async () => {
+  const mutate = vi.spyOn(portal, 'mutate').mockResolvedValue({ ...item, comment: 'Edited' });
+  let state: any;
+  const subject = { emits: ['updated'], setup(_, ctx) { state = (ForumPost as any).setup({ item, giving: false }, ctx); return () => h('div'); } };
+  const app = createSSRApp(subject);
+  app.use(createStore({ state: { auth: { revision: 1 } }, getters: { 'auth/user': () => ({ id: 2 }), 'auth/isAuthenticated': () => true } }));
+  try {
+    await renderToString(app);
+    state.edit(); state.text.value = 'Edited'; await state.save();
+    expect(mutate).toHaveBeenCalledExactlyOnceWith('forum-comment/1', 'put', { comment: 'Edited' });
+    expect(state.editing.value).toBe(false);
+  } finally { mutate.mockRestore(); }
+});
 async function renderPost(userId: number | null, changes = {}) {
   const app = createSSRApp({ render: () => h(ForumPost, { item: { ...item, ...changes }, giving: false }) });
   app.use(createStore({ state: { auth: { revision: 1 } }, getters: { 'auth/user': () => userId ? { id: userId } : null, 'auth/isAuthenticated': () => !!userId } }));
