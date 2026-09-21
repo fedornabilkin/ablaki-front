@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCraftState, type CraftRecipe, type CraftState } from '../src/services/api/classicCraft';
-import { craftRequirements, craftRoadmap, maxCraftQuantity } from '../src/entities/craft/classic';
+import { craftRequirements, craftRoadmap, maxCraftQuantity, craftEquipment, roadmapNodeSize } from '../src/entities/craft/classic';
 const recipe: CraftRecipe = {id: 1, code: 'plank', name: 'Plank', description: '', category_id: 1, item_id: 2, station_id: null, output_quantity: 2, cost_credits: 3, experience: 20, min_level: 1, crafted: 0, ingredients: [{item_id: 1, quantity: 2}], tools: [1], requires: [], locked_reasons: []};
 export const fixture: CraftState = {items: [1, 2].map(id => ({id, code: 'item' + id, name: 'Item ' + id, description: '', category_id: 1, kind: 'material', rarity: 'common', icon: 'cube', stack_size: 100, destroyable: 1, active: 1, use_xp: 0, gather_quantity: 0})), recipes: [recipe], categories: [{id: 1, name: 'Wood', code: 'wood', description: 'Woodworking'}], stations: [], skills: [], inventory: [{item_id: 1, quantity: 5}], inventory_slots: [{id: 10, item_id: 1, quantity: 5}], credit: 6, charge_credits: true, starter_available: false, gather_available: false, slot_limit: 100, slots_used: 1};
 describe('classic craft contract and roadmap', () => {
@@ -39,5 +39,34 @@ describe('classic craft contract and roadmap', () => {
     expect(graph.edges).toHaveLength(4);
     expect(craftRoadmap([{...recipe, requires: [1]}]).nodes).toHaveLength(1);
     expect(craftRoadmap([{...recipe, requires: [999]}]).edges).toHaveLength(0);
+  });
+  it('centers sparse layers and reserves an empty corridor for a long dependency', () => {
+    const rows = [recipe, {...recipe, id: 2, requires: [1]}, {...recipe, id: 3, requires: [2]}, {...recipe, id: 4, requires: [1, 3]}];
+    const graph = craftRoadmap(rows);
+    expect(craftRoadmap(rows)).toEqual(graph);
+    const root = graph.nodes[0], leaf = graph.nodes[3];
+    expect(root.y).toBe(leaf.y);
+    expect(root.y + roadmapNodeSize.height / 2).toBe(graph.height / 2);
+    const longEdge = graph.edges.find(edge => edge.id === '1-4')!;
+    const lanes = [...longEdge.path.matchAll(/ L ([\d.]+) ([\d.]+)/g)];
+    expect(lanes).toHaveLength(2);
+    for (const lane of lanes) {
+      const x = Number(lane[1]), y = Number(lane[2]);
+      expect(graph.nodes.some(node => x > node.x && x <= node.x + roadmapNodeSize.width && y > node.y && y < node.y + roadmapNodeSize.height)).toBe(false);
+    }
+  });
+  it('untangles reversed sibling branches and leaves space between cards', () => {
+    const rows = [recipe, {...recipe, id: 2}, {...recipe, id: 3, requires: [2]}, {...recipe, id: 4, requires: [1]}];
+    const graph = craftRoadmap(rows), byId = new Map(graph.nodes.map(node => [node.recipe.id, node]));
+    expect(Math.sign(byId.get(1)!.y - byId.get(2)!.y)).toBe(Math.sign(byId.get(4)!.y - byId.get(3)!.y));
+    expect(Math.abs(byId.get(3)!.y - byId.get(4)!.y)).toBeGreaterThan(roadmapNodeSize.height + 40);
+  });
+  it('reports owned, missing and disabled tools and stations separately', () => {
+    const equipped = {...fixture, stations: [{id: 7, name: 'Workbench', item_id: 1}]};
+    expect(craftEquipment(equipped, {...recipe, station_id: 7}).map(badge => badge.available)).toEqual([true, true]);
+    expect(craftEquipment({...equipped, inventory: []}, {...recipe, station_id: 7}).every(badge => !badge.available)).toBe(true);
+    expect(craftEquipment({...equipped, items: equipped.items.map(item => ({...item, active: 0}))}, recipe)[0].available).toBe(false);
+    expect(craftEquipment(fixture, {...recipe, tools: [], station_id: 99})[0].available).toBe(false);
+    expect(craftEquipment({...fixture, stations: [{id: 7, name: 'Public', item_id: null}]}, {...recipe, tools: [], station_id: 7})[0].available).toBe(true);
   });
 });

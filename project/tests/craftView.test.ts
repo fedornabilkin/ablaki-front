@@ -31,8 +31,18 @@ describe('craft view with server state', () => {
     const html = await renderToString(app);
     expect(html.match(/role="listitem"/g)).toHaveLength(100);
     expect(html).toContain('Бревно: 100 шт.'); expect(html).toContain('Бревно: 4 шт.');
-    expect(html.match(/class="empty-slot"/g)).toHaveLength(98);
-    expect(html).toContain('Перетащите сюда'); expect(html).not.toContain('discard-button');
+    expect(html.match(/class="empty-slot"/g)).toHaveLength(97);
+    expect(html).toContain('trash-cell'); expect(html).toContain('title="Корзина"');
+    expect(html).not.toContain('Перетащите сюда'); expect(html).not.toContain('discard-button');
+  });
+  it('keeps all 100 occupied slots accessible alongside the basket', async () => {
+    const inventory_slots = Array.from({length: 100}, (_, index) => ({id: index + 1, item_id: 1, quantity: index + 1}));
+    const app = createSSRApp(CraftInventory, {state: {...state, inventory_slots, slots_used: 100}, blocked: false});
+    app.component('font-awesome-icon', FontAwesomeIcon); setupSsrStyles(app);
+    const html = await renderToString(app);
+    expect(html.match(/role="listitem"/g)).toHaveLength(101);
+    expect(html).toContain('Бревно: 100 шт.');
+    expect(html).not.toContain('class="empty-slot"');
   });
   it('renders an enabled create button with no credits in free mode, and blocks paid mode', async () => {
     const free = await detail(state), paid = await detail({...state, charge_credits: true});
@@ -53,5 +63,15 @@ describe('craft view with server state', () => {
     const html = await renderToString(app);
     expect(html).toContain('Доска'); expect(html).toContain('рецепта');
     expect(html).toContain('aria-pressed="true"'); expect(html).not.toContain('К выбранному');
+  });
+  it('renders equipment icons on the right with missing equipment marked', async () => {
+    const value = {...state, recipes: [{...state.recipes[0], tools: [1, 2], station_id: 3}], stations: [{id: 3, name: 'Верстак', item_id: 2}]};
+    const app = createSSRApp(CraftRoadmap, {state: value, selected: 1, category: null, topInset: 150, rightInset: 350});
+    app.component('font-awesome-icon', FontAwesomeIcon);
+    const html = await renderToString(app);
+    expect(html).toContain('Инструмент: Бревно — доступно');
+    expect(html).toContain('Инструмент: Доска — отсутствует');
+    expect(html).toContain('Станция: Верстак — отсутствует');
+    expect(html.match(/class="(?=[^"]*\bequipment-badge\b)(?=[^"]*\bmissing\b)[^"]*"/g)).toHaveLength(2);
   });
 });

@@ -50,9 +50,13 @@ function mount() {
 describe('inventory drag to trash', () => {
   it('requires confirmation and discards exactly the dragged stack, not its aggregate', async () => {
     const view = mount();
+    const basket = find(view.root, node => node.props.title === 'Корзина')!;
+    const basketParent = basket.parent, basketOrder = basket.parent!.props.style.order;
     view.slot.props.onPointerdown(view.pointer(10, 10));
     view.slot.props.onPointermove(view.pointer(350, 650));
     await nextTick();
+    expect(find(view.root, node => node.props.title === 'Корзина')).toBe(basket);
+    expect(basket.parent).toBe(basketParent); expect(basket.parent!.props.style.order).toBe(basketOrder);
     view.slot.props.onPointerup(view.pointer(350, 650));
     await nextTick();
     expect(view.command).not.toHaveBeenCalled();
@@ -60,6 +64,14 @@ describe('inventory drag to trash', () => {
     expect(confirm).toBeTruthy(); confirm!.props.onClick();
     expect(view.command).toHaveBeenCalledExactlyOnceWith('discard', 5, 3, 8);
     view.app.unmount();
+  });
+  it('opens item details alongside the grid on a slot click', async () => {
+    const view = mount();
+    view.slot.props.onClick({detail: 1}); await nextTick();
+    const details = find(view.root, node => node.props['aria-label'] === 'Описание предмета');
+    expect(details?.tag).toBe('aside');
+    expect(details?.parent).toBe(find(view.root, node => node.props.class === 'craft-inventory'));
+    expect(view.command).not.toHaveBeenCalled(); view.app.unmount();
   });
   it('does not delete on drop outside trash, pointer cancellation, or while blocked', async () => {
     const view = mount();
