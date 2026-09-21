@@ -12,10 +12,11 @@ describe('account craft requests', () => {
     vi.stubGlobal('sessionStorage', {getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => values.set(k,v), removeItem: (k: string) => values.delete(k)});
     api.sendCraft.mockRejectedValueOnce(new Error('lost response'));
     const first = scope.run(() => useClassicCraft(ref(1), vi.fn(), ref(37)))!;
-    await first.command('craft', 4, 2);
+    await first.command('discard', 4, 250, 55);
     const recovered = scope.run(() => useClassicCraft(ref(2), vi.fn(), ref(37)))!;
     const other = scope.run(() => useClassicCraft(ref(2), vi.fn(), ref(46)))!;
     expect(recovered.pending.value).toEqual(first.pending.value);
+    expect(recovered.pending.value).toMatchObject({action: 'discard', id: 4, quantity: 250, slot_id: 55});
     expect(other.pending.value).toBeNull();
   });
   it('blocks duplicate clicks and ignores an earlier state read', async () => {

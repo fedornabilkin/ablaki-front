@@ -3,7 +3,7 @@ import { computed, ref, watch, onMounted, nextTick } from 'vue';
 import type { CraftState } from '@/services/api/classicCraft';
 import { craftRoadmap, craftRequirements } from '@/entities/craft/classic';
 import { gestureCamera, zoomCamera, type MapPoint } from '@/entities/craft/camera';
-const props = defineProps<{state: CraftState; selected: number | null; category: number | null; topInset: number; rightInset: number}>();
+const props = defineProps<{state: CraftState; selected: number | null; category: number | null; topInset: number; rightInset: number; leftInset?: number}>();
 const emit = defineEmits<{select: [id: number]}>();
 const graph = computed(() => craftRoadmap(props.state.recipes));
 const camera = ref({x: 24, y: 24, scale: 1});
@@ -42,9 +42,10 @@ function wheel(event: WheelEvent) {
 function reveal(id: number | null) {
   const node = graph.value.nodes.find(n => n.recipe.id === id), view = viewport.value;
   if (!node || !view) return;
-  const width = Math.max(240, view.clientWidth - props.rightInset - 24);
+  const left = props.leftInset ?? 12;
+  const width = Math.max(100, view.clientWidth - props.rightInset - left);
   const height = Math.max(140, view.clientHeight - props.topInset - 24);
-  camera.value = {...camera.value, x: 12 + width / 2 - (node.x + 110) * camera.value.scale, y: props.topInset + height / 2 - (node.y + 44) * camera.value.scale};
+  camera.value = {...camera.value, x: left + width / 2 - (node.x + 110) * camera.value.scale, y: props.topInset + height / 2 - (node.y + 44) * camera.value.scale};
 }
 function focus(event: FocusEvent, id: number) {
   // Pointer focus must not move a node away while the user starts dragging it.
