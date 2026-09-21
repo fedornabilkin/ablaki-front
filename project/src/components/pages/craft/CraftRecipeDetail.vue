@@ -26,8 +26,9 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
       font-awesome-icon(icon="graduation-cap")
       |  +{{ recipe.experience }} XP
   label Количество партий
-    n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="blocked")
-  n-button(size="small" :disabled="blocked || maximum === 0" @click="quantity = maximum") Максимум: {{ maximum }}
+    .quantity-row
+      n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="blocked")
+      n-button(:disabled="blocked || maximum === 0" @click="quantity = maximum") Максимум: {{ maximum }}
   ul.resource-list
     li(v-for="r in requirements.resources" :key="r.id" :class="{shortage: r.have < r.needed}")
       span.resource-name
@@ -60,6 +61,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
 .detail-heading { display: flex; align-items: center; gap: .65rem; }.detail-heading h2 { flex: 1; min-width: 0; margin: 0; font-size: 1.05rem; }.detail-icon { font-size: 1.5rem; color: #d6b685; flex-shrink: 0; }.hide-button { flex-shrink: 0; }
 p { margin: 0; color: var(--text-muted); }
 label { display: grid; gap: .4rem; }
+.quantity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; align-items: center; }
 .recipe-facts { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; font-size: .8rem; }
 .resource-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .65rem; }.resource-list li { display: flex; justify-content: space-between; gap: .5rem; }
 .resource-name, .resource-count { display: flex; align-items: center; gap: .4rem; }.resource-name { min-width: 0; }.resource-name > svg { flex-shrink: 0; color: #d6b685; }.resource-symbol { color: var(--text-muted); cursor: help; }.resource-count { white-space: nowrap; }

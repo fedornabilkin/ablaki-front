@@ -6,7 +6,9 @@ import { inventoryCells, insideTrash, INVENTORY_CELLS } from '@/entities/craft/i
 const props = defineProps<{state: CraftState; blocked: boolean}>();
 const emit = defineEmits<{command: [action: 'use' | 'discard', id: number, quantity: number, slotId: number]}>();
 const items = computed(() => new Map(props.state.items.map(i => [i.id, i])));
-const cells = computed(() => inventoryCells(props.state.inventory_slots));
+// The basket occupies the next empty display cell; a full inventory still shows all 100 stacks.
+const cells = computed(() => inventoryCells(props.state.inventory_slots).slice(0, props.state.inventory_slots.length >= INVENTORY_CELLS ? INVENTORY_CELLS : INVENTORY_CELLS - 1));
+const trashOrder = computed(() => Math.min(props.state.inventory_slots.length, INVENTORY_CELLS) * 2 - 1);
 const overflow = computed(() => props.state.inventory_slots.slice(INVENTORY_CELLS));
 const selectedId = ref<number | null>(null), discardId = ref<number | null>(null);
 const selected = computed(() => props.state.inventory_slots.find(s => s.id === selectedId.value));
@@ -64,14 +66,9 @@ watch(() => props.blocked, blocked => { if (blocked) cancel(); });
 </script>
 <template lang="pug">
 .craft-inventory
-  .inventory-toolbar
-    span {{ state.slots_used }} / {{ state.slot_limit }} слотов
-    button.trash-target(ref="trash" type="button" :class="{over: overTrash, 'drag-active': drag?.moving}" :disabled="blocked" :aria-label="selected && canDiscard(selected) ? 'Переместить выбранный предмет в корзину' : 'Корзина: перетащите предмет или выберите его и нажмите Enter здесь'" @click="selected && requestDiscard(selected)")
-      font-awesome-icon(icon="trash-alt")
-      span Перетащите сюда
   .inventory-scroll
     .inventory-grid(aria-label="Инвентарь: 10 на 10 слотов" role="list")
-      .inventory-cell(v-for="(slot, index) in cells" :key="slot?.id || 'empty-' + index" role="listitem")
+      .inventory-cell(v-for="(slot, index) in cells" :key="slot?.id || 'empty-' + index" role="listitem" :style="{order: index * 2}")
         n-popover(v-if="slot" trigger="hover" :disabled="!!drag?.moving")
           template(#trigger)
             button.slot-item(type="button" :class="{selected: selectedId === slot.id, dragging: drag?.moving && drag.slotId === slot.id}" :aria-label="label(slot)" :aria-pressed="selectedId === slot.id" :disabled="blocked" @pointerdown="down($event, slot)" @pointermove="move" @pointerup="up" @pointercancel="cancel" @lostpointercapture="cancel" @click="select($event, slot)")
@@ -86,12 +83,15 @@ watch(() => props.blocked, blocked => { if (blocked) cancel(); });
             p {{ items.get(slot.item_id)?.description }}
             span {{ slot.quantity }} шт.
         .empty-slot(v-else :aria-label="'Пустой слот ' + (index + 1)")
+      .inventory-cell.trash-cell(role="listitem" :style="{order: trashOrder}")
+        button.trash-target(ref="trash" type="button" :class="{over: overTrash}" :disabled="blocked" title="Корзина" :aria-label="selected && canDiscard(selected) ? 'Переместить выбранный предмет в корзину' : 'Корзина: перетащите предмет или выберите его и нажмите Enter здесь'" @click="selected && requestDiscard(selected)")
+          font-awesome-icon(icon="trash-alt")
   .overflow-items(v-if="overflow.length")
     p Предметы сверх нового лимита сохранены. Освободите слоты, чтобы получать новые стопки.
     button.slot-item(v-for="slot in overflow" :key="slot.id" type="button" :aria-label="label(slot)" :disabled="blocked" @pointerdown="down($event, slot)" @pointermove="move" @pointerup="up" @pointercancel="cancel" @lostpointercapture="cancel" @click="select($event, slot)")
       font-awesome-icon(:icon="items.get(slot.item_id)?.icon || 'cube'")
       span {{ items.get(slot.item_id)?.name }} × {{ slot.quantity }}
-  .selected-item(v-if="selected")
+  aside.selected-item(v-if="selected" aria-label="Описание предмета")
     .item-meta
       font-awesome-icon(:icon="items.get(selected.item_id)?.icon || 'cube'")
       small {{ rarities[items.get(selected.item_id)?.rarity || 'common'] }}
@@ -110,12 +110,13 @@ watch(() => props.blocked, blocked => { if (blocked) cancel(); });
         n-input-number(v-model:value="discardQuantity" :min="1" :max="Math.min(10000, discarded.quantity)" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
 </template>
 <style scoped lang="scss">
-.craft-inventory { max-width: 760px; }.inventory-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 64px; margin-bottom: .75rem; font-size: .85rem; }
-.trash-target.drag-active { position: fixed; right: 24px; bottom: 24px; z-index: 1200; }
-.trash-target { display: flex; align-items: center; gap: .6rem; min-height: 64px; padding: .8rem 1rem; border: 2px dashed #b44a4a; border-radius: .7rem; background: #351f22; color: #f87171; cursor: pointer; }.trash-target svg { font-size: 1.5rem; }.trash-target.over { border-style: solid; background: #712929; color: white; box-shadow: 0 0 0 4px #ef444433; }.trash-target:disabled { opacity: .5; cursor: default; }
-.inventory-scroll { overflow-x: auto; }.inventory-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; min-width: 380px; }.inventory-cell { min-width: 0; aspect-ratio: 1; }.slot-item, .empty-slot { box-sizing: border-box; width: 100%; height: 100%; border-radius: .4rem; border: 1px solid var(--border); background: var(--bg-surface); }
-.empty-slot { background: #ffffff03; border-style: dashed; }.slot-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; padding: .25rem; color: var(--text); cursor: grab; touch-action: none; user-select: none; }.slot-item > svg { font-size: clamp(.9rem, 2vw, 1.35rem); color: #d6b685; }.slot-item.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }.slot-item.dragging { opacity: .4; cursor: grabbing; }.slot-item:disabled { cursor: default; opacity: .6; }
-.slot-name { font-size: .6rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.slot-count { align-self: flex-end; font-size: .7rem; line-height: 1; background: var(--bg-surface); }.item-meta { display: flex; align-items: center; gap: .5rem; }.item-meta svg { color: #d6b685; }.item-meta small { color: var(--text-muted); }.slot-description { display: grid; gap: .4rem; max-width: 270px; }.slot-description p, .selected-item p { margin: 0; color: var(--text-muted); font-size: .8rem; }.selected-item { display: grid; gap: .6rem; margin-top: 1rem; padding: .8rem; border-radius: .5rem; background: var(--bg-surface); }
-.use-item { display: flex; align-items: end; gap: .7rem; }.use-item label { max-width: 150px; font-size: .8rem; }.overflow-items { display: flex; flex-wrap: wrap; gap: .5rem; }.overflow-items p { flex-basis: 100%; }.overflow-items .slot-item { width: 90px; min-height: 70px; font-size: .7rem; }.drag-preview { position: fixed; pointer-events: none; z-index: 2000; padding: .7rem; background: #493c29; border-radius: .5rem; color: #f2d39d; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-@media(max-width: 760px) { .slot-name { display: none; }.slot-count { position: absolute; right: 2px; bottom: 2px; font-size: .6rem; }.trash-target { padding: .5rem; font-size: .7rem; }.inventory-toolbar { gap: .5rem; }.item-meta { flex-wrap: wrap; } }
+.craft-inventory { display: grid; grid-template-columns: minmax(520px, 760px) minmax(220px, 280px); align-items: start; gap: 1rem; overflow-x: auto; max-width: 100%; }
+.inventory-scroll { grid-column: 1; grid-row: 1; min-width: 0; }.inventory-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; }.inventory-cell { min-width: 0; aspect-ratio: 1; }
+.slot-item, .empty-slot, .trash-target { box-sizing: border-box; width: 100%; height: 100%; border-radius: .4rem; border: 1px solid var(--border); background: var(--bg-surface); }
+.empty-slot { background: #ffffff03; border-style: dashed; }.slot-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; padding: .2rem; color: var(--text); cursor: grab; touch-action: none; user-select: none; }.slot-item > svg { font-size: .85rem; color: #d6b685; flex-shrink: 0; }.slot-item.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }.slot-item.dragging { opacity: .4; cursor: grabbing; }.slot-item:disabled { cursor: default; opacity: .6; }
+.slot-name { font-size: .76rem; font-weight: 600; line-height: 1.15; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }.slot-count { align-self: flex-end; font-size: .65rem; line-height: 1; background: var(--bg-surface); }
+.trash-target { display: grid; place-items: center; padding: .3rem; border: 1px dashed #b44a4a; background: #351f22; color: #f87171; cursor: pointer; }.trash-target svg { font-size: 1rem; }.trash-target.over { border-style: solid; background: #712929; color: white; box-shadow: inset 0 0 0 2px #ef4444; }.trash-target:disabled { opacity: .5; cursor: default; }
+.item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.item-meta svg { color: #d6b685; font-size: .9rem; }.item-meta small { color: var(--text-muted); }.slot-description { display: grid; gap: .4rem; max-width: 270px; }.slot-description p, .selected-item p { margin: 0; color: var(--text-muted); font-size: .85rem; }.selected-item { grid-column: 2; grid-row: 1 / 3; display: grid; gap: .8rem; padding: 1rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg-surface); }.selected-item .item-meta strong { flex-basis: 100%; font-size: 1rem; }
+.use-item { display: grid; gap: .7rem; }.use-item label { font-size: .8rem; }.overflow-items { grid-column: 1; display: flex; flex-wrap: wrap; gap: .5rem; }.overflow-items p { flex-basis: 100%; }.overflow-items .slot-item { width: 90px; min-height: 70px; font-size: .75rem; }.drag-preview { position: fixed; pointer-events: none; z-index: 2000; padding: .7rem; background: #493c29; border-radius: .5rem; color: #f2d39d; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media(max-width: 760px) { .craft-inventory { grid-template-columns: 520px 220px; gap: .75rem; }.slot-name { font-size: .72rem; }.slot-count { font-size: .6rem; } }
 </style>

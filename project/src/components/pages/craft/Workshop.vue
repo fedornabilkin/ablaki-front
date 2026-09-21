@@ -5,17 +5,19 @@ import { NAlert, NButton, NInput, NPopover, NPagination } from 'naive-ui';
 import CraftRoadmap from './CraftRoadmap.vue';
 import CraftRecipeDetail from './CraftRecipeDetail.vue';
 import CraftInventory from './CraftInventory.vue';
+import { useCraftToasts } from '@/hooks/useCraftToasts';
 import { useClassicCraft } from '@/hooks/useClassicCraft';
-import { loadCraftHistory, craftError, type CraftEvent, type CraftAction } from '@/services/api/classicCraft';
+import { loadCraftHistory, craftError, type CraftEvent } from '@/services/api/classicCraft';
 import { date } from '@/services/api/portal';
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
 const craft = useClassicCraft(session, () => store.dispatch('auth/fetchData'), computed(() => Number(store.getters['auth/user']?.id)));
 const {state, busy, loading, error, notice, pending} = craft;
+useCraftToasts(notice, session);
 const tab = ref('map'), selected = ref<number | null>(null), category = ref<number | null>(null), search = ref('');
 const showControls = ref(true), showRecipe = ref(true);
-const root = ref<HTMLElement>(), controls = ref<HTMLElement>(), gather = ref<HTMLElement>(), roadmap = ref<InstanceType<typeof CraftRoadmap>>();
-const mapHeight = ref(720), controlsHeight = ref(180), gatherHeight = ref(140), narrow = ref(false);
+const root = ref<HTMLElement>(), controls = ref<HTMLElement>(), roadmap = ref<InstanceType<typeof CraftRoadmap>>();
+const mapHeight = ref(720), controlsHeight = ref(180), narrow = ref(false);
 const mapMode = computed(() => tab.value === 'map');
 const blocked = computed(() => busy.value || loading.value || !!pending.value);
 const items = computed(() => new Map(state.value?.items.map(i => [i.id, i]) ?? []));
@@ -48,21 +50,14 @@ watch([tab, historyPage], () => { if (tab.value === 'history') void refreshHisto
 watch(session, () => { historyRevision++; history.value = []; historyLoading.value = false; selected.value = null; });
 watch(state, value => { if (value && !selected.value) selected.value = value.recipes[0]?.id ?? null; if (tab.value === 'history') void refreshHistory(); });
 const actions: Record<string, string> = {craft: 'Изготовление', starter: 'Стартовый набор', gather: 'Сбор сырья', use: 'Использование', discard: 'Удаление'};
-const noticeTab = ref('map');
-const visibleNotice = computed(() => noticeTab.value === tab.value ? notice.value : '');
-function command(action: CraftAction, id = 0, quantity = 1, slotId?: number) {
-  noticeTab.value = tab.value;
-  return craft.command(action, id, quantity, slotId);
-}
-function retry() { noticeTab.value = tab.value; return craft.retry(); }
-watch(tab, () => { notice.value = ''; });
+const command = craft.command;
+const retry = craft.retry;
 
 function measure() {
   if (!root.value) return;
   const top = Math.max(0, root.value.getBoundingClientRect().top);
-  mapHeight.value = Math.max(360, window.innerHeight - top - 12);
+  mapHeight.value = Math.max(360, window.innerHeight - top);
   controlsHeight.value = controls.value?.offsetHeight ?? 0;
-  gatherHeight.value = gather.value?.offsetHeight ?? 0;
   narrow.value = window.innerWidth < 760;
 }
 let observer: ResizeObserver | undefined;
@@ -72,32 +67,31 @@ onMounted(() => {
   measure();
   observer = new ResizeObserver(measure);
   if (controls.value) observer.observe(controls.value);
-  if (gather.value) observer.observe(gather.value);
   window.addEventListener('resize', measure);
 });
 onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeEventListener('resize', measure); });
 </script>
 <template lang="pug">
-.workshop(ref="root" :class="{'map-mode': mapMode}" :style="{'--map-height': mapHeight + 'px', '--controls-bottom': (showControls ? controlsHeight + 24 : 60) + 'px', '--gather-bottom': (showControls ? gatherHeight + 24 : 12) + 'px'}")
-  craft-roadmap(v-if="state && mapMode" ref="roadmap" :state="state" :selected="selected" :category="category" :top-inset="showControls ? controlsHeight + 24 : 60" :left-inset="showControls ? (narrow ? 108 : 204) : 12" :right-inset="showRecipe || showControls ? (narrow ? 180 : 364) : 24" @select="select")
+.workshop(ref="root" :class="{'map-mode': mapMode}" :style="{'--map-height': mapHeight + 'px', '--controls-bottom': (showControls ? controlsHeight + 12 : 48) + 'px'}")
+  craft-roadmap(v-if="state && mapMode" ref="roadmap" :state="state" :selected="selected" :category="category" :top-inset="showControls ? controlsHeight + 12 : 48" :left-inset="showControls ? (narrow ? 108 : 204) : 12" :right-inset="showRecipe ? (narrow ? 264 : 364) : 24" @select="select")
   .workshop-controls(ref="controls" v-show="showControls || !mapMode")
     header.workshop-intro
       .intro-heading
-        font-awesome-icon(icon="hammer")
         h1 Мастерская
-        n-button(v-if="mapMode" quaternary circle size="small" aria-label="Скрыть управление" title="Скрыть управление" @click="showControls = false")
+        nav.workshop-tabs(aria-label="Разделы мастерской")
+          button(v-for="t in tabs" :key="t.id" type="button" :class="{active: tab === t.id}" :aria-current="tab === t.id ? 'page' : undefined" @click="tab = t.id") {{ t.name }}
+        n-button.hide-controls(v-if="mapMode" quaternary circle size="small" aria-label="Скрыть управление" title="Скрыть управление" @click="showControls = false")
           font-awesome-icon(icon="eye-slash")
-      p Создавайте материалы, инструменты и станции. Освоенные рецепты открывают новые ветви карты.
+      button.gather-button(type="button" :disabled="blocked || !state?.gather_available" @click="command('gather')")
+        font-awesome-icon(:icon="state && !state.gather_available ? 'check-circle' : 'seedling'")
+        strong {{ state && !state.gather_available ? 'Сырьё собрано' : 'Собрать сырьё' }}
+        span Раз в сутки по московскому времени
+      p.intro-description Создавайте материалы, инструменты и станции. Освоенные рецепты открывают новые ветви карты.
       .intro-actions
         n-button(v-if="state?.starter_available" size="small" type="primary" :disabled="blocked" @click="command('starter')") Стартовый набор
-        n-button(size="small" :loading="loading" :disabled="busy" @click="craft.refresh") Обновить
-        small(v-if="state") {{ state.slots_used }} / {{ state.slot_limit }} слотов
-      nav.workshop-tabs(aria-label="Разделы мастерской")
-        button(v-for="t in tabs" :key="t.id" type="button" :class="{active: tab === t.id}" :aria-current="tab === t.id ? 'page' : undefined" @click="tab = t.id") {{ t.name }}
-  button.gather-button(ref="gather" v-show="showControls || !mapMode" type="button" :disabled="blocked || !state?.gather_available" @click="command('gather')")
-    font-awesome-icon(:icon="state && !state.gather_available ? 'check-circle' : 'seedling'")
-    strong {{ state && !state.gather_available ? 'Сырьё собрано' : 'Собрать сырьё' }}
-    span Раз в сутки по московскому времени
+        .intro-tools
+          n-button(size="small" :loading="loading" :disabled="busy" @click="craft.refresh") Обновить
+          small(v-if="state") {{ state.slots_used }} / {{ state.slot_limit }} слотов
   aside.skills(v-if="state" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
     .skill(v-for="c in state.categories" :key="c.id" :class="{active: category === c.id}")
       n-popover(trigger="hover")
@@ -114,13 +108,12 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
     n-button(secondary @click="showControls = true")
       font-awesome-icon(icon="eye")
       |  Управление
-  .workshop-main(v-if="!mapMode || error || pending || visibleNotice || (loading && !state)")
-    .workshop-messages(v-if="error || pending || visibleNotice || (loading && !state)" :class="{floating: mapMode}")
+  .workshop-main(v-if="!mapMode || error || pending || (loading && !state)")
+    .workshop-messages(v-if="error || pending || (loading && !state)" :class="{floating: mapMode}")
       n-alert(v-if="error" type="error" role="alert" closable @close="error = ''") {{ error }}
       n-alert(v-if="pending" type="warning")
         p Результат операции пока не подтверждён. Повторная проверка не создаст её заново.
         n-button(:loading="busy" @click="retry") Проверить результат
-      n-alert(v-if="visibleNotice" type="success" role="status" closable @close="notice = ''") {{ visibleNotice }}
       p(v-if="loading && !state" role="status") Загружаем мастерскую…
     template(v-if="state")
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
@@ -165,30 +158,32 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
         |  {{ items.get(recipe.item_id)?.name }}
 </template>
 <style scoped lang="scss">
-.workshop { --sidebar-width: 180px; --recipe-width: 340px; position: relative; width: 100%; padding: 12px; box-sizing: border-box; display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--recipe-width); gap: 12px; align-items: start; }
+.workshop { --sidebar-width: 180px; --recipe-width: 340px; position: relative; width: 100%; padding: 0 12px 12px; box-sizing: border-box; display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--recipe-width); gap: 12px; align-items: start; }
 .workshop.map-mode { height: var(--map-height); min-height: 360px; overflow: hidden; display: block; }
-.workshop-controls { grid-column: 1 / 3; grid-row: 1; min-width: 0; }
-.map-mode .workshop-controls { position: absolute; top: 12px; left: 12px; right: calc(var(--recipe-width) + 24px); z-index: 2; max-height: 45%; overflow-y: auto; scrollbar-width: thin; }
-.workshop-intro { padding: 1rem 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: linear-gradient(120deg, #34291e, var(--bg-surface) 65%); }
-.intro-heading, .intro-actions { display: flex; align-items: center; gap: .65rem; }.intro-heading > svg { color: #d6b685; font-size: 1.25rem; }.intro-heading h1 { flex: 1; margin: 0; font-size: 1.35rem; }.intro-actions { flex-wrap: wrap; margin-top: .65rem; }
-.workshop-intro p { color: var(--text-muted); margin: .4rem 0 0; font-size: .85rem; }
-.gather-button { grid-column: 3; grid-row: 1; width: 100%; min-height: 130px; border: 1px solid #779b66; border-radius: .8rem; background: #233326; color: #e0f0d9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .45rem; padding: 1rem; cursor: pointer; }.gather-button > svg { font-size: 1.65rem; }.gather-button strong { font-size: 1.1rem; }.gather-button span { font-size: .75rem; }.gather-button:disabled { opacity: .65; cursor: default; }
-.map-mode .gather-button { position: absolute; z-index: 2; top: 12px; right: 12px; width: var(--recipe-width); }
+.workshop-controls { grid-column: 1 / 4; grid-row: 1; min-width: 0; width: min(960px, 100%); }
+.map-mode .workshop-controls { position: absolute; top: 0; left: 12px; width: min(960px, calc(100% - var(--recipe-width) - 36px)); z-index: 2; max-height: 45%; overflow-y: auto; scrollbar-width: thin; }
+.workshop-intro { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: .65rem 1rem; padding: .8rem 1rem; border: 1px solid var(--border); border-radius: 0 0 .8rem .8rem; background: linear-gradient(120deg, #34291e, var(--bg-surface) 65%); }
+.intro-heading { grid-column: 1; display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .75rem; }.intro-heading h1 { margin: 0; font-size: 1.2rem; }.hide-controls { margin-left: auto; }
+.intro-description { grid-column: 1; margin: 0; color: var(--text-muted); font-size: .8rem; }
+.intro-actions { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.intro-tools { display: flex; align-items: center; gap: .65rem; margin-left: auto; }
+.gather-button { grid-column: 2; grid-row: 1 / 3; align-self: start; border: 1px solid #779b66; border-radius: .6rem; background: #233326; color: #e0f0d9; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .35rem .5rem; padding: .7rem; cursor: pointer; }.gather-button > svg { font-size: 1.15rem; }.gather-button strong { font-size: .85rem; }.gather-button span { grid-column: 1 / -1; font-size: .65rem; }.gather-button:disabled { opacity: .65; cursor: default; }
 .skills { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; gap: .5rem; min-width: 0; }.map-mode .skills { position: absolute; z-index: 2; left: 12px; top: var(--controls-bottom); width: var(--sidebar-width); max-height: calc(100% - var(--controls-bottom) - 12px); overflow-y: auto; scrollbar-width: thin; }
 .skill { flex-shrink: 0; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); overflow: hidden; }.skill.active { border-color: var(--primary); background: var(--bg-elevated, #342b21); }.skill-select { display: flex; align-items: center; gap: .7rem; padding: .75rem; cursor: pointer; font: inherit; font-size: .8rem; color: inherit; width: 100%; border: 0; background: transparent; text-align: left; }.skill-select > span { display: grid; gap: .2rem; min-width: 0; overflow-wrap: anywhere; }.skill-icon { font-size: 1.25rem; color: #d6b685; flex-shrink: 0; }
 small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-width: 280px; }.craft-description p { margin: .5rem 0 0; }
-.workshop-tabs { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; margin-top: .75rem; padding-top: .5rem; border-top: 1px solid var(--border); }.workshop-tabs > button { border: 0; border-radius: .4rem; padding: .6rem .8rem; background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; font-size: .8rem; }.workshop-tabs > button.active { color: var(--primary); background: var(--primary-soft); }
-.floating-recipe { position: absolute; z-index: 2; right: 12px; top: var(--gather-bottom); width: var(--recipe-width); max-height: calc(100% - var(--gather-bottom) - 12px); overflow-y: auto; scrollbar-width: thin; box-sizing: border-box; }
-.restore-controls, .restore-recipe { position: absolute; top: 12px; z-index: 3; }.restore-controls { left: 12px; }.restore-recipe { right: 12px; top: var(--gather-bottom); }
+.workshop-tabs { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem; }.workshop-tabs > button { border: 0; border-radius: .4rem; padding: .4rem .55rem; background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; font-size: .8rem; }.workshop-tabs > button.active { color: var(--primary); background: var(--primary-soft); }
+.floating-recipe { position: absolute; z-index: 2; right: 12px; top: 0; width: var(--recipe-width); max-height: calc(100% - 12px); overflow-y: auto; scrollbar-width: thin; box-sizing: border-box; }
+.restore-controls, .restore-recipe { position: absolute; top: 0; z-index: 3; }.restore-controls { left: 12px; }.restore-recipe { right: 12px; top: 0; }
 .workshop-main { grid-column: 2 / 4; grid-row: 2; display: grid; gap: .75rem; min-width: 0; }.workshop-messages { display: grid; gap: .5rem; }.workshop-messages.floating { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: min(440px, calc(100% - 24px)); max-height: 35%; overflow: auto; }
 .workshop-content { min-width: 0; }.item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .75rem; margin-top: 1rem; }
 .list-recipe { position: relative; padding: 1rem; border: 1px solid var(--border); background: var(--bg-surface); border-radius: .6rem; display: flex; flex-direction: column; gap: .6rem; color: var(--text); text-align: left; overflow: hidden; cursor: pointer; }.list-recipe > span { color: var(--text-muted); }.item-heading { display: flex; align-items: center; gap: .6rem; padding-right: 16px; }.item-heading svg { color: #d6b685; flex-shrink: 0; }
 .stock-corner { position: absolute; top: 0; right: 0; width: 34px; height: 34px; clip-path: polygon(0 0,100% 0,100% 100%); background: #dc2626; }.stock-corner.available { background: #26854e; }.stock-corner svg { position: absolute; right: 4px; top: 4px; font-size: 10px; color: white; }
 .history-table { overflow: auto; margin: 1rem 0; }.history-table table { width: 100%; border-collapse: collapse; }.history-table th, .history-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media(max-width: 1100px) {
+  .workshop-intro { grid-template-columns: minmax(0, 1fr) 145px; gap: .5rem; padding: .7rem; }.intro-heading { align-content: start; }.intro-heading h1 { font-size: 1.1rem; }.workshop-tabs > button { padding: .35rem; font-size: .75rem; }
+}
 @media(max-width: 760px) {
-  .workshop { --sidebar-width: 84px; --recipe-width: 156px; }.workshop-intro { padding: .7rem; }.intro-heading { gap: .3rem; }.intro-heading > svg { display: none; }.intro-heading h1 { font-size: 1rem; }.gather-button { padding: .6rem; }.gather-button strong { font-size: .9rem; }
-  .skill-select { flex-direction: column; gap: .3rem; padding: .5rem .3rem; text-align: center; font-size: .7rem; }.skill-select small { font-size: .6rem; }.workshop-tabs { gap: .2rem; }.workshop-tabs > button { padding: .45rem .3rem; font-size: .7rem; }
-  .floating-recipe { width: min(280px, calc(100% - 120px)); }.workshop-messages.floating { max-width: calc(100% - 24px); }.workshop-intro p { font-size: .75rem; }.intro-actions small { font-size: .65rem; }
+  .workshop { --sidebar-width: 84px; --recipe-width: 240px; }.map-mode .workshop-controls { width: calc(100% - 24px); max-height: 38%; }.map-mode .floating-recipe { top: var(--controls-bottom); max-height: calc(100% - var(--controls-bottom) - 12px); }.restore-recipe { top: var(--controls-bottom); }
+  .skill-select { flex-direction: column; gap: .3rem; padding: .5rem .3rem; text-align: center; font-size: .7rem; }.skill-select small { font-size: .6rem; }.intro-description { font-size: .7rem; }.gather-button { padding: .5rem; }.gather-button strong { font-size: .75rem; }.intro-tools small { font-size: .65rem; }
 }
 </style>

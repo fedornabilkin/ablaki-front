@@ -18,7 +18,7 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
           a.skip-link(href="#content") К содержимому
           nav-bar
           main#content(tabindex="-1")
-            breadcrumbs
+            breadcrumbs(v-if="!route.meta.hideBreadcrumbs")
             .container.page(v-if="!route.matched.length")
               request-state(:loading="true" error="")
             router-view(v-else)
