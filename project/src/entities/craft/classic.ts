@@ -10,13 +10,14 @@ export function craftRequirements(state: CraftState, recipe: CraftRecipe, quanti
   if (recipe.station_id && !station) reasons.push('Станция недоступна');
   if (station?.item_id) reserve.add(station.item_id);
   reserve.forEach(id => required.set(id, (required.get(id) ?? 0) + 1));
-  const resources = [...required].map(([id, needed]) => ({id, name: items.get(id)?.name ?? `#${id}`, needed, have: stock.get(id) ?? 0, retained: reserve.has(id)}));
+  const resources = [...required].map(([id, needed]) => ({id, name: items.get(id)?.name ?? `#${id}`, needed, have: stock.get(id) ?? 0, retained: reserve.has(id), station: station?.item_id === id}));
   if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) reasons.push('Количество от 1 до 100');
   if (!items.get(recipe.item_id)?.active || resources.some(i => !items.get(i.id)?.active)) reasons.push('Предмет отключён');
   if (!recipe.ingredients.length) reasons.push('Не настроены ингредиенты');
   if (resources.some(i => i.have < i.needed)) reasons.push('Не хватает ресурсов');
-  if (recipe.cost_credits * quantity > state.credit) reasons.push('Не хватает кредитов');
-  return {reasons, resources, cost: recipe.cost_credits * quantity};
+  const cost = state.charge_credits ? recipe.cost_credits * quantity : 0;
+  if (cost > state.credit) reasons.push('Не хватает кредитов');
+  return {reasons, resources, cost};
 }
 export function maxCraftQuantity(state: CraftState, recipe: CraftRecipe): number {
   let low = 0, high = 100;

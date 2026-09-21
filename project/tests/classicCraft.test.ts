@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseCraftState, type CraftRecipe, type CraftState } from '../src/services/api/classicCraft';
 import { craftRequirements, craftRoadmap, maxCraftQuantity } from '../src/entities/craft/classic';
 const recipe: CraftRecipe = {id: 1, code: 'plank', name: 'Plank', description: '', category_id: 1, item_id: 2, station_id: null, output_quantity: 2, cost_credits: 3, experience: 20, min_level: 1, crafted: 0, ingredients: [{item_id: 1, quantity: 2}], tools: [1], requires: [], locked_reasons: []};
-export const fixture: CraftState = {items: [1, 2].map(id => ({id, code: 'item' + id, name: 'Item ' + id, description: '', category_id: 1, kind: 'material', rarity: 'common', icon: 'cube', stack_size: 100, destroyable: 1, active: 1, use_xp: 0, gather_quantity: 0})), recipes: [recipe], categories: [{id: 1, name: 'Wood', code: 'wood'}], stations: [], skills: [], inventory: [{item_id: 1, quantity: 5}], credit: 6, starter_available: false, gather_available: false, slot_limit: 200, slots_used: 1};
+export const fixture: CraftState = {items: [1, 2].map(id => ({id, code: 'item' + id, name: 'Item ' + id, description: '', category_id: 1, kind: 'material', rarity: 'common', icon: 'cube', stack_size: 100, destroyable: 1, active: 1, use_xp: 0, gather_quantity: 0})), recipes: [recipe], categories: [{id: 1, name: 'Wood', code: 'wood', description: 'Woodworking'}], stations: [], skills: [], inventory: [{item_id: 1, quantity: 5}], credit: 6, charge_credits: true, starter_available: false, gather_available: false, slot_limit: 200, slots_used: 1};
 describe('classic craft contract and roadmap', () => {
   it('validates the full server state without trusting type assertions', () => {
     expect(parseCraftState(fixture)).toEqual(fixture);
@@ -20,6 +20,14 @@ describe('classic craft contract and roadmap', () => {
   });
   it('shows disabled stations and server unlock reasons', () => {
     expect(craftRequirements(fixture, {...recipe, station_id: 7, locked_reasons: ['Сначала создайте молоток']}, 1).reasons).toEqual(['Сначала создайте молоток', 'Станция недоступна']);
+  });
+  it('allows priced recipes without credits only when server charging is disabled', () => {
+    const free = {...fixture, credit: 0, charge_credits: false};
+    expect(craftRequirements(free, recipe, 2)).toMatchObject({cost: 0, reasons: []});
+    expect(maxCraftQuantity(free, recipe)).toBe(2);
+    expect(craftRequirements({...free, charge_credits: true}, recipe, 1).reasons).toContain('Не хватает кредитов');
+    expect(parseCraftState({...fixture, charge_credits: undefined}).charge_credits).toBe(false);
+    expect(() => parseCraftState({...fixture, charge_credits: 'false'})).toThrow();
   });
   it('lays out diamond dependencies once and handles bad legacy cycles finitely', () => {
     const rows = [recipe, {...recipe, id: 2, requires: [1]}, {...recipe, id: 3, requires: [1]}, {...recipe, id: 4, requires: [2, 3]}];
