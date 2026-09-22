@@ -6,7 +6,8 @@ import { NAlert, NButton, NCard, NForm, NFormItem, NInputNumber, NModal, NPopcon
 import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
-import ListFilters from '@/components/ListFilters.vue';
+import GameStakeFilter from './GameStakeFilter.vue';
+import GameQuickStats from './GameQuickStats.vue';
 import SaperBoard from './saper/SaperBoard.vue';
 import RecentGames from './RecentGames.vue';
 import GameHistoryList from './GameHistoryList.vue';
@@ -15,7 +16,7 @@ import SaperSuggestions from './saper/SaperSuggestions.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
-import { gameSummary, signedAmount, type GameSummary } from '@/services/api/gameOverview';
+import { gameSummary, type GameSummary } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
@@ -25,9 +26,9 @@ const mode = computed(() => route.path.endsWith('/my') ? 'my' : route.path.endsW
 const unit = computed(() => saper.value ? 'Кг' : 'Cr');
 const available = computed(() => person(store.getters['auth/user'])[saper.value ? 'balance' : 'credit']);
 const canPlay = (game: RecordData) => Number.isFinite(Number(available.value)) && Number(game.kon) > 0 && Number(available.value) >= Number(game.kon);
-const { page, search, filters, params, reset } = useListQuery({ kon: '' });
-const filterDefinitions = [{ key: 'kon', label: 'Кон', type: 'number' as const }];
-const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, params.value), emptyPage(), [kind, mode, page, params, session]);
+const { page, filters, params } = useListQuery({ kon: '' });
+const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
+const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, { ...params.value, q: undefined }), emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
 const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, overviewVersion, session]);
 const showCreate = ref(false);
@@ -101,34 +102,14 @@ async function accountChange() {
 page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
   game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
 .container.page.stack
-  .toolbar
-    strong Доступно: {{ field(available) }} {{ unit }}
-    n-button(:loading="loading" :disabled="busy || !!selected" @click="refreshAll") Обновить
-  n-card(title="Сегодня")
-    request-state(:loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
-      template(v-if="summary")
-        .game-totals
-          div
-            small.muted Сыграно
-            strong {{ summary.today.played }}
-          div
-            small.muted Побед
-            strong {{ summary.today.wins }}
-          div
-            small.muted Итог по счёту
-            strong {{ signedAmount(summary.today.balance) }} {{ unit }}
-        p.muted.mt-3 Итог включает все операции с этой игрой за день, в том числе создание и отмену. Часовой пояс: {{ summary.today.timezone }}.
-        p(v-if="summary.own.count")
-          router-link(:to="'/games/' + kind + '/my'") Мои доступные игры: {{ summary.own.count }}
-          |  · На сумму {{ field(summary.own.amount) }} {{ unit }}
-        p.muted(v-else) У вас пока нет доступных игр.
+  request-state(:loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
+    game-quick-stats(v-if="summary" :summary="summary" :unit="unit" :kind="kind")
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
   saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
   saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
   n-card
-    list-filters.mb-3(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="loading" @reset="reset")
-    p.muted(v-if="!mode") Поиск по игроку или номеру игры. Ставка списывается при участии.
+    game-stake-filter.mb-3(v-model="selectedStake" :kind="kind" :scope="mode === 'my' ? 'my' : 'available'" :version="overviewVersion" :disabled="busy")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       game-history-list(v-if="mode === 'history'" :games="data.items" :kind="kind")
       .record-row(v-for="game in (mode === 'history' ? [] : data.items)" :key="game.id" :class="{ 'played-row': playedRows[game.id] }")

@@ -16,6 +16,13 @@ export function historyPeriod(value: string): HistoryPeriod {
 }
 export async function historyKons(kind: HistoryGameKind, period: HistoryPeriod, scope: HistoryScope): Promise<HistoryKon[]> {
   const { data } = await apiClient.get(config.makeApiUrl(`v1/${kind}/history-kons`), { params: { period, scope } });
+  return decodeKons(data);
+}
+export async function lobbyStakes(kind: HistoryGameKind, scope: 'my' | 'available'): Promise<HistoryKon[]> {
+  const { data } = await apiClient.get(config.makeApiUrl(`v1/${kind}/stakes`), { params: { scope } });
+  return decodeKons(data);
+}
+export function decodeKons(data: unknown): HistoryKon[] {
   if (!Array.isArray(data)) throw new Error('invalid-response');
   return data.map((item: unknown) => {
     if (!item || typeof item !== 'object' || !('kon' in item) || !('count' in item) ||

@@ -18,9 +18,9 @@ const { page, period, kon, kons, history, selectPeriod, selectKon, prefix } = us
 <template lang="pug">
 n-card(:title="scope === 'recent' ? 'Последние завершённые игры' : undefined")
   .stack
-    .history-buttons(role="group" aria-label="Период истории")
+    .history-buttons(v-if="scope !== 'recent'" role="group" aria-label="Период истории")
       n-button(v-for="item in historyPeriods" :key="item.value" :type="period === item.value ? 'primary' : 'default'" :aria-pressed="period === item.value" @click="selectPeriod(item.value)") {{ item.label }}
-    .history-buttons(role="group" aria-label="Ставка")
+    .history-buttons.stake-buttons(v-if="scope !== 'recent'" role="group" aria-label="Ставка")
       n-button(:type="!kon ? 'primary' : 'default'" :aria-pressed="!kon" @click="selectKon('')") Все ставки
       span.muted(v-if="kons.loading.value" role="status") Загрузка ставок…
       template(v-else-if="kons.error.value")
@@ -31,8 +31,9 @@ n-card(:title="scope === 'recent' ? 'Последние завершённые �
         span.muted(v-if="!kons.data.value.length") За этот период игр нет
     request-state(:loading="history.loading.value" :error="history.error.value" :empty="!history.data.value.items.length" @retry="history.refresh")
       game-history-list(:games="history.data.value.items" :kind="kind")
-    page-pager(v-if="!history.error.value" v-model:page="page" :result="history.data.value" :disabled="history.loading.value" :query-prefix="prefix")
+    page-pager(v-if="scope !== 'recent' && !history.error.value" v-model:page="page" :result="history.data.value" :disabled="history.loading.value" :query-prefix="prefix")
 </template>
 <style scoped>
 .history-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.stake-buttons { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .3rem; }.stake-buttons > * { flex-shrink: 0; }
 </style>

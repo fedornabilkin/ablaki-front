@@ -25,7 +25,7 @@ const rows = computed(() => recent.data.value.map(game => ({ game, winner: game.
       span.muted(v-else) —
       font-awesome-icon.winner(v-if="row.winner === player.side" icon="trophy" title="Победитель" aria-label="Победитель")
     strong {{ formatAccountNumber(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
-    small.muted(v-if="row.winner === 'draw'") Ничья
+    small.muted(v-if="row.winner === 'draw' && kind !== 'duel'") Ничья
 </template>
 <style scoped>
 .card-recent { display: grid; align-content: start; gap: .65rem; min-width: 0; }

@@ -17,19 +17,21 @@ const balance = computed(() => person(store.getters['auth/user']).credit);
 const { page, filters, params } = useListQuery({ mode: 'active' });
 const mode = computed(() => filters.value.mode === 'history' ? 'history' : 'active');
 const modes = [{ value: 'active', label: 'Новые', icon: 'paper-plane' }, { value: 'history', label: 'Получены', icon: 'check-circle' }];
-const quickAmounts = [10, 50, 100, 500, 1000];
+const quickAmounts = [1, 5, 10, 50, 100, 500, 1000];
 const { data, loading, error, refresh } = usePageRequest(() => {
   if (!userId.value) return Promise.resolve(emptyPage());
   const { 'filter[mode]': _mode, q: _search, ...query } = params.value;
   return list(mode.value === 'active' ? 'transfer' : 'transfer/history', page.value, query);
 }, emptyPage(), [mode, page, params, sessionRevision]);
 const amount = ref<number | null>(null);
+const count = ref<number | null>(1);
+const creatable = computed(() => amount.value && Number.isSafeInteger(amount.value) && amount.value > 0 && count.value && Number.isSafeInteger(count.value) && count.value > 0 && count.value <= 100 && Number.isFinite(Number(balance.value)) ? Math.max(0, Math.min(count.value, Math.floor(Number(balance.value) / amount.value))) : 0);
 const receiveId = ref<number | null>(null);
 const receiveCode = ref('');
 const busy = ref(false);
 const actionError = ref('');
 const notice = ref('');
-const canCreate = computed(() => amount.value !== null && Number.isSafeInteger(amount.value) && amount.value > 0 && Number.isFinite(Number(balance.value)) && Number(balance.value) >= amount.value);
+const canCreate = computed(() => creatable.value > 0 && Number(amount.value) <= 1000000000);
 async function act(path: string, method: 'post' | 'put' | 'delete', body?: unknown) {
   if (busy.value) return;
   if (method === 'post' && !canCreate.value) return;
@@ -37,10 +39,11 @@ async function act(path: string, method: 'post' | 'put' | 'delete', body?: unkno
   const revision = store.state.auth.revision;
   busy.value = true; actionError.value = ''; notice.value = '';
   try {
-    await mutate(path, method, body);
+    const result = await mutate(path, method, body);
     if (revision !== store.state.auth.revision) return;
     notice.value = 'Операция выполнена.';
-    amount.value = null; receiveId.value = null; receiveCode.value = '';
+    if (method === 'post' && result && typeof result === 'object' && 'created' in result && 'requested' in result) notice.value = `Создано переводов: ${result.created} из ${result.requested}.`;
+    amount.value = null; count.value = 1; receiveId.value = null; receiveCode.value = '';
     await refresh();
     try { await store.dispatch('auth/fetchData'); }
     catch { actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей операцией.'; }
@@ -63,20 +66,24 @@ page-header(page-title="Переводы кредитов")
               font-awesome-icon(icon="question-circle" aria-hidden="true")
           p Создайте перевод и передайте получателю номер и хэш из списка «Новые». Кредиты будут зарезервированы. У новых переводов хэш содержит 32 символа.
           p Каждый перевод может получить только один пользователь. После получения вернуть кредиты нельзя. Передавайте номер и хэш только адресату.
-          p За полученный перевод отправителю начисляется рейтинг — он зависит от суммы и текущего рейтинга, как в кредитных играх.
+          p Рейтинг начисляется отправителю при получении перевода, если его рейтинг выше рейтинга получателя минимум на 50 и он сам не получал переводы за последние 7 дней.
       n-form(@submit.prevent)
         n-form-item(label="Сумма, Cr" :label-props="{ for: 'transfer-amount' }")
           .amount-field
             n-input-number(:input-props="{ id: 'transfer-amount' }" v-model:value="amount" :min="1" :precision="0" :disabled="busy" placeholder="Целое количество кредитов")
             .quick-amounts(role="group" aria-label="Быстрая сумма перевода")
-              n-button(v-for="value in quickAmounts" :key="value" size="small" :type="amount === value ? 'primary' : 'default'" :aria-pressed="amount === value" :disabled="busy || Number(balance) < value" :aria-label="value + ' кредитов'" @click="amount = value")
+              n-button(v-for="value in quickAmounts" :key="value" size="small" :disabled="busy || (amount || 0) + value > Math.min(Number(balance), 1000000000)" :aria-label="'Добавить ' + value + ' кредитов'" @click="amount = (amount || 0) + value")
                 template(#icon)
                   font-awesome-icon(icon="coins" aria-hidden="true")
-                | {{ value }}
-        n-popconfirm(@positive-click="act('transfer', 'post', { amount, count: 1 })" :positive-button-props="{ disabled: busy }")
+                | +{{ value }}
+        n-form-item(label="Количество переводов" :label-props="{ for: 'transfer-count' }")
+          n-input-number(:input-props="{ id: 'transfer-count' }" v-model:value="count" :min="1" :max="100" :precision="0" :disabled="busy")
+        p Будет создано: {{ creatable }} · Всего: {{ creatable * (amount || 0) }} Cr
+        p.muted(v-if="creatable < (count || 0)") Количество уменьшено до доступного баланса.
+        n-popconfirm(@positive-click="act('transfer', 'post', { amount, count })" :positive-button-props="{ disabled: busy || !canCreate }")
           template(#trigger)
-            action-button(icon="paper-plane" label="Создать перевод" type="primary" :loading="busy" :disabled="!canCreate")
-          | Зарезервировать {{ amount }} Cr? Перевод может получить один пользователь. После получения кредиты вернуть нельзя.
+            action-button(icon="paper-plane" :label="creatable > 1 ? 'Создать переводы' : 'Создать перевод'" type="primary" :loading="busy" :disabled="!canCreate")
+          | Создать до {{ count }} переводов по {{ amount }} Cr? Если баланс изменится, сервер создаст доступное количество.
     n-card(title="Получить перевод")
       template(#header-extra)
         n-popover(trigger="click" :width="300")
