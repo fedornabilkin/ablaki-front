@@ -8,12 +8,12 @@ const baseUrl = config.getParam('apiDomain');
 const baseUrlDuel = `${baseUrl}v1/duel`;
 
 export const duel = {
-    get: async () => {
+    get: async (kon = '') => {
         if (isStatMockMode()) {
             return duelMock.get();
         }
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrlDuel}`).then(res => {
+            axios.get(`${baseUrlDuel}`, { params: { 'filter[kon]': kon || undefined } }).then(res => {
                 if (!res.data.errors) {
                     resolve(res.data);
                 } else {
@@ -23,12 +23,12 @@ export const duel = {
         });
     },
 
-    my: async (page = 1) => {
+    my: async (page = 1, kon = '') => {
         if (isStatMockMode()) {
             return duelMock.my();
         }
         return new Promise((resolve, reject) => {
-            axios.get(`${baseUrlDuel}/my?page=${page}`).then(res => {
+            axios.get(`${baseUrlDuel}/my`, { params: { page, 'filter[kon]': kon || undefined } }).then(res => {
                 if (!res.data.errors) {
                     resolve({
                         list: res.data,

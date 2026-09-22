@@ -28,7 +28,7 @@ async function claim(kind: 'bonus' | 'rating') {
 }
 </script>
 <template lang="pug">
-page-header(page-title="Мой профиль")
+page-header(page-title="Профиль")
   template(#actions)
     n-button(:loading="loading" @click="refresh") Обновить
 .container.page.stack

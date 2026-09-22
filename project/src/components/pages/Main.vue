@@ -9,7 +9,7 @@ import RequestState from '@/components/RequestState.vue';
 import ForumThemeList from '@/components/forum/ForumThemeList.vue';
 import UserList from '@/components/user/UserList.vue';
 const forum = usePageRequest(() => list('forum-theme', 1, { sort: '-last_comment_created_at', 'per-page': 5 }), emptyPage());
-const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-page': 10 }), emptyPage());
+const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-page': 7 }), emptyPage());
 </script>
 <template lang="pug">
 .container.page.stack
