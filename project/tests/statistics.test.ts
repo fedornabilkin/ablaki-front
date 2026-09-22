@@ -8,6 +8,15 @@ const periods = { users: counts, games: { orel: counts, saper: counts }, forum: 
 afterEach(() => vi.restoreAllMocks());
 
 describe('statistics API', () => {
+  it('keeps measured visits, gifted credits and seven-day chart values', () => {
+    const points = Array.from({ length: 7 }, (_, i) => ({ date: `2026-09-${16 + i}`, value: i }));
+    const charts = Object.fromEntries(['users', 'games', 'forum', 'transfers', 'exchange'].map(key => [key, points]));
+    const data = { ...totals, periods: { ...periods, forum: { ...periods.forum, credits: { total: 8, today: 5, yesterday: 3 } } }, visitors_today: 4, charts };
+    expect(decodeStatistics(data)).toMatchObject({ visitorsToday: 4, charts, forum: { credits: { total: 8, today: 5, yesterday: 3 } } });
+    expect(() => decodeStatistics({ ...data, visitors_today: -1 })).toThrow();
+    expect(() => decodeStatistics({ ...data, charts: { ...charts, users: points.slice(1) } })).toThrow();
+    expect(() => decodeStatistics({ ...data, charts: { ...charts, games: points.map(point => ({ ...point, value: -1 })) } })).toThrow();
+  });
   it('reads the compatible envelope and the earlier nested period response', () => {
     expect(decodeStatistics({ ...totals, periods })).toEqual(periods);
     expect(decodeStatistics(periods)).toEqual(periods);

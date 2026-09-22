@@ -1,12 +1,14 @@
 <script setup>
 import { ref } from "@vue/reactivity";
-import { watch } from "vue";
+import { computed, onScopeDispose, watch } from "vue";
 import { useStore } from 'vuex';
 import moment from "moment";
 import { NCard, NButton, NSpin, useNotification } from 'naive-ui';
 import { duel } from '@/services/api/games/duel.js';
 import { errorHandler } from "@/services/api/errorHandler.js";
 import { zoneName } from './zones.js';
+import GameStakeFilter from '../GameStakeFilter.vue';
+import { useListQuery } from '@/hooks/useListQuery';
 
 const props = defineProps({
   reloadListTrigger: { type: Boolean },
@@ -18,11 +20,19 @@ const notification = useNotification();
 const store = useStore();
 const gamesList = ref([]);
 const isLoading = ref(true);
+const listError = ref('');
+const { filters } = useListQuery({ kon: '' });
+const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { kon }; } });
+let requestVersion = 0;
+onScopeDispose(() => { requestVersion++; });
 
 const fetchGames = () => {
+  const version = ++requestVersion;
   isLoading.value = true;
-  duel.my()
+  listError.value = '';
+  duel.my(1, selectedStake.value)
       .then((res) => {
+        if (version !== requestVersion) return;
         gamesList.value = res.list.map((game) => ({
           ...game,
           createdDate: moment.unix(game.created_at).format("HH:mm:ss DD.MM.YYYY"),
@@ -30,14 +40,16 @@ const fetchGames = () => {
         }));
       })
       .catch((err) => {
-        console.log(err);
+        if (version === requestVersion) errorHandler(err, message => { listError.value = message || 'Не удалось загрузить игры.'; });
       })
       .finally(() => {
-        isLoading.value = false;
+        if (version === requestVersion) isLoading.value = false;
       });
 };
 
 watch(() => props.reloadListTrigger, fetchGames);
+watch(selectedStake, fetchGames);
+watch(() => store.state.auth.revision, () => { gamesList.value = []; fetchGames(); });
 
 const onDelete = (row) => {
   if (row.isDeleting) return;
@@ -61,6 +73,9 @@ fetchGames();
 </script>
 
 <template lang="pug">
+  game-stake-filter.mb-3(v-model="selectedStake" kind="duel" scope="my" :version="gamesList" :disabled="gamesList.some(row => row.isDeleting)")
+  p(v-if="listError" role="alert") {{ listError }}
+    n-button(text @click="fetchGames") Повторить
   n-spin(:show="isLoading")
     .duel-games
       .duel-empty(v-if="!isLoading && !gamesList.length")

@@ -12,7 +12,7 @@ export function breadcrumbs(path: string, params: Record<string, unknown> = {}):
       result.push({ title: games[parts[1]], to: '/games/' + parts[1] });
       if (parts[2]) result.push({ title: parts[2] === 'my' ? 'Мои игры' : 'История' });
     } else if (parts[0] === 'forum' && parts[1]) result.push({ title: parts[1] === 'my' ? 'Мои темы' : 'Тема №' + String(params.theme_id ?? '') });
-    else if (parts[0] === 'users' && parts[1]) result.push({ title: ({ profile: 'Мой профиль', referrals: 'Рефералы', login: 'Вход', 'login-key': 'Вход', logout: 'Выход', registration: 'Регистрация' } as Record<string, string>)[parts[1]] ?? 'Профиль' });
+    else if (parts[0] === 'users' && parts[1]) result.push({ title: ({ profile: 'Профиль', referrals: 'Рефералы', login: 'Вход', 'login-key': 'Вход', logout: 'Выход', registration: 'Регистрация' } as Record<string, string>)[parts[1]] ?? 'Профиль' });
     else if (parts[0] === 'exchange' && parts[1]) result.push({ title: parts[1] === 'my' ? 'Мои заявки' : 'История' });
   }
   delete result[result.length - 1].to;

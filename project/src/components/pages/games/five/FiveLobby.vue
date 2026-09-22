@@ -6,7 +6,7 @@ import { NAlert, NButton, NCard, NInputNumber, NModal, NPopconfirm } from 'naive
 import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
-import ListFilters from '@/components/ListFilters.vue';
+import GameStakeFilter from '../GameStakeFilter.vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import FiveBoard from './FiveBoard.vue';
 import GameToolbar from '../GameToolbar.vue';
@@ -25,9 +25,10 @@ const userId = computed(() => Number(store.getters['auth/user']?.id));
 const available = computed(() => person(store.getters['auth/user']).credit);
 const credit = computed(() => Number(available.value));
 const mine = computed(() => route.path.endsWith('/my'));
-const { page, search, params, reset } = useListQuery();
+const { page, filters, params } = useListQuery({ kon: '' });
+const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
 const games = usePageRequest(async () => {
-  const result = await list(mine.value ? 'five/my' : 'five', page.value, params.value);
+  const result = await list(mine.value ? 'five/my' : 'five', page.value, { ...params.value, q: undefined });
   return { ...result, items: result.items.map(fiveGame) };
 }, emptyPage(), [mine, page, params, session]);
 const play = useFiveGame(session, () => store.dispatch('auth/fetchData'), games.refresh);
@@ -63,9 +64,6 @@ async function create() {
 page-header(page-title="5 яблок")
   game-toolbar(kind="five" :busy="play.busy.value || deleting" @create="showCreate = true" @changed="games.refresh(); play.close()")
 .container.page.stack
-  .toolbar
-    strong Доступно: {{ formatAccountNumber(available) }} Cr
-    n-button(:disabled="play.busy.value" :loading="games.loading.value || play.loading.value" @click="games.refresh(); play.refresh()") Обновить
   p.muted Каждый раунд оба игрока выбирают от 1 до 5 яблок. Равные числа — ничья. При разнице в одно яблоко меньшее число получает сумму чисел очками; иначе большее число получает разность. Побеждает первый, набравший 21 очко. Выплата — две ставки за вычетом комиссии 5%.
   n-alert(v-if="play.error.value" type="error" title="Не удалось обновить игру") {{ play.error.value }} Обновите состояние перед следующим ходом.
   n-alert(v-if="play.notice.value" type="info") {{ play.notice.value }}
@@ -76,7 +74,7 @@ page-header(page-title="5 яблок")
     five-board(:game="play.game.value" :user-id="userId" :credit="credit" :busy="play.busy.value" :blocked="play.loading.value || !!play.error.value" @move="play.move" @cancel="play.cancel")
   n-card(v-else :title="mine ? 'Мои игры' : 'Доступные игры'")
     .stack
-      list-filters(v-model:search="search" :loading="games.loading.value" placeholder="Игрок или номер игры" @reset="reset")
+      game-stake-filter(v-model="selectedStake" kind="five" :scope="mine ? 'my' : 'available'" :version="games.data.value" :disabled="play.busy.value || deleting")
       request-state(:loading="games.loading.value" :error="games.error.value" :empty="!games.data.value.items.length" @retry="games.refresh")
         .game-row(v-for="game in games.data.value.items" :key="game.id")
           span №{{ game.id }}

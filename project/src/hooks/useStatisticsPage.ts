@@ -15,8 +15,8 @@ export function useStatisticsPage() {
   const summary = usePageRequest(getStatistics, null as Statistics | null);
   const query = useListQuery({ period: 'all' }, { defaultSort: '-rating' });
   const { page, params, filters } = query;
-  const ranking = usePageRequest(() => list('stat/top', page.value, {
-    ...params.value, period: filters.value.period, 'filter[period]': undefined,
+  const ranking = usePageRequest(() => list('stat/top', 1, {
+    ...params.value, 'per-page': 10, period: filters.value.period, 'filter[period]': undefined,
   }), emptyPage(), [page, params]);
 
   function choosePeriod(period: string) {

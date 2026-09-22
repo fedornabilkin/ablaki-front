@@ -26,7 +26,7 @@ describe('statistics page interactions', () => {
     state.choosePeriod('day'); await flush();
     expect(context.route.query).toEqual({ period: 'day', q: 'alice' });
     expect(apiClient.get).toHaveBeenLastCalledWith(expect.stringMatching(/stat\/top$/), {
-      params: { envelope: 1, page: 1, q: 'alice', sort: '-rating', period: 'day', 'filter[period]': undefined },
+      params: { envelope: 1, page: 1, 'per-page': 10, q: 'alice', sort: '-rating', period: 'day', 'filter[period]': undefined },
     });
     const count = vi.mocked(apiClient.get).mock.calls.length;
     state.choosePeriod('day'); await flush();
