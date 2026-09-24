@@ -8,8 +8,8 @@ export interface CraftRecipe { id: number; code: string; name: string; descripti
 export interface CraftSlot { id: number; item_id: number; quantity: number }
 export interface CraftState { items: CraftItem[]; recipes: CraftRecipe[]; categories: {id: number; name: string; code: string; description: string}[]; stations: {id: number; name: string; item_id: number | null}[]; skills: {category_id: number; experience: number; level: number}[]; inventory: {item_id: number; quantity: number}[]; inventory_slots: CraftSlot[]; credit: number; charge_credits: boolean; starter_available: boolean; gather_available: boolean; slot_limit: number; slots_used: number }
 export interface CraftEvent { id: number; action: string; item_id: number | null; recipe_id: number | null; quantity: number; credit_change: number; created_at: number }
-export type CraftAction = 'craft' | 'starter' | 'gather' | 'use' | 'discard';
-export interface CraftCommand { action: CraftAction; id: number; quantity: number; request_key: string; slot_id?: number }
+export type CraftAction = 'craft' | 'starter' | 'gather' | 'use' | 'discard' | 'merge';
+export interface CraftCommand { action: CraftAction; id: number; quantity: number; request_key: string; slot_id?: number; target_slot_id?: number }
 const object = (v: unknown): Record<string, unknown> => { if (!v || typeof v !== 'object' || Array.isArray(v)) throw Error('invalid-response'); return v as Record<string, unknown>; };
 const str = (v: unknown): string => { if (typeof v !== 'string') throw Error('invalid-response'); return v.trim(); };
 const num = (v: unknown, min = 0, integer = true): number => { if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '') throw Error('invalid-response'); const n = Number(v); if (!Number.isFinite(n) || n < min || (integer && !Number.isSafeInteger(n))) throw Error('invalid-response'); return n; };

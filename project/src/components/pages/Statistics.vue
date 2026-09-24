@@ -59,7 +59,7 @@ page-header(page-title="Статистика")
           span.muted {{ index + 1 }}.
           user-avatar(:user="user")
         .ranking-dates.muted
-          span Последнее посещение: {{ date(user.last_login_at) }}
+          span Последнее посещение: {{ date(user.latest_activity || user.last_login_at) }}
           span Регистрация: {{ date(user.created_at) }}
         strong
           formatted-number(:value="user.rating")

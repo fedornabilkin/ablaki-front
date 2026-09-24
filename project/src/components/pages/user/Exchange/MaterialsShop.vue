@@ -1,12 +1,13 @@
 <script setup>
+import { useToasts } from '@/hooks/useToasts';
 import {onMounted, ref, computed, watch} from 'vue';
 import {useStore} from 'vuex';
-import {NEmpty, NSpin, NInputNumber, NButton, NCard, NTag, useMessage} from 'naive-ui';
+import {NEmpty, NSpin, NInputNumber, NButton, NCard, NTag} from 'naive-ui';
 import {useCraftStore} from '@/store/craft';
 
 const craft = useCraftStore();
 const vuex = useStore();
-const message = useMessage();
+const message = useToasts();
 
 const qtys = ref({});
 const user = computed(() => vuex.getters['auth/user']);

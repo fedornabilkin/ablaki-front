@@ -36,9 +36,10 @@ function find(node: ElementNode, predicate: (node: ElementNode) => boolean): Ele
   if (predicate(node)) return node;
   for (const child of node.children) { const found = find(child, predicate); if (found) return found; }
 }
-function mount() {
+function mount(targetQuantity = 100) {
   const state: CraftState = {items: [{id: 5, code: 'log', name: 'Log', description: '', category_id: 1, kind: 'material', rarity: 'common', icon: 'cube', stack_size: 100, destroyable: 1, active: 1, use_xp: 0, gather_quantity: 0}], inventory: [{item_id: 5, quantity: 103}], inventory_slots: [{id: 7, item_id: 5, quantity: 100}, {id: 8, item_id: 5, quantity: 3}], recipes: [], categories: [], stations: [], skills: [], credit: 0, charge_credits: false, starter_available: false, gather_available: false, slot_limit: 100, slots_used: 2};
   const command = vi.fn(), blocked = ref(false), root = element('root');
+  state.inventory_slots[0].quantity = targetQuantity;
   const app = renderer.createApp({setup: () => () => h(ClientInventory, {state, blocked: blocked.value, onCommand: command})});
   app.provide(Vue.ssrContextKey, {modules: new Set()});
   app.component('font-awesome-icon', {render: () => h('i')});
@@ -48,6 +49,29 @@ function mount() {
   return {root, slot, app, command, blocked, pointer};
 }
 describe('inventory drag to trash', () => {
+  it('keeps trash in cell 101 and merges into a matching non-full stack by dragging', async () => {
+    const view = mount(90);
+    const basket = find(view.root, node => node.props.title === 'Корзина')!;
+    expect(basket.parent!.props.style.order).toBe(200);
+    const target = find(view.root, node => node.props['aria-label'] === 'Log: 90 шт.')!;
+    target.getBoundingClientRect = () => ({left: 100, right: 180, top: 200, bottom: 280});
+    view.slot.props.onPointerdown(view.pointer(10, 10));
+    view.slot.props.onPointermove(view.pointer(140, 240)); await nextTick();
+    expect(target.props.class).toContain('merge-target');
+    view.slot.props.onPointerup(view.pointer(140, 240)); await nextTick();
+    expect(view.command).toHaveBeenCalledExactlyOnceWith('merge', 5, 1, 8, 7);
+    expect(find(view.root, n => !!n.props['data-confirm-button'])).toBeUndefined();
+    view.app.unmount();
+  });
+  it('does not merge into a full stack', async () => {
+    const view = mount();
+    const target = find(view.root, node => node.props['aria-label'] === 'Log: 100 шт.')!;
+    target.getBoundingClientRect = () => ({left: 100, right: 180, top: 200, bottom: 280});
+    view.slot.props.onPointerdown(view.pointer(10, 10));
+    view.slot.props.onPointermove(view.pointer(140, 240));
+    view.slot.props.onPointerup(view.pointer(140, 240));
+    expect(view.command).not.toHaveBeenCalled(); view.app.unmount();
+  });
   it('requires confirmation and discards exactly the dragged stack, not its aggregate', async () => {
     const view = mount();
     const basket = find(view.root, node => node.props.title === 'Корзина')!;

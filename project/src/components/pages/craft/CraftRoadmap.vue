@@ -71,6 +71,9 @@ defineExpose({reveal});
     svg.connections(:width="graph.width" :height="graph.height" aria-hidden="true")
       path(v-for="edge in graph.edges" :key="edge.id" :d="edge.path" :class="{highlight: edge.to === selected || edge.from === selected}")
     button.recipe-node(v-for="node in graph.nodes" :key="node.recipe.id" type="button" :class="[statuses.get(node.recipe.id), {selected: selected === node.recipe.id, muted: category && node.recipe.category_id !== category}]" :style="{left: node.x + 'px', top: node.y + 'px', width: roadmapNodeSize.width + 'px', height: roadmapNodeSize.height + 'px'}" :aria-pressed="selected === node.recipe.id" @click="emit('select', node.recipe.id)" @focus="focus($event, node.recipe.id)")
+      .node-status
+        font-awesome-icon(v-if="node.recipe.crafted" icon="check" title="Уже создано" aria-label="Уже создано")
+        font-awesome-icon(v-if="statuses.get(node.recipe.id) === 'ready'" icon="plus" title="Можно создать" aria-label="Можно создать")
       font-awesome-icon.node-icon(:icon="items.get(node.recipe.item_id)?.icon || 'cube'")
       .node-text
         strong {{ items.get(node.recipe.item_id)?.name }}
@@ -100,7 +103,8 @@ defineExpose({reveal});
 .node-text { display: grid; gap: .2rem; min-width: 0; flex: 1; }
 .node-text strong { font-size: 13px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .node-text small { font-size: 11px; color: #c4bdb4; }
-.node-equipment { display: flex; flex-wrap: wrap; align-content: center; justify-content: flex-end; gap: 3px; width: 52px; max-height: 80px; overflow-y: auto; flex-shrink: 0; }
+.node-status { position: absolute; top: 4px; left: 5px; display: flex; gap: 4px; color: #97d9af; font-size: 10px; }
+.node-equipment { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 26px; max-height: 80px; overflow-y: auto; flex-shrink: 0; }.equipment-badge { flex-shrink: 0; }
 .equipment-badge { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; border: 1px solid #69b686; color: #97d9af; background: #203329; }
 .equipment-badge.missing { color: #ff9595; border-color: #e56d6d; background: #572b2b; }
 </style>

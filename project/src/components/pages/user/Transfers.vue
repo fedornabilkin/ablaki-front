@@ -17,7 +17,7 @@ const balance = computed(() => person(store.getters['auth/user']).credit);
 const { page, filters, params } = useListQuery({ mode: 'active' });
 const mode = computed(() => filters.value.mode === 'history' ? 'history' : 'active');
 const modes = [{ value: 'active', label: 'Новые', icon: 'paper-plane' }, { value: 'history', label: 'Получены', icon: 'check-circle' }];
-const quickAmounts = [1, 5, 10, 50, 100, 500, 1000];
+const quickAmounts = [1, 5, 10, 50, 100, 500];
 const { data, loading, error, refresh } = usePageRequest(() => {
   if (!userId.value) return Promise.resolve(emptyPage());
   const { 'filter[mode]': _mode, q: _search, ...query } = params.value;
@@ -68,16 +68,16 @@ page-header(page-title="Переводы кредитов")
           p Каждый перевод может получить только один пользователь. После получения вернуть кредиты нельзя. Передавайте номер и хэш только адресату.
           p Рейтинг начисляется отправителю при получении перевода, если его рейтинг выше рейтинга получателя минимум на 50 и он сам не получал переводы за последние 7 дней.
       n-form(@submit.prevent)
-        n-form-item(label="Сумма, Cr" :label-props="{ for: 'transfer-amount' }")
-          .amount-field
+        .transfer-fields
+          n-form-item(label="Сумма, Cr" :label-props="{ for: 'transfer-amount' }")
             n-input-number(:input-props="{ id: 'transfer-amount' }" v-model:value="amount" :min="1" :precision="0" :disabled="busy" placeholder="Целое количество кредитов")
-            .quick-amounts(role="group" aria-label="Быстрая сумма перевода")
-              n-button(v-for="value in quickAmounts" :key="value" size="small" :disabled="busy || (amount || 0) + value > Math.min(Number(balance), 1000000000)" :aria-label="'Добавить ' + value + ' кредитов'" @click="amount = (amount || 0) + value")
-                template(#icon)
-                  font-awesome-icon(icon="coins" aria-hidden="true")
-                | +{{ value }}
-        n-form-item(label="Количество переводов" :label-props="{ for: 'transfer-count' }")
-          n-input-number(:input-props="{ id: 'transfer-count' }" v-model:value="count" :min="1" :max="100" :precision="0" :disabled="busy")
+          n-form-item(label="Количество переводов" :label-props="{ for: 'transfer-count' }")
+            n-input-number(:input-props="{ id: 'transfer-count' }" v-model:value="count" :min="1" :max="100" :precision="0" :disabled="busy")
+        .quick-amounts(role="group" aria-label="Быстрая сумма перевода")
+          n-button(v-for="value in quickAmounts" :key="value" size="small" :disabled="busy || (amount || 0) + value > Math.min(Number(balance), 1000000000)" :aria-label="'Добавить ' + value + ' кредитов'" @click="amount = (amount || 0) + value")
+            template(#icon)
+              font-awesome-icon(icon="coins" aria-hidden="true")
+            | +{{ value }}
         p Будет создано: {{ creatable }} · Всего: {{ creatable * (amount || 0) }} Cr
         p.muted(v-if="creatable < (count || 0)") Количество уменьшено до доступного баланса.
         n-popconfirm(@positive-click="act('transfer', 'post', { amount, count })" :positive-button-props="{ disabled: busy || !canCreate }")
@@ -127,7 +127,7 @@ page-header(page-title="Переводы кредитов")
 </template>
 
 <style scoped>
-.amount-field { width: 100%; }
+.transfer-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .75rem; }.transfer-fields :deep(.n-input-number) { min-width: 0; width: 100%; }
 .quick-amounts, .transfer-modes { display: flex; flex-wrap: wrap; gap: .5rem; }
 .quick-amounts { margin-top: .5rem; }
 .transfer-modes { margin-bottom: 1rem; }

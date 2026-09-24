@@ -4,11 +4,10 @@ import { NButton, NInputNumber, NModal, NPopover } from 'naive-ui';
 import type { CraftState, CraftSlot } from '@/services/api/classicCraft';
 import { inventoryCells, insideTrash, INVENTORY_CELLS } from '@/entities/craft/inventory';
 const props = defineProps<{state: CraftState; blocked: boolean}>();
-const emit = defineEmits<{command: [action: 'use' | 'discard', id: number, quantity: number, slotId: number]}>();
+const emit = defineEmits<{command: [action: 'use' | 'discard' | 'merge', id: number, quantity: number, slotId: number, targetSlotId?: number]}>();
 const items = computed(() => new Map(props.state.items.map(i => [i.id, i])));
-// The basket occupies the next empty display cell; a full inventory still shows all 100 stacks.
-const cells = computed(() => inventoryCells(props.state.inventory_slots).slice(0, props.state.inventory_slots.length >= INVENTORY_CELLS ? INVENTORY_CELLS : INVENTORY_CELLS - 1));
-const trashOrder = computed(() => Math.min(props.state.inventory_slots.length, INVENTORY_CELLS) * 2 - 1);
+const cells = computed(() => inventoryCells(props.state.inventory_slots));
+const trashOrder = INVENTORY_CELLS * 2;
 const overflow = computed(() => props.state.inventory_slots.slice(INVENTORY_CELLS));
 const selectedId = ref<number | null>(null), discardId = ref<number | null>(null);
 const selected = computed(() => props.state.inventory_slots.find(s => s.id === selectedId.value));
@@ -18,12 +17,22 @@ const showDiscard = computed({get: () => !!discarded.value, set: value => { if (
 const trash = ref<HTMLElement>();
 const drag = ref<{slotId: number; pointerId: number; startX: number; startY: number; x: number; y: number; moving: boolean} | null>(null);
 const overTrash = ref(false);
+const overSlot = ref<number | null>(null);
+const slotElements = new Map<number, HTMLElement>();
+function slotElement(id: number, element: unknown) { if (element) slotElements.set(id, element as HTMLElement); else slotElements.delete(id); }
+function canMerge(source: CraftSlot, target: CraftSlot) {
+  return !props.blocked && source.id !== target.id && source.item_id === target.item_id && target.quantity < (items.value.get(target.item_id)?.stack_size || 0);
+}
+function merge(target: CraftSlot) {
+  const source = selected.value;
+  if (source && canMerge(source, target)) emit('command', 'merge', source.item_id, 1, source.id, target.id);
+}
 let suppressClick = false;
 const rarities: Record<string, string> = {common: 'Обычный', uncommon: 'Необычный', rare: 'Редкий', epic: 'Эпический', legendary: 'Легендарный'};
 const label = (slot: CraftSlot) => `${items.value.get(slot.item_id)?.name || 'Предмет'}: ${slot.quantity} шт.`;
 const canDiscard = (slot: CraftSlot) => !props.blocked && !!items.value.get(slot.item_id)?.destroyable;
 function down(event: PointerEvent, slot: CraftSlot) {
-  if (event.button !== 0 || !canDiscard(slot) || drag.value) return;
+  if (event.button !== 0 || props.blocked || drag.value) return;
   suppressClick = false;
   drag.value = {slotId: slot.id, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, moving: false};
   (event.currentTarget as Element).setPointerCapture(event.pointerId);
@@ -34,18 +43,27 @@ function move(event: PointerEvent) {
   if (Math.hypot(event.clientX - drag.value.startX, event.clientY - drag.value.startY) > 6) drag.value.moving = true;
   const rect = trash.value?.getBoundingClientRect();
   overTrash.value = !!rect && drag.value.moving && insideTrash(drag.value, rect);
+  overSlot.value = null;
+  const source = props.state.inventory_slots.find(s => s.id === drag.value?.slotId);
+  if (source && drag.value.moving && !overTrash.value) {
+    for (const target of props.state.inventory_slots) {
+      const bounds = slotElements.get(target.id)?.getBoundingClientRect();
+      if (bounds && canMerge(source, target) && insideTrash(drag.value, bounds)) { overSlot.value = target.id; break; }
+    }
+  }
 }
 function requestDiscard(slot: CraftSlot) {
   if (!canDiscard(slot)) return;
   discardId.value = slot.id; discardQuantity.value = Math.min(10000, slot.quantity);
 }
-function cancel() { drag.value = null; overTrash.value = false; }
+function cancel() { drag.value = null; overTrash.value = false; overSlot.value = null; }
 function up(event: PointerEvent) {
   if (!drag.value || drag.value.pointerId !== event.pointerId) return;
   move(event);
   suppressClick = drag.value.moving;
   const slot = props.state.inventory_slots.find(s => s.id === drag.value?.slotId);
   if (slot && overTrash.value) requestDiscard(slot);
+  else if (slot && overSlot.value !== null && !props.blocked) emit('command', 'merge', slot.item_id, 1, slot.id, overSlot.value);
   cancel();
 }
 function select(event: MouseEvent, slot: CraftSlot) {
@@ -63,6 +81,7 @@ function use() {
   if (slot && !props.blocked && qty && Number.isSafeInteger(qty) && qty > 0 && qty <= Math.min(10000, slot.quantity) && items.value.get(slot.item_id)?.active && items.value.get(slot.item_id)?.use_xp) emit('command', 'use', slot.item_id, qty, slot.id);
 }
 watch(() => props.blocked, blocked => { if (blocked) cancel(); });
+watch(() => props.state, cancel);
 </script>
 <template lang="pug">
 .craft-inventory
@@ -71,7 +90,7 @@ watch(() => props.blocked, blocked => { if (blocked) cancel(); });
       .inventory-cell(v-for="(slot, index) in cells" :key="slot?.id || 'empty-' + index" role="listitem" :style="{order: index * 2}")
         n-popover(v-if="slot" trigger="hover" :disabled="!!drag?.moving")
           template(#trigger)
-            button.slot-item(type="button" :class="{selected: selectedId === slot.id, dragging: drag?.moving && drag.slotId === slot.id}" :aria-label="label(slot)" :aria-pressed="selectedId === slot.id" :disabled="blocked" @pointerdown="down($event, slot)" @pointermove="move" @pointerup="up" @pointercancel="cancel" @lostpointercapture="cancel" @click="select($event, slot)")
+            button.slot-item(:ref="element => slotElement(slot.id, element)" type="button" :class="{selected: selectedId === slot.id, dragging: drag?.moving && drag.slotId === slot.id, 'merge-target': overSlot === slot.id}" :aria-label="label(slot)" :aria-pressed="selectedId === slot.id" aria-keyshortcuts="Shift+Enter" :disabled="blocked" @keydown.shift.enter.prevent="merge(slot)" @pointerdown="down($event, slot)" @pointermove="move" @pointerup="up" @pointercancel="cancel" @lostpointercapture="cancel" @click="select($event, slot)")
               font-awesome-icon(:icon="items.get(slot.item_id)?.icon || 'cube'")
               span.slot-name {{ items.get(slot.item_id)?.name }}
               strong.slot-count {{ slot.quantity }}
@@ -110,6 +129,7 @@ watch(() => props.blocked, blocked => { if (blocked) cancel(); });
         n-input-number(v-model:value="discardQuantity" :min="1" :max="Math.min(10000, discarded.quantity)" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
 </template>
 <style scoped lang="scss">
+.slot-item.merge-target { outline: 2px solid #4ade80; outline-offset: -2px; background: #203329; }
 .craft-inventory { display: grid; grid-template-columns: minmax(520px, 760px) minmax(220px, 280px); align-items: start; gap: 1rem; overflow-x: auto; max-width: 100%; }
 .inventory-scroll { grid-column: 1; grid-row: 1; min-width: 0; }.inventory-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; }.inventory-cell { min-width: 0; aspect-ratio: 1; }
 .slot-item, .empty-slot, .trash-target { box-sizing: border-box; width: 100%; height: 100%; border-radius: .4rem; border: 1px solid var(--border); background: var(--bg-surface); }
