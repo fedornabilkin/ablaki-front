@@ -49,7 +49,7 @@ async function refreshHistory() {
 watch([tab, historyPage], () => { if (tab.value === 'history') void refreshHistory(); });
 watch(session, () => { historyRevision++; history.value = []; historyLoading.value = false; selected.value = null; });
 watch(state, value => { if (value && !selected.value) selected.value = value.recipes[0]?.id ?? null; if (tab.value === 'history') void refreshHistory(); });
-const actions: Record<string, string> = {craft: 'Изготовление', starter: 'Стартовый набор', gather: 'Сбор сырья', use: 'Использование', discard: 'Удаление'};
+const actions: Record<string, string> = {craft: 'Изготовление', starter: 'Стартовый набор', gather: 'Сбор сырья', use: 'Использование', discard: 'Удаление', merge: 'Объединение стопок'};
 const command = craft.command;
 const retry = craft.retry;
 
@@ -78,6 +78,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
     header.workshop-intro
       .intro-heading
         h1 Мастерская
+        small.slot-stat(v-if="state") {{ state.slots_used }} / {{ state.slot_limit }} слотов
         nav.workshop-tabs(aria-label="Разделы мастерской")
           button(v-for="t in tabs" :key="t.id" type="button" :class="{active: tab === t.id}" :aria-current="tab === t.id ? 'page' : undefined" @click="tab = t.id") {{ t.name }}
         n-button.hide-controls(v-if="mapMode" quaternary circle size="small" aria-label="Скрыть управление" title="Скрыть управление" @click="showControls = false")
@@ -87,11 +88,8 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
         strong {{ state && !state.gather_available ? 'Сырьё собрано' : 'Собрать сырьё' }}
         span Раз в сутки по московскому времени
       p.intro-description Создавайте материалы, инструменты и станции. Освоенные рецепты открывают новые ветви карты.
-      .intro-actions
+      .intro-actions(v-if="state?.starter_available")
         n-button(v-if="state?.starter_available" size="small" type="primary" :disabled="blocked" @click="command('starter')") Стартовый набор
-        .intro-tools
-          n-button(size="small" :loading="loading" :disabled="busy" @click="craft.refresh") Обновить
-          small(v-if="state") {{ state.slots_used }} / {{ state.slot_limit }} слотов
   aside.skills(v-if="state" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
     .skill(v-for="c in state.categories" :key="c.id" :class="{active: category === c.id}")
       n-popover(trigger="hover")
@@ -99,7 +97,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
           button.skill-select(type="button" :aria-pressed="category === c.id" :aria-label="c.name + '. ' + c.description" @click="filterCategory(c.id)")
             font-awesome-icon.skill-icon(:icon="craftIcons[c.code] || 'cube'")
             span
-              strong {{ c.name }}
+              strong.skill-name {{ c.name }}
               small Ур. {{ state.skills.find(s => s.category_id === c.id)?.level || 1 }} · {{ state.skills.find(s => s.category_id === c.id)?.experience || 0 }} XP
         .craft-description
           strong {{ c.name }}
@@ -162,11 +160,11 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
 .workshop.map-mode { height: var(--map-height); min-height: 360px; overflow: hidden; display: block; }
 .workshop-controls { grid-column: 1 / 4; grid-row: 1; min-width: 0; width: min(960px, 100%); }
 .map-mode .workshop-controls { position: absolute; top: 0; left: 12px; width: min(960px, calc(100% - var(--recipe-width) - 36px)); z-index: 2; max-height: 45%; overflow-y: auto; scrollbar-width: thin; }
-.workshop-intro { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: .65rem 1rem; padding: .8rem 1rem; border: 1px solid var(--border); border-radius: 0 0 .8rem .8rem; background: linear-gradient(120deg, #34291e, var(--bg-surface) 65%); }
-.intro-heading { grid-column: 1; display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .75rem; }.intro-heading h1 { margin: 0; font-size: 1.2rem; }.hide-controls { margin-left: auto; }
+.workshop-intro { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 135px; gap: .3rem .6rem; padding: .4rem 2rem .4rem .6rem; border: 1px solid var(--border); border-radius: 0 0 .8rem .8rem; background: linear-gradient(120deg, #34291e, var(--bg-surface) 65%); }
+.intro-heading { grid-column: 1; display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; }.intro-heading h1 { margin: 0; font-size: 1.05rem; }.hide-controls { position: absolute; top: 2px; right: 2px; }.slot-stat { white-space: nowrap; }
 .intro-description { grid-column: 1; margin: 0; color: var(--text-muted); font-size: .8rem; }
 .intro-actions { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.intro-tools { display: flex; align-items: center; gap: .65rem; margin-left: auto; }
-.gather-button { grid-column: 2; grid-row: 1 / 3; align-self: start; border: 1px solid #779b66; border-radius: .6rem; background: #233326; color: #e0f0d9; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .35rem .5rem; padding: .7rem; cursor: pointer; }.gather-button > svg { font-size: 1.15rem; }.gather-button strong { font-size: .85rem; }.gather-button span { grid-column: 1 / -1; font-size: .65rem; }.gather-button:disabled { opacity: .65; cursor: default; }
+.gather-button { grid-column: 2; grid-row: 1 / 3; align-self: start; border: 1px solid #779b66; border-radius: .45rem; background: #233326; color: #e0f0d9; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .2rem .35rem; padding: .35rem; cursor: pointer; }.gather-button > svg { font-size: .9rem; }.gather-button strong { font-size: .75rem; }.gather-button span { grid-column: 1 / -1; font-size: .6rem; }.gather-button:disabled { opacity: .65; cursor: default; }
 .skills { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; gap: .5rem; min-width: 0; }.map-mode .skills { position: absolute; z-index: 2; left: 12px; top: var(--controls-bottom); width: var(--sidebar-width); max-height: calc(100% - var(--controls-bottom) - 12px); overflow-y: auto; scrollbar-width: thin; }
 .skill { flex-shrink: 0; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); overflow: hidden; }.skill.active { border-color: var(--primary); background: var(--bg-elevated, #342b21); }.skill-select { display: flex; align-items: center; gap: .7rem; padding: .75rem; cursor: pointer; font: inherit; font-size: .8rem; color: inherit; width: 100%; border: 0; background: transparent; text-align: left; }.skill-select > span { display: grid; gap: .2rem; min-width: 0; overflow-wrap: anywhere; }.skill-icon { font-size: 1.25rem; color: #d6b685; flex-shrink: 0; }
 small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-width: 280px; }.craft-description p { margin: .5rem 0 0; }
@@ -180,10 +178,10 @@ small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-w
 .history-table { overflow: auto; margin: 1rem 0; }.history-table table { width: 100%; border-collapse: collapse; }.history-table th, .history-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media(max-width: 1100px) {
-  .workshop-intro { grid-template-columns: minmax(0, 1fr) 145px; gap: .5rem; padding: .7rem; }.intro-heading { align-content: start; }.intro-heading h1 { font-size: 1.1rem; }.workshop-tabs > button { padding: .35rem; font-size: .75rem; }
+  .intro-heading { align-content: start; }.workshop-tabs > button { padding: .25rem; font-size: .75rem; }
 }
 @media(max-width: 760px) {
   .workshop { --sidebar-width: 84px; --recipe-width: 240px; }.map-mode .workshop-controls { width: calc(100% - 24px); max-height: 38%; }.map-mode .floating-recipe { top: var(--controls-bottom); max-height: calc(100% - var(--controls-bottom) - 12px); }.restore-recipe { top: var(--controls-bottom); }
-  .skill-select { flex-direction: column; gap: .3rem; padding: .5rem .3rem; text-align: center; font-size: .7rem; }.skill-select small { font-size: .6rem; }.intro-description { font-size: .7rem; }.gather-button { padding: .5rem; }.gather-button strong { font-size: .75rem; }.intro-tools small { font-size: .65rem; }
+  .skill-select { flex-direction: column; gap: .2rem; padding: .35rem .2rem; text-align: center; font-size: .7rem; }.skill-select .skill-name { display: none; }.skill-select small { font-size: .6rem; }.intro-description { font-size: .7rem; }.slot-stat { font-size: .65rem; }
 }
 </style>

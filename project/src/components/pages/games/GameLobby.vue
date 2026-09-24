@@ -30,7 +30,8 @@ const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
 const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, { ...params.value, q: undefined }), emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
-const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, overviewVersion, session]);
+const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session]);
+watch(overviewVersion, () => { void refreshSummary(); });
 const showCreate = ref(false);
 const kon = ref<number | null>(5);
 const count = ref<number | null>(1);
@@ -40,7 +41,7 @@ const notice = ref('');
 const noticeType = ref<'success' | 'warning' | 'info'>('info');
 const selected = ref<RecordData | null>(null);
 const completed = ref(false);
-const playedRows = ref<Record<number, string>>({});
+const playedRows = ref<Record<number, {text: string; result: 'win' | 'loss' | 'unknown'}>>({});
 watch([kind, mode, page, params, session], () => { playedRows.value = {}; });
 function quickPlay(game: RecordData, hod: number) {
   if ((hod !== 1 && hod !== 2) || saper.value || mode.value || busy.value || playedRows.value[game.id] || !canPlay(game)) return;
@@ -76,7 +77,10 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown, quic
       noticeType.value = 'success';
     }
     showCreate.value = false; selected.value = null;
-    if (quickGame) playedRows.value = { ...playedRows.value, [quickGame.id]: notice.value };
+    if (quickGame) {
+      playedRows.value = { ...playedRows.value, [quickGame.id]: {text: notice.value, result: noticeType.value === 'success' ? 'win' : noticeType.value === 'warning' ? 'loss' : 'unknown'} };
+      notice.value = '';
+    }
     overviewVersion.value++;
     if (!quickGame) await refresh();
     if (!current()) return;
@@ -102,8 +106,10 @@ async function accountChange() {
 page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
   game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
 .container.page.stack
-  request-state(:loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
+  .quick-stats-sticky(:aria-busy="summaryLoading")
     game-quick-stats(v-if="summary" :summary="summary" :unit="unit" :kind="kind")
+    request-state(v-else :loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
+    n-button(v-if="summary && summaryError" size="tiny" @click="refreshSummary") Повторить обновление статистики
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
   saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
@@ -119,7 +125,8 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             router-link(v-if="typeof game.username === 'string' && game.username" :to="'/wall/' + encodeURIComponent(game.username)") {{ game.username }}
             span(v-else) Участник недоступен
             |  · {{ date(game.created_at) }}
-          small(v-if="playedRows[game.id]" role="status") {{ playedRows[game.id] }}
+          span.game-result(v-if="playedRows[game.id]" role="status" :class="playedRows[game.id].result" :aria-label="playedRows[game.id].text" :title="playedRows[game.id].text")
+            font-awesome-icon(icon="circle" aria-hidden="true")
         .toolbar
           n-popconfirm(v-if="mode === 'my'" @positive-click="act(kind + '/' + game.id, 'delete')")
             template(#trigger)
@@ -154,7 +161,8 @@ n-modal(:show="!saper && !!selected" preset="card" title="Орёл или реш
 .game-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
 .game-totals > div { display: flex; flex-direction: column; gap: .25rem; }
 .game-totals strong { font-size: clamp(1rem, 3vw, 1.5rem); overflow-wrap: anywhere; }
-.played-row { opacity: .5; }
+.quick-stats-sticky { position: sticky; top: var(--site-header-height, 4rem); z-index: 20; background: var(--bg-base); }
+.game-result { display: inline-flex; margin-left: .5rem; color: var(--primary); font-size: .85rem; }.game-result.win { color: #4ade80; }.game-result.loss { color: #f87171; }
 .coin-side { font-size: 1rem; }
 .coin-side.hollow :deep(path) { fill: none; stroke: currentColor; stroke-width: 35; }
 </style>

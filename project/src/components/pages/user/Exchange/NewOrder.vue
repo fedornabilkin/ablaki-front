@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import { useToasts } from '@/hooks/useToasts';
 import { computed, ref } from 'vue';
 import { useStore } from 'vuex';
-import { NModal, NForm, NFormItem, NRadioGroup, NRadioButton, NInputNumber, NButton, NAlert, useMessage } from 'naive-ui';
+import { NModal, NForm, NFormItem, NRadioGroup, NRadioButton, NInputNumber, NButton, NAlert } from 'naive-ui';
 import { mutate, errorText } from '@/services/api/portal';
 defineProps<{ isOpen: boolean }>();
 const emit = defineEmits<{ close: []; created: [] }>();
 const store = useStore();
-const message = useMessage();
+const message = useToasts();
 const type = ref('buy');
 const credit = ref<number | null>(50);
 const price = ref<number | null>(1);

@@ -26,7 +26,8 @@ it('plays inline once and retains the completed row without selecting a modal ga
   expect(context.mutate).toHaveBeenCalledExactlyOnceWith('orel/play/9', 'post', { hod: 1 });
   expect(context.state.selected.value).toBeNull();
   complete({ game: { win: true } }); await flush();
-  expect(context.state.playedRows.value[9]).toBe('Вы выиграли!');
+  expect(context.state.playedRows.value[9]).toEqual({text: 'Вы выиграли!', result: 'win'});
+  expect(context.state.notice.value).toBe('');
   expect(context.page.value.items[0]).toEqual(game);
   context.state.quickPlay(game, 2); expect(context.mutate).toHaveBeenCalledTimes(1); expect(context.refresh).not.toHaveBeenCalled();
   expect(context.store.dispatch).toHaveBeenCalledWith('auth/fetchData');

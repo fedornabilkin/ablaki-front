@@ -13,17 +13,24 @@ const user = computed(() => store.getters['auth/user']);
 const guest = computed(() => ['guest', 'error'].includes(store.getters['auth/authStatus']) && !user.value);
 const links = computed(() => navigation.filter(link => !link.account || user.value));
 const compact = ref(false);
+const header = ref<HTMLElement>();
+let headerObserver: ResizeObserver | undefined;
 function updateCompact() {
   // Separate thresholds keep the header stable when its own height changes.
   if (!compact.value && window.scrollY > 160) compact.value = true;
   else if (compact.value && window.scrollY < 24) compact.value = false;
 }
-onMounted(() => { updateCompact(); window.addEventListener('scroll', updateCompact, { passive: true }); });
-onScopeDispose(() => { window.removeEventListener('scroll', updateCompact); });
+onMounted(() => {
+  updateCompact(); window.addEventListener('scroll', updateCompact, { passive: true });
+  const measure = () => document.documentElement.style.setProperty('--site-header-height', `${header.value?.getBoundingClientRect().height || 0}px`);
+  measure(); headerObserver = new ResizeObserver(measure);
+  if (header.value) headerObserver.observe(header.value);
+});
+onScopeDispose(() => { window.removeEventListener('scroll', updateCompact); headerObserver?.disconnect(); });
 const loginTarget = computed(() => route.path === '/users/login' ? route.fullPath : { path: '/users/login', query: { redirect: route.fullPath } });
 </script>
 <template lang="pug">
-header.site-header(:class="{ compact }")
+header.site-header(ref="header" :class="{ compact }")
   .container.navbar
     router-link.brand(to="/" aria-label="Ablakin — главная")
       img.brand-logo(src="/ablakin-fire-logo.png" alt="" width="40" height="40" decoding="async")
