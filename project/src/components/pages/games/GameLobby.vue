@@ -16,6 +16,7 @@ import SaperSuggestions from './saper/SaperSuggestions.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
+import { useQuickGames } from '@/hooks/useQuickGames';
 import { gameSummary, type GameSummary } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
@@ -41,11 +42,17 @@ const notice = ref('');
 const noticeType = ref<'success' | 'warning' | 'info'>('info');
 const selected = ref<RecordData | null>(null);
 const completed = ref(false);
-const playedRows = ref<Record<number, {text: string; result: 'win' | 'loss' | 'unknown'}>>({});
-watch([kind, mode, page, params, session], () => { playedRows.value = {}; });
+const { rows: playedRows, submit: submitQuick } = useQuickGames(session,
+  (id, hod) => mutate('orel/play/' + id, 'post', { hod }),
+  async () => {
+    const revision = session.value;
+    overviewVersion.value++;
+    try { await store.dispatch('auth/fetchData'); }
+    catch { if (!disposed && session.value === revision) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
+  });
 function quickPlay(game: RecordData, hod: number) {
-  if ((hod !== 1 && hod !== 2) || saper.value || mode.value || busy.value || playedRows.value[game.id] || !canPlay(game)) return;
-  void act('orel/play/' + game.id, 'post', { hod }, game);
+  if ((hod !== 1 && hod !== 2) || saper.value || mode.value || !canPlay(game)) return;
+  void submitQuick(game.id, hod);
 }
 watch(selected, () => { completed.value = false; });
 watch(() => route.query.create, value => { if (value === '1') showCreate.value = true; }, { immediate: true });
@@ -53,7 +60,7 @@ watch([kind, mode, session], () => { selected.value = null; showCreate.value = r
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
 const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
-async function act(path: string, method: 'post' | 'delete', body?: unknown, quickGame?: RecordData) {
+async function act(path: string, method: 'post' | 'delete', body?: unknown) {
   if (busy.value) return;
   busy.value = true; actionError.value = ''; notice.value = '';
   const currentKind = kind.value;
@@ -77,12 +84,8 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown, quic
       noticeType.value = 'success';
     }
     showCreate.value = false; selected.value = null;
-    if (quickGame) {
-      playedRows.value = { ...playedRows.value, [quickGame.id]: {text: notice.value, result: noticeType.value === 'success' ? 'win' : noticeType.value === 'warning' ? 'loss' : 'unknown'} };
-      notice.value = '';
-    }
     overviewVersion.value++;
-    if (!quickGame) await refresh();
+    await refresh();
     if (!current()) return;
     try { await store.dispatch('auth/fetchData'); }
     catch { if (current()) actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей игрой.'; }
@@ -90,7 +93,6 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown, quic
   finally { busy.value = false; }
 }
 function refreshAll() {
-  playedRows.value = {};
   overviewVersion.value++;
   void refresh();
 }
@@ -125,15 +127,15 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             router-link(v-if="typeof game.username === 'string' && game.username" :to="'/wall/' + encodeURIComponent(game.username)") {{ game.username }}
             span(v-else) Участник недоступен
             |  · {{ date(game.created_at) }}
-          span.game-result(v-if="playedRows[game.id]" role="status" :class="playedRows[game.id].result" :aria-label="playedRows[game.id].text" :title="playedRows[game.id].text")
-            font-awesome-icon(icon="circle" aria-hidden="true")
         .toolbar
           n-popconfirm(v-if="mode === 'my'" @positive-click="act(kind + '/' + game.id, 'delete')")
             template(#trigger)
               n-button(:disabled="busy") Удалить
             | Отменить игру №{{ game.id }}?
           template(v-else-if="!saper")
-            n-button(v-for="side in [1, 2]" :key="side" :disabled="busy || !!playedRows[game.id] || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
+            span.game-result(role="status" :class="playedRows[game.id]?.result" :aria-label="playedRows[game.id]?.text" :title="playedRows[game.id]?.text")
+              font-awesome-icon(v-if="playedRows[game.id]" :icon="playedRows[game.id].result === 'pending' ? 'spinner' : playedRows[game.id].result === 'error' ? 'circle-exclamation' : 'circle'" :spin="playedRows[game.id].result === 'pending'" aria-hidden="true")
+            n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
@@ -162,7 +164,7 @@ n-modal(:show="!saper && !!selected" preset="card" title="Орёл или реш
 .game-totals > div { display: flex; flex-direction: column; gap: .25rem; }
 .game-totals strong { font-size: clamp(1rem, 3vw, 1.5rem); overflow-wrap: anywhere; }
 .quick-stats-sticky { position: sticky; top: var(--site-header-height, 4rem); z-index: 20; background: var(--bg-base); }
-.game-result { display: inline-flex; margin-left: .5rem; color: var(--primary); font-size: .85rem; }.game-result.win { color: #4ade80; }.game-result.loss { color: #f87171; }
+.game-result { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; color: var(--primary); font-size: .85rem; }.game-result.win { color: #4ade80; }.game-result.loss, .game-result.error { color: #f87171; }
 .coin-side { font-size: 1rem; }
 .coin-side.hollow :deep(path) { fill: none; stroke: currentColor; stroke-width: 35; }
 </style>

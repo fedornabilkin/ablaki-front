@@ -1,6 +1,6 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
 import { isAxiosError } from 'axios';
-import { craftError, loadCraft, sendCraft, type CraftState, type CraftCommand, type CraftAction } from '@/services/api/classicCraft';
+import { craftError, loadCraft, sendCraft, type CraftState, type CraftCommand, type CraftAction, type CraftInput } from '@/services/api/classicCraft';
 
 export function useClassicCraft(session: Ref<number>, refreshAccount: () => Promise<unknown>, owner?: Ref<number>) {
   const storageKey = () => owner?.value ? `ablaki.craft.pending.${owner.value}` : '';
@@ -10,10 +10,12 @@ export function useClassicCraft(session: Ref<number>, refreshAccount: () => Prom
   function restore(): CraftCommand | null {
     try {
       const key = storageKey(), value = key ? JSON.parse(sessionStorage.getItem(key) || 'null') : null;
-      const inventoryAction = value && ['use', 'discard', 'merge'].includes(value.action);
+      const inventoryAction = value && ['use', 'discard', 'merge', 'transfer'].includes(value.action);
       const validSlot = value && (value.slot_id === undefined || (inventoryAction && Number.isSafeInteger(value.slot_id) && value.slot_id > 0));
       const validTarget = value && (value.action === 'merge' ? Number.isSafeInteger(value.target_slot_id) && value.target_slot_id > 0 && value.slot_id > 0 && value.target_slot_id !== value.slot_id && value.quantity === 1 : value.target_slot_id === undefined);
-      if (value && validSlot && validTarget && ['craft','starter','gather','use','discard','merge'].includes(value.action) && Number.isSafeInteger(value.id) && value.id >= 0 && Number.isSafeInteger(value.quantity) && value.quantity >= 1 && value.quantity <= (inventoryAction ? 10000 : 100) && typeof value.request_key === 'string' && /^[A-Za-z0-9_-]{16,80}$/.test(value.request_key)) return value;
+      const validTransfer = value && (value.action === 'transfer' ? value.slot_id > 0 && Number.isSafeInteger(value.container_id) && value.container_id >= 0 && Number.isSafeInteger(value.position) && value.position > 0 && value.position <= 100 : value.container_id === undefined && value.position === undefined);
+      const validPrice = value && (value.action === 'buy_slots' ? Number.isSafeInteger(value.unit_price) && value.unit_price >= 0 && value.unit_price <= 1000000 : value.unit_price === undefined);
+      if (value && validSlot && validTarget && validTransfer && validPrice && ['craft','starter','gather','use','discard','merge','transfer','buy_slots'].includes(value.action) && Number.isSafeInteger(value.id) && value.id >= 0 && Number.isSafeInteger(value.quantity) && value.quantity >= 1 && value.quantity <= (inventoryAction ? 10000 : 100) && typeof value.request_key === 'string' && /^[A-Za-z0-9_-]{16,80}$/.test(value.request_key)) return value;
     } catch { /* Malformed local state is not a command. */ }
     return null;
   }
@@ -45,12 +47,21 @@ export function useClassicCraft(session: Ref<number>, refreshAccount: () => Prom
     } finally { if (!disposed && current === revision) busy.value = false; }
   }
   function command(action: CraftAction, id = 0, quantity = 1, slotId?: number, targetSlotId?: number) {
+    return submit({action, id, quantity, ...(slotId === undefined ? {} : {slot_id: slotId}), ...(targetSlotId === undefined ? {} : {target_slot_id: targetSlotId})});
+  }
+  function submit(input: CraftInput) {
     if (busy.value || pending.value) return Promise.resolve();
     const bytes = new Uint8Array(16); crypto.getRandomValues(bytes);
-    return send({action, id, quantity, ...(slotId === undefined ? {} : {slot_id: slotId}), ...(targetSlotId === undefined ? {} : {target_slot_id: targetSlotId}), request_key: Array.from(bytes, n => n.toString(16).padStart(2, '0')).join('')});
+    return send({...input, request_key: Array.from(bytes, n => n.toString(16).padStart(2, '0')).join('')});
   }
   const retry = () => pending.value ? send(pending.value) : Promise.resolve();
   watch(session, () => { revision++; state.value = null; busy.value = false; loading.value = false; pending.value = null; error.value = ''; notice.value = ''; });
   onScopeDispose(() => { disposed = true; revision++; });
-  return {state, busy, loading, error, notice, pending, refresh, command, retry};
+  let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+  watch(state, value => {
+    clearTimeout(expiryTimer);
+    if (value?.slots_expire_at && value.server_time) expiryTimer = setTimeout(() => { if (!pending.value) void refresh(); }, Math.min(2147483647, Math.max(1000, (value.slots_expire_at - value.server_time) * 1000 + 1000)));
+  });
+  onScopeDispose(() => clearTimeout(expiryTimer));
+  return {state, busy, loading, error, notice, pending, refresh, command, submit, retry};
 }

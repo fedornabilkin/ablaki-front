@@ -49,7 +49,7 @@ async function refreshHistory() {
 watch([tab, historyPage], () => { if (tab.value === 'history') void refreshHistory(); });
 watch(session, () => { historyRevision++; history.value = []; historyLoading.value = false; selected.value = null; });
 watch(state, value => { if (value && !selected.value) selected.value = value.recipes[0]?.id ?? null; if (tab.value === 'history') void refreshHistory(); });
-const actions: Record<string, string> = {craft: 'Изготовление', starter: 'Стартовый набор', gather: 'Сбор сырья', use: 'Использование', discard: 'Удаление', merge: 'Объединение стопок'};
+const actions: Record<string, string> = {craft: 'Изготовление', starter: 'Стартовый набор', gather: 'Сбор сырья', use: 'Использование', discard: 'Удаление', merge: 'Объединение стопок', transfer: 'Перемещение предметов', buy_slots: 'Покупка слотов'};
 const command = craft.command;
 const retry = craft.retry;
 
@@ -126,7 +126,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
             strong В наличии: {{ stock.get(r.item_id) || 0 }}
             span {{ r.locked_reasons.length ? 'Закрыт' : 'Открыт' }} · Ур. {{ r.min_level }}
         p(v-if="!filtered.length") Рецептов по этому фильтру нет.
-      craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command")
+      craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command" @submit="craft.submit")
       section.workshop-content(v-if="tab === 'history'" aria-label="История крафта")
         n-alert(v-if="historyError" type="error") {{ historyError }}
         n-button(:loading="historyLoading" @click="refreshHistory") Обновить историю

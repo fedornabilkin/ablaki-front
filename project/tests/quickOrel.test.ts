@@ -1,22 +1,24 @@
-import { beforeEach, it, expect, vi } from 'vitest';
-import { createSSRApp, h, reactive, ref, nextTick } from 'vue';
-import { renderToString } from '@vue/server-renderer';
+import { afterEach, beforeEach, it, expect, vi } from 'vitest';
+import { createRenderer, h, reactive, ref, nextTick, ssrContextKey } from 'vue';
 import GameLobby from '../src/components/pages/games/GameLobby.vue';
-const context = vi.hoisted(() => ({ route: null as any, store: null as any, page: null as any, state: null as any, mutate: vi.fn(), refresh: vi.fn() }));
+const context = vi.hoisted(() => ({ route: null as any, store: null as any, page: null as any, state: null as any, mutate: vi.fn(), refresh: vi.fn(), refreshSummary: vi.fn() }));
 vi.mock('vue-router', () => ({ useRoute: () => context.route }));
 vi.mock('vuex', () => ({ useStore: () => context.store }));
 vi.mock('../src/hooks/useListQuery', () => ({ useListQuery: () => ({ page: ref(1), search: ref(''), filters: ref({}), params: ref({}), reset: () => {} }) }));
-vi.mock('../src/hooks/usePageRequest', () => ({ usePageRequest: (_load, initial) => ({ data: initial === null ? ref(null) : context.page, loading: ref(false), error: ref(''), refresh: context.refresh }) }));
+vi.mock('../src/hooks/usePageRequest', () => ({ usePageRequest: (_load, initial) => ({ data: initial === null ? ref(null) : context.page, loading: ref(false), error: ref(''), refresh: initial === null ? context.refreshSummary : context.refresh }) }));
 vi.mock('../src/services/api/portal', async original => ({ ...await original(), mutate: context.mutate }));
 const flush = async () => { for (let i = 0; i < 8; i++) { await Promise.resolve(); await nextTick(); } };
+const renderer = createRenderer<any, any>({ createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {}, patchProp() {}, parentNode: () => null, nextSibling: () => null, insert() {}, remove() {} });
+let app: ReturnType<typeof renderer.createApp>;
+afterEach(() => app.unmount());
 beforeEach(async () => {
   context.route = reactive({ path: '/games/orel', fullPath: '/games/orel', query: {} });
   context.store = reactive({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 37, person: { credit: 100 } } }, dispatch: vi.fn().mockResolvedValue(null) });
   context.page = ref({ items: [{ id: 9, user_id: 38, username: 'Test02', kon: 5, created_at: 1 }], total: 1, pageSize: 20, currentPage: 1, pageCount: 1 });
-  context.mutate.mockReset(); context.refresh.mockReset();
+  context.mutate.mockReset(); context.refresh.mockReset(); context.refreshSummary.mockReset();
   // Run the real page setup inside Vue's lifecycle; API and route are isolated fixtures.
   const subject = { setup(props, ctx) { context.state = (GameLobby as any).setup(props, ctx); return () => h('div'); } };
-  await renderToString(createSSRApp(subject));
+  app = renderer.createApp(subject); app.provide(ssrContextKey, {modules: new Set()}); app.mount({});
 });
 it('plays inline once and retains the completed row without selecting a modal game', async () => {
   let complete!: (value: any) => void;
@@ -35,7 +37,8 @@ it('plays inline once and retains the completed row without selecting a modal ga
 it('keeps a failed row playable and ignores a response belonging to another session', async () => {
   const game = context.page.value.items[0];
   context.mutate.mockRejectedValueOnce(new Error('offline')); context.state.quickPlay(game, 1); await flush();
-  expect(context.state.busy.value).toBe(false); expect(context.state.playedRows.value[9]).toBeUndefined();
+  expect(context.state.busy.value).toBe(false); expect(context.state.playedRows.value[9].result).toBe('error');
+  context.store.dispatch.mockClear();
   let complete!: (value: any) => void; context.mutate.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
   context.state.quickPlay(game, 2); context.store.state.auth.revision++; complete({ game: { win: false } }); await flush();
   expect(context.state.playedRows.value[9]).toBeUndefined(); expect(context.store.dispatch).not.toHaveBeenCalled();
