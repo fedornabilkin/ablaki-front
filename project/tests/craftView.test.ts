@@ -29,9 +29,9 @@ describe('craft view with server state', () => {
     app.component('font-awesome-icon', FontAwesomeIcon);
     setupSsrStyles(app);
     const html = await renderToString(app);
-    expect(html.match(/role="listitem"/g)).toHaveLength(101);
+    expect(html.match(/role="listitem"/g)).toHaveLength(51);
     expect(html).toContain('Бревно: 100 шт.'); expect(html).toContain('Бревно: 4 шт.');
-    expect(html.match(/class="empty-slot"/g)).toHaveLength(98);
+    expect(html.match(/class="empty-slot"/g)).toHaveLength(48);
     expect(html).toContain('trash-cell'); expect(html).toContain('title="Корзина"');
     expect(html).not.toContain('Перетащите сюда'); expect(html).not.toContain('discard-button');
   });
@@ -40,7 +40,7 @@ describe('craft view with server state', () => {
     const app = createSSRApp(CraftInventory, {state: {...state, inventory_slots, slots_used: 100}, blocked: false});
     app.component('font-awesome-icon', FontAwesomeIcon); setupSsrStyles(app);
     const html = await renderToString(app);
-    expect(html.match(/role="listitem"/g)).toHaveLength(101);
+    expect(html.match(/role="listitem"/g)).toHaveLength(51);
     expect(html).toContain('Бревно: 100 шт.');
     expect(html).not.toContain('class="empty-slot"');
   });

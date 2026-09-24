@@ -1,0 +1,34 @@
+import { createRenderer, h, nextTick, reactive, ssrContextKey } from 'vue';
+import * as Vue from 'vue';
+import { readFileSync } from 'node:fs';
+import { compileScript, parse } from '@vue/compiler-sfc';
+import { compile } from '@vue/compiler-dom';
+import pug from 'pug';
+import { expect, it, vi } from 'vitest';
+import GameStakeFilter from '../src/components/pages/games/GameStakeFilter.vue';
+const api = vi.hoisted(() => ({load: vi.fn()}));
+vi.mock('../src/services/api/gameHistory', () => ({lobbyStakes: api.load}));
+vi.mock('vuex', () => ({useStore: () => ({state: {auth: {revision: 1}}})}));
+vi.mock('naive-ui', async () => ({NButton: {setup: (_: unknown, {attrs, slots}: any) => () => h('button', attrs, slots.default?.())}}));
+const {descriptor} = parse(readFileSync(new URL('../src/components/pages/games/GameStakeFilter.vue', import.meta.url), 'utf8'));
+const {code} = compile(pug.render(descriptor.template!.content, {doctype: 'html'}), {mode: 'function', prefixIdentifiers: true, bindingMetadata: compileScript(descriptor, {id: 'stakes-view'}).bindings});
+const subject = {...GameStakeFilter, render: new Function('Vue', code)(Vue)};
+interface Node { tag: string; props: Record<string, any>; children: Node[]; parent?: Node; text?: string }
+const node = (tag: string): Node => ({tag, props: {}, children: []});
+const renderer = createRenderer<Node, Node>({createElement: node, createText: text => ({...node('text'), text}), createComment: () => node('comment'), setText: (n, text) => {n.text = text;}, setElementText: (n, text) => {n.text = text;}, patchProp: (n, key, _prev, value) => {n.props[key] = value;}, parentNode: n => n.parent ?? null, nextSibling: n => n.parent?.children[n.parent.children.indexOf(n) + 1] ?? null, insert: (n, parent, anchor) => { if (n.parent) n.parent.children.splice(n.parent.children.indexOf(n), 1); n.parent = parent; const i = anchor ? parent.children.indexOf(anchor) : -1; if (i < 0) parent.children.push(n); else parent.children.splice(i, 0, n); }, remove: n => {n.parent?.children.splice(n.parent.children.indexOf(n), 1);} });
+const buttons = (n: Node): Node[] => [...(n.tag === 'button' ? [n] : []), ...n.children.flatMap(buttons)];
+const text = (n: Node): string => (n.text ?? '') + n.children.map(text).join('');
+const flush = async () => { for (let i = 0; i < 8; i++) {await Promise.resolve(); await nextTick();} };
+it('retains the actual stake buttons during refresh and keeps zero-count groups', async () => {
+  api.load.mockResolvedValueOnce([{kon: '15', count: 5}, {kon: '20', count: 1}]);
+  const props = reactive({kind: 'orel', scope: 'available', modelValue: '15', version: 0}), root = node('root');
+  const app = renderer.createApp({setup: () => () => h(subject, props)}); app.provide(ssrContextKey, {modules: new Set()}); app.mount(root); await flush();
+  const original = buttons(root).filter(button => button.props.title);
+  expect(original.map(text)).toEqual(['15х5', '20х1']);
+  let finish!: (data: unknown) => void; api.load.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+  props.version++; await flush(); expect(buttons(root).filter(button => button.props.title)).toEqual(original);
+  finish([{kon: '15', count: 3}]); await flush();
+  const current = buttons(root).filter(button => button.props.title);
+  expect(current[0]).toBe(original[0]); expect(current[1]).toBe(original[1]); expect(current.map(text)).toEqual(['15х3', '20х0']);
+  app.unmount();
+});
