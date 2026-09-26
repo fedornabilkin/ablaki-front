@@ -28,7 +28,7 @@ const items = computed(() => new Map(state.value?.items.map(i => [i.id, i]) ?? [
 const linkedItem = computed(() => items.value.get(Number(route.query.item)));
 const rawItem = computed(() => linkedItem.value && !state.value?.recipes.some(r => r.item_id === linkedItem.value?.id) ? linkedItem.value : null);
 const showItem = computed({get: () => !!rawItem.value, set: open => { if (!open) { const {item, ...query} = route.query; void router.push({path: route.path, query}); } }});
-watch([() => route.query.item, state], async () => {
+watch([() => route.query.item, () => !!state.value], async () => {
   const target = state.value?.recipes.find(r => r.item_id === Number(route.query.item));
   if (target) { selected.value = target.id; showRecipe.value = true; tab.value = 'map'; await nextTick(); roadmap.value?.reveal(target.id); }
 }, {immediate: true});
