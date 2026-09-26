@@ -1,7 +1,8 @@
 <script setup>
+import { useToasts } from '@/hooks/useToasts';
 import {onMounted, onBeforeUnmount, watch, ref, computed} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
-import {useMessage, useNotification, NDrawer, NDrawerContent, NButton} from 'naive-ui';
+import {useNotification, NDrawer, NDrawerContent, NButton} from 'naive-ui';
 import {useChatStore} from '@/store/chat';
 
 import RoomsList from './RoomsList.vue';
@@ -10,7 +11,7 @@ import ChatRoom from './ChatRoom.vue';
 const route = useRoute();
 const router = useRouter();
 const chat = useChatStore();
-const message = useMessage();
+const message = useToasts();
 const notification = useNotification();
 
 const showRoomsDrawer = ref(false);

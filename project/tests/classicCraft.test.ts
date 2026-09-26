@@ -4,6 +4,25 @@ import { craftRequirements, craftRoadmap, maxCraftQuantity, craftEquipment, road
 const recipe: CraftRecipe = {id: 1, code: 'plank', name: 'Plank', description: '', category_id: 1, item_id: 2, station_id: null, output_quantity: 2, cost_credits: 3, experience: 20, min_level: 1, crafted: 0, ingredients: [{item_id: 1, quantity: 2}], tools: [1], requires: [], locked_reasons: []};
 export const fixture: CraftState = {items: [1, 2].map(id => ({id, code: 'item' + id, name: 'Item ' + id, description: '', category_id: 1, kind: 'material', rarity: 'common', icon: 'cube', stack_size: 100, destroyable: 1, active: 1, use_xp: 0, gather_quantity: 0})), recipes: [recipe], categories: [{id: 1, name: 'Wood', code: 'wood', description: 'Woodworking'}], stations: [], skills: [], inventory: [{item_id: 1, quantity: 5}], inventory_slots: [{id: 10, item_id: 1, quantity: 5}], credit: 6, charge_credits: true, starter_available: false, gather_available: false, slot_limit: 100, slots_used: 1};
 describe('classic craft contract and roadmap', () => {
+  it('validates chest ownership, stable positions and active inventory capacity', () => {
+    const state = {...fixture,
+      items: [...fixture.items, {...fixture.items[0], id: 3, code: 'chest', storage_kind: 'chest' as const, stack_size: 1}],
+      inventory_slots: [{id: 10, item_id: 1, quantity: 5, position: 1, active: true}, {id: 20, item_id: 3, quantity: 1, position: 2, active: true}], slots_used: 2, slot_limit: 50,
+      permanent_slots: 20, active_slots: 25, slots_expire_at: 2000, server_time: 1000, slot_pricing: 'linear',
+      inventory_settings: {slot_price: 10, elixir_slots: 5, elixir_days: 7, chest_slots: 10, chest_durability: 100, chest_wear: 1},
+      containers: [{id: 20, capacity: 10, durability: 99, max_durability: 100, slots: [{id: 30, item_id: 1, quantity: 3, position: 1}], repair: {restore: 1, materials: [{item_id: 1, quantity: 1, have: 5, available: true}], tools: [{item_id: 2, durability: 99, max_durability: 100, have: 1, available: true}], station: {id: 1, name: 'Workbench', item_id: 2, durability: 98, max_durability: 100, available: true}, reasons: []}}],
+    };
+    expect(parseCraftState(state)).toEqual(state);
+    expect(() => parseCraftState({...state, slot_pricing: 'unknown'})).toThrow();
+    expect(() => parseCraftState({...state, containers: [{...state.containers[0], repair: {...state.containers[0].repair, station: {...state.containers[0].repair.station, durability: 101}}}]})).toThrow();
+    expect(() => parseCraftState({...state, active_slots: 51})).toThrow();
+    expect(() => parseCraftState({...state, containers: [{...state.containers[0], id: 999}]})).toThrow();
+    expect(() => parseCraftState({...state, containers: [{...state.containers[0], slots: [{id: 10, item_id: 1, quantity: 3, position: 1}]}]})).toThrow();
+    expect(() => parseCraftState({...state, inventory_slots: state.inventory_slots.map(slot => ({...slot, position: 1}))})).toThrow();
+    for (const repair of [null, {...state.containers[0].repair, restore: -1}, {...state.containers[0].repair, materials: [{item_id: 1, quantity: -1, have: 5}]}, {...state.containers[0].repair, tools: [{item_id: 2, durability: 101, max_durability: 100}]}]) {
+      expect(() => parseCraftState({...state, containers: [{...state.containers[0], repair}]})).toThrow();
+    }
+  });
   it('validates the full server state without trusting type assertions', () => {
     expect(parseCraftState(fixture)).toEqual(fixture);
     expect(() => parseCraftState({...fixture, credit: 'NaN'})).toThrow();

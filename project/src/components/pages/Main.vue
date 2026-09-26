@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { NCard } from 'naive-ui';
+import { useStore } from 'vuex';
 import GameTypeCards from '@/components/pages/games/GameTypeCards.vue';
 import RandomTip from '@/components/RandomTip.vue';
 import PrizeFund from '@/components/home/PrizeFund.vue';
@@ -8,7 +9,8 @@ import { usePageRequest } from '@/hooks/usePageRequest';
 import RequestState from '@/components/RequestState.vue';
 import ForumThemeList from '@/components/forum/ForumThemeList.vue';
 import UserList from '@/components/user/UserList.vue';
-const forum = usePageRequest(() => list('forum-theme', 1, { sort: '-last_comment_created_at', 'per-page': 5 }), emptyPage());
+const store = useStore();
+const forum = usePageRequest(() => list('forum-theme', 1, { sort: '-last_comment_created_at', 'per-page': 5 }), emptyPage(), [() => store.state.auth.revision]);
 const users = usePageRequest(() => list('users', 1, { sort: '-created_at', 'per-page': 7 }), emptyPage());
 </script>
 <template lang="pug">

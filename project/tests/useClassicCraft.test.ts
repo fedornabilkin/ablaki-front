@@ -7,6 +7,29 @@ let scope: EffectScope;
 beforeEach(() => { vi.clearAllMocks(); scope = effectScope(); });
 afterEach(() => {scope.stop(); vi.unstubAllGlobals();});
 describe('account craft requests', () => {
+  it('restores the exact chest destination and quoted purchase price after a lost response', async () => {
+    const values = new Map<string,string>();
+    vi.stubGlobal('sessionStorage', {getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key)});
+    for (const input of [{action: 'transfer' as const, id: 5, quantity: 7, slot_id: 9, container_id: 20, position: 3}, {action: 'buy_slots' as const, id: 0, quantity: 2, unit_price: 10, total_price: 30}, {action: 'repair' as const, id: 6, quantity: 1, slot_id: 9}]) {
+      values.clear(); api.sendCraft.mockRejectedValueOnce(new Error('offline'));
+      const first = scope.run(() => useClassicCraft(ref(1), vi.fn(), ref(37)))!;
+      await first.submit(input);
+      const restored = scope.run(() => useClassicCraft(ref(1), vi.fn(), ref(37)))!;
+      expect(restored.pending.value).toEqual(first.pending.value); expect(restored.pending.value).toMatchObject(input);
+    }
+  });
+  it('restores and retries both stack IDs after an unknown merge outcome', async () => {
+    const values = new Map<string,string>();
+    vi.stubGlobal('sessionStorage', {getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key)});
+    api.sendCraft.mockRejectedValueOnce(new Error('offline'));
+    const first = scope.run(() => useClassicCraft(ref(1), vi.fn(), ref(37)))!;
+    await first.command('merge', 5, 1, 7, 8);
+    const restored = scope.run(() => useClassicCraft(ref(2), vi.fn(), ref(37)))!;
+    expect(restored.pending.value).toMatchObject({action: 'merge', id: 5, slot_id: 7, target_slot_id: 8});
+    api.sendCraft.mockResolvedValueOnce({state: {}, message: 'Объединено'});
+    await restored.retry();
+    expect(api.sendCraft.mock.calls[1][0]).toEqual(api.sendCraft.mock.calls[0][0]);
+  });
   it('restores a pending key after remount only for its owning account', async () => {
     const values = new Map<string,string>();
     vi.stubGlobal('sessionStorage', {getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => values.set(k,v), removeItem: (k: string) => values.delete(k)});

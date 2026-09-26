@@ -1,6 +1,7 @@
-<script setup>
-import { onMounted, computed } from 'vue';
-import { NButton, NCard } from 'naive-ui';
+<script setup lang="ts">
+import { onBeforeUnmount, computed, watch } from 'vue';
+import { useStore } from 'vuex';
+import { NButton, NCard, NAlert, NPopconfirm } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import { getEvent } from '@/entities/city/events';
 import { useCityStore } from '@/store/city';
@@ -10,12 +11,12 @@ import EventsLog from './EventsLog.vue';
 
 const city = useCityStore();
 
-onMounted(() => {
-    if (!city.loaded) city.load();
-});
+const auth = useStore();
+watch(() => Number(auth.getters['auth/user']?.id ?? 0), id => city.load(id), { immediate: true });
+onBeforeUnmount(() => city.stopTicker());
 
 const stats = computed(() => [
-    { key: 'balance', icon: 'fa fa-coins', label: 'Кредиты', value: Math.floor(city.balance) },
+    { key: 'balance', icon: 'fa fa-coins', label: 'Городской бюджет', value: Math.floor(city.balance) },
     { key: 'population', icon: 'fa fa-users', label: 'Жители (занятые/всего)', value: `${city.workReport.busyWorkers}/${city.population}` },
     { key: 'food', icon: 'fa fa-seedling', label: 'Еда (едоки/запас)', value: `${city.population}/${city.food}` },
     { key: 'income', icon: 'fa fa-arrow-up', label: 'Доход', value: `${city.incomePerHour}/ч` },
@@ -40,8 +41,9 @@ const effects = computed(() => city.liveEffects.map((effect) => {
 </script>
 
 <template lang="pug">
-  page-header(pageTitle='Строить город')
+  page-header(pageTitle='Градостроительство')
   .container.city-page
+    n-alert(type="info" :show-icon="false") Город сохраняется в этом браузере. Для строительства используется отдельный городской бюджет.
     .city-stats
       n-card.stat(v-for="s in stats" :key="s.key" :bordered="true")
         .stat-inner
@@ -75,7 +77,10 @@ const effects = computed(() => city.liveEffects.map((effect) => {
       city-grid
 
     .city-footer
-      n-button(quaternary size="tiny" type="error" @click="city.reset()") Снести город и начать заново
+      n-popconfirm(@positive-click="city.reset()")
+        template(#trigger)
+          n-button(quaternary size="tiny" type="error") Снести город и начать заново
+        | Удалить постройки и начать город заново?
 </template>
 
 <style lang="scss" scoped>

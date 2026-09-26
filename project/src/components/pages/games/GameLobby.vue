@@ -16,6 +16,7 @@ import SaperSuggestions from './saper/SaperSuggestions.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
+import { useQuickGames } from '@/hooks/useQuickGames';
 import { gameSummary, type GameSummary } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
@@ -30,7 +31,8 @@ const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
 const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, { ...params.value, q: undefined }), emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
-const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, overviewVersion, session]);
+const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session]);
+watch(overviewVersion, () => { void refreshSummary(); });
 const showCreate = ref(false);
 const kon = ref<number | null>(5);
 const count = ref<number | null>(1);
@@ -40,19 +42,25 @@ const notice = ref('');
 const noticeType = ref<'success' | 'warning' | 'info'>('info');
 const selected = ref<RecordData | null>(null);
 const completed = ref(false);
-const playedRows = ref<Record<number, string>>({});
-watch([kind, mode, page, params, session], () => { playedRows.value = {}; });
+const { rows: playedRows, submit: submitQuick } = useQuickGames(session,
+  (id, hod) => mutate('orel/play/' + id, 'post', { hod }),
+  async () => {
+    const revision = session.value;
+    overviewVersion.value++;
+    try { await store.dispatch('auth/fetchData'); }
+    catch { if (!disposed && session.value === revision) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
+  });
 function quickPlay(game: RecordData, hod: number) {
-  if ((hod !== 1 && hod !== 2) || saper.value || mode.value || busy.value || playedRows.value[game.id] || !canPlay(game)) return;
-  void act('orel/play/' + game.id, 'post', { hod }, game);
+  if ((hod !== 1 && hod !== 2) || saper.value || mode.value || !canPlay(game)) return;
+  void submitQuick(game.id, hod);
 }
 watch(selected, () => { completed.value = false; });
 watch(() => route.query.create, value => { if (value === '1') showCreate.value = true; }, { immediate: true });
 watch([kind, mode, session], () => { selected.value = null; showCreate.value = route.query.create === '1'; actionError.value = ''; notice.value = ''; });
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
-const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
-async function act(path: string, method: 'post' | 'delete', body?: unknown, quickGame?: RecordData) {
+const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && kon.value <= 1000000000 && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
+async function act(path: string, method: 'post' | 'delete', body?: unknown) {
   if (busy.value) return;
   busy.value = true; actionError.value = ''; notice.value = '';
   const currentKind = kind.value;
@@ -76,9 +84,8 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown, quic
       noticeType.value = 'success';
     }
     showCreate.value = false; selected.value = null;
-    if (quickGame) playedRows.value = { ...playedRows.value, [quickGame.id]: notice.value };
     overviewVersion.value++;
-    if (!quickGame) await refresh();
+    await refresh();
     if (!current()) return;
     try { await store.dispatch('auth/fetchData'); }
     catch { if (current()) actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей игрой.'; }
@@ -86,7 +93,6 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown, quic
   finally { busy.value = false; }
 }
 function refreshAll() {
-  playedRows.value = {};
   overviewVersion.value++;
   void refresh();
 }
@@ -102,8 +108,10 @@ async function accountChange() {
 page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
   game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
 .container.page.stack
-  request-state(:loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
+  .quick-stats-sticky(:aria-busy="summaryLoading")
     game-quick-stats(v-if="summary" :summary="summary" :unit="unit" :kind="kind")
+    request-state(v-else :loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
+    n-button(v-if="summary && summaryError" size="tiny" @click="refreshSummary") Повторить обновление статистики
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
   saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
@@ -119,14 +127,15 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             router-link(v-if="typeof game.username === 'string' && game.username" :to="'/wall/' + encodeURIComponent(game.username)") {{ game.username }}
             span(v-else) Участник недоступен
             |  · {{ date(game.created_at) }}
-          small(v-if="playedRows[game.id]" role="status") {{ playedRows[game.id] }}
         .toolbar
           n-popconfirm(v-if="mode === 'my'" @positive-click="act(kind + '/' + game.id, 'delete')")
             template(#trigger)
               n-button(:disabled="busy") Удалить
             | Отменить игру №{{ game.id }}?
           template(v-else-if="!saper")
-            n-button(v-for="side in [1, 2]" :key="side" :disabled="busy || !!playedRows[game.id] || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
+            span.game-result(role="status" :class="playedRows[game.id]?.result" :aria-label="playedRows[game.id]?.text" :title="playedRows[game.id]?.text")
+              font-awesome-icon(v-if="playedRows[game.id]" :icon="playedRows[game.id].result === 'pending' ? 'spinner' : playedRows[game.id].result === 'error' ? 'circle-exclamation' : 'circle'" :spin="playedRows[game.id].result === 'pending'" aria-hidden="true")
+            n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
@@ -135,9 +144,9 @@ n-modal(v-model:show="showCreate" preset="card" title="Создать игру" 
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
     n-form-item(:label="'Ставка, ' + unit" :label-props="{ for: 'game-kon' }")
-      n-input-number(:input-props="{ id: 'game-kon' }" v-model:value="kon" :min="saper ? .01 : 1" :disabled="busy")
+      n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="0.00001" :input-props="{ id: 'game-kon' , type: 'number', inputmode: 'decimal', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: 0.00001}" v-model:value="kon" :disabled="busy")
     n-form-item(label="Количество игр" :label-props="{ for: 'game-count' }")
-      n-input-number(:input-props="{ id: 'game-count' }" v-model:value="count" :min="1" :max="100" :precision="0" :disabled="busy")
+      n-input-number(:min="1" :max="100" :step="1" :input-props="{ id: 'game-count' , type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count" :precision="0" :disabled="busy")
     p Итого: {{ kon && count ? kon * count : 0 }} {{ unit }}
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     n-button(type="primary" attr-type="submit" :loading="busy" :disabled="!validCreate") Создать и списать ставку
@@ -154,7 +163,8 @@ n-modal(:show="!saper && !!selected" preset="card" title="Орёл или реш
 .game-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
 .game-totals > div { display: flex; flex-direction: column; gap: .25rem; }
 .game-totals strong { font-size: clamp(1rem, 3vw, 1.5rem); overflow-wrap: anywhere; }
-.played-row { opacity: .5; }
+.quick-stats-sticky { position: sticky; top: var(--site-header-height, 4rem); z-index: 20; background: var(--bg-base); }
+.game-result { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; color: var(--primary); font-size: .85rem; }.game-result.win { color: #4ade80; }.game-result.loss, .game-result.error { color: #f87171; }
 .coin-side { font-size: 1rem; }
 .coin-side.hollow :deep(path) { fill: none; stroke: currentColor; stroke-width: 35; }
 </style>

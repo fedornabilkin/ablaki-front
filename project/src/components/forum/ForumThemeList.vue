@@ -20,6 +20,7 @@ ul.theme-list
       user-avatar(:user="themeUser(theme)")
     .theme-description
       router-link.record-title(:to="'/forum/read/' + theme.id") {{ field(theme.title) }}
+      font-awesome-icon(v-if="theme.is_private" icon="lock" title="Только для участников" aria-label="Только для участников")
       .theme-preview(v-if="theme.last_comment_text") {{ field(theme.last_comment_text) }}
       .muted.theme-meta
         span(v-if="theme.last_comment_username") Последнее сообщение:

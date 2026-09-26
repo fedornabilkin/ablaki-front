@@ -2,7 +2,7 @@
 import { computed, ref, watch, onScopeDispose } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NCard, NForm, NButton, NSkeleton } from 'naive-ui';
+import { NAlert, NCard, NForm, NButton, NSkeleton, NSwitch } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
@@ -32,6 +32,19 @@ watch(id, () => { saveError.value = ''; giftError.value = ''; giftNotice.value =
 const session = computed(() => store.state.auth.revision);
 const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id.value) + '?expand=first_comment'), null as RecordData | null, [id, session]);
 const starter = computed(() => theme.data.value?.first_comment as RecordData | null);
+const privacyBusy = ref(false), privacyError = ref('');
+const ownsTheme = computed(() => authenticated.value && Number(theme.data.value?.user_id) === userId.value);
+async function setPrivacy(value: boolean) {
+  if (!ownsTheme.value || privacyBusy.value) return;
+  const currentId = id.value, account = session.value;
+  privacyBusy.value = true; privacyError.value = '';
+  try {
+    await mutate('forum-theme/' + encodeURIComponent(currentId), 'patch', {is_private: Number(value)});
+    if (!disposed && currentId === id.value && account === session.value) await theme.refresh();
+  } catch (cause) { if (!disposed && currentId === id.value && account === session.value) privacyError.value = errorText(cause); }
+  finally { privacyBusy.value = false; }
+}
+watch([id, session], () => { privacyError.value = ''; });
 const comments = usePageRequest(() => list('forum-comment', page.value, { 'filter[theme_id]': id.value, expand: 'user', exclude_starter: 1 }), emptyPage(), [id, page, session]);
 watch(id, value => { void mutate('forum-theme/' + encodeURIComponent(value) + '/visit', 'post').catch(() => {}); }, { immediate: true });
 function updated(item: RecordData) {
@@ -77,6 +90,11 @@ async function submit() {
 </script>
 <template lang="pug">
 page-header.forum-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'Обсуждение'")
+  .privacy-control(v-if="ownsTheme")
+    n-switch(:value="theme.data.value?.is_private === true" :disabled="privacyBusy" :loading="privacyBusy" aria-label="Скрыть тему и сообщения от гостей" @update:value="setPrivacy")
+    span Только для участников
+  small(v-else-if="theme.data.value?.is_private") Только для участников
+  n-alert(v-if="privacyError" type="error") {{ privacyError }}
   .starting-message(v-if="starter")
     forum-post(:key="starter.id + ':' + session" :item="starter" :giving="giving !== null" @give="give(starter, $event)" @updated="updated")
 .container.page.stack
@@ -84,9 +102,9 @@ page-header.forum-header(:page-title="theme.data.value ? field(theme.data.value.
   n-alert(v-if="theme.error.value" type="error")
     | {{ theme.error.value }}
     n-button(text @click="theme.refresh") Повторить
-  n-card(v-if="authenticated" title="Ваш ответ")
+  n-card(v-if="authenticated && theme.data.value")
     n-form(@submit.prevent="submit")
-      message-composer(:key="id + ':' + userId" id="reply" v-model="comment" :disabled="saving" :submit-disabled="!theme.data.value" placeholder="Напишите ответ" @submit="submit")
+      message-composer(:key="id + ':' + userId" id="reply" label="Ваш ответ" v-model="comment" :disabled="saving" :submit-disabled="!theme.data.value" placeholder="Напишите ответ" @submit="submit")
       n-alert(v-if="draft.storageError.value" type="warning") {{ draft.storageError.value }}
       n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
   n-alert(v-else-if="['guest', 'error'].includes(store.getters['auth/authStatus'])" type="info")
@@ -101,4 +119,5 @@ page-header.forum-header(:page-title="theme.data.value ? field(theme.data.value.
 <style scoped>
 .starting-message { margin-top: .25rem; }
 .forum-header :deep(.stack) { gap: .5rem; }
+.privacy-control { display: flex; align-items: center; gap: .5rem; }
 </style>

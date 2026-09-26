@@ -14,7 +14,8 @@ describe('craft notifications', () => {
     expect(mocks.success).toHaveBeenCalledTimes(1);
     const [render, options] = mocks.success.mock.calls[0];
     expect(options).toMatchObject({duration: 5000, keepAliveOnHover: false, closable: true});
-    expect(render().props).toMatchObject({text: 'Предмет создан', duration: 5000});
+    expect(render().props).toMatchObject({type: 'success', duration: 5000});
+    expect(render().children.default()).toBe('Предмет создан');
     expect(notice.value).toBe('');
     notice.value = 'Предмет создан'; await nextTick();
     expect(mocks.success).toHaveBeenCalledTimes(2);

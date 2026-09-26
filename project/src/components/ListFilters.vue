@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance } from 'vue';
 import { NButton, NFormItem, NInput, NInputNumber, NSelect } from 'naive-ui';
-export interface FilterDefinition { key: string; label: string; type?: 'select' | 'number'; options?: { label: string; value: string | number }[]; min?: number; }
+export interface FilterDefinition { key: string; label: string; type?: 'select' | 'number'; options?: { label: string; value: string | number }[]; min?: number; max?: number; step?: number; }
 const props = withDefaults(defineProps<{ search: string; values?: Record<string, string>; filters?: FilterDefinition[]; loading?: boolean; placeholder?: string }>(), { values: () => ({}), filters: () => [], placeholder: 'Поиск' });
 const emit = defineEmits<{ 'update:search': [value: string]; 'update:values': [values: Record<string, string>]; reset: [] }>();
 const id = `list-filter-${getCurrentInstance()?.uid}`;
@@ -14,7 +14,7 @@ function numeric(key: string) { const value = props.values[key]; return value !=
   .filter-fields
     n-input.search-field(:value="search" @update:value="$emit('update:search', $event)" :input-props="{ id: id + '-search', type: 'search', 'aria-label': placeholder }" :placeholder="placeholder" :maxlength="100" clearable)
     n-form-item(v-for="filter in filters" :key="filter.key" :label="filter.label" :label-props="{ for: id + '-' + filter.key }" :show-feedback="false")
-      n-input-number(v-if="filter.type === 'number'" :value="numeric(filter.key)" @update:value="change(filter.key, $event)" :min="filter.min ?? 0" :input-props="{ id: id + '-' + filter.key }" clearable placeholder="Любой")
+      n-input-number(v-if="filter.type === 'number'" :value="numeric(filter.key)" @update:value="change(filter.key, $event)" :min="filter.min ?? 0" :max="filter.max ?? 1000000000" :step="filter.step ?? 1" :input-props="{ id: id + '-' + filter.key, type: 'number', inputmode: 'decimal', min: filter.min ?? 0, max: filter.max ?? 1000000000, step: filter.step ?? 1 }" clearable placeholder="Любой")
       n-select(v-else :value="values[filter.key] || null" @update:value="change(filter.key, $event)" :options="filter.options || []" :input-props="{ id: id + '-' + filter.key }" :aria-label="filter.label" clearable placeholder="Все")
   n-button.reset-filters(quaternary circle :disabled="!hasFilters" title="Сбросить поиск и фильтры" aria-label="Сбросить поиск и фильтры" @click="$emit('reset')")
     template(#icon)

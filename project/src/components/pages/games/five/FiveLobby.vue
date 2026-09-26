@@ -50,7 +50,7 @@ async function remove(id: number) {
 }
 const stake = ref<number | null>(10);
 const firstBall = ref(3);
-const validCreate = computed(() => stake.value !== null && Number.isFinite(stake.value) && stake.value >= 1 && stake.value <= credit.value);
+const validCreate = computed(() => stake.value !== null && Number.isFinite(stake.value) && stake.value >= 1 && stake.value <= Math.min(1000000000, credit.value));
 watch([mine, session], () => { play.close(); showCreate.value = route.query.create === '1'; });
 async function create() {
   if (!validCreate.value || stake.value === null) return;
@@ -90,7 +90,7 @@ page-header(page-title="5 яблок")
 n-modal(:show="showCreate" preset="card" title="Новая игра «5 яблок»" style="width: min(500px, 95vw)" :mask-closable="!play.busy.value" :closable="!play.busy.value" @update:show="value => { if (!play.busy.value) showCreate = value; }")
   .stack
     label Ставка (Cr)
-      n-input-number(v-model:value="stake" :min="1" :max="Number.isFinite(credit) ? credit : undefined" :disabled="play.busy.value")
+      n-input-number(:min="1" :max="Math.min(1000000000, Number.isFinite(credit) ? credit : 0)" :step="0.00001" :input-props="{type: 'number', inputmode: 'decimal', min: 1, max: Math.min(1000000000, Number.isFinite(credit) ? credit : 0), step: 0.00001}" v-model:value="stake" :disabled="play.busy.value")
     p Доступно: {{ formatAccountNumber(available) }} Cr. Ставка резервируется при создании.
     p Ваш первый скрытый ход:
     .toolbar(role="group" aria-label="Первый ход")

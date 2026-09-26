@@ -1,5 +1,4 @@
 import {defineStore} from 'pinia';
-import {store as vuexStore} from '@/store/store';
 import {getBuilding} from '@/entities/city/buildings';
 import {pickWeightedEvent} from '@/entities/city/events';
 import {
@@ -29,10 +28,10 @@ const EVENTS_LOG_LIMIT = 20;
 
 const round2 = (value) => Math.round(value * 100) / 100;
 
-const authUser = () => vuexStore?.getters?.['auth/user'] ?? null;
 
 export const useCityStore = defineStore('city', {
     state: () => ({
+        ownerId: 0,
         grid: [],
         localBudget: 0,
         treasury: 0,
@@ -133,18 +132,15 @@ export const useCityStore = defineStore('city', {
             return this.workReport.netPerHour;
         },
 
-        balance: (s) => {
-            const user = authUser();
-            if (user) {
-                return Number(user.person?.credit ?? 0);
-            }
-            return s.localBudget;
-        },
+        balance: (s) => s.localBudget,
     },
 
     actions: {
-        load() {
-            const state = loadCityState();
+        load(ownerId) {
+            this.stopTicker();
+            this.$reset();
+            this.ownerId = ownerId;
+            const state = loadCityState(ownerId);
             this.grid = state.grid;
             this.localBudget = state.localBudget;
             this.treasury = state.treasury;
@@ -156,6 +152,11 @@ export const useCityStore = defineStore('city', {
 
             this.tick();
             this.startTicker();
+        },
+
+        stopTicker() {
+            if (this._ticker) clearInterval(this._ticker);
+            this._ticker = null;
         },
 
         startTicker() {
@@ -251,15 +252,11 @@ export const useCityStore = defineStore('city', {
                 lastEventRollAt: this.lastEventRollAt,
                 activeEffects: this.activeEffects,
                 eventsLog: this.eventsLog,
-            });
+            }, this.ownerId);
         },
 
         spend(amount) {
-            if (authUser()) {
-                vuexStore.dispatch('auth/addCredit', -amount);
-            } else {
-                this.localBudget = round2(this.localBudget - amount);
-            }
+            this.localBudget = round2(this.localBudget - amount);
         },
 
         select(code) {
@@ -282,6 +279,7 @@ export const useCityStore = defineStore('city', {
         },
 
         build(index, code) {
+            if (!Number.isInteger(index) || index < 0 || index >= GRID_SIZE * GRID_SIZE) return;
             const building = getBuilding(code);
             if (!building || building.fixed) {
                 return;
@@ -340,7 +338,7 @@ export const useCityStore = defineStore('city', {
         },
 
         reset() {
-            const state = resetCityState();
+            const state = resetCityState(this.ownerId);
             this.grid = state.grid;
             this.localBudget = state.localBudget;
             this.treasury = state.treasury;

@@ -1,12 +1,13 @@
 <script setup>
+import { useToasts } from '@/hooks/useToasts';
 import {onMounted, ref, computed, watch} from 'vue';
 import {useStore} from 'vuex';
-import {NEmpty, NSpin, NInputNumber, NButton, NCard, NTag, useMessage} from 'naive-ui';
+import {NEmpty, NSpin, NInputNumber, NButton, NCard, NTag} from 'naive-ui';
 import {useCraftStore} from '@/store/craft';
 
 const craft = useCraftStore();
 const vuex = useStore();
-const message = useMessage();
+const message = useToasts();
 
 const qtys = ref({});
 const user = computed(() => vuex.getters['auth/user']);
@@ -21,9 +22,10 @@ const setQty = (id, v) => { qtys.value[id] = Math.max(1, Math.min(999, Number(v)
 const haveOf = (id) => craft.inventoryMap.get(id) || 0;
 
 const totalCost = (item) => item.price_credits * getQty(item.id);
-const canAfford = (item) => balance.value >= totalCost(item);
+const canAfford = (item) => Number.isSafeInteger(getQty(item.id)) && getQty(item.id) >= 1 && getQty(item.id) <= 999 && balance.value >= totalCost(item);
 
 const onBuy = async (item) => {
+    if (!canAfford(item)) return;
     const q = getQty(item.id);
     await craft.buyMaterial(item.id, q);
     if (craft.lastPurchase) {
@@ -97,6 +99,9 @@ onMounted(async () => {
                                 :value="getQty(item.id)"
                                 :min="1"
                                 :max="999"
+                                :step="1"
+                                :precision="0"
+                                :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 999, step: 1}"
                                 size="small"
                                 style="width: 6rem;"
                                 @update:value="(v) => setQty(item.id, v)"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import { NButton, NInputNumber, NPopover } from 'naive-ui';
 import type { CraftRecipe, CraftState } from '@/services/api/classicCraft';
 import { craftRequirements, maxCraftQuantity } from '@/entities/craft/classic';
@@ -27,13 +28,13 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
       |  +{{ recipe.experience }} XP
   label Количество партий
     .quantity-row
-      n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="blocked")
+      n-input-number(:min="1" :max="100" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="quantity" :precision="0" :disabled="blocked")
       n-button(:disabled="blocked || maximum === 0" @click="quantity = maximum") Максимум: {{ maximum }}
   ul.resource-list
     li(v-for="r in requirements.resources" :key="r.id" :class="{shortage: r.have < r.needed}")
       span.resource-name
         font-awesome-icon(:icon="items.get(r.id)?.icon || 'cube'")
-        span {{ r.name }}
+        router-link(:to="{path: '/craft', query: {item: r.id}}") {{ r.name }}
         n-popover(v-if="r.retained" trigger="hover")
           template(#trigger)
             span.resource-symbol(tabindex="0" :aria-label="r.station ? 'Станция: один предмет сохраняется' : 'Инструмент: один предмет сохраняется'")

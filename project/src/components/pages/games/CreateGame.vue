@@ -6,7 +6,7 @@
         div(class="col-sm label") Ставка
 
         div.col-sm-auto
-          n-input-number(v-model:value="kon" :min="1")
+          n-input-number(:min="1" :max="1000000000" :step="0.00001" :input-props="{type: 'number', inputmode: 'decimal', min: 1, max: 1000000000, step: 0.00001}" v-model:value="kon")
 
       div(class="fast-kon mt-2")
         div(v-for="btn in konList" :key="btn")
@@ -16,7 +16,7 @@
         div(class="col-sm label") Кол-во игр
 
         div.col-sm-auto
-          n-input-number(v-model:value="count" :min="1")
+          n-input-number(:min="1" :max="100" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count")
 
       div(class="fast-kon mt-2")
         div(v-for="btn in countList" :key="btn")
@@ -71,6 +71,7 @@ export default {
     },
 
     createGame() {
+      if (this.isLoading || !Number.isFinite(this.kon) || this.kon < 1 || this.kon > 1000000000 || !Number.isSafeInteger(this.count) || this.count < 1 || this.count > 100) return;
       this.isLoading = true;
       const notify = {type: 'error', message: 'Что-то пошло не так'}
       this.apiService.create(this.kon, this.count)

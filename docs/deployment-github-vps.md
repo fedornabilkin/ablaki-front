@@ -197,4 +197,4 @@ Releases production и test хранятся отдельно. Готовый к
 | 404 для всех assets | Root vhost на порту 3181 и asset location должны указывать на /var/code/ablaki-front |
 | Повтор SHA не меняет VITE_* | Нужен новый коммит и новая сборка |
 
-Локальные Node tests используют только временный HTTP сервер, без production запросов. Статическая проверка workflow и Bash не заменяет реальную публикацию и проверку rollback на test VPS. [План оставшихся серверных проверок](../plans/2026-09-06-production-test-deployment.md).
+Локальные Node tests используют только временный HTTP сервер, без production запросов. Статическая проверка workflow и Bash не заменяет реальную публикацию и проверку rollback на test VPS. [План оставшихся серверных проверок](plan/2026-09-06-production-test-deployment.md).

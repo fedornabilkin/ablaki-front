@@ -24,4 +24,4 @@
 
 Критерий готовности: общий UI подключён ко всем доступным спискам, API фильтрует до подсчёта/пагинации, суммы и онлайн не выдумываются; production-операции не выполняются в тестах. Миграции и PostgreSQL/MySQL concurrency требуют отдельной проверки целевого окружения.
 
-Результаты локальной проверки: [отчёт](../docs/lists-and-community-verification.md). Публикация frontend зависит от обновления API: push master запускает production deploy автоматически.
+Результаты локальной проверки: [отчёт](../lists-and-community-verification.md). Публикация frontend зависит от обновления API: push master запускает production deploy автоматически.

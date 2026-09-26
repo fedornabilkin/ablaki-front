@@ -14,7 +14,7 @@
 - Этот Git-репозиторий — frontend; приложение находится в project, исходники — project/src.
 - Vue 3, Vite, Vue Router, Naive UI, Pug, SCSS, Font Awesome. Vuex auth пока является владельцем сессии; Pinia используется в новых доменах.
 - Сохранять Naive UI и существующую тему. Не переносить Bulma, D3, PCM-цвета и AI-адаптеры из PCM Helper.
-- Новые планы размещать в plans согласно [plans.md](plans.md). Существующие docs/plan сохранять.
+- Планы размещать в `docs/plan` согласно [plans.md](plans.md), завершённые — в `docs/plan/done`.
 - Правила нового кода: [architecture.md](architecture.md). Целевая схема публикации: [deployment.md](deployment.md).
 
 ## Проверки

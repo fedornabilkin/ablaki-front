@@ -1,6 +1,7 @@
+import { useToasts } from '@/hooks/useToasts';
 import { computed, onMounted, onScopeDispose, ref } from 'vue';
 import { useStore } from 'vuex';
-import { useMessage } from 'naive-ui';
+
 import { claimDaily, errorText } from '@/services/api/portal';
 import { dailyAvailability, type DailyAvailability } from '@/services/api/community';
 import { usePageRequest } from '@/hooks/usePageRequest';
@@ -8,7 +9,7 @@ import { usePageRequest } from '@/hooks/usePageRequest';
 const rewardChanged = 'ablakin:daily-reward';
 export function useDailyRewards() {
   const store = useStore();
-  const message = useMessage();
+  const message = useToasts();
   const session = computed(() => store.state.auth.revision);
   const available = usePageRequest<DailyAvailability>(() => store.getters['auth/isAuthenticated'] ? dailyAvailability() : Promise.resolve({ items: [], refresh_at: 0 }), { items: [], refresh_at: 0 }, [session]);
   const claiming = ref<'bonus' | 'rating' | null>(null);

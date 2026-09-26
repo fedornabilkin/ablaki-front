@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NModal } from 'naive-ui';
+import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NModal, NSwitch } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
@@ -20,7 +20,7 @@ const store = useStore();
 const authenticated = computed(() => store.getters['auth/isAuthenticated']);
 const mine = computed(() => route.path === '/forum/my');
 const { page, search, filters, params, reset } = useListQuery();
-const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, { ...params.value, expand: 'user' }), emptyPage(), [mine, page, params]);
+const { data, loading, error, refresh } = usePageRequest(() => list(mine.value ? 'forum-theme/my' : 'forum-theme', page.value, { ...params.value, expand: 'user' }), emptyPage(), [mine, page, params, () => store.state.auth.revision]);
 const links = computed(() => [{ link: '/forum', title: 'Все темы' }, ...(authenticated.value ? [{ link: '/forum/my', title: 'Мои темы' }] : [])]);
 const showCreate = ref(false);
 const draftKey = (part: string) => computed(() => forumDraftKey(store.getters['auth/user']?.id, 'new-theme:' + part));
@@ -29,6 +29,8 @@ const messageDraft = useForumDraft(draftKey('message'));
 const pendingTheme = useForumDraft(draftKey('created-id'), 20);
 const title = titleDraft.text;
 const comment = messageDraft.text;
+const privacyDraft = useForumDraft(draftKey('private'), 1);
+const isPrivate = computed({get: () => privacyDraft.text.value === '1', set: value => { privacyDraft.text.value = value ? '1' : '0'; }});
 const saving = ref(false);
 const saveError = ref('');
 const createdThemeId = computed({ get: () => /^[1-9][0-9]*$/.test(pendingTheme.text.value) && Number.isSafeInteger(Number(pendingTheme.text.value)) ? Number(pendingTheme.text.value) : null, set: (id: number | null) => { pendingTheme.text.value = id ? String(id) : ''; } });
@@ -41,7 +43,7 @@ async function create() {
   const sentTitle = titleDraft.snapshot(), sentMessage = messageDraft.snapshot();
   try {
     if (!createdThemeId.value) {
-      const theme = record(await mutate('forum-theme', 'post', { title: title.value.trim(), view: 0 }));
+      const theme = record(await mutate('forum-theme', 'post', { title: title.value.trim(), view: 0, is_private: Number(isPrivate.value) }));
       if (revision !== store.state.auth.revision) return;
       createdThemeId.value = theme.id;
     }
@@ -50,6 +52,7 @@ async function create() {
     titleDraft.clearSubmitted(sentTitle); messageDraft.clearSubmitted(sentMessage);
     if (revision !== store.state.auth.revision) return;
     showCreate.value = false;
+    privacyDraft.text.value = '';
     const target = createdThemeId.value;
     createdThemeId.value = null;
     await router.push('/forum/read/' + target);
@@ -74,6 +77,8 @@ n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :sty
   n-form(@submit.prevent="create")
     n-form-item(label="Заголовок" :label-props="{ for: 'theme-title' }")
       n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
+    n-form-item(label="Только для участников")
+      n-switch(v-model:value="isPrivate" :disabled="saving || !!createdThemeId" aria-label="Скрыть тему и сообщения от гостей")
     message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" :submit-disabled="!title.trim()" submit-label="Опубликовать" placeholder="Начните обсуждение" @submit="create")
     n-alert(v-if="messageDraft.storageError.value || titleDraft.storageError.value" type="warning") {{ messageDraft.storageError.value || titleDraft.storageError.value }}
     n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
