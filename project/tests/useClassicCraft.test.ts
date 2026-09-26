@@ -10,7 +10,7 @@ describe('account craft requests', () => {
   it('restores the exact chest destination and quoted purchase price after a lost response', async () => {
     const values = new Map<string,string>();
     vi.stubGlobal('sessionStorage', {getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key)});
-    for (const input of [{action: 'transfer' as const, id: 5, quantity: 7, slot_id: 9, container_id: 20, position: 3}, {action: 'buy_slots' as const, id: 0, quantity: 2, unit_price: 10}, {action: 'repair' as const, id: 6, quantity: 1, slot_id: 9}]) {
+    for (const input of [{action: 'transfer' as const, id: 5, quantity: 7, slot_id: 9, container_id: 20, position: 3}, {action: 'buy_slots' as const, id: 0, quantity: 2, unit_price: 10, total_price: 30}, {action: 'repair' as const, id: 6, quantity: 1, slot_id: 9}]) {
       values.clear(); api.sendCraft.mockRejectedValueOnce(new Error('offline'));
       const first = scope.run(() => useClassicCraft(ref(1), vi.fn(), ref(37)))!;
       await first.submit(input);

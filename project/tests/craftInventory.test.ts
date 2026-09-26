@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { inventoryCells, insideTrash } from '../src/entities/craft/inventory';
+import { inventoryCells, insideTrash, slotPurchaseCost } from '../src/entities/craft/inventory';
 describe('craft inventory slots', () => {
+  it('quotes increasing slot prices and the complete batch before purchase', () => {
+    expect([20,21,22].map(permanent => slotPurchaseCost(permanent,1,10,true))).toEqual([10,20,30]);
+    expect(slotPurchaseCost(20,3,10,true)).toBe(60);
+    expect(slotPurchaseCost(22,2,10,true)).toBe(70);
+    expect(slotPurchaseCost(20,30,10,true)).toBe(4650);
+    expect(slotPurchaseCost(20,3,10,false)).toBe(30);
+    expect(slotPurchaseCost(20,3,0,true)).toBe(0);
+    for (const quantity of [0,-1,1.5,31,NaN]) expect(slotPurchaseCost(20,quantity,10,true)).toBe(Infinity);
+  });
   it('renders one cell per real stack and pads to exactly 50 cells', () => {
     const slots = [{id: 41, item_id: 5, quantity: 100}, {id: 99, item_id: 5, quantity: 3}];
     const cells = inventoryCells(slots);
