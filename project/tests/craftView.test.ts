@@ -1,4 +1,5 @@
 import { createSSRApp } from 'vue';
+import { createRouter, createMemoryHistory } from 'vue-router';
 import { renderToString } from '@vue/server-renderer';
 import { setup as setupSsrStyles } from '@css-render/vue3-ssr';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +19,8 @@ const state: CraftState = {
 };
 async function detail(value: CraftState) {
   const app = createSSRApp(CraftRecipeDetail, {state: value, recipe: value.recipes[0], busy: false, blocked: false});
+  const router = createRouter({history: createMemoryHistory(), routes: [{path: '/craft', component: {template: '<div />'}}]});
+  app.use(router); await router.push('/craft'); await router.isReady();
   app.component('font-awesome-icon', FontAwesomeIcon);
   setupSsrStyles(app);
   return renderToString(app);
@@ -55,6 +58,11 @@ describe('craft view with server state', () => {
     const html = await detail({...state, inventory: []});
     expect(html).toContain('aria-label="Не хватает ресурса"');
     expect(html).toContain('Не хватает ресурсов');
+    expect(html).toContain('href="/craft?item=1"');
+    expect(html).toContain('type="number"');
+    expect(html).toContain('min="1"');
+    expect(html).toContain('max="100"');
+    expect(html).toContain('step="1"');
     expect(html).toMatch(/\sdisabled(?:=|[ >])/);
   });
   it('renders actual recipe nodes with keyboard instructions and no scale toolbar', async () => {

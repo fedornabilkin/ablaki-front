@@ -45,10 +45,10 @@ header.site-header(ref="header" :class="{ compact }")
     online-users(:collapsed="compact")
     daily-rewards(v-if="user")
     nav.desktop-nav(aria-label="Основная навигация")
-      router-link.nav-item(v-for="link in links" :key="link.to" :to="link.to" :class="{'account-link': link.account}" :aria-label="link.title" :title="link.title")
+      router-link.nav-item(v-for="link in links" :key="link.to" :to="link.to" :class="{'account-link': link.account}" :aria-label="link.title")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")
         span.nav-label {{ link.title }}
-      router-link.nav-item(v-if="user" to="/users/logout" aria-label="Выйти" title="Выйти")
+      router-link.nav-item(v-if="user" to="/users/logout" aria-label="Выйти")
         font-awesome-icon(icon="sign-out-alt" aria-hidden="true")
         span.nav-label Выйти
 </template>

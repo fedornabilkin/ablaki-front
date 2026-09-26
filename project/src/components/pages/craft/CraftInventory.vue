@@ -14,6 +14,11 @@ const overflow = computed(() => props.state.inventory_slots.filter((s, index) =>
 const selectedId = ref<number | null>(null), discardId = ref<number | null>(null), chestId = ref<number | null>(null);
 const selected = computed(() => allSlots.value.find(s => s.id === selectedId.value));
 const chest = computed(() => props.state.containers?.find(c => c.id === chestId.value));
+const repair = computed(() => chest.value?.repair);
+function repairChest() {
+  const current = chest.value, slot = props.state.inventory_slots.find(s => s.id === current?.id);
+  if (!props.blocked && current?.repair && !current.repair.reasons.length && slot) emit('submit', {action: 'repair', id: slot.item_id, slot_id: slot.id, quantity: 1});
+}
 const discarded = computed(() => props.state.inventory_slots.find(s => s.id === discardId.value));
 const discardQuantity = ref<number | null>(1), useQuantity = ref<number | null>(1), moveQuantity = ref<number | null>(1);
 const showDiscard = computed({get: () => !!discarded.value, set: value => { if (!value) discardId.value = null; }});
@@ -107,8 +112,8 @@ watch(() => props.state, cancel);
     .overflow-items(v-if="overflow.length")
       p Предметы сверх 50 слотов сохранены. Они займут освободившиеся активные слоты.
       button.slot-item(v-for="slot in overflow" :key="slot.id" type="button" :aria-label="items.get(slot.item_id)?.name + ': ' + slot.quantity + ' шт.'" :class="{matching: selected && selected.id !== slot.id && selected.item_id === slot.item_id}" :disabled="blocked" @pointerdown="down($event, slot)" @pointermove="move" @pointerup="up" @pointercancel="cancel" @lostpointercapture="cancel" @click="select($event, slot)") {{ items.get(slot.item_id)?.name }} × {{ slot.quantity }}
-  aside.selected-item(v-if="selected || chest" aria-label="Описание предмета и сундук")
-    template(v-if="selected")
+  aside.inventory-details(v-if="selected || chest" aria-label="Описание предмета и сундук")
+    section.selected-item(v-if="selected" aria-label="Описание предмета")
       .item-meta
         font-awesome-icon(:icon="items.get(selected.item_id)?.icon || 'cube'")
         small {{ rarities[items.get(selected.item_id)?.rarity || 'common'] }}
@@ -116,36 +121,62 @@ watch(() => props.state, cancel);
       p {{ items.get(selected.item_id)?.description }}
       p(v-if="items.get(selected.item_id)?.storage_kind === 'elixir'") +{{ state.inventory_settings?.elixir_slots }} слотов на {{ state.inventory_settings?.elixir_days }} дней
       .use-item(v-if="usable")
-        n-input-number(v-model:value="useQuantity" :min="1" :max="Math.min(10000, selected.quantity)" :precision="0" :disabled="blocked" aria-label="Количество используемых предметов")
+        n-input-number(:min="1" :max="Math.min(10000, selected.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, selected.quantity), step: 1}" v-model:value="useQuantity" :precision="0" :disabled="blocked" aria-label="Количество используемых предметов")
         n-button(:disabled="blocked || !useQuantity || useQuantity > selected.quantity" @click="use") Использовать
       .use-item(v-if="!inBackpack || (chest && items.get(selected.item_id)?.storage_kind !== 'chest')")
-        n-input-number(v-model:value="moveQuantity" :min="1" :max="Math.min(10000, selected.quantity)" :precision="0" :disabled="blocked" aria-label="Количество перемещаемых предметов")
+        n-input-number(:min="1" :max="Math.min(10000, selected.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, selected.quantity), step: 1}" v-model:value="moveQuantity" :precision="0" :disabled="blocked" aria-label="Количество перемещаемых предметов")
         n-button(v-if="inBackpack && chest" :disabled="blocked || !movable || chest.durability < 1" @click="moveSelected(chest.id)") В сундук
         n-button(v-else :disabled="blocked || !movable" @click="moveSelected(0)") В инвентарь
-    template(v-if="chest")
+    section.chest-panel(v-if="chest" aria-label="Сундук")
       .chest-header
         strong Сундук · {{ chest.slots.length }} / {{ chest.capacity }}
-        span Прочность {{ chest.durability }} / {{ chest.max_durability }}
+        span.durability(:aria-label="'Прочность: ' + chest.durability + ' из ' + chest.max_durability" title="Прочность сундука")
+          font-awesome-icon(icon="shield-halved" aria-hidden="true")
+          span.durability-label Прочность
+          |  {{ chest.durability }} / {{ chest.max_durability }}
       craft-slot-grid.chest-grid(:slots="chest.slots" :count="chest.capacity" :active="chest.capacity" :items="items" :selected="selected" :blocked="blocked" :target="overSlot?.container === chest.id ? overSlot.position : undefined" :dragging="drag?.moving ? drag.slotId : undefined" label="Содержимое сундука" @element="(position, element) => slotElement(chest.id, position, element)" @choose="select" @down="down" @move="move" @up="up" @cancel="cancel" @destination="position => destination(chest.id, position)")
       p(v-if="chest.durability === 0") Сундук изношен. Содержимое можно забрать.
+      p.mobile-transfer-hint Выберите предмет слева, затем свободный слот сундука — или перетащите его.
+      details.repair-details(v-if="repair && repair.restore > 0")
+        summary Починить сундук
+        p Материалы зависят от повреждения. Полный ремонт стоит половину материалов для создания.
+        ul
+          li(v-for="material in repair.materials" :key="material.item_id") {{ items.get(material.item_id)?.name }}: {{ material.have }} / {{ material.quantity }}
+          li(v-for="tool in repair.tools" :key="tool.item_id") {{ items.get(tool.item_id)?.name }}: прочность {{ tool.durability }} / {{ tool.max_durability }} (−1 за ремонт)
+          li(v-if="repair.station") Станция: {{ repair.station.name }}
+        p(v-for="reason in repair.reasons" :key="reason" role="status") {{ reason }}
+        n-button(size="small" :disabled="blocked || !!repair.reasons.length" @click="repairChest") Починить (+{{ repair.restore }})
   .drag-preview(v-if="drag?.moving" :style="{left: drag.x + 12 + 'px', top: drag.y + 12 + 'px'}" aria-hidden="true")
     font-awesome-icon(icon="cube")
   n-modal(v-model:show="showDiscard" preset="dialog" title="Удалить предметы?" positive-text="Удалить" negative-text="Отмена" :positive-button-props="{disabled: !validDiscard, type: 'error'}" @positive-click="confirmDiscard")
     template(v-if="discarded")
       p {{ items.get(discarded.item_id)?.name }}. Удалённые предметы нельзя восстановить.
-      n-input-number(v-model:value="discardQuantity" :min="1" :max="Math.min(10000, discarded.quantity)" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
+      n-input-number(:min="1" :max="Math.min(10000, discarded.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, discarded.quantity), step: 1}" v-model:value="discardQuantity" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
   n-modal(v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy}" @positive-click="buy")
     p Цена одного слота: {{ quotedPrice }} Cr
-    n-input-number(v-model:value="buyQuantity" :min="1" :max="50 - permanent" :precision="0" :disabled="blocked" aria-label="Количество покупаемых слотов")
+    n-input-number(:min="1" :max="50 - permanent" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 50 - permanent, step: 1}" v-model:value="buyQuantity" :precision="0" :disabled="blocked" aria-label="Количество покупаемых слотов")
     p Будет списано {{ Number(buyQuantity || 0) * quotedPrice }} Cr. Слоты останутся активными постоянно.
 </template>
 <style scoped>
-.craft-inventory { display: grid; grid-template-columns: minmax(520px, 760px) minmax(280px, 380px); align-items: start; gap: 1rem; overflow-x: auto; max-width: 100%; }
+.craft-inventory { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); align-items: start; gap: 1rem; max-width: 100%; }
 .inventory-scroll { min-width: 0; }.inventory-status, .chest-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
 .trash-cell { aspect-ratio: 1; }.trash-target { display: grid; place-items: center; width: 100%; height: 100%; padding: .3rem; border-radius: .4rem; border: 1px dashed #b44a4a; background: #351f22; color: #f87171; cursor: pointer; }.trash-target.over { background: #712929; box-shadow: inset 0 0 0 2px #ef4444; }
-.selected-item { display: grid; gap: .8rem; padding: .8rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg-surface); }.selected-item p { margin: 0; color: var(--text-muted); font-size: .85rem; }.item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.item-meta strong { flex-basis: 100%; }.item-meta svg { color: #d6b685; font-size: .9rem; }.item-meta small { color: var(--text-muted); }
+.inventory-details { display: grid; gap: .75rem; min-width: 0; }
+.selected-item, .chest-panel { display: grid; gap: .8rem; min-width: 0; padding: .8rem; border-radius: .6rem; border: 1px solid var(--border); background: var(--bg-surface); }
+.selected-item p, .chest-panel p { margin: 0; color: var(--text-muted); font-size: .85rem; }.item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.item-meta strong { flex-basis: 100%; }.item-meta svg { color: #d6b685; font-size: .9rem; }.item-meta small { color: var(--text-muted); }
+.durability { display: flex; align-items: center; gap: .3rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mobile-transfer-hint { display: none; }.repair-details summary { cursor: pointer; }.repair-details ul { padding-left: 1rem; font-size: .8rem; }.repair-details p { margin: .4rem 0; }
 .chest-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }.use-item { display: flex; gap: .5rem; }.use-item > * { min-width: 0; }
 .overflow-items { display: flex; flex-wrap: wrap; gap: .5rem; }.overflow-items p { flex-basis: 100%; }.overflow-items .slot-item { width: 90px; min-height: 70px; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .4rem; touch-action: none; }.overflow-items .matching { background: #3b3523; }
 .drag-preview { position: fixed; pointer-events: none; z-index: 2000; padding: .7rem; background: #493c29; border-radius: .5rem; color: #f2d39d; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-@media(max-width: 850px) { .craft-inventory { grid-template-columns: 520px 280px; gap: .75rem; } }
+@media(max-width: 850px) {
+  .craft-inventory { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+  .inventory-scroll :deep(.inventory-grid) { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+  .chest-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .inventory-details { position: sticky; top: calc(var(--site-header-height, 60px) + 8px); }
+  .chest-panel { order: -1; }.selected-item, .chest-panel { padding: .4rem; gap: .5rem; }
+  .durability-label { display: none; }.chest-header { font-size: .75rem; gap: .3rem; margin: 0; }
+  .mobile-transfer-hint { display: block; }.chest-panel .mobile-transfer-hint { font-size: .65rem; }
+  .use-item { flex-direction: column; }.inventory-status { font-size: .75rem; }
+}
 </style>

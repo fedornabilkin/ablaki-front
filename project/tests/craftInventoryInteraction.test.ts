@@ -54,6 +54,25 @@ function mount(targetQuantity = 100, change?: (state: CraftState) => void) {
   return {root, slot, app, command, submit, state, blocked, pointer};
 }
 describe('inventory drag to trash', () => {
+  it('repairs the selected chest only when its server requirements allow it', async () => {
+    for (const reasons of [[], ['Не хватает: Saw']]) {
+      const view = mount(90, state => {
+        state.items.push({...state.items[0], id: 6, code: 'chest', name: 'Chest', storage_kind: 'chest', stack_size: 1});
+        state.inventory_slots.push({id: 9, item_id: 6, quantity: 1, position: 3});
+        state.containers = [{id: 9, capacity: 10, durability: 0, max_durability: 100, slots: [], repair: {restore: 100, materials: [{item_id: 5, quantity: 4, have: 90}], tools: [], station: null, reasons}}];
+      });
+      find(view.root, n => n.props['aria-label'] === 'Chest: 1 шт.')!.props.onClick({detail: 1}); await nextTick();
+      const details = find(view.root, n => n.tag === 'details')!;
+      const button = find(details, n => n.tag === 'button')!;
+      expect(button.props.disabled).toBe(!!reasons.length);
+      button.props.onClick();
+      if (reasons.length) expect(view.submit).not.toHaveBeenCalled();
+      else expect(view.submit).toHaveBeenCalledExactlyOnceWith({action: 'repair', id: 6, slot_id: 9, quantity: 1});
+      view.submit.mockClear(); view.blocked.value = true; await nextTick();
+      button.props.onClick(); expect(view.submit).not.toHaveBeenCalled();
+      view.app.unmount();
+    }
+  });
   it('highlights matching items, exposes the selected chest and transfers back with the keyboard controls', async () => {
     const view = mount(90, state => {
       state.items.push({...state.items[0], id: 6, code: 'chest', name: 'Chest', storage_kind: 'chest', stack_size: 1});

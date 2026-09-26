@@ -10,12 +10,12 @@ export function useClassicCraft(session: Ref<number>, refreshAccount: () => Prom
   function restore(): CraftCommand | null {
     try {
       const key = storageKey(), value = key ? JSON.parse(sessionStorage.getItem(key) || 'null') : null;
-      const inventoryAction = value && ['use', 'discard', 'merge', 'transfer'].includes(value.action);
+      const inventoryAction = value && ['use', 'discard', 'merge', 'transfer', 'repair'].includes(value.action);
       const validSlot = value && (value.slot_id === undefined || (inventoryAction && Number.isSafeInteger(value.slot_id) && value.slot_id > 0));
       const validTarget = value && (value.action === 'merge' ? Number.isSafeInteger(value.target_slot_id) && value.target_slot_id > 0 && value.slot_id > 0 && value.target_slot_id !== value.slot_id && value.quantity === 1 : value.target_slot_id === undefined);
       const validTransfer = value && (value.action === 'transfer' ? value.slot_id > 0 && Number.isSafeInteger(value.container_id) && value.container_id >= 0 && Number.isSafeInteger(value.position) && value.position > 0 && value.position <= 100 : value.container_id === undefined && value.position === undefined);
       const validPrice = value && (value.action === 'buy_slots' ? Number.isSafeInteger(value.unit_price) && value.unit_price >= 0 && value.unit_price <= 1000000 : value.unit_price === undefined);
-      if (value && validSlot && validTarget && validTransfer && validPrice && ['craft','starter','gather','use','discard','merge','transfer','buy_slots'].includes(value.action) && Number.isSafeInteger(value.id) && value.id >= 0 && Number.isSafeInteger(value.quantity) && value.quantity >= 1 && value.quantity <= (inventoryAction ? 10000 : 100) && typeof value.request_key === 'string' && /^[A-Za-z0-9_-]{16,80}$/.test(value.request_key)) return value;
+      if (value && validSlot && validTarget && validTransfer && validPrice && (value.action !== 'repair' || (value.slot_id > 0 && value.quantity === 1)) && ['craft','starter','gather','use','discard','merge','transfer','buy_slots','repair'].includes(value.action) && Number.isSafeInteger(value.id) && value.id >= 0 && Number.isSafeInteger(value.quantity) && value.quantity >= 1 && value.quantity <= (inventoryAction ? 10000 : 100) && typeof value.request_key === 'string' && /^[A-Za-z0-9_-]{16,80}$/.test(value.request_key)) return value;
     } catch { /* Malformed local state is not a command. */ }
     return null;
   }
