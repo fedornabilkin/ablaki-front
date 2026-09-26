@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { NButton, NInputNumber, NModal } from 'naive-ui';
 import type { CraftState, CraftSlot, CraftInput } from '@/services/api/classicCraft';
-import { insideTrash, INVENTORY_CELLS } from '@/entities/craft/inventory';
+import { insideTrash, INVENTORY_CELLS, slotPurchaseCost } from '@/entities/craft/inventory';
 import CraftSlotGrid from './CraftSlotGrid.vue';
 const props = defineProps<{state: CraftState; blocked: boolean}>();
 const emit = defineEmits<{command: [action: 'use' | 'discard' | 'merge', id: number, quantity: number, slotId: number, targetSlotId?: number]; submit: [input: CraftInput]}>();
@@ -22,10 +22,12 @@ function repairChest() {
 const discarded = computed(() => props.state.inventory_slots.find(s => s.id === discardId.value));
 const discardQuantity = ref<number | null>(1), useQuantity = ref<number | null>(1), moveQuantity = ref<number | null>(1);
 const showDiscard = computed({get: () => !!discarded.value, set: value => { if (!value) discardId.value = null; }});
-const showBuy = ref(false), buyQuantity = ref<number | null>(1), quotedPrice = ref(0);
-const validBuy = computed(() => !props.blocked && Number.isSafeInteger(buyQuantity.value) && Number(buyQuantity.value) >= 1 && Number(buyQuantity.value) <= 50 - permanent.value && Number(buyQuantity.value) * quotedPrice.value <= props.state.credit);
-function requestBuy() { if (!props.blocked && props.state.inventory_settings && permanent.value < 50) { quotedPrice.value = props.state.inventory_settings.slot_price; buyQuantity.value = 1; showBuy.value = true; } }
-function buy() { if (!validBuy.value) return false; emit('submit', {action: 'buy_slots', id: 0, quantity: buyQuantity.value!, unit_price: quotedPrice.value}); showBuy.value = false; }
+const showBuy = ref(false), buyQuantity = ref<number | null>(1), quotedBase = ref(0), quotedPermanent = ref(20), quotedLinear = ref(false);
+const quotedPrice = computed(() => slotPurchaseCost(quotedPermanent.value, 1, quotedBase.value, quotedLinear.value));
+const quotedTotal = computed(() => slotPurchaseCost(quotedPermanent.value, Number(buyQuantity.value), quotedBase.value, quotedLinear.value));
+const validBuy = computed(() => !props.blocked && Number.isSafeInteger(buyQuantity.value) && Number(buyQuantity.value) >= 1 && Number(buyQuantity.value) <= 50 - permanent.value && Number.isFinite(quotedTotal.value) && quotedTotal.value <= props.state.credit);
+function requestBuy() { if (!props.blocked && props.state.inventory_settings && permanent.value < 50) { quotedBase.value = props.state.inventory_settings.slot_price; quotedPermanent.value = permanent.value; quotedLinear.value = props.state.slot_pricing === 'linear'; buyQuantity.value = 1; showBuy.value = true; } }
+function buy() { if (!validBuy.value) return false; emit('submit', {action: 'buy_slots', id: 0, quantity: buyQuantity.value!, unit_price: quotedPrice.value, total_price: quotedTotal.value}); showBuy.value = false; }
 const trash = ref<HTMLElement>();
 type Destination = {container: number; position: number};
 const drag = ref<{slotId: number; pointerId: number; startX: number; startY: number; x: number; y: number; moving: boolean} | null>(null);
@@ -141,9 +143,14 @@ watch(() => props.state, cancel);
         summary Починить сундук
         p Материалы зависят от повреждения. Полный ремонт стоит половину материалов для создания.
         ul
-          li(v-for="material in repair.materials" :key="material.item_id") {{ items.get(material.item_id)?.name }}: {{ material.have }} / {{ material.quantity }}
-          li(v-for="tool in repair.tools" :key="tool.item_id") {{ items.get(tool.item_id)?.name }}: прочность {{ tool.durability }} / {{ tool.max_durability }} (−1 за ремонт)
-          li(v-if="repair.station") Станция: {{ repair.station.name }}
+          li(v-for="material in repair.materials" :key="material.item_id" :class="{missing: material.available === false || material.have < material.quantity}") {{ items.get(material.item_id)?.name }}: {{ material.have }} / {{ material.quantity }}
+          li(v-for="tool in repair.tools" :key="tool.item_id" :class="{missing: tool.available === false}")
+            | {{ items.get(tool.item_id)?.name }}: прочность {{ tool.durability }} / {{ tool.max_durability }} (−1 за ремонт)
+            span(v-if="tool.available === false") · не хватает
+          li(v-if="repair.station" :class="{missing: repair.station.available === false}")
+            | Станция: {{ repair.station.name }}
+            span(v-if="repair.station.durability !== undefined") : прочность {{ repair.station.durability }} / {{ repair.station.max_durability }} (−1 за ремонт)
+            span(v-if="repair.station.available === false") · не хватает
         p(v-for="reason in repair.reasons" :key="reason" role="status") {{ reason }}
         n-button(size="small" :disabled="blocked || !!repair.reasons.length" @click="repairChest") Починить (+{{ repair.restore }})
   .drag-preview(v-if="drag?.moving" :style="{left: drag.x + 12 + 'px', top: drag.y + 12 + 'px'}" aria-hidden="true")
@@ -153,12 +160,13 @@ watch(() => props.state, cancel);
       p {{ items.get(discarded.item_id)?.name }}. Удалённые предметы нельзя восстановить.
       n-input-number(:min="1" :max="Math.min(10000, discarded.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, discarded.quantity), step: 1}" v-model:value="discardQuantity" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
   n-modal(v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy}" @positive-click="buy")
-    p Цена одного слота: {{ quotedPrice }} Cr
+    p Следующий слот: {{ quotedPrice }} Cr
+    p(v-if="quotedLinear && quotedBase") Каждый следующий слот дороже на {{ quotedBase }} Cr.
     n-input-number(:min="1" :max="50 - permanent" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 50 - permanent, step: 1}" v-model:value="buyQuantity" :precision="0" :disabled="blocked" aria-label="Количество покупаемых слотов")
-    p Будет списано {{ Number(buyQuantity || 0) * quotedPrice }} Cr. Слоты останутся активными постоянно.
+    p Будет списано {{ Number.isFinite(quotedTotal) ? quotedTotal : '—' }} Cr. Слоты останутся активными постоянно.
 </template>
 <style scoped>
-.craft-inventory { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); align-items: start; gap: 1rem; max-width: 100%; }
+.craft-inventory { display: grid; grid-template-columns: minmax(0, 760px) minmax(240px, 380px); align-items: start; gap: 1rem; max-width: 100%; }
 .inventory-scroll { min-width: 0; }.inventory-status, .chest-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
 .trash-cell { aspect-ratio: 1; }.trash-target { display: grid; place-items: center; width: 100%; height: 100%; padding: .3rem; border-radius: .4rem; border: 1px dashed #b44a4a; background: #351f22; color: #f87171; cursor: pointer; }.trash-target.over { background: #712929; box-shadow: inset 0 0 0 2px #ef4444; }
 .inventory-details { display: grid; gap: .75rem; min-width: 0; }
@@ -166,6 +174,7 @@ watch(() => props.state, cancel);
 .selected-item p, .chest-panel p { margin: 0; color: var(--text-muted); font-size: .85rem; }.item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.item-meta strong { flex-basis: 100%; }.item-meta svg { color: #d6b685; font-size: .9rem; }.item-meta small { color: var(--text-muted); }
 .durability { display: flex; align-items: center; gap: .3rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mobile-transfer-hint { display: none; }.repair-details summary { cursor: pointer; }.repair-details ul { padding-left: 1rem; font-size: .8rem; }.repair-details p { margin: .4rem 0; }
+.repair-details .missing { color: #f87171; }
 .chest-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }.use-item { display: flex; gap: .5rem; }.use-item > * { min-width: 0; }
 .overflow-items { display: flex; flex-wrap: wrap; gap: .5rem; }.overflow-items p { flex-basis: 100%; }.overflow-items .slot-item { width: 90px; min-height: 70px; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .4rem; touch-action: none; }.overflow-items .matching { background: #3b3523; }
 .drag-preview { position: fixed; pointer-events: none; z-index: 2000; padding: .7rem; background: #493c29; border-radius: .5rem; color: #f2d39d; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

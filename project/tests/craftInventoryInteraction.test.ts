@@ -59,11 +59,15 @@ describe('inventory drag to trash', () => {
       const view = mount(90, state => {
         state.items.push({...state.items[0], id: 6, code: 'chest', name: 'Chest', storage_kind: 'chest', stack_size: 1});
         state.inventory_slots.push({id: 9, item_id: 6, quantity: 1, position: 3});
-        state.containers = [{id: 9, capacity: 10, durability: 0, max_durability: 100, slots: [], repair: {restore: 100, materials: [{item_id: 5, quantity: 4, have: 90}], tools: [], station: null, reasons}}];
+        state.containers = [{id: 9, capacity: 10, durability: 0, max_durability: 100, slots: [], repair: {restore: 100, materials: [{item_id: 5, quantity: 4, have: reasons.length ? 0 : 90, available: !reasons.length}], tools: [{item_id: 5, durability: 98, max_durability: 100, available: !reasons.length}], station: {id: 1, item_id: 5, name: 'Workbench', durability: 97, max_durability: 100, available: !reasons.length}, reasons}}];
       });
       find(view.root, n => n.props['aria-label'] === 'Chest: 1 шт.')!.props.onClick({detail: 1}); await nextTick();
       const details = find(view.root, n => n.tag === 'details')!;
       const button = find(details, n => n.tag === 'button')!;
+      const list = find(details, n => n.tag === 'ul')!;
+      const entries = list.children.filter(n => n.tag === 'li');
+      expect(entries).toHaveLength(3);
+      expect(entries.every(n => String(n.props.class).includes('missing') === !!reasons.length)).toBe(true);
       expect(button.props.disabled).toBe(!!reasons.length);
       button.props.onClick();
       if (reasons.length) expect(view.submit).not.toHaveBeenCalled();
@@ -96,7 +100,18 @@ describe('inventory drag to trash', () => {
     find(view.root, n => n.props['aria-label'] === 'Открыть слот 21')!.props.onClick(); await nextTick();
     expect(view.submit).not.toHaveBeenCalled();
     find(view.root, n => !!n.props['data-confirm-button'])!.props.onClick();
-    expect(view.submit).toHaveBeenCalledExactlyOnceWith({action: 'buy_slots', id: 0, quantity: 1, unit_price: 10}); view.app.unmount();
+    expect(view.submit).toHaveBeenCalledExactlyOnceWith({action: 'buy_slots', id: 0, quantity: 1, unit_price: 10, total_price: 10}); view.app.unmount();
+  });
+  it('submits the displayed increasing batch total and blocks an unaffordable batch', async () => {
+    const view = mount(90, state => { state.credit = 80; state.permanent_slots = 22; state.active_slots = 22; state.slot_pricing = 'linear'; state.inventory_settings = {slot_price: 10, elixir_slots: 5, elixir_days: 7, chest_slots: 10, chest_durability: 100, chest_wear: 1}; });
+    find(view.root, n => n.props['aria-label'] === 'Открыть слот 23')!.props.onClick(); await nextTick();
+    const quantity = find(view.root, n => n.props['aria-label'] === 'Количество покупаемых слотов')!;
+    quantity.props['onUpdate:value'](3); await nextTick();
+    find(view.root, n => !!n.props['data-confirm-button'])!.props.onClick(); expect(view.submit).not.toHaveBeenCalled();
+    quantity.props['onUpdate:value'](2); await nextTick();
+    find(view.root, n => !!n.props['data-confirm-button'])!.props.onClick();
+    expect(view.submit).toHaveBeenCalledExactlyOnceWith({action:'buy_slots', id:0, quantity:2, unit_price:30, total_price:70});
+    view.app.unmount();
   });
   it('keeps trash in cell 51 and merges into a matching non-full stack by dragging', async () => {
     const view = mount(90);
