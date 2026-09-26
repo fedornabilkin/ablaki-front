@@ -23,6 +23,7 @@ const closeDialog = () => {
 };
 
 const createGame = () => {
+  if (isLoading.value || !Number.isFinite(kon.value) || kon.value < 1 || kon.value > 1000000000) return;
   isLoading.value = true;
   five.create(kon.value, ball.value)
       .then(() => {
@@ -48,7 +49,7 @@ const createGame = () => {
       .row
         .col-sm.label Ставка (банк — две ставки)
         .col-sm-auto
-          n-input-number(v-model:value="kon" :min="1")
+          n-input-number(:min="1" :max="1000000000" :step="0.00001" :input-props="{type: 'number', inputmode: 'decimal', min: 1, max: 1000000000, step: 0.00001}" v-model:value="kon")
       .fast-kon.mt-2
         n-button(v-for="btn in konList" :key="btn" type="info" size="small" :disabled="btn === kon" @click="kon = btn") {{ btn }}
 

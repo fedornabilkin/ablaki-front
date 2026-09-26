@@ -59,7 +59,7 @@ watch(() => route.query.create, value => { if (value === '1') showCreate.value =
 watch([kind, mode, session], () => { selected.value = null; showCreate.value = route.query.create === '1'; actionError.value = ''; notice.value = ''; });
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
-const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
+const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && kon.value <= 1000000000 && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
 async function act(path: string, method: 'post' | 'delete', body?: unknown) {
   if (busy.value) return;
   busy.value = true; actionError.value = ''; notice.value = '';
@@ -144,9 +144,9 @@ n-modal(v-model:show="showCreate" preset="card" title="Создать игру" 
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
     n-form-item(:label="'Ставка, ' + unit" :label-props="{ for: 'game-kon' }")
-      n-input-number(:input-props="{ id: 'game-kon' }" v-model:value="kon" :min="saper ? .01 : 1" :disabled="busy")
+      n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="0.00001" :input-props="{ id: 'game-kon' , type: 'number', inputmode: 'decimal', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: 0.00001}" v-model:value="kon" :disabled="busy")
     n-form-item(label="Количество игр" :label-props="{ for: 'game-count' }")
-      n-input-number(:input-props="{ id: 'game-count' }" v-model:value="count" :min="1" :max="100" :precision="0" :disabled="busy")
+      n-input-number(:min="1" :max="100" :step="1" :input-props="{ id: 'game-count' , type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count" :precision="0" :disabled="busy")
     p Итого: {{ kon && count ? kon * count : 0 }} {{ unit }}
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     n-button(type="primary" attr-type="submit" :loading="busy" :disabled="!validCreate") Создать и списать ставку

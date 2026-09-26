@@ -6,12 +6,13 @@ import { errorText } from './portal';
 export interface CraftItem { id: number; code: string; name: string; description: string; category_id: number; kind: string; rarity: string; icon: string; stack_size: number; destroyable: number; active: number; use_xp: number; gather_quantity: number; storage_kind?: 'none' | 'chest' | 'elixir' }
 export interface CraftRecipe { id: number; code: string; name: string; description: string; category_id: number; item_id: number; station_id: number | null; output_quantity: number; cost_credits: number; experience: number; min_level: number; crafted: number; ingredients: {item_id: number; quantity: number}[]; tools: number[]; requires: number[]; locked_reasons: string[] }
 export interface CraftSlot { id: number; item_id: number; quantity: number; position?: number; active?: boolean }
-export interface CraftContainer { id: number; capacity: number; durability: number; max_durability: number; slots: CraftSlot[] }
+export interface ChestRepair { materials: {item_id: number; quantity: number; have: number}[]; tools: {item_id: number; durability: number; max_durability: number}[]; station: {id: number; item_id: number | null; name: string} | null; reasons: string[]; restore: number }
+export interface CraftContainer { id: number; capacity: number; durability: number; max_durability: number; slots: CraftSlot[]; repair?: ChestRepair }
 export interface InventorySettings { slot_price: number; elixir_slots: number; elixir_days: number; chest_slots: number; chest_durability: number; chest_wear: number }
-export interface CraftStorageState { containers?: CraftContainer[]; permanent_slots?: number; active_slots?: number; slots_expire_at?: number | null; inventory_settings?: InventorySettings; server_time?: number }
+export interface CraftStorageState { containers?: CraftContainer[]; permanent_slots?: number; active_slots?: number; slots_expire_at?: number | null; inventory_settings?: InventorySettings; server_time?: number; gather_available_at?: number }
 export interface CraftState extends CraftStorageState { items: CraftItem[]; recipes: CraftRecipe[]; categories: {id: number; name: string; code: string; description: string}[]; stations: {id: number; name: string; item_id: number | null}[]; skills: {category_id: number; experience: number; level: number}[]; inventory: {item_id: number; quantity: number}[]; inventory_slots: CraftSlot[]; credit: number; charge_credits: boolean; starter_available: boolean; gather_available: boolean; slot_limit: number; slots_used: number }
 export interface CraftEvent { id: number; action: string; item_id: number | null; recipe_id: number | null; quantity: number; credit_change: number; created_at: number }
-export type CraftAction = 'craft' | 'starter' | 'gather' | 'use' | 'discard' | 'merge' | 'transfer' | 'buy_slots';
+export type CraftAction = 'craft' | 'starter' | 'gather' | 'use' | 'discard' | 'merge' | 'transfer' | 'buy_slots' | 'repair';
 export interface CraftCommand { action: CraftAction; id: number; quantity: number; request_key: string; slot_id?: number; target_slot_id?: number; container_id?: number; position?: number; unit_price?: number }
 export type CraftInput = Omit<CraftCommand, 'request_key'>;
 const object = (v: unknown): Record<string, unknown> => { if (!v || typeof v !== 'object' || Array.isArray(v)) throw Error('invalid-response'); return v as Record<string, unknown>; };
@@ -22,6 +23,15 @@ const bool = (v: unknown): boolean => { if (typeof v !== 'boolean') throw Error(
 const arr = <T>(v: unknown, parse: (entry: unknown) => T): T[] => { if (!Array.isArray(v) || v.length > 10000) throw Error('invalid-response'); return v.map(parse); };
 const storageKind = (v: unknown): CraftItem['storage_kind'] => { if (v === undefined) return 'none'; if (v !== 'none' && v !== 'chest' && v !== 'elixir') throw Error('invalid-response'); return v; };
 const parseSlot = (value: unknown): CraftSlot => { const r = object(value); return {id: num(r.id, 1), item_id: num(r.item_id, 1), quantity: num(r.quantity, 1), ...(r.position === undefined ? {} : {position: num(r.position, 1)}), ...(r.active === undefined ? {} : {active: bool(r.active)})}; };
+function parseRepair(value: unknown): ChestRepair {
+  const r = object(value), station = r.station === null ? null : object(r.station);
+  return {
+    materials: arr(r.materials, value => { const v = object(value); return {item_id: num(v.item_id, 1), quantity: num(v.quantity), have: num(v.have)}; }),
+    tools: arr(r.tools, value => { const v = object(value), durability = num(v.durability), maximum = num(v.max_durability, 1); if (durability > maximum) throw Error('invalid-response'); return {item_id: num(v.item_id, 1), durability, max_durability: maximum}; }),
+    station: station && {id: num(station.id, 1), item_id: nullable(station.item_id), name: str(station.name)},
+    reasons: arr(r.reasons, str), restore: num(r.restore),
+  };
+}
 export function parseCraftState(value: unknown): CraftState {
   const d = object(value);
   const state: CraftState = {
@@ -35,13 +45,14 @@ export function parseCraftState(value: unknown): CraftState {
     credit: num(d.credit, 0, false), charge_credits: d.charge_credits === undefined ? false : bool(d.charge_credits), starter_available: bool(d.starter_available), gather_available: bool(d.gather_available), slot_limit: num(d.slot_limit, 1), slots_used: num(d.slots_used),
   };
   state.items.forEach((item, index) => { const kind = object((d.items as unknown[])[index]).storage_kind; if (kind !== undefined) item.storage_kind = storageKind(kind); });
+  if (d.gather_available_at !== undefined) state.gather_available_at = num(d.gather_available_at, 1);
   if (d.inventory_settings !== undefined) {
     const settings = object(d.inventory_settings);
     state.inventory_settings = Object.fromEntries(['slot_price','elixir_slots','elixir_days','chest_slots','chest_durability','chest_wear'].map(key => [key, num(settings[key])])) as unknown as InventorySettings;
     state.permanent_slots = num(d.permanent_slots, 20); state.active_slots = num(d.active_slots, state.permanent_slots);
     if (state.active_slots > 50 || state.inventory_settings.elixir_slots < 1 || state.inventory_settings.elixir_days < 1 || state.inventory_settings.chest_slots < 1 || state.inventory_settings.chest_slots > 100 || state.inventory_settings.chest_durability < 1) throw Error('invalid-response');
     state.slots_expire_at = nullable(d.slots_expire_at); state.server_time = num(d.server_time);
-    state.containers = arr(d.containers, value => { const r = object(value); return {id: num(r.id, 1), capacity: num(r.capacity, 1), durability: num(r.durability), max_durability: num(r.max_durability, 1), slots: arr(r.slots, parseSlot)}; });
+    state.containers = arr(d.containers, value => { const r = object(value); return {id: num(r.id, 1), capacity: num(r.capacity, 1), durability: num(r.durability), max_durability: num(r.max_durability, 1), slots: arr(r.slots, parseSlot), ...(r.repair === undefined ? {} : {repair: parseRepair(r.repair)})}; });
     const backpackIds = new Set(state.inventory_slots.map(slot => slot.id));
     const positions = new Set<number>();
     for (const slot of state.inventory_slots) {

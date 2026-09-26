@@ -39,4 +39,5 @@ const cells = computed(() => inventoryCells(props.slots, props.count));
 .matching .slot-item { background: #3b3523; box-shadow: inset 0 0 0 1px #d6b68580; }
 .drop-target { outline: 2px solid #4ade80; }.drop-target .slot-item, .drop-target .empty-slot { background: #203329; }
 button:disabled { cursor: default; opacity: .6; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media(max-width: 850px) { .slot-name { display: none; }.slot-item { min-height: 30px; }.slot-item > svg { font-size: .75rem; }.slot-count { font-size: .6rem; }.inventory-cell { min-height: 30px; } }
 </style>
