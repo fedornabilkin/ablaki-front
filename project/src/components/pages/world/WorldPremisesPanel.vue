@@ -46,7 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-premises#premises
   h2 Помещения и жильё
-  p Готовое помещение приобретается из бюджета площадки. Станции и сундуки переносятся в него отдельно с сохранением прочности и содержимого.
+  p Помещение можно купить готовым или построить по опубликованным условиям. Оплата — из бюджета площадки. Станции и сундуки переносятся в готовую комнату отдельно.
   n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить предложения
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти помещение" @reset="list.reset")
@@ -61,10 +61,14 @@ section.world-premises#premises
       li(v-for="item in state.items" :key="item.id")
         h3 {{ item.name }} · {{ item.price }} Cr
         p Площадь: {{ item.area }}. Мест для станций или сундуков: {{ item.slots }}.
+        template(v-if="item.delivery === 'construction'")
+          p Срок строительства: {{ Math.ceil(item.duration_seconds / 60) }} мин. Материалы резервируются из доступных ячеек рюкзака:
+          ul
+            li(v-for="material in item.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
         p(v-if="item.lodging_places") Постоянная койка: 1. После покупки отдельно назначьте ночлег в комнате дома.
         p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ item.expansion_base_price }} Cr, каждое следующее дороже на эту сумму.
         p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
-        n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || state.area.available < item.area" @click="preview('buy', item.id)") Рассчитать покупку
+        n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Рассчитать стройку' : 'Рассчитать покупку' }}
         n-button(v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
     page-pager(v-model:page="page" query-prefix="premises" :result="state" :disabled="busy")
     details(v-if="state.can_publish")
@@ -89,14 +93,20 @@ section.world-premises#premises
     section(v-if="quote" aria-live="polite")
       h3 {{ quote.action === 'withdraw' ? 'Снять предложение' : quote.action === 'buy' ? 'Подтвердить покупку' : 'Подтвердить публикацию' }}: {{ quote.name }}
       template(v-if="quote.room")
-        p Стоимость: {{ quote.room.price }} Cr; площадь {{ quote.room.area }}; мест {{ quote.room.slots }}. Готово к размещению оборудования сразу после оплаты.
+        p Стоимость: {{ quote.room.price }} Cr; площадь {{ quote.room.area }}; мест {{ quote.room.slots }}.
+        p(v-if="quote.room.delivery === 'ready'") Готово к размещению оборудования сразу после оплаты.
+        template(v-else)
+          p Срок строительства: {{ Math.ceil(quote.room.duration_seconds / 60) }} мин. Cr резервируются в бюджете до завершения. Материалы из рюкзака будут храниться отдельно:
+          ul
+            li(v-for="material in quote.room.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
+          p Стройку можно поставить на паузу. Отмена до фактического завершения освобождает весь резерв Cr и возвращает материалы в рюкзак. Для отмены нужно место под весь возврат. После завершения доступно готовое помещение.
         p(v-if="quote.room.expansion_limit > quote.room.slots") Последующее расширение до {{ quote.room.expansion_limit }} мест из бюджета комнаты. Базовая цена: {{ quote.room.expansion_base_price }} Cr; каждое следующее место дороже. Условия сохраняются после покупки.
         p {{ quote.room.exposure_class === 'covered' ? 'Защита: навес.' : 'Защита: помещение.' }} {{ quote.room.lodging_places ? 'Включена одна койка. Ночлег назначается отдельно.' : 'Мест ночлега нет.' }}
       template(v-if="quote.payment")
         p Источник — бюджет этой площадки. Получатель — казна поселения «{{ quote.payment.recipient_name }}». Личные Cr: 0.0000.
-        p Покупка постоянная. Возврат, снос и перенос постройки пока недоступны.
+        p(v-if="quote.room?.delivery === 'ready'") Покупка постоянная. Возврат, снос и перенос постройки пока недоступны.
       p(v-if="quote.action === 'withdraw'") Новые покупки по этому предложению прекратятся. Купленные помещения сохранятся.
-      n-button(type="primary" :disabled="locked" @click="confirm") {{ quote.action === 'buy' ? 'Оплатить из бюджета и получить помещение' : quote.action === 'withdraw' ? 'Подтвердить снятие' : 'Опубликовать' }}
+      n-button(type="primary" :disabled="locked" @click="confirm") {{ quote.action === 'buy' ? (quote.room?.delivery === 'construction' ? 'Зарезервировать Cr и материалы, начать стройку' : 'Оплатить из бюджета и получить помещение') : quote.action === 'withdraw' ? 'Подтвердить снятие' : 'Опубликовать' }}
 </template>
 <style scoped>
 .world-premises { display: grid; gap: .75rem; }

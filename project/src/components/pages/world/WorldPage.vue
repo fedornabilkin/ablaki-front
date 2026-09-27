@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NSpin } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
@@ -18,12 +18,13 @@ import WorldEconomyPanel from './WorldEconomyPanel.vue';
 import WorldFinancePolicy from './WorldFinancePolicy.vue';
 import WorldOrdersPanel from './WorldOrdersPanel.vue';
 import WorldPremisesPanel from './WorldPremisesPanel.vue';
+import WorldConstructionPanel from './WorldConstructionPanel.vue';
 import WorldShelterPanel from './WorldShelterPanel.vue';
 import WorldNightsPanel from './WorldNightsPanel.vue';
 import WorldGardenPanel from './WorldGardenPanel.vue';
 import WorldEquipmentExpansionPanel from './WorldEquipmentExpansionPanel.vue';
 import WorldHousingPanel from './WorldHousingPanel.vue';
-const route = useRoute(), auth = useStore(), world = useWorldStore();
+const route = useRoute(), router = useRouter(), auth = useStore(), world = useWorldStore();
 const list = useListQuery({ type: '' }, { defaultSort: 'position' });
 const { page, search, filters } = list;
 const mode = ref<'map' | 'list'>('map');
@@ -35,7 +36,14 @@ const filterDefinitions = [{ key: 'type', label: 'Тип объекта', option
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const purchasedRoom = ref<number | null>(null);
-const command = useWorldCommand(session, owner, result => { if (result.room_id) purchasedRoom.value = result.room_id; changed(result.changed_node_ids); });
+const command = useWorldCommand(session, owner, result => {
+  if (result.room_id) purchasedRoom.value = result.room_id;
+  if (result.return_node_id && nodeId.value === result.changed_node_ids[0] && result.changed_node_ids.includes(result.return_node_id)) {
+    world.invalidate(result.changed_node_ids);
+    void router.push(`/world/nodes/${result.return_node_id}`).catch(() => load());
+    void auth.dispatch('auth/fetchData');
+  } else changed(result.changed_node_ids);
+});
 const { busy: commandBusy, pending: pendingCommand, error: commandError } = command;
 function load() { if (invalidId.value) { world.cancel(); return; } void world.load(nodeId.value, requestParams.value); }
 watch(session, value => world.setSession(value), { immediate: true, flush: 'sync' });
@@ -92,6 +100,7 @@ page-header(:pageTitle="title")
     world-economy-panel(v-if="!world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :command="command")
     world-equipment-expansion-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
     world-housing-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
+    world-construction-panel(v-if="world.capabilities?.storage_v2 && world.node.permissions.storage && ['PLOT', 'BUILDING'].includes(world.node.type)" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     world-premises-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     world-garden-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && ['campsite', 'garden'].includes(String(world.node.details.plot_kind)) && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     world-orders-panel(v-if="world.node.type === 'SETTLEMENT' && world.node.visibility === 'public' && world.node.status === 'active'" :node-id="world.node.id" :session="session" :command="command")

@@ -2,6 +2,7 @@ import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
+import { parseConstructionSpec, validateConstructionPlan } from './worldConstruction';
 const invalid = (): never => { throw new Error('invalid-premises-response'); };
 const id = (value: unknown) => integer(value, 1, 2147483647);
 const text = (value: unknown): string => typeof value === 'string' && value.trim().length > 0 && value.length <= 120 ? value : invalid();
@@ -20,7 +21,7 @@ export function premisesPublicationInput(value: unknown) {
 function premises(value: unknown) {
   const r = record(value), input = premisesPublicationInput(r);
   if (creditAmount(r.price) !== input.price || r.exposure_class !== (input.kind === 'canopy' ? 'covered' : 'indoor') || (r.lodging_places ?? 0) !== input.lodging_places) invalid();
-  return { ...input, exposure_class: r.exposure_class as 'covered' | 'indoor' };
+  return { ...input, ...parseConstructionSpec(r), exposure_class: r.exposure_class as 'covered' | 'indoor' };
 }
 export async function loadPremises(node: number, params: Record<string, unknown>) {
   const r = record((await apiClient.get(url(node), { params })).data), meta = record(r._meta);
@@ -44,9 +45,13 @@ export async function previewPremises(node: number, action: PremisesAction, payl
   if (id(terms.node_id) !== node) invalid();
   for (const [key, value] of Object.entries(input)) if (terms[key] !== value) invalid();
   const room = action === 'withdraw' ? null : premises(terms.config);
-  if (room) { const c = record(terms.config); if (c.delivery !== 'ready' || c.lodging_places !== room.lodging_places) invalid(); }
+  if (room) { const c = record(terms.config); if (c.lodging_places !== room.lodging_places) invalid(); }
   let payment = null;
   if (action === 'buy') {
+    if (room?.delivery === 'construction') {
+      if (terms.cancellation !== 'full_refund_before_completion') invalid();
+      validateConstructionPlan(terms.material_plan, room.materials);
+    }
     if (creditAmount(terms.personal_charge) !== '0.0000') invalid();
     payment = { source_budget_id: id(terms.source_budget_id), recipient_node_id: id(terms.recipient_node_id), recipient_name: text(terms.recipient_name), recipient_account_id: id(terms.recipient_account_id), available_area: integer(terms.available_area), template_revision_id: id(terms.template_revision_id) };
     id(terms.recipient_policy_id);
