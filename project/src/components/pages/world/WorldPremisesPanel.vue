@@ -60,6 +60,10 @@ section.world-premises#premises
     ul.offers
       li(v-for="item in state.items" :key="item.id")
         h3 {{ item.name }} · {{ item.price }} Cr
+        n-alert(v-if="!item.requirements_status.allowed" type="info")
+          p Требования пока не выполнены:
+          ul
+            li(v-for="(reason, index) in item.requirements_status.reasons" :key="`${reason.code}-${index}`") {{ reason.message }}
         p Площадь: {{ item.area }}. Мест для станций или сундуков: {{ item.slots }}.
         template(v-if="item.delivery === 'construction'")
           p Срок строительства: {{ Math.ceil(item.duration_seconds / 60) }} мин. Материалы резервируются из доступных ячеек рюкзака:
@@ -68,7 +72,7 @@ section.world-premises#premises
         p(v-if="item.lodging_places") Постоянная койка: 1. После покупки отдельно назначьте ночлег в комнате дома.
         p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ item.expansion_base_price }} Cr, каждое следующее дороже на эту сумму.
         p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
-        n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Рассчитать стройку' : 'Рассчитать покупку' }}
+        n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Рассчитать стройку' : 'Рассчитать покупку' }}
         n-button(v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
     page-pager(v-model:page="page" query-prefix="premises" :result="state" :disabled="busy")
     details(v-if="state.can_publish")
