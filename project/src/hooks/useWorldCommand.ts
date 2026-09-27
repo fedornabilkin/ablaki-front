@@ -5,6 +5,10 @@ import type { WorldCommandResult, WorldQuote } from '@/entities/world/types';
 import { investmentAmount } from '@/entities/world/credits';
 import { financePolicyInput } from '@/services/api/worldEconomy';
 import { orderDeliveryInput, orderPublicationInput } from '@/services/api/worldOrders';
+import { premisesPublicationInput } from '@/services/api/worldPremises';
+import { shelterInput, type ShelterAction } from '@/services/api/worldShelter';
+import { gardenInput, type GardenAction } from '@/services/api/worldGarden';
+import { equipmentExpansionInput } from '@/services/api/worldEquipmentExpansion';
 
 interface PendingCommand { path: string; body: Record<string, unknown> & { request_key: string; quote_id: string; expected_revisions: Record<string, number> } }
 /** A retry resends the immutable snapshot, never a newly calculated price or key. */
@@ -25,7 +29,7 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
       if (!body || typeof body !== 'object' || !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_key) || !/^[a-f0-9]{32}$/.test(body.quote_id)) return;
       if (/^\/nodes\/[1-9]\d*\/invest$/.test(value.path)) {
         if (investmentAmount(body.amount) !== body.amount || typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 255) return;
-      } else if (/^\/nodes\/[1-9]\d*\/collect$/.test(value.path)) {
+      } else if (/^\/nodes\/[1-9]\d*\/(collect|housing-lodge|housing-leave)$/.test(value.path)) {
         if (Object.keys(body).some(key => !['request_key', 'quote_id', 'expected_revisions'].includes(key))) return;
       } else if (/^\/nodes\/[1-9]\d*\/pay$/.test(value.path)) {
         if (!Number.isSafeInteger(body.obligation_id) || body.obligation_id < 1 || body.obligation_id > 2147483647) return;
@@ -37,6 +41,16 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
         orderDeliveryInput(body);
       } else if (/^\/nodes\/[1-9]\d*\/order-cancel$/.test(value.path)) {
         if (!Number.isSafeInteger(body.order_id) || body.order_id < 1 || body.order_id > 2147483647) return;
+      } else if (/^\/nodes\/[1-9]\d*\/premises-publish$/.test(value.path)) {
+        premisesPublicationInput(body);
+      } else if (/^\/nodes\/[1-9]\d*\/premises-(buy|withdraw)$/.test(value.path)) {
+        if (!Number.isSafeInteger(body.offer_id) || body.offer_id < 1 || body.offer_id > 2147483647) return;
+      } else if (/^\/nodes\/[1-9]\d*\/shelter-(claim|deploy|fold|lodge|leave|repair)$/.test(value.path)) {
+        shelterInput(value.path.substring(value.path.lastIndexOf('shelter-') + 8) as ShelterAction, body);
+      } else if (/^\/nodes\/[1-9]\d*\/garden-(publish|withdraw|buy|expand)$/.test(value.path)) {
+        gardenInput(value.path.substring(value.path.lastIndexOf('garden-') + 7) as GardenAction, body);
+      } else if (/^\/nodes\/[1-9]\d*\/equipment-expand$/.test(value.path)) {
+        equipmentExpansionInput(body);
       } else if (value.path === '/workspace/craft') {
         const validId = (id: unknown) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
         if (['node_id', 'recipe_id', 'quantity', 'output_storage_id'].some(key => !validId(body[key])) || body.quantity > 100) return;
