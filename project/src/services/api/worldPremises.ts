@@ -3,6 +3,7 @@ import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
 import { parseConstructionSpec, validateConstructionPlan } from './worldConstruction';
+import { parseRequirementStatus } from './worldRequirements';
 const invalid = (): never => { throw new Error('invalid-premises-response'); };
 const id = (value: unknown) => integer(value, 1, 2147483647);
 const text = (value: unknown): string => typeof value === 'string' && value.trim().length > 0 && value.length <= 120 ? value : invalid();
@@ -26,7 +27,7 @@ function premises(value: unknown) {
 export async function loadPremises(node: number, params: Record<string, unknown>) {
   const r = record((await apiClient.get(url(node), { params })).data), meta = record(r._meta);
   if (id(r.node_id) !== node || !Array.isArray(r.items) || r.items.length > 20) invalid();
-  const items = (r.items as unknown[]).map(value => { const row = record(value); return { ...premises(row), id: id(row.id), template_revision_id: id(row.template_revision_id) }; });
+  const items = (r.items as unknown[]).map(value => { const row = record(value); return { ...premises(row), id: id(row.id), template_revision_id: id(row.template_revision_id), requirements_status: parseRequirementStatus(row.requirements_status) }; });
   const total = integer(meta.totalCount), pageSize = integer(meta.perPage, 20, 20);
   if (integer(meta.pageCount) !== Math.ceil(total / pageSize) || items.length > total || new Set(items.map(item => item.id)).size !== items.length) invalid();
   let area = null;
