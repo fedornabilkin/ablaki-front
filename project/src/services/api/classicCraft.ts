@@ -2,11 +2,12 @@ import { isAxiosError } from 'axios';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { errorText } from './portal';
+import { parseEquipmentRequirements, type EquipmentRequirement } from './worldEquipment';
 
 export interface CraftItem { id: number; code: string; name: string; description: string; category_id: number; kind: string; rarity: string; icon: string; stack_size: number; destroyable: number; active: number; use_xp: number; gather_quantity: number; storage_kind?: 'none' | 'chest' | 'elixir' }
-export interface CraftRecipe { id: number; code: string; name: string; description: string; category_id: number; item_id: number; station_id: number | null; output_quantity: number; cost_credits: number; experience: number; min_level: number; crafted: number; ingredients: {item_id: number; quantity: number}[]; tools: number[]; requires: number[]; locked_reasons: string[] }
+export interface CraftRecipe { id: number; code: string; name: string; description: string; category_id: number; item_id: number; station_id: number | null; output_quantity: number; cost_credits: number; experience: number; min_level: number; crafted: number; ingredients: {item_id: number; quantity: number}[]; tools: number[]; requires: number[]; locked_reasons: string[]; equipment?: EquipmentRequirement[] }
 export interface CraftSlot { id: number; item_id: number; quantity: number; position?: number; active?: boolean }
-export interface ChestRepair { materials: {item_id: number; quantity: number; have: number; available?: boolean}[]; tools: {item_id: number; durability: number; max_durability: number; have?: number; available?: boolean}[]; station: {id: number; item_id: number | null; name: string; durability?: number; max_durability?: number; available?: boolean} | null; reasons: string[]; restore: number }
+export interface ChestRepair { materials: {item_id: number; name?: string; quantity: number; have: number; available?: boolean}[]; tools: {item_id: number; name?: string; durability: number; max_durability: number; have?: number; available?: boolean}[]; station: {id: number; item_id: number | null; name: string; durability?: number; max_durability?: number; available?: boolean} | null; reasons: string[]; restore: number }
 export interface CraftContainer { id: number; capacity: number; durability: number; max_durability: number; slots: CraftSlot[]; repair?: ChestRepair }
 export interface InventorySettings { slot_price: number; elixir_slots: number; elixir_days: number; chest_slots: number; chest_durability: number; chest_wear: number }
 export interface CraftStorageState { containers?: CraftContainer[]; permanent_slots?: number; active_slots?: number; slots_expire_at?: number | null; inventory_settings?: InventorySettings; slot_pricing?: 'linear'; server_time?: number; gather_available_at?: number }
@@ -23,13 +24,13 @@ const bool = (v: unknown): boolean => { if (typeof v !== 'boolean') throw Error(
 const arr = <T>(v: unknown, parse: (entry: unknown) => T): T[] => { if (!Array.isArray(v) || v.length > 10000) throw Error('invalid-response'); return v.map(parse); };
 const storageKind = (v: unknown): CraftItem['storage_kind'] => { if (v === undefined) return 'none'; if (v !== 'none' && v !== 'chest' && v !== 'elixir') throw Error('invalid-response'); return v; };
 const parseSlot = (value: unknown): CraftSlot => { const r = object(value); return {id: num(r.id, 1), item_id: num(r.item_id, 1), quantity: num(r.quantity, 1), ...(r.position === undefined ? {} : {position: num(r.position, 1)}), ...(r.active === undefined ? {} : {active: bool(r.active)})}; };
-function parseRepair(value: unknown): ChestRepair {
+export function parseRepair(value: unknown): ChestRepair {
   const r = object(value), station = r.station === null ? null : object(r.station);
   const availability = (v: Record<string, unknown>) => v.available === undefined ? {} : {available: bool(v.available)};
   const durability = (v: Record<string, unknown>) => { const durability = num(v.durability), maximum = num(v.max_durability, 1); if (durability > maximum) throw Error('invalid-response'); return {durability, max_durability: maximum}; };
   return {
-    materials: arr(r.materials, value => { const v = object(value); return {item_id: num(v.item_id, 1), quantity: num(v.quantity), have: num(v.have), ...availability(v)}; }),
-    tools: arr(r.tools, value => { const v = object(value); return {item_id: num(v.item_id, 1), ...durability(v), ...availability(v), ...(v.have === undefined ? {} : {have: num(v.have)})}; }),
+    materials: arr(r.materials, value => { const v = object(value); return {item_id: num(v.item_id, 1), ...(v.name === undefined ? {} : {name: str(v.name)}), quantity: num(v.quantity), have: num(v.have), ...availability(v)}; }),
+    tools: arr(r.tools, value => { const v = object(value); return {item_id: num(v.item_id, 1), ...(v.name === undefined ? {} : {name: str(v.name)}), ...durability(v), ...availability(v), ...(v.have === undefined ? {} : {have: num(v.have)})}; }),
     station: station && {id: num(station.id, 1), item_id: nullable(station.item_id), name: str(station.name), ...availability(station), ...(station.durability === undefined && station.max_durability === undefined ? {} : durability(station))},
     reasons: arr(r.reasons, str), restore: num(r.restore),
   };
@@ -47,6 +48,7 @@ export function parseCraftState(value: unknown): CraftState {
     credit: num(d.credit, 0, false), charge_credits: d.charge_credits === undefined ? false : bool(d.charge_credits), starter_available: bool(d.starter_available), gather_available: bool(d.gather_available), slot_limit: num(d.slot_limit, 1), slots_used: num(d.slots_used),
   };
   state.items.forEach((item, index) => { const kind = object((d.items as unknown[])[index]).storage_kind; if (kind !== undefined) item.storage_kind = storageKind(kind); });
+  state.recipes.forEach((recipe, index) => { const equipment = object((d.recipes as unknown[])[index]).equipment; if (equipment !== undefined) recipe.equipment = parseEquipmentRequirements(equipment); });
   if (d.gather_available_at !== undefined) state.gather_available_at = num(d.gather_available_at, 1);
   if (d.slot_pricing !== undefined) { if (d.slot_pricing !== 'linear') throw Error('invalid-response'); state.slot_pricing = d.slot_pricing; }
   if (d.inventory_settings !== undefined) {

@@ -43,6 +43,7 @@ const effects = computed(() => city.liveEffects.map((effect) => {
 <template lang="pug">
   page-header(pageTitle='Градостроительство')
   .container.city-page
+    router-link(to="/world") Открыть серверный мир
     n-alert(type="info" :show-icon="false") Город сохраняется в этом браузере. Для строительства используется отдельный городской бюджет.
     .city-stats
       n-card.stat(v-for="s in stats" :key="s.key" :bordered="true")
