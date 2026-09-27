@@ -17,6 +17,12 @@ import WorldStoragePanel from './WorldStoragePanel.vue';
 import WorldEconomyPanel from './WorldEconomyPanel.vue';
 import WorldFinancePolicy from './WorldFinancePolicy.vue';
 import WorldOrdersPanel from './WorldOrdersPanel.vue';
+import WorldPremisesPanel from './WorldPremisesPanel.vue';
+import WorldShelterPanel from './WorldShelterPanel.vue';
+import WorldNightsPanel from './WorldNightsPanel.vue';
+import WorldGardenPanel from './WorldGardenPanel.vue';
+import WorldEquipmentExpansionPanel from './WorldEquipmentExpansionPanel.vue';
+import WorldHousingPanel from './WorldHousingPanel.vue';
 const route = useRoute(), auth = useStore(), world = useWorldStore();
 const list = useListQuery({ type: '' }, { defaultSort: 'position' });
 const { page, search, filters } = list;
@@ -28,11 +34,13 @@ const requestParams = computed(() => ({ page: page.value, 'per-page': 20, q: lis
 const filterDefinitions = [{ key: 'type', label: 'Тип объекта', options: nodeTypes.map(type => ({ label: nodeLabels[type], value: type })) }];
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
-const command = useWorldCommand(session, owner, result => changed(result.changed_node_ids));
+const purchasedRoom = ref<number | null>(null);
+const command = useWorldCommand(session, owner, result => { if (result.room_id) purchasedRoom.value = result.room_id; changed(result.changed_node_ids); });
 const { busy: commandBusy, pending: pendingCommand, error: commandError } = command;
 function load() { if (invalidId.value) { world.cancel(); return; } void world.load(nodeId.value, requestParams.value); }
 watch(session, value => world.setSession(value), { immediate: true, flush: 'sync' });
 watch([nodeId, requestParams, session], load, { immediate: true });
+watch([nodeId, session], () => { purchasedRoom.value = null; }, { flush: 'sync' });
 onScopeDispose(() => world.cancel());
 function changed(ids: number[]) { world.invalidate(ids); load(); void auth.dispatch('auth/fetchData'); }
 const pager = computed(() => ({ ...world.children, items: world.children.items.map(node => ({ ...node })) }));
@@ -51,6 +59,9 @@ page-header(:pageTitle="title")
   n-alert(v-if="pendingCommand" type="info")
     p Ответ на прошлое действие ещё не получен. Можно повторить тот же запрос.
     n-button(:loading="commandBusy" @click="command.retry") Повторить запрос
+  n-alert(v-if="purchasedRoom" type="success")
+    p Помещение оплачено. Откройте его, чтобы разместить вещи и назначить ночлег, если в покупке есть койка.
+    router-link(:to="`/world/nodes/${purchasedRoom}`") Открыть купленное помещение
   n-alert(v-if="invalidId" type="error") Некорректный адрес объекта.
   n-alert(v-else-if="world.error" type="error" role="alert") {{ world.error }}
   n-spin(v-else-if="world.loading" size="large" aria-label="Загрузка мира")
@@ -69,14 +80,23 @@ page-header(:pageTitle="title")
       p(v-if="world.node.details.population !== undefined") Население: {{ world.node.details.population }}
       p(v-if="world.node.details.condition !== undefined") Прочность: {{ world.node.details.condition }} / {{ world.node.details.max_condition }}
       p(v-if="world.node.visibility === 'private'") Личный объект
-      router-link(v-if="world.node.permissions.manage && ['BUILDING', 'ROOM', 'PLOT'].includes(world.node.type)" :to="{ path: '/craft', query: { node: world.node.id } }") Открыть мастерскую
+      p(v-if="world.node.type === 'BED'") {{ world.node.details.unlocked ? 'Грядка открыта. Посев появится на следующем этапе.' : 'Грядка закрыта. Приобрести открытие можно в огороде.' }}
+      router-link(v-if="world.node.type === 'BED' && world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}#garden`") Открыть огород и покупку грядок
+      router-link(v-if="world.node.details.shelter_plot_id" :to="`/world/nodes/${world.node.details.shelter_plot_id}#shelter`") Управлять шалашом и ночлегом на стоянке
+      router-link(v-if="!world.node.details.shelter_instance_id && world.node.permissions.manage && ['BUILDING', 'ROOM', 'PLOT'].includes(world.node.type)" :to="{ path: '/craft', query: { node: world.node.id } }") Открыть мастерскую
     world-onboarding(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
-    router-link(v-if="world.capabilities?.storage_v2 && world.node.permissions.storage && ['PLOT', 'BUILDING', 'ROOM'].includes(world.node.type)" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
-    world-storage-panel(v-if="world.capabilities?.storage_v2 && world.node.permissions.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
-    world-economy-panel(:node-id="world.node.id" :session="session" :command="command")
+    world-shelter-panel(v-if="world.node.status === 'active' && world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
+    world-nights-panel(v-if="world.node.status === 'active' && world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage" :node-id="world.node.id" :session="session")
+    router-link(v-if="world.capabilities?.storage_v2 && !world.node.details.shelter_instance_id && world.node.permissions.storage && ['PLOT', 'BUILDING', 'ROOM'].includes(world.node.type)" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
+    world-storage-panel(v-if="world.capabilities?.storage_v2 && !world.node.details.shelter_instance_id && world.node.permissions.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
+    world-economy-panel(v-if="!world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :command="command")
+    world-equipment-expansion-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
+    world-housing-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
+    world-premises-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    world-garden-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && ['campsite', 'garden'].includes(String(world.node.details.plot_kind)) && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     world-orders-panel(v-if="world.node.type === 'SETTLEMENT' && world.node.visibility === 'public' && world.node.status === 'active'" :node-id="world.node.id" :session="session" :command="command")
     router-link(v-if="world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.parent_id" :to="{ path: `/world/nodes/${world.node.parent_id}`, hash: '#settlement-orders' }") Заказы поселения
-    world-finance-policy(v-if="world.node.permissions.administer" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    world-finance-policy(v-if="!world.node.details.shelter_instance_id && world.node.permissions.administer" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     .world-children
       h2 Объекты внутри
       list-filters(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="world.loading" placeholder="Найти объект" @reset="list.reset")
