@@ -29,7 +29,7 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
       if (!body || typeof body !== 'object' || !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_key) || !/^[a-f0-9]{32}$/.test(body.quote_id)) return;
       if (/^\/nodes\/[1-9]\d*\/invest$/.test(value.path)) {
         if (investmentAmount(body.amount) !== body.amount || typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 255) return;
-      } else if (/^\/nodes\/[1-9]\d*\/(collect|housing-lodge|housing-leave)$/.test(value.path)) {
+      } else if (/^\/nodes\/[1-9]\d*\/(collect|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel)$/.test(value.path)) {
         if (Object.keys(body).some(key => !['request_key', 'quote_id', 'expected_revisions'].includes(key))) return;
       } else if (/^\/nodes\/[1-9]\d*\/pay$/.test(value.path)) {
         if (!Number.isSafeInteger(body.obligation_id) || body.obligation_id < 1 || body.obligation_id > 2147483647) return;

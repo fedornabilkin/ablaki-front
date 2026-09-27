@@ -74,7 +74,7 @@ section.world-storage(aria-label="Вещи и размещение")
           strong × {{ row.quantity }}
         small Место {{ row.position }}
         small(v-if="row.position > view.storage.capacity") Переполнение — предмет можно забрать
-        span(v-for="unit in row.instances" :key="unit.id") №{{ unit.id }} · {{ unit.durability }}/{{ unit.max_durability }} · {{ placeNames[unit.exposure_class] }}
+        router-link(v-for="unit in row.instances" :key="unit.id" :to="`/world/equipment/${unit.id}/wear`") №{{ unit.id }} · {{ unit.durability }}/{{ unit.max_durability }} · {{ placeNames[unit.exposure_class] }} · история прочности
         router-link(v-if="row.inner_storage_id" :to="link(row.inner_storage_id)") Открыть сундук
         n-button(size="small" :disabled="busy || Boolean(pending) || !canWrite" @click="selected = row.id") Выбрать для переноса
     page-pager(:page="page" :result="pager" query-prefix="storage" :disabled="loading")

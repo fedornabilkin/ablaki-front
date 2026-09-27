@@ -40,6 +40,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/world', component: () => import('./components/pages/world/WorldPage.vue'), meta: { requiresAuth: true } },
     { path: '/world/nodes/:id', component: () => import('./components/pages/world/WorldPage.vue'), meta: { requiresAuth: true } },
     { path: '/world/storage/:id', component: () => import('./components/pages/world/WorldStoragePage.vue'), meta: { requiresAuth: true } },
+    { path: '/world/equipment/:id/wear', component: () => import('./components/pages/world/WorldEquipmentWearPage.vue'), meta: { requiresAuth: true } },
     { path: '/world/workspace/:id', component: () => import('./components/pages/world/WorldWorkspace.vue'), meta: { requiresAuth: true } },
     { path: '/world/recovery', component: () => import('./components/pages/world/WorldRecovery.vue'), meta: { requiresAuth: true } },
   ...['/chat/:rest(.*)*', '/exchange/shop'].map(path => ({ path, component: unavailable })),

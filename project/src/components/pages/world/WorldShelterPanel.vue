@@ -56,6 +56,7 @@ section.world-shelter#shelter
       p Шалаш уже получен. Повторная выдача в другом мире недоступна.
       p(v-if="state.instance_id") Прочность: {{ state.durability }} / {{ state.max_durability }}.
       n-alert(v-else type="warning") Экземпляр недоступен. Право выдачи сохранено как использованное; требуется восстановление предмета.
+      router-link(v-if="state.instance_id" :to="`/world/equipment/${state.instance_id}/wear`") История прочности шалаша
       template(v-if="state.deployment")
         router-link(:to="`/world/nodes/${state.deployment.node_id}`") Открыть установленный шалаш
         router-link(v-if="!here" :to="`/world/nodes/${state.deployment.plot_id}`") Перейти на стоянку с шалашом

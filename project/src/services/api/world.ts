@@ -63,11 +63,14 @@ export function parseWorldCommandResult(value: unknown): WorldCommandResult {
     if (row.currency !== 'Cr') invalid();
     money.amount = creditAmount(row.amount); money.wallet_after = creditAmount(row.wallet_after); money.currency = 'Cr';
   }
-  const premises: Pick<WorldCommandResult, 'building_id' | 'room_id'> = {};
-  if (row.building_id !== undefined || row.room_id !== undefined) {
+  const premises: Pick<WorldCommandResult, 'building_id' | 'room_id' | 'project_id' | 'finish_at'> = {};
+  if (row.project_id !== undefined || row.finish_at !== undefined) {
+    if (row.room_id !== undefined) invalid();
+    premises.building_id = integer(row.building_id, 1, 2147483647); premises.project_id = integer(row.project_id, 1, 2147483647); premises.finish_at = integer(row.finish_at);
+  } else if (row.building_id !== undefined || row.room_id !== undefined) {
     premises.building_id = integer(row.building_id, 1, 2147483647); premises.room_id = integer(row.room_id, 1, 2147483647);
   }
-  return { ...money, ...premises, contract_version: 1, operation_id: hexId(row.operation_id), request_key: row.request_key, server_time: integer(row.server_time),
+  return { ...money, ...premises, ...(row.return_node_id === undefined ? {} : { return_node_id: integer(row.return_node_id, 1, 2147483647) }), contract_version: 1, operation_id: hexId(row.operation_id), request_key: row.request_key, server_time: integer(row.server_time),
     changed_node_ids: list(row.changed_node_ids, value => integer(value, 1), 10000), ...(row.changed_storage_ids === undefined ? {} : { changed_storage_ids: list(row.changed_storage_ids, value => integer(value, 1), 10000) }), ...(row.node === undefined ? {} : { node: parseWorldNode(row.node) }) };
 }
 const url = (path: string) => config.makeApiUrl(`v1/world${path}`);
@@ -80,7 +83,7 @@ export async function sendWorldCommand(path: string, body: Record<string, unknow
   if (!isWorldCommandPath(path)) invalid();
   return parseWorldCommandResult((await apiClient.post(url(path), body)).data);
 }
-export const isWorldCommandPath = (path: string): boolean => path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|equipment-expand|housing-lodge|housing-leave)$/.test(path);
+export const isWorldCommandPath = (path: string): boolean => path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel)$/.test(path);
 export async function loadWorldOnboarding(): Promise<WorldOnboarding> {
   const row = record((await apiClient.get(url('/onboarding'))).data);
   return { world_id: integer(row.world_id, 1), joined: boolean(row.joined), starter_site_id: nullableId(row.starter_site_id), joined_at: nullableId(row.joined_at), grace_until: nullableId(row.grace_until), server_time: integer(row.server_time), join_available: boolean(row.join_available) };
