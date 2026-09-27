@@ -52,7 +52,7 @@ section.world-construction#construction
     p(v-if="!state.items.length") Строек по выбранным условиям нет. Начать строительство можно из предложений на своей площадке.
     article(v-for="item in state.items" :key="item.id")
       h3
-        span(v-if="item.status === 'cancelled'") {{ item.name }}
+        span(v-if="item.status === 'cancelled' || item.demolished") {{ item.name }}
         router-link(v-else :to="`/world/nodes/${item.node_id}`") {{ item.name }}
         |  · {{ constructionStatus[item.status] }}
       template(v-if="item.status === 'constructing' || item.status === 'paused'")
@@ -66,7 +66,8 @@ section.world-construction#construction
         n-button(v-if="item.status === 'paused'" :disabled="locked || calculating" @click="preview(item.node_id, 'resume')") Продолжить
         n-button(:disabled="locked || calculating" @click="preview(item.node_id, 'cancel')") Отменить стройку…
       p(v-if="item.status === 'cancelled'") Резерв Cr освобождён в бюджете. Материалы возвращены в рюкзак.
-      p(v-if="item.room_id")
+      p(v-if="item.demolished") Постройка снесена, площадь освобождена. История строительства сохранена.
+      p(v-if="item.room_id && !item.demolished")
         router-link(:to="`/world/nodes/${item.room_id}`") Открыть готовое помещение
     page-pager(v-model:page="page" query-prefix="construction" :result="state" :disabled="busy")
   section(v-if="quote" aria-live="polite")

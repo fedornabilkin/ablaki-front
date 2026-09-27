@@ -70,6 +70,12 @@ section.world-premises#premises
           ul
             li(v-for="material in item.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
         p(v-if="item.lodging_places") Постоянная койка: 1. После покупки отдельно назначьте ночлег в комнате дома.
+        template(v-if="item.repair")
+          p Договор ремонта: полный ремонт — {{ item.repair.full_price }} Cr из бюджета здания. Цена и материалы пропорциональны повреждению с округлением вверх.
+          p(v-if="item.repair_for_existing") Владельцы прежних зданий этого типа и площади без договора могут принять его на странице своей постройки.
+          ul
+            li(v-for="material in item.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }} при полном повреждении
+        p(v-else) Договор ремонта в покупку не включён.
         p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ item.expansion_base_price }} Cr, каждое следующее дороже на эту сумму.
         p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
         n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Рассчитать стройку' : 'Рассчитать покупку' }}
@@ -93,9 +99,15 @@ section.world-premises#premises
         n-input(v-model:value="form.expansion_base_price" inputmode="decimal" :maxlength="20" :disabled="locked" placeholder="Только для расширяемого помещения")
       label Полная цена, Cr
         n-input(v-model:value="form.price" inputmode="decimal" :maxlength="20" :disabled="locked")
+      p Условия ремонта можно включить при публикации через админку мира.
       n-button(:disabled="locked" :loading="calculating" @click="preview('publish')") Рассчитать предложение
     section(v-if="quote" aria-live="polite")
       h3 {{ quote.action === 'withdraw' ? 'Снять предложение' : quote.action === 'buy' ? 'Подтвердить покупку' : 'Подтвердить публикацию' }}: {{ quote.name }}
+      template(v-if="quote.room?.repair")
+        p Договор полного ремонта: {{ quote.room.repair.full_price }} Cr из бюджета здания в казну поселения. Расход пропорционален повреждению с округлением вверх.
+        ul
+          li(v-for="material in quote.room.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
+      p(v-else-if="quote.room") Договор ремонта не включён.
       template(v-if="quote.room")
         p Стоимость: {{ quote.room.price }} Cr; площадь {{ quote.room.area }}; мест {{ quote.room.slots }}.
         p(v-if="quote.room.delivery === 'ready'") Готово к размещению оборудования сразу после оплаты.

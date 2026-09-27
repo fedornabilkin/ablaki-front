@@ -29,7 +29,7 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
       if (!body || typeof body !== 'object' || !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_key) || !/^[a-f0-9]{32}$/.test(body.quote_id)) return;
       if (/^\/nodes\/[1-9]\d*\/invest$/.test(value.path)) {
         if (investmentAmount(body.amount) !== body.amount || typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 255) return;
-      } else if (/^\/nodes\/[1-9]\d*\/(collect|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel)$/.test(value.path)) {
+      } else if (/^\/nodes\/[1-9]\d*\/(collect|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|demolish)$/.test(value.path)) {
         if (Object.keys(body).some(key => !['request_key', 'quote_id', 'expected_revisions'].includes(key))) return;
       } else if (/^\/nodes\/[1-9]\d*\/pay$/.test(value.path)) {
         if (!Number.isSafeInteger(body.obligation_id) || body.obligation_id < 1 || body.obligation_id > 2147483647) return;
@@ -43,7 +43,7 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
         if (!Number.isSafeInteger(body.order_id) || body.order_id < 1 || body.order_id > 2147483647) return;
       } else if (/^\/nodes\/[1-9]\d*\/premises-publish$/.test(value.path)) {
         premisesPublicationInput(body);
-      } else if (/^\/nodes\/[1-9]\d*\/premises-(buy|withdraw)$/.test(value.path)) {
+      } else if (/^\/nodes\/[1-9]\d*\/(premises-(buy|withdraw)|repair-contract)$/.test(value.path)) {
         if (!Number.isSafeInteger(body.offer_id) || body.offer_id < 1 || body.offer_id > 2147483647) return;
       } else if (/^\/nodes\/[1-9]\d*\/shelter-(claim|deploy|fold|lodge|leave|repair)$/.test(value.path)) {
         shelterInput(value.path.substring(value.path.lastIndexOf('shelter-') + 8) as ShelterAction, body);

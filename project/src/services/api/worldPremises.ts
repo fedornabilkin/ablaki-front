@@ -4,6 +4,7 @@ import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
 import { parseConstructionSpec, validateConstructionPlan } from './worldConstruction';
 import { parseRequirementStatus } from './worldRequirements';
+import { parseBuildingRepairPolicy } from './worldBuildingRepair';
 const invalid = (): never => { throw new Error('invalid-premises-response'); };
 const id = (value: unknown) => integer(value, 1, 2147483647);
 const text = (value: unknown): string => typeof value === 'string' && value.trim().length > 0 && value.length <= 120 ? value : invalid();
@@ -22,7 +23,9 @@ export function premisesPublicationInput(value: unknown) {
 function premises(value: unknown) {
   const r = record(value), input = premisesPublicationInput(r);
   if (creditAmount(r.price) !== input.price || r.exposure_class !== (input.kind === 'canopy' ? 'covered' : 'indoor') || (r.lodging_places ?? 0) !== input.lodging_places) invalid();
-  return { ...input, ...parseConstructionSpec(r), exposure_class: r.exposure_class as 'covered' | 'indoor' };
+  const repair = parseBuildingRepairPolicy(r.repair), repair_for_existing = bool(r.repair_for_existing ?? false);
+  if (repair_for_existing && !repair) invalid();
+  return { ...input, ...parseConstructionSpec(r), repair, repair_for_existing, exposure_class: r.exposure_class as 'covered' | 'indoor' };
 }
 export async function loadPremises(node: number, params: Record<string, unknown>) {
   const r = record((await apiClient.get(url(node), { params })).data), meta = record(r._meta);
