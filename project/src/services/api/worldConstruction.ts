@@ -40,7 +40,9 @@ export async function loadConstruction(node: number, params: Record<string, unkn
     const r = record(value);
     if (typeof r.status !== 'string' || !Object.prototype.hasOwnProperty.call(constructionStatus, r.status)) return invalid();
     const status = r.status as keyof typeof constructionStatus;
-    const result = { id: id(r.id), node_id: id(r.node_id), plot_id: id(r.plot_id), name: text(r.name), status, revision: id(r.revision),
+    const demolished = r.demolished ?? false;
+    if (typeof demolished !== 'boolean' || (demolished && status !== 'completed')) invalid();
+    const result = { id: id(r.id), node_id: id(r.node_id), plot_id: id(r.plot_id), name: text(r.name), status, demolished: demolished as boolean, revision: id(r.revision),
       started_at: integer(r.started_at), finish_at: integer(r.finish_at), remaining_seconds: integer(r.remaining_seconds, 0, 604800),
       room_id: r.room_id === null ? null : id(r.room_id), price: creditAmount(r.price), materials: parseConstructionMaterials(r.materials) };
     if ((result.node_id !== node && result.plot_id !== node) || (status === 'completed') !== (result.room_id !== null) || result.finish_at < result.started_at || !result.materials.length) invalid();

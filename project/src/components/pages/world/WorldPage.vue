@@ -19,6 +19,11 @@ import WorldFinancePolicy from './WorldFinancePolicy.vue';
 import WorldOrdersPanel from './WorldOrdersPanel.vue';
 import WorldPremisesPanel from './WorldPremisesPanel.vue';
 import WorldConstructionPanel from './WorldConstructionPanel.vue';
+import WorldBuildingOperationPanel from './WorldBuildingOperationPanel.vue';
+import WorldBuildingRepairPanel from './WorldBuildingRepairPanel.vue';
+import WorldRepairContractsPanel from './WorldRepairContractsPanel.vue';
+import WorldDemolitionPanel from './WorldDemolitionPanel.vue';
+import WorldDemolitionHistory from './WorldDemolitionHistory.vue';
 import WorldShelterPanel from './WorldShelterPanel.vue';
 import WorldNightsPanel from './WorldNightsPanel.vue';
 import WorldGardenPanel from './WorldGardenPanel.vue';
@@ -100,6 +105,11 @@ page-header(:pageTitle="title")
     world-economy-panel(v-if="!world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :command="command")
     world-equipment-expansion-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
     world-housing-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
+    world-building-operation-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    world-building-repair-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    world-repair-contracts-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    world-demolition-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    world-demolition-history(v-if="world.capabilities?.storage_v2 && world.node.type === 'PLOT' && world.node.permissions.storage" :node-id="world.node.id" :session="session")
     world-construction-panel(v-if="world.capabilities?.storage_v2 && world.node.permissions.storage && ['PLOT', 'BUILDING'].includes(world.node.type)" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     world-premises-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     world-garden-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && ['campsite', 'garden'].includes(String(world.node.details.plot_kind)) && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
