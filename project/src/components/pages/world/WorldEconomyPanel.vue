@@ -5,10 +5,12 @@ import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { worldError } from '@/services/api/world';
 import { loadNodeEconomy, previewInvestment } from '@/services/api/worldEconomy';
 import { investmentAmount } from '@/entities/world/credits';
+import type { WorldNode } from '@/entities/world/types';
 import WorldTreasuryPanel from './WorldTreasuryPanel.vue';
+import WorldBudgetGrant from './WorldBudgetGrant.vue';
 import WorldTreasuryReceipts from './WorldTreasuryReceipts.vue';
 import WorldFinanceReport from './WorldFinanceReport.vue';
-const props = defineProps<{ nodeId: number; session: number; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number; children: WorldNode[]; session: number; command: WorldCommandRunner }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadNodeEconomy>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewInvestment>> | null>(null);
 const amount = ref(''), purpose = ref('Развитие объекта'), error = ref(''), loading = ref(false), calculating = ref(false);
 const { busy, pending } = props.command;
@@ -71,6 +73,7 @@ section.world-economy
         p В бюджет «{{ quote.name }}»: {{ quote.amount }} Cr
         p Личный баланс: {{ quote.wallet_before }} → {{ quote.wallet_after }} Cr
         n-button(type="primary" :loading="busy" :disabled="Boolean(pending)" @click="invest") Подтвердить вложение
+    world-budget-grant(v-if="state.can_grant" :node-id="nodeId" :children="children" :session="session" :command="command")
     template(v-if="state.balances")
       world-finance-report(:node-id="nodeId" :session="session")
 </template>

@@ -1,5 +1,5 @@
 export default {
-    apiDomain: import.meta.env.VITE_API_URL,
+    apiDomain: import.meta.env.DEV ? '/api/' : import.meta.env.VITE_API_URL,
     wsUrl: import.meta.env.VITE_WS_URL,
     craftMock: import.meta.env.VITE_CRAFT_MOCK === '1',
     // TODO(stat-mock): убрать после подключения бэка со stat-эндпоинтами

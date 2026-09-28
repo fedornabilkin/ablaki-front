@@ -27,7 +27,7 @@ export async function loadNodeEconomy(node: number, page: number) {
   const total = integer(meta.totalCount), pageSize = integer(meta.perPage, 50, 50), currentPage = integer(meta.currentPage, 1, 1000000);
   if (integer(meta.pageCount) !== Math.ceil(total / pageSize) || new Set(items.map(i => i.id)).size !== items.length || id(r.node_id) !== node) invalid();
   return { node_id: node, balances: b ? { budget: creditAmount(b.budget), reserved: creditAmount(b.reserved), available: creditAmount(b.available), treasury: creditAmount(b.treasury) } : null,
-    can_invest: boolean(r.can_invest), wallet_ready: boolean(r.wallet_ready), can_collect: collect, can_pay: pay, catching_up: catchingUp, rule, entries: { items, total, pageSize, currentPage } };
+    can_invest: boolean(r.can_invest), can_grant: boolean(r.can_grant), wallet_ready: boolean(r.wallet_ready), can_collect: collect, can_pay: pay, catching_up: catchingUp, rule, entries: { items, total, pageSize, currentPage } };
 }
 export async function loadObligations(node: number, page: number) {
   const r = record((await apiClient.get(url(node, 'obligations'), { params: { page } })).data), meta = record(r._meta);
@@ -51,6 +51,13 @@ export async function previewCollection(node: number) {
     budget_after: creditAmount(t.budget_after), available_after: creditAmount(t.available_after), treasury_after: creditAmount(t.treasury_after),
     parent_node_id: t.parent_node_id === null ? null : id(t.parent_node_id), more_pending: boolean(t.more_pending),
     rule_revision: id(t.rule_revision), due_seconds: integer(t.due_seconds, 3600, 31536000) };
+}
+export async function previewBudgetGrant(node: number, destination: number, amount: string, purpose: string) {
+  const input = { destination_node_id: id(destination), amount: investmentAmount(amount), purpose: purpose.trim() };
+  if (!input.purpose || input.purpose.length > 255) invalid();
+  const quote = parseWorldQuote((await apiClient.post(url(node, 'budget-grant-preview'), input)).data), terms = quote.terms;
+  if (id(terms.source_node_id) !== node || id(terms.destination_node_id) !== destination || terms.amount !== input.amount || terms.purpose !== input.purpose) invalid();
+  return { quote, input, sourceAvailableAfter: creditAmount(terms.source_available_after), destinationBudgetAfter: creditAmount(terms.destination_after) };
 }
 export async function previewPayment(node: number, obligation: number) {
   const input = { obligation_id: id(obligation) };
