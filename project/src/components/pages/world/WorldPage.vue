@@ -2,15 +2,14 @@
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCard, NSpin } from 'naive-ui';
-import PageHeader from '@/components/PageHeader.vue';
-import PagePager from '@/components/PagePager.vue';
-import ListFilters from '@/components/ListFilters.vue';
-import { useListQuery } from '@/hooks/useListQuery';
+import { NAlert, NButton, NSpin } from 'naive-ui';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
 import { useWorldStore } from '@/store/world';
-import { nodeLabels, nodeTypes } from '@/entities/world/types';
+import { nodeLabels, type NodeType } from '@/entities/world/types';
+import { nodeFeatures, tabForHash, tabLabels, tabsForNode, type NodeTab } from '@/entities/world/nodeLayout';
 import WorldMap from './WorldMap.vue';
+import WorldCampsiteSupplies from './WorldCampsiteSupplies.vue';
+import WorldNodeStatistics from './WorldNodeStatistics.vue';
 import WorldManagement from './WorldManagement.vue';
 import WorldOnboarding from './WorldOnboarding.vue';
 import WorldStoragePanel from './WorldStoragePanel.vue';
@@ -29,15 +28,10 @@ import WorldNightsPanel from './WorldNightsPanel.vue';
 import WorldGardenPanel from './WorldGardenPanel.vue';
 import WorldEquipmentExpansionPanel from './WorldEquipmentExpansionPanel.vue';
 import WorldHousingPanel from './WorldHousingPanel.vue';
+
 const route = useRoute(), router = useRouter(), auth = useStore(), world = useWorldStore();
-const list = useListQuery({ type: '' }, { defaultSort: 'position' });
-const { page, search, filters } = list;
-const mode = ref<'map' | 'list'>('map');
 const nodeId = computed(() => route.params.id === undefined ? null : Number(route.params.id));
 const invalidId = computed(() => nodeId.value !== null && (!Number.isSafeInteger(nodeId.value) || nodeId.value < 1 || nodeId.value > 2147483647));
-const title = computed(() => world.node?.name || 'Мир');
-const requestParams = computed(() => ({ page: page.value, 'per-page': 20, q: list.params.value.q || '', type: filters.value.type }));
-const filterDefinitions = [{ key: 'type', label: 'Тип объекта', options: nodeTypes.map(type => ({ label: nodeLabels[type], value: type })) }];
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const purchasedRoom = ref<number | null>(null);
@@ -50,17 +44,31 @@ const command = useWorldCommand(session, owner, result => {
   } else changed(result.changed_node_ids);
 });
 const { busy: commandBusy, pending: pendingCommand, error: commandError } = command;
-function load() { if (invalidId.value) { world.cancel(); return; } void world.load(nodeId.value, requestParams.value); }
+function load() { if (invalidId.value) { world.cancel(); return; } void world.load(nodeId.value); }
 watch(session, value => world.setSession(value), { immediate: true, flush: 'sync' });
-watch([nodeId, requestParams, session], load, { immediate: true });
+watch([nodeId, session], load, { immediate: true });
 watch([nodeId, session], () => { purchasedRoom.value = null; }, { flush: 'sync' });
 onScopeDispose(() => world.cancel());
 function changed(ids: number[]) { world.invalidate(ids); load(); void auth.dispatch('auth/fetchData'); }
-const pager = computed(() => ({ ...world.children, items: world.children.items.map(node => ({ ...node })) }));
+
+const features = computed(() => world.node ? nodeFeatures(world.node, world.capabilities) : null);
+const tabs = computed<NodeTab[]>(() => world.node && features.value ? tabsForNode(world.node, features.value) : ['map']);
+const activeTab = computed(() => tabForHash(route.hash, tabs.value));
+const visitedTabs = ref<NodeTab[]>(['map']);
+watch([nodeId, session], () => { visitedTabs.value = ['map']; }, { flush: 'sync' });
+watch(activeTab, tab => { if (!visitedTabs.value.includes(tab)) visitedTabs.value = [...visitedTabs.value, tab]; }, { immediate: true });
 const statuses: Record<string, string> = { active: 'Действует', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'Приостановлен', damaged: 'Повреждён', destroyed: 'Разрушен' };
+const icons: Record<NodeType, string> = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling' };
+const nodeIcon = computed(() => features.value?.campsite ? 'tent' : world.node ? icons[world.node.type] : 'sun');
+const nodeKind = computed(() => features.value?.campsite ? 'Стоянка' : world.node ? nodeLabels[world.node.type] : 'Мир');
+const detail = computed(() => world.node?.details ?? {});
+const summaryValue = computed(() => detail.value.population !== undefined ? String(detail.value.population) : detail.value.condition !== undefined ? `${detail.value.condition} / ${detail.value.max_condition ?? '—'}` : `${world.node?.coordinates.x ?? 0}, ${world.node?.coordinates.y ?? 0}`);
+const summaryLabel = computed(() => detail.value.population !== undefined ? 'Жители' : detail.value.condition !== undefined ? 'Прочность' : 'Координаты');
+const childTitle = computed(() => world.node?.type === 'WORLD' ? 'Регионы мира' : world.node?.type === 'REGION' ? 'Поселения региона' : world.node?.type === 'SETTLEMENT' ? 'Участки и постройки' : 'Объекты внутри');
+function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, hash: `#${tab}` }; }
 </script>
+
 <template lang="pug">
-page-header(:pageTitle="title")
 .container.world-page
   .world-toolbar
     router-link(to="/world") Мир
@@ -82,61 +90,190 @@ page-header(:pageTitle="title")
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
     nav.world-breadcrumbs(aria-label="Путь в мире")
-      template(v-for="(crumb, index) in world.breadcrumbs" :key="crumb.id")
-        span(v-if="index" aria-hidden="true") /
+      router-link(v-if="world.breadcrumbs[0]?.type !== 'WORLD'" to="/world") Мир
+      template(v-for="crumb in world.breadcrumbs" :key="crumb.id")
+        span(aria-hidden="true") /
         router-link(:to="`/world/nodes/${crumb.id}`" :aria-current="crumb.id === world.node.id ? 'page' : undefined") {{ crumb.name }}
-    nav.world-toolbar(v-if="world.node.parent_id && world.siblings.total > 1" aria-label="Соседние объекты")
-      router-link(v-for="sibling in world.siblings.items.filter(item => item.id !== world.node?.id)" :key="sibling.id" :to="`/world/nodes/${sibling.id}`") {{ sibling.name }}
-      router-link(v-if="world.siblings.total > world.siblings.items.length" :to="`/world/nodes/${world.node.parent_id}`") Все соседние объекты
-    n-card(:title="world.node.name")
-      p {{ nodeLabels[world.node.type] }} · {{ statuses[world.node.status] || 'Недоступен' }}
-      p(v-if="world.node.details.population !== undefined") Население: {{ world.node.details.population }}
-      p(v-if="world.node.details.condition !== undefined") Прочность: {{ world.node.details.condition }} / {{ world.node.details.max_condition }}
-      p(v-if="world.node.visibility === 'private'") Личный объект
-      p(v-if="world.node.type === 'BED'") {{ world.node.details.unlocked ? 'Грядка открыта. Посев появится на следующем этапе.' : 'Грядка закрыта. Приобрести открытие можно в огороде.' }}
-      router-link(v-if="world.node.type === 'BED' && world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}#garden`") Открыть огород и покупку грядок
-      router-link(v-if="world.node.details.shelter_plot_id" :to="`/world/nodes/${world.node.details.shelter_plot_id}#shelter`") Управлять шалашом и ночлегом на стоянке
-      router-link(v-if="!world.node.details.shelter_instance_id && world.node.permissions.manage && ['BUILDING', 'ROOM', 'PLOT'].includes(world.node.type)" :to="{ path: '/craft', query: { node: world.node.id } }") Открыть мастерскую
-    world-onboarding(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
-    world-shelter-panel(v-if="world.node.status === 'active' && world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
-    world-nights-panel(v-if="world.node.status === 'active' && world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage" :node-id="world.node.id" :session="session")
-    router-link(v-if="world.capabilities?.storage_v2 && !world.node.details.shelter_instance_id && world.node.permissions.storage && ['PLOT', 'BUILDING', 'ROOM'].includes(world.node.type)" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
-    world-storage-panel(v-if="world.capabilities?.storage_v2 && !world.node.details.shelter_instance_id && world.node.permissions.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
-    world-economy-panel(v-if="!world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :command="command")
-    world-equipment-expansion-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
-    world-housing-panel(v-if="world.node.type === 'ROOM' && world.node.permissions.storage" :node-id="world.node.id" :session="session" :command="command")
-    world-building-operation-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-building-repair-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-repair-contracts-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-demolition-panel(v-if="world.capabilities?.storage_v2 && world.node.type === 'BUILDING' && world.node.permissions.storage && !world.node.details.shelter_instance_id" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-demolition-history(v-if="world.capabilities?.storage_v2 && world.node.type === 'PLOT' && world.node.permissions.storage" :node-id="world.node.id" :session="session")
-    world-construction-panel(v-if="world.capabilities?.storage_v2 && world.node.permissions.storage && ['PLOT', 'BUILDING'].includes(world.node.type)" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-premises-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-garden-panel(v-if="world.node.status === 'active' && ((world.node.type === 'SETTLEMENT' && world.node.visibility === 'public') || (world.node.type === 'PLOT' && ['campsite', 'garden'].includes(String(world.node.details.plot_kind)) && world.node.permissions.storage))" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    world-orders-panel(v-if="world.node.type === 'SETTLEMENT' && world.node.visibility === 'public' && world.node.status === 'active'" :node-id="world.node.id" :session="session" :command="command")
-    router-link(v-if="world.node.type === 'PLOT' && world.node.details.plot_kind === 'campsite' && world.node.parent_id" :to="{ path: `/world/nodes/${world.node.parent_id}`, hash: '#settlement-orders' }") Заказы поселения
-    world-finance-policy(v-if="!world.node.details.shelter_instance_id && world.node.permissions.administer" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-    .world-children
-      h2 Объекты внутри
-      list-filters(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="world.loading" placeholder="Найти объект" @reset="list.reset")
-      .world-modes
-        n-button(size="small" :type="mode === 'map' ? 'primary' : 'default'" @click="mode = 'map'") Карта
-        n-button(size="small" :type="mode === 'list' ? 'primary' : 'default'" @click="mode = 'list'") Список
-      p(v-if="!world.children.items.length") Объекты не найдены.
-      world-map(v-else-if="mode === 'map'" :nodes="world.children.items")
-      ul.world-list(v-else)
-        li(v-for="child in world.children.items" :key="child.id")
-          router-link(:to="`/world/nodes/${child.id}`") {{ child.name }}
-          span {{ nodeLabels[child.type] }} · Объектов: {{ child.child_count }}
-      page-pager(v-model:page="page" :result="pager" :disabled="world.loading")
-    world-management(v-if="world.node.permissions.administer" :node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
+    section.world-hero(:aria-label="nodeKind + ': ' + world.node.name")
+      .world-crest(aria-hidden="true")
+        font-awesome-icon(:icon="nodeIcon")
+      .world-identity
+        span.world-eyebrow {{ nodeKind }} · владение №{{ world.node.id }}
+        h1 {{ world.node.name }}
+        p {{ world.node.visibility === 'private' ? 'Личная территория' : 'Открытая территория мира' }}
+      .world-hero-metrics
+        div
+          span Статус
+          strong {{ statuses[world.node.status] || world.node.status }}
+        div
+          span Объекты
+          strong {{ world.node.child_count }}
+        div
+          span {{ summaryLabel }}
+          strong {{ summaryValue }}
+    section.world-panel.world-map-panel(aria-label="Карта и объекты")
+      .world-panel-heading
+        div
+          span.world-eyebrow Территория и расположение
+          h2 {{ childTitle }}
+        span.world-counter {{ world.map?.items.length ?? 0 }} доступно
+      .world-children
+        world-map(:node="world.node" :map="world.map" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+    nav.world-tabs(aria-label="Разделы объекта")
+      router-link.world-tab(v-for="tab in tabs" :key="tab" :to="tabLink(tab)" :class="{ active: activeTab === tab }" :aria-current="activeTab === tab ? 'page' : undefined") {{ tabLabels[tab] }}
+
+    section.world-tab-panel(v-show="activeTab === 'map'" aria-label="Обзор объекта")
+      .world-overview-grid
+        section.world-panel
+          world-onboarding(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
+        aside.world-side
+          section.world-panel
+            span.world-eyebrow Возможности объекта
+            h2 Действия
+            .world-action-links
+              router-link(v-for="tab in tabs.filter(item => !['map', 'statistics', 'manage'].includes(item))" :key="tab" :to="tabLink(tab)")
+                span {{ tabLabels[tab] }}
+                font-awesome-icon(icon="arrow-right" aria-hidden="true")
+              router-link(v-if="features?.storage" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
+              router-link(v-if="world.node.type === 'BED' && world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}#garden`") Открыть огород
+              router-link(v-if="world.node.details.shelter_plot_id" :to="`/world/nodes/${world.node.details.shelter_plot_id}#shelter`") Управлять шалашом
+              p(v-if="tabs.length === 2 && !features?.storage") Для этого объекта пока доступны карта и статистика.
+          section.world-panel
+            span.world-eyebrow Положение в мире
+            h2 Навигация
+            dl.world-facts
+              dt Координаты
+              dd {{ world.node.coordinates.x }}, {{ world.node.coordinates.y }}
+              dt Тип
+              dd {{ nodeKind }}
+              dt Дочерние объекты
+              dd {{ world.node.child_count }}
+            router-link(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`") Перейти к родительскому объекту
+      nav.world-siblings(v-if="world.node.parent_id && world.siblings.total > 1" aria-label="Соседние объекты")
+        span.world-eyebrow Рядом
+        router-link(v-for="sibling in world.siblings.items.filter(item => item.id !== world.node?.id)" :key="sibling.id" :to="`/world/nodes/${sibling.id}`") {{ sibling.name }}
+        router-link(v-if="world.siblings.total > world.siblings.items.length" :to="`/world/nodes/${world.node.parent_id}`") Все соседние объекты
+
+    section.world-tab-panel(v-if="visitedTabs.includes('life') && (features?.nights || features?.housing)" v-show="activeTab === 'life'" aria-label="Ночлег и здоровье")
+      .world-section-title
+        span.world-eyebrow Жизнь на территории
+        h2 Ночлег и здоровье
+      world-shelter-panel(v-if="features.nights" :node-id="world.node.id" :session="session" :command="command")
+      world-nights-panel(v-if="features.nights" :node-id="world.node.id" :session="session")
+      world-housing-panel(v-if="features.housing" :node-id="world.node.id" :session="session" :command="command")
+
+    section.world-tab-panel(v-if="visitedTabs.includes('workshop') && (features?.storage || features?.housing)" v-show="activeTab === 'workshop'" aria-label="Вещи и крафт")
+      .world-section-title
+        span.world-eyebrow Мастерская и размещение
+        h2 Вещи и крафт
+      .world-inline-links
+        router-link(v-if="features.storage" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
+        router-link(v-if="!features.shelter && world.node.permissions.manage && ['BUILDING', 'ROOM', 'PLOT'].includes(world.node.type)" :to="{ path: '/craft', query: { node: world.node.id } }") Открыть мастерскую
+      world-storage-panel(v-if="features.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
+      world-campsite-supplies(v-if="features.campsite && features.storage && world.node.status === 'active'" :node-id="world.node.id" :session="session" :command="command")
+      world-equipment-expansion-panel(v-if="features.housing" :node-id="world.node.id" :session="session" :command="command")
+
+    section.world-tab-panel(v-if="visitedTabs.includes('finance') && features?.finance" v-show="activeTab === 'finance'" aria-label="Бюджет и казна")
+      .world-section-title
+        span.world-eyebrow Экономика территории
+        h2 Бюджет и казна
+      world-economy-panel(:node-id="world.node.id" :children="world.map?.items ?? []" :session="session" :command="command")
+
+    section.world-tab-panel(v-if="visitedTabs.includes('development') && tabs.includes('development')" v-show="activeTab === 'development'" aria-label="Развитие объекта")
+      .world-section-title
+        span.world-eyebrow Развитие территории
+        h2 Постройки, помещения и огород
+      world-building-operation-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-building-repair-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-repair-contracts-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-demolition-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-demolition-history(v-if="features?.demolitionHistory" :node-id="world.node.id" :session="session")
+      world-construction-panel(v-if="features?.construction" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-premises-panel(v-if="features?.premises" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-garden-panel(v-if="features?.garden" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-orders-panel(v-if="features?.orders" :node-id="world.node.id" :session="session" :command="command")
+      router-link(v-if="features?.campsite && world.node.parent_id" :to="{ path: `/world/nodes/${world.node.parent_id}`, hash: '#settlement-orders' }") Заказы поселения
+
+    section.world-tab-panel(v-if="visitedTabs.includes('statistics')" v-show="activeTab === 'statistics'" aria-label="Статистика объекта")
+      .world-section-title
+        span.world-eyebrow {{ world.node.name }} в цифрах
+        h2 Статистика
+      .world-stat-grid
+        .world-stat-card
+          span Статус
+          strong {{ statuses[world.node.status] || world.node.status }}
+        .world-stat-card
+          span Прямые дочерние объекты
+          strong {{ world.node.child_count }}
+        .world-stat-card(v-if="detail.population !== undefined")
+          span Жители
+          strong {{ detail.population }}
+        .world-stat-card(v-if="detail.condition !== undefined")
+          span Прочность
+          strong {{ detail.condition }} / {{ detail.max_condition ?? '—' }}
+        .world-stat-card(v-if="detail.level !== undefined")
+          span Уровень
+          strong {{ detail.level }}
+      world-node-statistics(:node="world.node" :session="session")
+
+    section.world-tab-panel(v-if="visitedTabs.includes('manage') && world.node.permissions.administer" v-show="activeTab === 'manage'" aria-label="Управление объектом")
+      .world-section-title
+        span.world-eyebrow Параметры владения
+        h2 Управление
+      dl.world-facts.world-management-facts
+        dt Объект
+        dd {{ world.node.name }} · №{{ world.node.id }}
+        dt Статус
+        dd {{ statuses[world.node.status] || world.node.status }}
+        dt Доступ
+        dd {{ world.node.visibility === 'private' ? 'Личный' : 'Открытый' }}
+        dt Координаты
+        dd {{ world.node.coordinates.x }}, {{ world.node.coordinates.y }}
+      world-finance-policy(v-if="features?.finance" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+      world-management(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
 </template>
+
 <style scoped>
-.world-page { display: grid; gap: 1rem; padding-bottom: 2rem; }
-.world-toolbar, .world-breadcrumbs, .world-modes { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.world-page { display: grid; gap: 1rem; padding-block: 1.5rem 3rem; max-width: 1320px; }
+.world-toolbar, .world-breadcrumbs, .world-inline-links, .world-siblings { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.world-toolbar { justify-content: flex-end; font-size: .9rem; }
+.world-breadcrumbs { color: var(--text-muted); font-size: .85rem; }
 .world-breadcrumbs a { overflow-wrap: anywhere; }
-.world-modes { margin-bottom: 1rem; }
-.world-list { list-style: none; padding: 0; display: grid; gap: .5rem; }
-.world-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; padding: .75rem; border: 1px solid var(--border); border-radius: .4rem; }
-.world-list span { color: var(--text-muted); }
+.world-hero { display: flex; align-items: center; gap: 1.25rem; padding: clamp(1.25rem, 3vw, 2rem); border: 1px solid var(--border); border-radius: .8rem; background: radial-gradient(circle at 80% 12%, var(--primary-soft), transparent 45%), var(--bg-surface); }
+.world-crest { display: grid; place-items: center; flex: 0 0 4.5rem; height: 4.5rem; border: 1px solid var(--primary); border-radius: .85rem; background: var(--primary-soft); color: var(--primary); font-size: 2rem; }
+.world-identity { min-width: 0; flex: 1; }
+.world-identity h1 { margin: .25rem 0; font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.15; }
+.world-identity p { margin: 0; color: var(--text-muted); }
+.world-eyebrow { color: var(--primary); font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.world-hero-metrics { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.world-hero-metrics div { display: grid; gap: .2rem; min-width: 5rem; }
+.world-hero-metrics span, .world-stat-card span { color: var(--text-muted); font-size: .8rem; }
+.world-hero-metrics strong { font-size: 1rem; overflow-wrap: anywhere; }
+.world-tabs { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+.world-tab { flex: 0 0 auto; padding: .8rem 1rem; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 650; white-space: nowrap; }
+.world-tab:hover, .world-tab.active { color: var(--primary); }
+.world-tab.active { border-color: var(--primary); }
+.world-tab-panel { display: grid; gap: 1rem; min-width: 0; }
+.world-overview-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(16rem, .8fr); gap: 1rem; align-items: start; }
+.world-panel, .world-stat-card { min-width: 0; padding: 1.25rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--bg-surface); }
+.world-panel-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 1rem; }
+.world-panel-heading h2, .world-section-title h2 { margin: .25rem 0 0; }
+.world-counter { color: var(--text-muted); font-size: .85rem; }
+.world-children, .world-side, .world-action-links { display: grid; gap: 1rem; }
+.world-children { margin-top: 1rem; }
+.world-action-links { gap: 0; }
+.world-action-links a { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.world-action-links p { color: var(--text-muted); }
+.world-facts { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem 1rem; margin: .75rem 0 1rem; }
+.world-facts dt { color: var(--text-muted); }
+.world-facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.world-siblings { padding: .75rem 0; border-top: 1px solid var(--border); }
+.world-section-title { margin-bottom: .5rem; }
+.world-inline-links { padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; }
+.world-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .75rem; }
+.world-stat-card { display: grid; gap: .35rem; }
+.world-stat-card strong { font-size: 1.2rem; }
+.world-management-facts { max-width: 35rem; padding: 1.25rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); }
+@media (max-width: 900px) { .world-hero { flex-wrap: wrap; } .world-hero-metrics { width: 100%; padding-top: 1rem; border-top: 1px solid var(--border); } .world-overview-grid { grid-template-columns: 1fr; } }
+@media (max-width: 540px) { .world-crest { flex-basis: 3.5rem; height: 3.5rem; font-size: 1.5rem; } .world-hero-metrics { justify-content: space-between; gap: .75rem; } .world-tab { padding-inline: .75rem; } }
 </style>

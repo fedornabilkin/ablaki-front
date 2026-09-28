@@ -29,8 +29,10 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
       if (!body || typeof body !== 'object' || !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_key) || !/^[a-f0-9]{32}$/.test(body.quote_id)) return;
       if (/^\/nodes\/[1-9]\d*\/invest$/.test(value.path)) {
         if (investmentAmount(body.amount) !== body.amount || typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 255) return;
-      } else if (/^\/nodes\/[1-9]\d*\/(collect|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|demolish)$/.test(value.path)) {
+      } else if (/^\/nodes\/[1-9]\d*\/(collect|supplies-starter|supplies-gather|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|demolish)$/.test(value.path)) {
         if (Object.keys(body).some(key => !['request_key', 'quote_id', 'expected_revisions'].includes(key))) return;
+      } else if (/^\/nodes\/[1-9]\d*\/budget-grant$/.test(value.path)) {
+        if (!Number.isSafeInteger(body.destination_node_id) || body.destination_node_id < 1 || body.destination_node_id > 2147483647 || investmentAmount(body.amount) !== body.amount || typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 255) return;
       } else if (/^\/nodes\/[1-9]\d*\/pay$/.test(value.path)) {
         if (!Number.isSafeInteger(body.obligation_id) || body.obligation_id < 1 || body.obligation_id > 2147483647) return;
       } else if (/^\/nodes\/[1-9]\d*\/finance-policy$/.test(value.path)) {
@@ -51,6 +53,8 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
         gardenInput(value.path.substring(value.path.lastIndexOf('garden-') + 7) as GardenAction, body);
       } else if (/^\/nodes\/[1-9]\d*\/equipment-expand$/.test(value.path)) {
         equipmentExpansionInput(body);
+      } else if (/^\/nodes\/[1-9]\d*\/map-(explore|buy)$/.test(value.path)) {
+        if (!Number.isSafeInteger(body.x) || !Number.isSafeInteger(body.y) || Math.abs(body.x) > 1000000 || Math.abs(body.y) > 1000000 || typeof body.top_up !== 'boolean') return;
       } else if (value.path === '/workspace/craft') {
         const validId = (id: unknown) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
         if (['node_id', 'recipe_id', 'quantity', 'output_storage_id'].some(key => !validId(body[key])) || body.quantity > 100) return;

@@ -2,7 +2,7 @@ import { isAxiosError } from 'axios';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { creditAmount } from '@/entities/world/credits';
-import { nodeTypes, type NodeType, type WorldNode, type WorldPage, type WorldRoot, type WorldNavigation, type WorldQuote, type WorldCommandResult, type WorldOnboarding } from '@/entities/world/types';
+import { nodeTypes, type NodeType, type WorldNode, type WorldPage, type WorldMapData, type WorldRoot, type WorldNavigation, type WorldQuote, type WorldCommandResult, type WorldOnboarding } from '@/entities/world/types';
 
 const invalid = (): never => { throw new Error('invalid-world-response'); };
 export const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : invalid();
@@ -22,7 +22,11 @@ export function parseWorldNode(value: unknown): WorldNode {
   }
   return { id: integer(row.id, 1), type: row.type as NodeType, parent_id: nullableId(row.parent_id), root_id: integer(row.root_id, 1),
     name: text(row.name, 120), status: text(row.status, 24), visibility: row.visibility as WorldNode['visibility'], revision: integer(row.revision, 1),
-    coordinates: { x: integer(coordinates.x, -1000000, 1000000), y: integer(coordinates.y, -1000000, 1000000) }, child_count: integer(row.child_count), details,
+    coordinates: { x: integer(coordinates.x, -1000000, 1000000), y: integer(coordinates.y, -1000000, 1000000) },
+    footprint: row.footprint === null || row.footprint === undefined ? null : list(row.footprint, point => {
+      const vertex = record(point);
+      return { x: integer(vertex.x, -1000000, 1000000), y: integer(vertex.y, -1000000, 1000000) };
+    }, 32), child_count: integer(row.child_count), details,
     permissions: { manage: boolean(permissions.manage), administer: boolean(permissions.administer), storage: permissions.storage === undefined ? false : boolean(permissions.storage) },
     actions: list(row.actions, value => { const action = record(value); return { code: text(action.code, 80), allowed: boolean(action.allowed), reasons: list(action.reasons, value => { const reason = record(value); return { code: text(reason.code, 80), ...(reason.message === undefined ? {} : { message: text(reason.message) }) }; }) }; }) };
 }
@@ -61,7 +65,9 @@ export function parseWorldCommandResult(value: unknown): WorldCommandResult {
   const money: Pick<WorldCommandResult, 'amount' | 'wallet_after' | 'currency'> = {};
   if (row.amount !== undefined || row.wallet_after !== undefined || row.currency !== undefined) {
     if (row.currency !== 'Cr') invalid();
-    money.amount = creditAmount(row.amount); money.wallet_after = creditAmount(row.wallet_after); money.currency = 'Cr';
+    if (row.amount !== undefined) money.amount = creditAmount(row.amount);
+    if (row.wallet_after !== undefined) money.wallet_after = creditAmount(row.wallet_after);
+    money.currency = 'Cr';
   }
   const premises: Pick<WorldCommandResult, 'building_id' | 'room_id' | 'project_id' | 'finish_at'> = {};
   if (row.project_id !== undefined || row.finish_at !== undefined) {
@@ -77,13 +83,46 @@ const url = (path: string) => config.makeApiUrl(`v1/world${path}`);
 export async function loadWorld(params: Record<string, unknown> = {}) { return parseWorldRoot((await apiClient.get(url(''), { params: { ...params, envelope: 1 } })).data); }
 export async function loadWorldNavigation(id: number) { return parseWorldNavigation((await apiClient.get(url(`/nodes/${integer(id, 1)}/navigation`))).data); }
 export async function loadWorldChildren(id: number, params: Record<string, unknown>) { return parseWorldPage((await apiClient.get(url(`/nodes/${integer(id, 1)}/children`), { params: { ...params, envelope: 1 } })).data); }
+export function parseWorldMap(value: unknown, id: number): WorldMapData | WorldPage {
+  const row = record(value), nodeId = integer(id, 1);
+  // Older servers return the paginated children contract from /map.
+  if ('_meta' in row) return parseWorldPage(row);
+  if (integer(row.node_id, 1) !== nodeId) invalid();
+  return { node_id: nodeId, items: list(row.items, parseWorldNode, Number.MAX_SAFE_INTEGER), can_expand: boolean(row.can_expand),
+    cells: list(row.cells, value => { const cell = record(value); if (!['discovered', 'open'].includes(String(cell.state))) invalid();
+      return { x: integer(cell.x, -1000000, 1000000), y: integer(cell.y, -1000000, 1000000), state: cell.state as 'discovered' | 'open' }; }, Number.MAX_SAFE_INTEGER) };
+}
+export async function loadWorldMap(id: number): Promise<WorldMapData> {
+  const nodeId = integer(id, 1);
+  const mapped = parseWorldMap((await apiClient.get(url(`/nodes/${nodeId}/map`))).data, nodeId);
+  if ('node_id' in mapped) return mapped;
+  const items = [...mapped.items];
+  for (let page = 2; page <= mapped.pageCount; page++) {
+    const next = await loadWorldChildren(nodeId, { page, 'per-page': mapped.pageSize });
+    if (next.currentPage !== page || next.total !== mapped.total) invalid();
+    items.push(...next.items);
+  }
+  if (items.length !== mapped.total) invalid();
+  return { node_id: nodeId, items, cells: [], can_expand: false };
+}
+export async function previewMapCell(id: number, action: 'explore' | 'buy', x: number, y: number, topUp: boolean): Promise<WorldQuote> {
+  return parseWorldQuote((await apiClient.post(url(`/nodes/${integer(id, 1)}/map-${action}-preview`), { x: integer(x, -1000000, 1000000), y: integer(y, -1000000, 1000000), top_up: boolean(topUp) })).data);
+}
+export async function loadWorldStatistics(id: number): Promise<{ type: NodeType; count: number }[]> {
+  const row = record((await apiClient.get(url(`/nodes/${integer(id, 1)}/statistics`))).data);
+  return list(row.items, value => {
+    const item = record(value);
+    if (!nodeTypes.includes(item.type as NodeType)) invalid();
+    return { type: item.type as NodeType, count: integer(item.count) };
+  }, nodeTypes.length);
+}
 export type ManagementAction = 'move' | 'archive';
 export async function previewWorldManagement(id: number, action: ManagementAction, payload: Record<string, unknown>) { return parseWorldQuote((await apiClient.post(url(`/nodes/${integer(id, 1)}/${action}-preview`), payload)).data); }
 export async function sendWorldCommand(path: string, body: Record<string, unknown>) {
   if (!isWorldCommandPath(path)) invalid();
   return parseWorldCommandResult((await apiClient.post(url(path), body)).data);
 }
-export const isWorldCommandPath = (path: string): boolean => path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
+export const isWorldCommandPath = (path: string): boolean => path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|budget-grant|supplies-starter|supplies-gather|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|map-explore|map-buy|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
 export async function loadWorldOnboarding(): Promise<WorldOnboarding> {
   const row = record((await apiClient.get(url('/onboarding'))).data);
   return { world_id: integer(row.world_id, 1), joined: boolean(row.joined), starter_site_id: nullableId(row.starter_site_id), joined_at: nullableId(row.joined_at), grace_until: nullableId(row.grace_until), server_time: integer(row.server_time), join_available: boolean(row.join_available) };

@@ -6,9 +6,11 @@ export interface WorldNode {
   id: number; type: NodeType; parent_id: number | null; root_id: number; name: string;
   status: string; visibility: 'public' | 'private'; revision: number;
   coordinates: { x: number; y: number }; child_count: number;
+  footprint: { x: number; y: number }[] | null;
   details: Record<string, string | number | null>; permissions: { manage: boolean; administer: boolean; storage: boolean }; actions: WorldAction[];
 }
 export interface WorldPage { items: WorldNode[]; total: number; pageSize: number; currentPage: number; pageCount: number }
+export interface WorldMapData { node_id: number; items: WorldNode[]; cells: { x: number; y: number; state: 'discovered' | 'open' }[]; can_expand: boolean }
 export interface WorldCapabilities { schema_ready: boolean; contract_version: number; world_read: boolean; world_write: boolean; storage_v2: boolean; economy_tick: boolean }
 export interface WorldRoot { contract_version: number; server_time: number; capabilities: WorldCapabilities; world: WorldNode | null; regions: WorldPage }
 export interface WorldNavigation { node: WorldNode; breadcrumbs: WorldNode[]; parent_id: number | null; siblings: WorldPage }

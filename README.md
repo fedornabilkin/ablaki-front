@@ -32,3 +32,8 @@ cd /app/ && npm run build
 для разработки и *livereload* фронт необходимо открывать
 по адресу `localhost:5173`   
 Порт указан в `code/package.json`
+
+При `npm run dev` запросы API идут через Vite по `/api/` и проксируются на адрес
+из `API_PROXY_TARGET` (если он задан) или `VITE_API_URL` в `project/.env`.
+По умолчанию бэкенд доступен на `http://localhost:3180/`. После изменения
+адреса бэкенда перезапустите Vite.
