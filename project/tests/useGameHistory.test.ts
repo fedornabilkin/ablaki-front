@@ -52,7 +52,7 @@ describe('history period and grouped stakes', () => {
     session.value++; await flush();
     expect(state.kons.data.value).toEqual([]); expect(state.history.data.value.items).toEqual([]);
   });
-  it('always requests five recent games without filters or a grouping request and retries failures', async () => {
+  it('requests twenty recent games without filters or a grouping request and retries failures', async () => {
     context.route.query = { period: 'week', page: '3', recent_period: 'yesterday', recent_kon: '5' };
     context.get.mockRejectedValueOnce(new Error('offline'));
     const state = scope.run(() => useGameHistory(ref('saper'), 'recent', ref(0), ref(1)))!;
@@ -62,7 +62,7 @@ describe('history period and grouped stakes', () => {
     await state.history.refresh(); expect(state.history.error.value).toBe('');
     state.selectPeriod('month'); await flush();
     expect(context.route.query).toEqual({ period: 'week', page: '3', recent_period: 'yesterday', recent_kon: '5' });
-    expect(context.get.mock.calls.at(-1)?.[1].params).toEqual({ page: 1, 'per-page': 5, period: 'all', sort: '-time_over_at,-id', envelope: 1 });
+    expect(context.get.mock.calls.at(-1)?.[1].params).toEqual({ page: 1, 'per-page': 20, period: 'all', sort: '-time_over_at,-id', envelope: 1 });
     expect(context.get.mock.calls.some(([url]) => isKons(url))).toBe(false);
   });
   it('validates group responses and normalizes unknown URL periods', async () => {
