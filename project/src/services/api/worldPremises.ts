@@ -30,7 +30,8 @@ function premises(value: unknown) {
 export async function loadPremises(node: number, params: Record<string, unknown>) {
   const r = record((await apiClient.get(url(node), { params })).data), meta = record(r._meta);
   if (id(r.node_id) !== node || !Array.isArray(r.items) || r.items.length > 20) invalid();
-  const items = (r.items as unknown[]).map(value => { const row = record(value); return { ...premises(row), id: id(row.id), template_revision_id: id(row.template_revision_id), requirements_status: parseRequirementStatus(row.requirements_status) }; });
+  const items = (r.items as unknown[]).map(value => { const row = record(value); return { ...premises(row), id: id(row.id), template_revision_id: id(row.template_revision_id), requirements_status: parseRequirementStatus(row.requirements_status),
+    budget_available: row.budget_available === null ? null : creditAmount(row.budget_available), can_afford: row.can_afford === null ? null : bool(row.can_afford) }; });
   const total = integer(meta.totalCount), pageSize = integer(meta.perPage, 20, 20);
   if (integer(meta.pageCount) !== Math.ceil(total / pageSize) || items.length > total || new Set(items.map(item => item.id)).size !== items.length) invalid();
   let area = null;
@@ -38,7 +39,8 @@ export async function loadPremises(node: number, params: Record<string, unknown>
     const a = record(r.area); area = { total: integer(a.total), used: integer(a.used), available: integer(a.available, 0, integer(a.total)), unaccounted_building: bool(a.unaccounted_building) };
   }
   if (bool(r.can_buy) && !area) invalid();
-  return { items, total, pageSize, currentPage: integer(meta.currentPage, 1, 1000000), area, can_buy: bool(r.can_buy), can_publish: bool(r.can_publish),
+  const budget_available = r.budget_available === null ? null : creditAmount(r.budget_available);
+  return { items, total, pageSize, currentPage: integer(meta.currentPage, 1, 1000000), area, budget_available, can_buy: bool(r.can_buy), can_publish: bool(r.can_publish),
     settlement_id: id(r.settlement_id), settlement_name: text(r.settlement_name), server_time: integer(r.server_time) };
 }
 export type PremisesAction = 'publish' | 'buy' | 'withdraw';

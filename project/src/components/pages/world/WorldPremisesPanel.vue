@@ -53,13 +53,17 @@ section.world-premises#premises
   n-spin(v-if="loading" aria-label="Загрузка помещений")
   template(v-else-if="state")
     p(v-if="state.area") Площадь площадки: занято {{ state.area.used }} из {{ state.area.total }}, доступно {{ state.area.available }}.
+    p(v-if="state.can_buy") Доступно в бюджете площадки: {{ state.budget_available ?? '0.0000' }} Cr.
     n-alert(v-if="state.area?.unaccounted_building" type="warning") На площадке есть постройка без учтённой площади. Покупка временно недоступна.
     p(v-if="state.area && !state.can_buy") Покупка станет доступна после включения хранения и экономики мира.
     p(v-if="!state.area") Для покупки откройте свою стартовую площадку.
     p(v-if="!state.items.length") Предложений по выбранным условиям нет.
     ul.offers
-      li(v-for="item in state.items" :key="item.id")
+      li(v-for="item in state.items" :key="item.id" :class="{ 'offer-unaffordable': item.can_afford === false }")
         h3 {{ item.name }} · {{ item.price }} Cr
+        n-alert(v-if="item.can_afford === false" type="warning")
+          span Бюджета площадки не хватает.
+          router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
         n-alert(v-if="!item.requirements_status.allowed" type="info")
           p Требования пока не выполнены:
           ul
@@ -128,6 +132,7 @@ section.world-premises#premises
 .world-premises { display: grid; gap: .75rem; }
 .offers { list-style: none; padding: 0; display: grid; gap: .75rem; }
 .offers li, details { border: 1px solid var(--border); border-radius: .4rem; padding: 1rem; }
+.offers li.offer-unaffordable { border-color: var(--color-danger, #c0392b); }
 label { display: grid; gap: .3rem; margin-block: .75rem; max-width: 36rem; }
 summary { cursor: pointer; }
 </style>

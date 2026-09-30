@@ -65,6 +65,10 @@ section.world-garden#garden
     template(v-else-if="state.offer")
       h3 {{ state.offer.name }}
       p Цена огорода: {{ state.offer.price }} Cr. Цена первой дополнительной грядки — {{ state.offer.base_price }} Cr, затем стоимость каждой следующей растёт на 20%.
+      p(v-if="state.can_buy") В бюджете усадьбы доступно: {{ state.site_budget_available ?? '0.0000' }} Cr.
+      n-alert(v-if="state.can_buy && state.offer.can_afford === false" type="warning")
+        span Пополните бюджет усадьбы перед покупкой.
+        router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
       template(v-if="state.can_buy")
         p Оплата из бюджета этой стоянки. Получатель — казна поселения «{{ state.settlement_name }}».
         n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
