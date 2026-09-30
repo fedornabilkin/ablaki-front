@@ -32,7 +32,7 @@ section.world-onboarding(v-if="!state?.joined" aria-label="Начало жизн
     p Здесь можно начать жизнь в мире и получить место для усадьбы.
     n-button(v-if="!quote" :disabled="!writable || !state.join_available || Boolean(pending)" :loading="loading" @click="preview") Выбрать поселение
     template(v-else)
-      p Начать в поселении «{{ node.name }}»? Усадьба предоставляется один раз, бесплатно.
+      p Начать в поселении «{{ node.label }}»? Усадьба предоставляется один раз, бесплатно.
       n-button(type="primary" :disabled="!writable || Boolean(pending)" :loading="busy" @click="join") Начать
   p(v-else-if="state && !state.joined") Выберите город или деревню, в которых хотите начать.
 </template>

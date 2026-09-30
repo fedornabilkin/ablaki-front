@@ -21,7 +21,7 @@ export function parseWorldNode(value: unknown): WorldNode {
     else if (['template_revision_id', 'population', 'plot_limit', 'level', 'condition', 'max_condition', 'active_project_id', 'shelter_instance_id', 'shelter_plot_id', 'area', 'fertility', 'allow_building', 'garden_node_id', 'ordinal', 'unlocked'].includes(key)) details[key] = entry === null ? null : integer(entry);
   }
   return { id: integer(row.id, 1), type: row.type as NodeType, parent_id: nullableId(row.parent_id), root_id: integer(row.root_id, 1),
-    name: text(row.name, 120), status: text(row.status, 24), visibility: row.visibility as WorldNode['visibility'], revision: integer(row.revision, 1),
+    code: text(row.code ?? `node-${row.id}`, 80), name: text(row.name, 120), label: text(row.label ?? row.name, 120), status: text(row.status, 24), visibility: row.visibility as WorldNode['visibility'], revision: integer(row.revision, 1), portable: row.portable === undefined ? false : boolean(row.portable),
     coordinates: { x: integer(coordinates.x, -1000000, 1000000), y: integer(coordinates.y, -1000000, 1000000) },
     footprint: row.footprint === null || row.footprint === undefined ? null : list(row.footprint, point => {
       const vertex = record(point);
