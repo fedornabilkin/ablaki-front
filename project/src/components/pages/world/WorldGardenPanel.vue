@@ -64,7 +64,7 @@ section.world-garden#garden
       p(v-else-if="state.garden.unlocked === 10") Все грядки открыты. Повторно оплачивать их не нужно.
     template(v-else-if="state.offer")
       h3 {{ state.offer.name }}
-      p Цена огорода: {{ state.offer.price }} Cr. Грядки 2–10: от {{ state.offer.base_price }} Cr, каждая следующая дороже на эту сумму.
+      p Цена огорода: {{ state.offer.price }} Cr. Цена первой дополнительной грядки — {{ state.offer.base_price }} Cr, затем стоимость каждой следующей растёт на 20%.
       template(v-if="state.can_buy")
         p Оплата из бюджета этой стоянки. Получатель — казна поселения «{{ state.settlement_name }}».
         n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса

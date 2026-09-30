@@ -76,7 +76,7 @@ section.world-premises#premises
           ul
             li(v-for="material in item.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }} при полном повреждении
         p(v-else) Договор ремонта в покупку не включён.
-        p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ item.expansion_base_price }} Cr, каждое следующее дороже на эту сумму.
+        p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ item.expansion_base_price }} Cr, стоимость каждого следующего растёт на 20%.
         p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
         n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Рассчитать стройку' : 'Рассчитать покупку' }}
         n-button(v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
@@ -116,7 +116,7 @@ section.world-premises#premises
           ul
             li(v-for="material in quote.room.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
           p Стройку можно поставить на паузу. Отмена до фактического завершения освобождает весь резерв Cr и возвращает материалы в рюкзак. Для отмены нужно место под весь возврат. После завершения доступно готовое помещение.
-        p(v-if="quote.room.expansion_limit > quote.room.slots") Последующее расширение до {{ quote.room.expansion_limit }} мест из бюджета комнаты. Базовая цена: {{ quote.room.expansion_base_price }} Cr; каждое следующее место дороже. Условия сохраняются после покупки.
+        p(v-if="quote.room.expansion_limit > quote.room.slots") Последующее расширение до {{ quote.room.expansion_limit }} мест из бюджета комнаты. Базовая цена: {{ quote.room.expansion_base_price }} Cr; стоимость каждого следующего места растёт на 20%. Условия сохраняются после покупки.
         p {{ quote.room.exposure_class === 'covered' ? 'Защита: навес.' : 'Защита: помещение.' }} {{ quote.room.lodging_places ? 'Включена одна койка. Ночлег назначается отдельно.' : 'Мест ночлега нет.' }}
       template(v-if="quote.payment")
         p Источник — бюджет этой площадки. Получатель — казна поселения «{{ quote.payment.recipient_name }}». Личные Cr: 0.0000.

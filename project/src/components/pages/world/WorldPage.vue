@@ -153,12 +153,12 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
       world-building-repair-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
       world-repair-contracts-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
       world-demolition-panel(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-      world-demolition-history(v-if="features?.demolitionHistory" :node-id="world.node.id" :session="session")
       world-construction-panel(v-if="features?.construction" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
       world-premises-panel(v-if="features?.premises" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
       world-garden-panel(v-if="features?.garden" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
       world-orders-panel(v-if="features?.orders" :node-id="world.node.id" :session="session" :command="command")
       router-link(v-if="features?.campsite && world.node.parent_id" :to="{ path: `/world/nodes/${world.node.parent_id}`, hash: '#settlement-orders' }") Заказы поселения
+      world-demolition-history(v-if="features?.demolitionHistory" :node-id="world.node.id" :session="session")
 
     section.world-tab-panel(v-if="visitedTabs.includes('statistics')" v-show="activeTab === 'statistics'" aria-label="Статистика объекта")
       .world-section-title
