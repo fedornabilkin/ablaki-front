@@ -4,10 +4,12 @@ import { NAlert, NButton, NCheckbox } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldMapData, WorldNode, WorldQuote } from '@/entities/world/types';
 import { nodeLabels } from '@/entities/world/types';
-import { previewMapCell, worldError } from '@/services/api/world';
+import { pixelToWorld, worldToPixel } from '@/entities/world/coordinates';
+import { loadWorldMap, previewMapCell, worldError } from '@/services/api/world';
 
 const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner }>();
 const selectedNodeId = ref<number | null>(null), selectedCell = ref<{ x: number; y: number } | null>(null);
+const selectedMap = shallowRef<WorldMapData | null>(null);
 const center = ref<{ x: number; y: number } | null>(null), topUp = ref(false);
 const quote = shallowRef<{ action: 'explore' | 'buy'; input: { x: number; y: number; top_up: boolean }; value: WorldQuote } | null>(null);
 const calculating = ref(false), error = ref('');
@@ -15,6 +17,21 @@ let generation = 0;
 const cellSize = 72;
 const nodes = computed(() => props.map?.items ?? []);
 const selectedNode = computed(() => nodes.value.find(node => node.id === selectedNodeId.value) ?? null);
+const miniBounds = computed(() => {
+  const points = selectedMap.value?.items.map(item => item.coordinates) ?? [];
+  const xs = points.map(point => point.x), ys = points.map(point => point.y);
+  const minX = xs.length ? Math.min(...xs) - 1 : -2, minY = ys.length ? Math.min(...ys) - 1 : -2;
+  return { minX, minY, maxX: minX + 6, maxY: minY + 4 };
+});
+const miniCells = computed(() => {
+  const cells = [];
+  for (let y = miniBounds.value.maxY; y >= miniBounds.value.minY; y--)
+    for (let x = miniBounds.value.minX; x <= miniBounds.value.maxX; x++) {
+      const child = selectedMap.value?.items.find(item => item.coordinates.x === x && item.coordinates.y === y);
+      cells.push({ x, y, child });
+    }
+  return cells;
+});
 const cellStates = computed(() => new Map((props.map?.cells ?? []).map(cell => [`${cell.x}:${cell.y}`, cell.state])));
 const selectedState = computed(() => selectedCell.value ? cellStates.value.get(`${selectedCell.value.x}:${selectedCell.value.y}`) ?? 'closed' : null);
 const bounds = computed(() => {
@@ -39,7 +56,7 @@ const columns = computed(() => bounds.value.maxX - bounds.value.minX + 1);
 const rows = computed(() => bounds.value.maxY - bounds.value.minY + 1);
 const visibleCells = computed(() => {
   const result: { x: number; y: number; state: string }[] = [];
-  for (let y = bounds.value.minY; y <= bounds.value.maxY; y++) for (let x = bounds.value.minX; x <= bounds.value.maxX; x++) {
+  for (let y = bounds.value.maxY; y >= bounds.value.minY; y--) for (let x = bounds.value.minX; x <= bounds.value.maxX; x++) {
     result.push({ x, y, state: cellStates.value.get(`${x}:${y}`) ?? 'closed' });
   }
   return result;
@@ -53,10 +70,18 @@ const visibleNodes = computed(() => nodes.value.filter(node => {
 const shape = (node: WorldNode) => (node.footprint ?? [
   { x: node.coordinates.x, y: node.coordinates.y }, { x: node.coordinates.x + 1, y: node.coordinates.y },
   { x: node.coordinates.x + 1, y: node.coordinates.y + 1 }, { x: node.coordinates.x, y: node.coordinates.y + 1 },
-]).map(point => `${(point.x - bounds.value.minX) * cellSize},${(point.y - bounds.value.minY) * cellSize}`).join(' ');
-const position = (x: number, y: number) => ({ left: `${(x - bounds.value.minX) * cellSize}px`, top: `${(y - bounds.value.minY) * cellSize}px` });
+]).map(point => { const pixel = worldToPixel(point, bounds.value, cellSize); return `${pixel.x},${pixel.y}`; }).join(' ');
+const position = (x: number, y: number) => { const pixel = worldToPixel({ x, y }, bounds.value, cellSize); return { left: `${pixel.x}px`, top: `${pixel.y}px` }; };
 function selectNode(node: WorldNode) { selectedNodeId.value = node.id; selectedCell.value = null; quote.value = null; error.value = ''; }
 function selectCell(x: number, y: number) { selectedNodeId.value = null; selectedCell.value = { x, y }; quote.value = null; error.value = ''; }
+function selectCellAt(event: MouseEvent, x: number, y: number) {
+  if (event.detail === 0) { selectCell(x, y); return; }
+  const board = (event.currentTarget as HTMLElement).parentElement;
+  if (!board) return;
+  const rect = board.getBoundingClientRect();
+  const point = pixelToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, bounds.value, cellSize);
+  selectCell(point.x, point.y);
+}
 function pan(x: number, y: number) {
   center.value = { x: (center.value?.x ?? Math.floor((bounds.value.minX + bounds.value.maxX) / 2)) + x,
     y: (center.value?.y ?? Math.floor((bounds.value.minY + bounds.value.maxY) / 2)) + y };
@@ -84,6 +109,12 @@ async function confirm() {
 }
 watch(() => props.node.id, () => { generation++; center.value = null; selectedNodeId.value = null; selectedCell.value = null; quote.value = null; }, { flush: 'sync' });
 watch(() => props.map, () => { generation++; quote.value = null; }, { flush: 'sync' });
+watch(selectedNodeId, async id => {
+  selectedMap.value = null;
+  if (id === null) return;
+  try { const mapped = await loadWorldMap(id); if (selectedNodeId.value === id) selectedMap.value = mapped; }
+  catch { /* The selected object's link remains available if its map cannot load. */ }
+});
 watch(topUp, () => { quote.value = null; });
 onScopeDispose(() => { generation++; });
 </script>
@@ -96,33 +127,38 @@ onScopeDispose(() => { generation++; });
       .world-map-pan
         n-button(v-if="nodes.length" size="tiny" @click="focusNext") Следующий объект
         n-button(size="tiny" aria-label="Сдвинуть карту влево" @click="pan(-7, 0)") ←
-        n-button(size="tiny" aria-label="Сдвинуть карту вверх" @click="pan(0, -7)") ↑
-        n-button(size="tiny" aria-label="Сдвинуть карту вниз" @click="pan(0, 7)") ↓
+        n-button(size="tiny" aria-label="Сдвинуть карту вверх" @click="pan(0, 7)") ↑
+        n-button(size="tiny" aria-label="Сдвинуть карту вниз" @click="pan(0, -7)") ↓
         n-button(size="tiny" aria-label="Сдвинуть карту вправо" @click="pan(7, 0)") →
     .world-map-scroll
       .world-map-board(:style="{ width: `${columns * cellSize}px`, height: `${rows * cellSize}px` }" role="group" :aria-label="`Карта: ${node.name}`")
-        button.world-map-cell(v-for="cell in visibleCells" :key="`${cell.x}:${cell.y}`" type="button" :class="[`state-${cell.state}`, { selected: selectedCell?.x === cell.x && selectedCell?.y === cell.y }]" :style="position(cell.x, cell.y)" :aria-label="`Ячейка ${cell.x}, ${cell.y}: ${cell.state === 'open' ? 'открыта' : cell.state === 'discovered' ? 'исследована' : 'закрыта'}`" @click="selectCell(cell.x, cell.y)")
+        button.world-map-cell(v-for="cell in visibleCells" :key="`${cell.x}:${cell.y}`" type="button" :class="[`state-${cell.state}`, { selected: selectedCell?.x === cell.x && selectedCell?.y === cell.y }]" :style="position(cell.x, cell.y)" :aria-label="`Ячейка ${cell.x}, ${cell.y}: ${cell.state === 'open' ? 'открыта' : cell.state === 'discovered' ? 'исследована' : 'закрыта'}`" @click="selectCellAt($event, cell.x, cell.y)")
           span {{ cell.x }},{{ cell.y }}
+          font-awesome-icon(v-if="cell.state === 'discovered'" icon="lock" aria-hidden="true")
         svg.world-map-shapes(:width="columns * cellSize" :height="rows * cellSize" :viewBox="`0 0 ${columns * cellSize} ${rows * cellSize}`" aria-hidden="true")
           polygon(v-for="child in visibleNodes.filter(item => item.footprint)" :key="child.id" :points="shape(child)" :class="{ selected: selectedNodeId === child.id }" @click="selectNode(child)")
-        button.world-map-object(v-for="child in visibleNodes" :key="child.id" type="button" :class="{ selected: selectedNodeId === child.id }" :style="position(child.coordinates.x, child.coordinates.y)" :aria-label="`${nodeLabels[child.type]}: ${child.name}, ${child.coordinates.x}, ${child.coordinates.y}`" @click="selectNode(child)")
-          font-awesome-icon(:icon="child.type === 'PLOT' && child.details.plot_kind === 'campsite' ? 'tent' : 'circle'" aria-hidden="true")
+        button.world-map-object(v-for="child in visibleNodes" :key="child.id" type="button" :class="{ selected: selectedNodeId === child.id, owned: child.owned_by_me }" :style="position(child.coordinates.x, child.coordinates.y)" :aria-label="`${nodeLabels[child.type]}: ${child.name}, ${child.coordinates.x}, ${child.coordinates.y}`" @click="selectNode(child)")
+          font-awesome-icon(:icon="child.status === 'constructing' ? 'hammer' : child.status === 'active' ? 'check-circle' : child.type === 'PLOT' && child.details.plot_kind === 'campsite' ? 'tent' : 'circle'" aria-hidden="true")
           span {{ child.name }}
     p.world-map-hint Дочерних объектов: {{ nodes.length }}. Новые ячейки закрыты; свободную ячейку можно выбрать на карте.
   aside.world-map-inspector(aria-live="polite")
     template(v-if="selectedNode")
-      span.world-map-kicker {{ selectedNode.type === 'PLOT' && selectedNode.details.plot_kind === 'campsite' ? 'Стоянка' : nodeLabels[selectedNode.type] }}
+      span.world-map-kicker {{ selectedNode.type === 'PLOT' && selectedNode.details.plot_kind === 'campsite' ? 'Усадьба' : nodeLabels[selectedNode.type] }}
       h3 {{ selectedNode.name }}
+      .world-map-mini(v-if="selectedMap" :aria-label="`Карта объекта ${selectedNode.name}`")
+        span(v-for="cell in miniCells" :key="`${cell.x}:${cell.y}`" :class="{ occupied: cell.child }" :title="cell.child?.name ?? `${cell.x}, ${cell.y}`") {{ cell.child ? '●' : '' }}
       dl
         dt Координаты
         dd {{ selectedNode.coordinates.x }}, {{ selectedNode.coordinates.y }}
         dt Статус
-        dd {{ selectedNode.status }}
-        dt Дочерние объекты
-        dd {{ selectedNode.child_count }}
-        template(v-if="selectedNode.details.population !== undefined")
-          dt Жители
-          dd {{ selectedNode.details.population }}
+        dd
+          font-awesome-icon(v-if="selectedNode.status === 'active'" icon="check-circle" class="world-map-active" aria-label="Действует")
+          font-awesome-icon(v-else-if="selectedNode.status === 'constructing'" icon="hammer" aria-label="Строится")
+          span(v-else) {{ selectedNode.status }}
+        dt Все дочерние объекты
+        dd {{ selectedNode.descendant_count }}
+        dt Жители с дочерними
+        dd {{ selectedNode.population_total }}
         template(v-if="selectedNode.details.condition !== undefined")
           dt Прочность
           dd {{ selectedNode.details.condition }} / {{ selectedNode.details.max_condition ?? '—' }}
@@ -152,14 +188,16 @@ onScopeDispose(() => { generation++; });
 .world-map-scroll { max-height: 34rem; overflow: auto; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); }
 .world-map-board { position: relative; }
 .world-map-cell { position: absolute; width: 72px; height: 72px; padding: .2rem; border: 1px solid var(--border); color: var(--text-muted); background: repeating-linear-gradient(135deg, var(--bg-base), var(--bg-base) 8px, var(--bg-surface) 8px, var(--bg-surface) 16px); text-align: left; cursor: pointer; }
-.world-map-cell span { font-size: .65rem; }
+.world-map-cell span { position: absolute; top: .15rem; left: .2rem; font-size: .65rem; }
+.world-map-cell svg { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); }
 .world-map-cell.state-open { background: var(--bg-surface); }
-.world-map-cell.state-discovered { background: var(--primary-soft); }
+.world-map-cell.state-discovered { background: var(--bg-surface); }
 .world-map-cell.selected, .world-map-object.selected { outline: 3px solid var(--primary); outline-offset: -3px; }
 .world-map-shapes { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .world-map-shapes polygon { fill: var(--primary-soft); stroke: var(--primary); stroke-width: 2; opacity: .75; pointer-events: all; cursor: pointer; }
 .world-map-shapes polygon.selected { stroke-width: 4; opacity: 1; }
-.world-map-object { position: absolute; z-index: 2; display: grid; place-items: center; gap: .1rem; width: 72px; height: 72px; padding: .25rem; border: 2px solid var(--primary); border-radius: .4rem; background: var(--bg-surface); color: var(--primary); cursor: pointer; overflow: hidden; }
+.world-map-object { position: absolute; z-index: 2; display: grid; place-items: center; gap: .1rem; width: 72px; height: 72px; padding: .25rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--bg-surface); color: var(--primary); cursor: pointer; overflow: hidden; }
+.world-map-object.owned { background: var(--primary-soft); }
 .world-map-object span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; }
 .world-map-object svg { font-size: 1.1rem; }
 .world-map-hint { margin: .55rem 0 0; color: var(--text-muted); font-size: .8rem; }
@@ -169,6 +207,10 @@ onScopeDispose(() => { generation++; });
 .world-map-inspector dl { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; margin: 0; }
 .world-map-inspector dt { color: var(--text-muted); }
 .world-map-inspector dd { margin: 0; text-align: right; }
+.world-map-active { color: #24a057; }
+.world-map-mini { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: .25rem; border: 1px solid var(--border); border-radius: .4rem; }
+.world-map-mini span { display: grid; place-items: center; aspect-ratio: 1; background: var(--bg-base); font-size: .65rem; color: var(--primary); }
+.world-map-mini span.occupied { background: var(--primary-soft); }
 .world-map-open { display: block; padding: .65rem; border-radius: .4rem; background: var(--primary); color: white; text-align: center; }
 @media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; } }
 </style>

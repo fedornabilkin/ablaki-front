@@ -26,7 +26,9 @@ export function parseWorldNode(value: unknown): WorldNode {
     footprint: row.footprint === null || row.footprint === undefined ? null : list(row.footprint, point => {
       const vertex = record(point);
       return { x: integer(vertex.x, -1000000, 1000000), y: integer(vertex.y, -1000000, 1000000) };
-    }, 32), child_count: integer(row.child_count), details,
+    }, 32), child_count: integer(row.child_count), descendant_count: row.descendant_count === undefined ? integer(row.child_count) : integer(row.descendant_count),
+    population_total: row.population_total === undefined ? integer(typeof details.population === 'number' ? details.population : 0) : integer(row.population_total),
+    owned_by_me: row.owned_by_me === undefined ? boolean(permissions.storage ?? false) : boolean(row.owned_by_me), details,
     permissions: { manage: boolean(permissions.manage), administer: boolean(permissions.administer), storage: permissions.storage === undefined ? false : boolean(permissions.storage) },
     actions: list(row.actions, value => { const action = record(value); return { code: text(action.code, 80), allowed: boolean(action.allowed), reasons: list(action.reasons, value => { const reason = record(value); return { code: text(reason.code, 80), ...(reason.message === undefined ? {} : { message: text(reason.message) }) }; }) }; }) };
 }

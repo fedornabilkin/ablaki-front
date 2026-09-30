@@ -6,6 +6,7 @@ export interface WorldNode {
   id: number; type: NodeType; parent_id: number | null; root_id: number; name: string;
   status: string; visibility: 'public' | 'private'; revision: number;
   coordinates: { x: number; y: number }; child_count: number;
+  descendant_count: number; population_total: number; owned_by_me: boolean;
   footprint: { x: number; y: number }[] | null;
   details: Record<string, string | number | null>; permissions: { manage: boolean; administer: boolean; storage: boolean }; actions: WorldAction[];
 }
