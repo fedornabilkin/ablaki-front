@@ -5,6 +5,7 @@ import ListFilters from '@/components/ListFilters.vue';
 import PagePager from '@/components/PagePager.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
+import WorldHelpHint from './WorldHelpHint.vue';
 import { loadOrderItems, previewOrderPublication } from '@/services/api/worldOrders';
 import { worldError } from '@/services/api/world';
 const props = defineProps<{ nodeId: number; session: number; writable: boolean; command: WorldCommandRunner }>();
@@ -42,6 +43,8 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 details.order-publication
   summary Опубликовать оплаченный заказ
+  world-help-hint(label="Условия публикации заказа")
+    p Весь бюджет на заказ резервируется при публикации. Сдачи списывают сырьё из рюкзака и платят в казну стоянки; неиспользованный резерв освобождается после отмены или окончания срока.
   p Вся стоимость резервируется в бюджете поселения. Неиспользованный резерв освобождается после отмены или окончания срока.
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти сырьё в каталоге" @reset="list.reset")

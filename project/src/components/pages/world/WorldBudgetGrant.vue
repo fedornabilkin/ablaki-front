@@ -5,6 +5,7 @@ import { previewBudgetGrant } from '@/services/api/worldEconomy';
 import { worldError } from '@/services/api/world';
 import type { WorldNode } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
+import WorldHelpHint from './WorldHelpHint.vue';
 
 const props = defineProps<{ nodeId: number; children: WorldNode[]; session: number; command: WorldCommandRunner }>();
 const destination = ref<number | null>(null), amount = ref(''), purpose = ref('');
@@ -30,6 +31,8 @@ function confirm() {
 <template lang="pug">
 section.world-budget-grant#budget-grant(aria-label="Перевод в бюджет дочернего объекта")
   h3 Направить бюджет дочернему объекту
+  world-help-hint(label="Как работает перевод в дочерний бюджет")
+    p Кредиты переходят из свободной части бюджета этого объекта в бюджет выбранной дочерней ноды. Казна и личный баланс не затрагиваются; обратный перевод автоматически не выполняется.
   p Перевод поступит прямо в бюджет принадлежащего вам объекта или огорода. Казна и личный баланс не меняются.
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   .grant-options(v-if="options.length")
