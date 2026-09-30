@@ -20,19 +20,25 @@ beforeEach(async () => {
   const subject = { setup(props, ctx) { context.state = (GameLobby as any).setup(props, ctx); return () => h('div'); } };
   app = renderer.createApp(subject); app.provide(ssrContextKey, {modules: new Set()}); app.mount({});
 });
-it('plays inline once and retains the completed row without selecting a modal game', async () => {
+it('plays inline once and applies the returned overview without fetching it again', async () => {
   let complete!: (value: any) => void;
   context.mutate.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
   const game = context.page.value.items[0];
   context.state.quickPlay(game, 1); context.state.quickPlay(game, 1);
   expect(context.mutate).toHaveBeenCalledExactlyOnceWith('orel/play/9', 'post', { hod: 1 });
   expect(context.state.selected.value).toBeNull();
-  complete({ game: { win: true } }); await flush();
+  complete({ game: { win: true }, gamer: { id: 37 }, overview: {
+    summary: { today: { played: 1, wins: 1, balance: 4.5, date: '2026-09-30', timezone: 'Europe/Moscow' }, own: { count: 0, amount: 0 } },
+    recent: [{ id: 9, kon: 5, win: true }],
+  } }); await flush();
   expect(context.state.playedRows.value[9]).toEqual({text: 'Вы выиграли!', result: 'win'});
   expect(context.state.notice.value).toBe('');
-  expect(context.page.value.items[0]).toEqual(game);
+  expect(context.page.value.items).toEqual([]);
+  expect(context.state.snapshot.value.summary.today.played).toBe(1);
   context.state.quickPlay(game, 2); expect(context.mutate).toHaveBeenCalledTimes(1); expect(context.refresh).not.toHaveBeenCalled();
-  expect(context.store.dispatch).toHaveBeenCalledWith('auth/fetchData');
+  expect(context.refreshSummary).not.toHaveBeenCalled();
+  expect(context.store.dispatch).toHaveBeenCalledWith('auth/setData', { id: 37 });
+  expect(context.store.dispatch).not.toHaveBeenCalledWith('auth/fetchData');
 });
 it('keeps a failed row playable and ignores a response belonging to another session', async () => {
   const game = context.page.value.items[0];

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NInputNumber, NModal, NPopconfirm } from 'naive-ui';
@@ -15,9 +15,10 @@ import { useListQuery } from '@/hooks/useListQuery';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useFiveGame } from '@/hooks/useFiveGame';
 import { list, emptyPage, person, mutate, errorText } from '@/services/api/portal';
-import { fiveGame } from '@/services/api/fiveGame';
+import { fiveGame, type FiveGame } from '@/services/api/fiveGame';
 import { historyPlayer } from '@/services/api/gameHistory';
 import { formatAccountNumber } from '@/services/api/header';
+import { type GameOverviewSnapshot } from '@/services/api/gameOverview';
 
 const store = useStore();
 const route = useRoute();
@@ -32,9 +33,22 @@ const games = usePageRequest(async () => {
   const result = await list(mine.value ? 'five/my' : 'five', mine.value ? page.value : 1, { ...params.value, q: undefined, 'per-page': 20 });
   return { ...result, items: result.items.map(fiveGame) };
 }, emptyPage(), [mine, page, params, session]);
-const play = useFiveGame(session, () => store.dispatch('auth/fetchData'), games.refresh);
 const overviewVersion = ref(0);
-watch([games.data, play.game], () => { overviewVersion.value++; });
+const snapshot = shallowRef<GameOverviewSnapshot | null>(null);
+async function onFiveChanged(value?: FiveGame | null) {
+  if (value?.overview) {
+    snapshot.value = value.overview;
+    games.data.value = { ...games.data.value, items: games.data.value.items.flatMap(row =>
+      row.id !== value.id ? [row] : value.status === 'play' && mine.value ? [value] : []) };
+  } else {
+    await games.refresh();
+    overviewVersion.value++;
+  }
+}
+function onToolbarChanged() { void games.refresh(); overviewVersion.value++; play.close(); }
+const play = useFiveGame(session,
+  value => value?.gamer ? store.dispatch('auth/setData', value.gamer) : store.dispatch('auth/fetchData'),
+  onFiveChanged);
 const showCreate = ref(false);
 const deleting = ref(false);
 const deleteError = ref('');
@@ -47,6 +61,7 @@ async function remove(id: number) {
     await mutate('five/' + id, 'delete');
     if (session.value !== revision) return;
     await games.refresh();
+    overviewVersion.value++;
     await store.dispatch('auth/fetchData');
   } catch (cause) { if (session.value === revision) deleteError.value = errorText(cause); }
   finally { deleting.value = false; }
@@ -66,8 +81,8 @@ async function create() {
 </script>
 <template lang="pug">
 page-header(page-title="5 яблок")
-  game-toolbar(kind="five" :busy="play.busy.value || deleting" @create="showCreate = true" @changed="games.refresh(); play.close()")
-game-page-layout(kind="five" :version="overviewVersion")
+  game-toolbar(kind="five" :busy="play.busy.value || deleting" @create="showCreate = true" @changed="onToolbarChanged")
+game-page-layout(kind="five" :version="overviewVersion" :snapshot="snapshot")
   n-alert(v-if="play.error.value" type="error" title="Не удалось обновить игру") {{ play.error.value }} Обновите состояние перед следующим ходом.
   n-alert(v-if="play.notice.value" type="info") {{ play.notice.value }}
   n-alert(v-if="deleteError" type="error") {{ deleteError }}

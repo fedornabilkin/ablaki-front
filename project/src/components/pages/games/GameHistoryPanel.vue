@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useStore } from 'vuex';
 import { NButton, NCard } from 'naive-ui';
 import PagePager from '@/components/PagePager.vue';
@@ -8,12 +8,16 @@ import GameRecentList from './GameRecentList.vue';
 import { useGameHistory } from '@/hooks/useGameHistory';
 import { formatAccountNumber } from '@/services/api/header';
 import { historyPeriods, type HistoryGameKind, type HistoryScope } from '@/services/api/gameHistory';
+import type { GameOverviewSnapshot } from '@/services/api/gameOverview';
 
-const props = withDefaults(defineProps<{ kind: HistoryGameKind; reloadListTrigger?: boolean | number; scope?: HistoryScope }>(), { scope: 'history' });
+const props = withDefaults(defineProps<{ kind: HistoryGameKind; reloadListTrigger?: boolean | number; scope?: HistoryScope; snapshot?: GameOverviewSnapshot | null }>(), { scope: 'history' });
 const store = useStore();
 const kind = computed(() => props.kind);
 const session = computed(() => store.state.auth.revision);
 const { page, period, kon, kons, history, selectPeriod, selectKon, prefix } = useGameHistory(kind, props.scope, computed(() => props.reloadListTrigger), session);
+watch(() => props.snapshot, value => {
+  if (props.scope === 'recent' && value) history.replace({ items: value.recent, total: value.recent.length, pageSize: 5, currentPage: 1, pageCount: value.recent.length ? 1 : 0 });
+});
 </script>
 <template lang="pug">
 n-card(:title="scope === 'recent' ? 'Последние игры' : 'История игр'")

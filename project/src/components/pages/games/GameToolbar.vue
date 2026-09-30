@@ -63,14 +63,14 @@ async function removeAll() {
       | Удалить все свои не начатые игры этого типа и вернуть ставки на счёт? Начатые игры сохранятся.
     n-popover(trigger="click" placement="bottom-end" :style="{ maxWidth: 'calc(100vw - 2rem)' }")
       template(#trigger)
-        n-button.game-help-trigger(aria-label="Правила игры" title="Правила игры" circle size="small")
-          font-awesome-icon(icon="exclamation-circle")
+        n-button.game-help-trigger(aria-label="Правила игры" title="Правила игры" text)
+          font-awesome-icon(icon="exclamation" aria-hidden="true")
       p.game-help {{ help }}
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="notice" type="success") {{ notice }}
 </template>
 <style scoped>
 .game-help { width: min(20rem, calc(100vw - 4rem)); max-width: 100%; margin: 0; overflow-wrap: anywhere; }
-.game-help-trigger { position: absolute; top: 1rem; right: 1rem; font-size: .8rem; }
+.game-help-trigger { position: absolute; top: 1rem; right: 1rem; font-size: 1.1rem; }
 @media (max-width: 600px) { .create-link span, .game-tab-label, .game-delete-label { display: none; } .create-link :deep(.n-button__icon), .game-tab :deep(.n-button__icon), .game-delete :deep(.n-button__icon) { margin: 0; } }
 </style>

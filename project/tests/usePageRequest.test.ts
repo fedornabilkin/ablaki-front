@@ -37,4 +37,15 @@ describe('page requests', () => {
     await nextTick();
     expect(result.data.value).toBe('');
   });
+  it('keeps command data when an older page request finishes later', async () => {
+    const scope = effectScope();
+    let reply!: (value: string) => void;
+    const result = scope.run(() => usePageRequest(() => new Promise<string>(resolve => { reply = resolve; }), ''))!;
+    result.replace('from command');
+    reply('stale response');
+    await nextTick();
+    expect(result.data.value).toBe('from command');
+    expect(result.loading.value).toBe(false);
+    scope.stop();
+  });
 });
