@@ -6,7 +6,7 @@
         div(class="col-sm label") Ставка
 
         div.col-sm-auto
-          n-input-number(:min="1" :max="1000000000" :step="0.00001" :input-props="{type: 'number', inputmode: 'decimal', min: 1, max: 1000000000, step: 0.00001}" v-model:value="kon")
+          n-input-number(:min="1" :max="1000000000" :step="saper ? 0.00001 : 1" :precision="saper ? 5 : 0" :input-props="{type: 'number', inputmode: saper ? 'decimal' : 'numeric', min: 1, max: 1000000000, step: saper ? 0.00001 : 1}" v-model:value="kon")
 
       div(class="fast-kon mt-2")
         div(v-for="btn in konList" :key="btn")
@@ -40,6 +40,7 @@ export default {
       kon: {type: Number, default: 1},
       count: {type: Number, default: 15},
       apiService: {type: Object, default: {}},
+      saper: {type: Boolean, default: false},
     },
 
   data: () => ({
@@ -71,7 +72,7 @@ export default {
     },
 
     createGame() {
-      if (this.isLoading || !Number.isFinite(this.kon) || this.kon < 1 || this.kon > 1000000000 || !Number.isSafeInteger(this.count) || this.count < 1 || this.count > 100) return;
+      if (this.isLoading || !Number.isFinite(this.kon) || (!this.saper && !Number.isSafeInteger(this.kon)) || this.kon < 1 || this.kon > 1000000000 || !Number.isSafeInteger(this.count) || this.count < 1 || this.count > 100) return;
       this.isLoading = true;
       const notify = {type: 'error', message: 'Что-то пошло не так'}
       this.apiService.create(this.kon, this.count)

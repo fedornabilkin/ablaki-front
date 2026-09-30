@@ -123,9 +123,12 @@ fetchGames();
                 size="small"
                 type="error"
                 :secondary="zone.value !== row.udar"
+                :aria-label="'Удар: ' + zone.label"
                 :disabled="row.isLoading"
                 @click="row.udar = zone.value"
-              ) {{ zone.label }}
+              )
+                font-awesome-icon.zone-icon(:icon="zone.icon" aria-hidden="true")
+                span.zone-label {{ zone.label }}
             .pick-group
               span.hint
                 font-awesome-icon(icon='fa fa-shield')
@@ -136,9 +139,12 @@ fetchGames();
                 size="small"
                 type="info"
                 :secondary="zone.value !== row.blok"
+                :aria-label="'Блок: ' + zone.label"
                 :disabled="row.isLoading"
                 @click="row.blok = zone.value"
-              ) {{ zone.label }}
+              )
+                font-awesome-icon.zone-icon(:icon="zone.icon" aria-hidden="true")
+                span.zone-label {{ zone.label }}
             n-button(
               type="primary"
               size="small"
@@ -230,5 +236,7 @@ fetchGames();
     margin-top: 0.75rem;
     color: #d03050;
   }
+  .zone-icon { margin-right: .35rem; }
+  @media (max-width: 600px) { .zone-label { display: none; } .zone-icon { margin-right: 0; } }
 }
 </style>

@@ -37,6 +37,10 @@ describe('5 apples API contract', () => {
     expect(canMoveFive(game, 1, 100)).toBe(false); expect(canMoveFive(game, 2, 9)).toBe(false); expect(canMoveFive(game, 2, 10)).toBe(true);
     const active = fiveGame({ ...dto, user_gamer: 2, status: 'play', turn: 'user' });
     expect(canMoveFive(active, 1, 0)).toBe(true); expect(canMoveFive(active, 2, 100)).toBe(false); expect(canMoveFive(active, 3, 100)).toBe(false);
+    const ready = fiveGame({ ...dto, user_gamer: 2, status: 'play', turn: null, last_hod: { ...dto.last_hod, status: 'user', user_ball: 4, gamer_ball: 5 } });
+    expect(canMoveFive(ready, 1, 0)).toBe(true); expect(canMoveFive(ready, 2, 0)).toBe(true);
+    const opponentFirst = fiveGame({ ...dto, user_gamer: 2, status: 'play', turn: 'user', last_hod: { ...dto.last_hod, gamer_ball: 5 } });
+    expect(canMoveFive(opponentFirst, 1, 0)).toBe(true); expect(canMoveFive(opponentFirst, 2, 100)).toBe(false);
     expect(canMoveFive(fiveGame({ ...dto, status: 'user', turn: null, last_hod: null }), 1, 100)).toBe(false);
   });
   it('sends the observed round token with a move and never uses a mock', async () => {
@@ -45,6 +49,8 @@ describe('5 apples API contract', () => {
     expect(client.post.mock.calls.at(-1)).toEqual([expect.stringContaining('/v1/five/play/1'), { ball: 5, round_id: 7 }]);
     client.post.mockResolvedValueOnce({ data: dto }); await createFive(10, 4);
     expect(client.post.mock.calls.at(-1)?.[1]).toEqual({ kon: 10, ball: 4 });
+    client.post.mockResolvedValueOnce({ data: { count: 2, game: dto } }); await createFive(10, 4, 2);
+    expect(client.post.mock.calls.at(-1)?.[1]).toEqual({ kon: 10, ball: 4, count: 2 });
     client.delete.mockResolvedValueOnce({ data: '' }); await cancelFive(1);
     expect(client.delete).toHaveBeenCalledWith(expect.stringContaining('/v1/five/1'));
   });

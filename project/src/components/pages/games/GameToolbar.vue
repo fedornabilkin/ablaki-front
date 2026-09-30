@@ -18,7 +18,7 @@ const tabs = computed(() => [{ to: base.value, label: 'Игры', icon: 'users' 
 const help = computed(() => props.kind === 'saper'
   ? 'Выберите игру и нажмите «Начать». Затем открывайте по одной клетке в каждом ряду снизу вверх. Мина завершает игру; пройти все ряды — победа.'
   : props.kind === 'duel'
-    ? 'Выберите удар и блок. После нажатия «В бой» исход схватки определяется выбранными зонами.'
+    ? 'Выбери удар по противнику и блок для себя: голова, корпус или ноги. Удар проходит, если противник не закрыл эту зону. Попал только один — он забирает банк (две ставки). Попали оба или оба удара в блок — ничья, ставки возвращаются.'
     : props.kind === 'five'
       ? 'Каждый игрок выбирает от одного до пяти яблок за ход. Первый набравший 21 очко побеждает.'
       : 'Выберите орла или решку. После выбора ставка списывается и результат показывается сразу.');
@@ -54,11 +54,6 @@ async function removeAll() {
         template(#icon)
           font-awesome-icon(:icon="tab.icon")
         span.game-tab-label {{ tab.label }}
-    n-popover(trigger="click" placement="bottom")
-      template(#trigger)
-        n-button(aria-label="Правила игры" title="Правила игры" circle)
-          font-awesome-icon(icon="question-circle")
-      p.game-help {{ help }}
     n-popconfirm(:positive-button-props="{ disabled: busy || removing }" @positive-click="removeAll")
       template(#trigger)
         n-button.game-delete(type="error" secondary :disabled="busy || removing" :loading="removing" aria-label="Удалить все свои не начатые игры" title="Удалить все свои не начатые игры")
@@ -66,10 +61,16 @@ async function removeAll() {
             font-awesome-icon(icon="trash-alt")
           span.game-delete-label Удалить
       | Удалить все свои не начатые игры этого типа и вернуть ставки на счёт? Начатые игры сохранятся.
+    n-popover(trigger="click" placement="bottom-end" :style="{ maxWidth: 'calc(100vw - 2rem)' }")
+      template(#trigger)
+        n-button.game-help-trigger(aria-label="Правила игры" title="Правила игры" circle size="small")
+          font-awesome-icon(icon="exclamation-circle")
+      p.game-help {{ help }}
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="notice" type="success") {{ notice }}
 </template>
 <style scoped>
-.game-help { max-width: 20rem; margin: 0; }
+.game-help { width: min(20rem, calc(100vw - 4rem)); max-width: 100%; margin: 0; overflow-wrap: anywhere; }
+.game-help-trigger { position: absolute; top: 1rem; right: 1rem; font-size: .8rem; }
 @media (max-width: 600px) { .create-link span, .game-tab-label, .game-delete-label { display: none; } .create-link :deep(.n-button__icon), .game-tab :deep(.n-button__icon), .game-delete :deep(.n-button__icon) { margin: 0; } }
 </style>
