@@ -1,12 +1,14 @@
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { checkMutation, record, type RecordData } from './portal';
+import { overviewSnapshot, type GameOverviewSnapshot } from './gameOverview';
 
 export type FiveRole = 'user' | 'gamer';
 export interface FiveRound extends RecordData { status: 'wait' | 'draw' | FiveRole; user_ball?: number; gamer_ball?: number; user_amount: number; gamer_amount: number; }
 export interface FiveGame extends RecordData {
   user_id: number; user_gamer: number; kon: number; bank: number; commission: number; winner_amount: number;
   status: 'free' | 'play' | FiveRole; turn: FiveRole | null; user_points: number; gamer_points: number; last_hod: FiveRound | null; rounds: FiveRound[];
+  overview?: GameOverviewSnapshot | null; gamer?: unknown;
 }
 function numeric(value: unknown, min = 0, integer = false): number {
   if (!['number', 'string'].includes(typeof value) || !String(value).trim()) throw new Error('invalid-response');
@@ -55,6 +57,9 @@ export async function moveFive(game: FiveGame, ball: number): Promise<FiveGame> 
   if (!game.last_hod) throw new Error('invalid-response');
   const data = checkMutation((await apiClient.post(url(`/play/${game.id}`), { ball, round_id: game.last_hod.id, round_status: game.last_hod.status })).data);
   if (!data || typeof data !== 'object' || !('game' in data)) throw new Error('invalid-response');
-  return fiveGame(data.game);
+  const updated = fiveGame(data.game);
+  let overview: GameOverviewSnapshot | null = null;
+  try { overview = overviewSnapshot(data); } catch { /* The move succeeded; the page can refresh older summary data. */ }
+  return { ...updated, overview, gamer: data.gamer };
 }
 export async function cancelFive(id: number): Promise<void> { checkMutation((await apiClient.delete(url(`/${id}`))).data); }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInputNumber, NModal, NPopconfirm } from 'naive-ui';
@@ -15,6 +15,7 @@ import { list, emptyPage, mutate, person, field, date, errorText, type RecordDat
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 import { useQuickGames } from '@/hooks/useQuickGames';
+import { overviewSnapshot, type GameOverviewSnapshot } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
@@ -34,6 +35,7 @@ const { data, loading, error, refresh } = usePageRequest(async () => {
   });
 }, emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
+const snapshot = shallowRef<GameOverviewSnapshot | null>(null);
 const showCreate = ref(false);
 const kon = ref<number | null>(5);
 const count = ref<number | null>(1);
@@ -43,14 +45,25 @@ const notice = ref('');
 const noticeType = ref<'success' | 'warning' | 'info'>('info');
 const selected = ref<RecordData | null>(null);
 const completed = ref(false);
+function removePlayedGame(id: number) {
+  const items = data.value.items.filter(game => game.id !== id);
+  data.value = { ...data.value, items,
+    total: data.value.total === null ? null : Math.max(0, data.value.total - (data.value.items.length - items.length)) };
+}
+function applyPlayedResponse(response: unknown, id: number) {
+  let next: GameOverviewSnapshot | null;
+  try { next = overviewSnapshot(response); }
+  catch { return false; }
+  if (!next) return false;
+  snapshot.value = next;
+  removePlayedGame(id);
+  if (response && typeof response === 'object' && 'gamer' in response && response.gamer) void store.dispatch('auth/setData', response.gamer);
+  return true;
+}
 const { rows: playedRows, submit: submitQuick } = useQuickGames(session,
   (id, hod) => mutate('orel/play/' + id, 'post', { hod }),
-  async () => {
-    const revision = session.value;
-    overviewVersion.value++;
-    try { await store.dispatch('auth/fetchData'); }
-    catch { if (!disposed && session.value === revision) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
-  });
+  async () => {},
+  (response, id) => { if (!applyPlayedResponse(response, id)) { refreshAll(); void accountChange(); } });
 function quickPlay(game: RecordData, hod: number) {
   if ((hod !== 1 && hod !== 2) || saper.value || mode.value || !canPlay(game)) return;
   void submitQuick(game.id, hod);
@@ -85,11 +98,16 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown) {
       noticeType.value = 'success';
     }
     showCreate.value = false; selected.value = null;
-    overviewVersion.value++;
-    await refresh();
+    const handled = path.includes('/play/') && applyPlayedResponse(response, Number(path.split('/').at(-1)));
+    if (!handled) {
+      overviewVersion.value++;
+      await refresh();
+    }
     if (!current()) return;
-    try { await store.dispatch('auth/fetchData'); }
-    catch { if (current()) actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей игрой.'; }
+    if (!handled) {
+      try { await store.dispatch('auth/fetchData'); }
+      catch { if (current()) actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей игрой.'; }
+    }
   } catch (cause) { if (current()) actionError.value = errorText(cause); }
   finally { busy.value = false; }
 }
@@ -102,19 +120,18 @@ async function accountChange() {
   try { await store.dispatch('auth/fetchData'); }
   catch { if (!disposed && revision === session.value) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
 }
-function gameCompleted() {
+function gameCompleted(response: unknown) {
   completed.value = true;
-  overviewVersion.value++;
-  void refresh();
+  if (!selected.value || !applyPlayedResponse(response, selected.value.id)) refreshAll();
 }
 </script>
 <template lang="pug">
 page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
   game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
-game-page-layout(:kind="kind" :version="overviewVersion")
+game-page-layout(:kind="kind" :version="overviewVersion" :snapshot="snapshot")
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
-  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="gameCompleted")
+  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null" @account-change="accountChange" @complete="gameCompleted")
   saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
   n-card(:title="mode === 'my' ? 'Мои игры' : 'Доступные игры'")
     game-stake-filter.mb-3(v-model="selectedStake" :kind="kind" :scope="mode === 'my' ? 'my' : 'available'" :version="overviewVersion" :disabled="busy")

@@ -20,8 +20,14 @@ export function usePageRequest<T>(load: () => Promise<T>, initial: T, sources: W
       if (!disposed && current === revision) loading.value = false;
     }
   }
+  function replace(value: T) {
+    revision++;
+    data.value = value;
+    loading.value = false;
+    error.value = '';
+  }
   if (sources.length) watch(sources, () => { data.value = initial; void refresh(); }, { immediate: true });
   else void refresh();
   onScopeDispose(() => { disposed = true; revision++; });
-  return { data, loading, error, refresh };
+  return { data, loading, error, refresh, replace };
 }

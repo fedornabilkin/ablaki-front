@@ -14,7 +14,7 @@ const props = defineProps({
   reloadListTrigger: { type: Boolean },
 });
 
-const emit = defineEmits(['newGameClick', 'changed']);
+const emit = defineEmits(['newGameClick', 'played']);
 
 const store = useStore();
 
@@ -61,7 +61,7 @@ const onPlay = (row) => {
   duel.play(row.id, row.udar, row.blok)
       .then((res) => {
         row.result = res.game;
-        emit('changed');
+        emit('played', res);
         if (res.gamer) {
           store.dispatch('auth/setData', res.gamer);
         }

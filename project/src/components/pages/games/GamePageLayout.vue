@@ -4,17 +4,18 @@ import { useStore } from 'vuex';
 import { NButton } from 'naive-ui';
 import RequestState from '@/components/RequestState.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
-import { gameSummary, type GameKind, type GameSummary } from '@/services/api/gameOverview';
+import { gameSummary, type GameKind, type GameSummary, type GameOverviewSnapshot } from '@/services/api/gameOverview';
 import GameQuickStats from './GameQuickStats.vue';
 import RecentGames from './RecentGames.vue';
 
-const props = withDefaults(defineProps<{ kind: GameKind; version?: unknown; showRecent?: boolean }>(), { showRecent: true });
+const props = withDefaults(defineProps<{ kind: GameKind; version?: unknown; snapshot?: GameOverviewSnapshot | null; showRecent?: boolean }>(), { showRecent: true });
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
 const kind = computed(() => props.kind);
 const version = ref(0);
 const summary = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session, version]);
 watch(() => props.version, () => { version.value++; });
+watch(() => props.snapshot, value => { if (value) summary.replace(value.summary); });
 </script>
 <template lang="pug">
 .container.page.stack
@@ -26,7 +27,7 @@ watch(() => props.version, () => { version.value++; });
     main.game-page-main
       slot
     aside.game-page-recent(v-if="showRecent" aria-label="Последние игры")
-      recent-games(:kind="kind" :version="version")
+      recent-games(:kind="kind" :version="version" :snapshot="snapshot")
 </template>
 <style scoped>
 .quick-stats-sticky { position: sticky; top: var(--site-header-height, 4rem); z-index: 20; background: var(--bg-base); }
