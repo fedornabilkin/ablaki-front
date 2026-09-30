@@ -42,7 +42,7 @@ export function canMoveFive(game: FiveGame, userId: number, credit: number): boo
   return !!game.last_hod && (game.status === 'free' ? game.user_id !== userId && credit >= game.kon : game.status === 'play' && !!role && (game.turn === null || game.turn === role));
 }
 const url = (path = '') => config.makeApiUrl(`v1/five${path}`);
-export async function loadFive(id: number): Promise<FiveGame> { return fiveGame((await apiClient.get(url(`/${id}`))).data); }
+export async function loadFive(id: number): Promise<FiveGame> { return fiveGame((await apiClient.get(url(`/${id}`), { params: { expand: 'rounds' } })).data); }
 export async function createFive(kon: number, ball: number, count = 1): Promise<FiveGame | null> {
   const data = checkMutation((await apiClient.post(url(), count === 1 ? { kon, ball } : { kon, ball, count })).data);
   if (count > 1) {
