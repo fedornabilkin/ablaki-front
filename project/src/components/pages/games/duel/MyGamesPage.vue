@@ -79,6 +79,7 @@ fetchGames();
 </script>
 
 <template lang="pug">
+n-card(title="Мои игры")
   game-stake-filter.mb-3(v-model="selectedStake" kind="duel" scope="my" :version="gamesList" :disabled="gamesList.some(row => row.isDeleting)")
   p(v-if="listError" role="alert") {{ listError }}
     n-button(text @click="fetchGames") Повторить
@@ -87,7 +88,7 @@ fetchGames();
       .duel-empty(v-if="!isLoading && !gamesList.length")
         span У тебя нет открытых схваток.
         n-button(text type="primary" @click="emit('newGameClick')") Создать
-      n-card.game-card(v-for="row in gamesList" :key="row.id" :bordered="true")
+      article.record-row(v-for="row in gamesList" :key="row.id")
         .game-row
           .game-info
             .game-user
@@ -117,8 +118,10 @@ fetchGames();
 .duel-games {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   min-height: 6rem;
+
+  .record-row { display: block; }
+  .record-row:last-child { border-bottom: 0; }
 
   .duel-empty {
     display: flex;
