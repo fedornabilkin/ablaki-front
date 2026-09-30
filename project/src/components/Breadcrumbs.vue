@@ -2,8 +2,13 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { breadcrumbs } from '@/services/breadcrumbs';
+import { useWorldStore } from '@/store/world';
 const route = useRoute();
-const items = computed(() => breadcrumbs(route.path, route.params));
+const world = useWorldStore();
+const items = computed(() => route.path.startsWith('/world') && world.node &&
+  (route.params.id === undefined || Number(route.params.id) === world.node.id)
+  ? [{ title: 'Мир', to: '/world' }, ...world.breadcrumbs.map(node => ({ title: node.name, to: node.id === world.node?.id ? undefined : `/world/nodes/${node.id}` }))]
+  : breadcrumbs(route.path, route.params));
 </script>
 <template lang="pug">
 nav.breadcrumbs.container(aria-label="Хлебные крошки")

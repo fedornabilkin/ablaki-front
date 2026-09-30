@@ -60,7 +60,7 @@ watch(activeTab, tab => { if (!visitedTabs.value.includes(tab)) visitedTabs.valu
 const statuses: Record<string, string> = { active: 'Действует', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'Приостановлен', damaged: 'Повреждён', destroyed: 'Разрушен' };
 const icons: Record<NodeType, string> = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling' };
 const nodeIcon = computed(() => features.value?.campsite ? 'tent' : world.node ? icons[world.node.type] : 'sun');
-const nodeKind = computed(() => features.value?.campsite ? 'Стоянка' : world.node ? nodeLabels[world.node.type] : 'Мир');
+const nodeKind = computed(() => features.value?.campsite ? 'Усадьба' : world.node ? nodeLabels[world.node.type] : 'Мир');
 const detail = computed(() => world.node?.details ?? {});
 const summaryValue = computed(() => detail.value.population !== undefined ? String(detail.value.population) : detail.value.condition !== undefined ? `${detail.value.condition} / ${detail.value.max_condition ?? '—'}` : `${world.node?.coordinates.x ?? 0}, ${world.node?.coordinates.y ?? 0}`);
 const summaryLabel = computed(() => detail.value.population !== undefined ? 'Жители' : detail.value.condition !== undefined ? 'Прочность' : 'Координаты');
@@ -89,11 +89,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
   n-alert(v-else-if="!world.capabilities?.world_read" type="info") Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
-    nav.world-breadcrumbs(aria-label="Путь в мире")
-      router-link(v-if="world.breadcrumbs[0]?.type !== 'WORLD'" to="/world") Мир
-      template(v-for="crumb in world.breadcrumbs" :key="crumb.id")
-        span(aria-hidden="true") /
-        router-link(:to="`/world/nodes/${crumb.id}`" :aria-current="crumb.id === world.node.id ? 'page' : undefined") {{ crumb.name }}
     section.world-hero(:aria-label="nodeKind + ': ' + world.node.name")
       .world-crest(aria-hidden="true")
         font-awesome-icon(:icon="nodeIcon")
@@ -123,36 +118,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
       router-link.world-tab(v-for="tab in tabs" :key="tab" :to="tabLink(tab)" :class="{ active: activeTab === tab }" :aria-current="activeTab === tab ? 'page' : undefined") {{ tabLabels[tab] }}
 
     section.world-tab-panel(v-show="activeTab === 'map'" aria-label="Обзор объекта")
-      .world-overview-grid
-        section.world-panel
-          world-onboarding(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
-        aside.world-side
-          section.world-panel
-            span.world-eyebrow Возможности объекта
-            h2 Действия
-            .world-action-links
-              router-link(v-for="tab in tabs.filter(item => !['map', 'statistics', 'manage'].includes(item))" :key="tab" :to="tabLink(tab)")
-                span {{ tabLabels[tab] }}
-                font-awesome-icon(icon="arrow-right" aria-hidden="true")
-              router-link(v-if="features?.storage" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
-              router-link(v-if="world.node.type === 'BED' && world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}#garden`") Открыть огород
-              router-link(v-if="world.node.details.shelter_plot_id" :to="`/world/nodes/${world.node.details.shelter_plot_id}#shelter`") Управлять шалашом
-              p(v-if="tabs.length === 2 && !features?.storage") Для этого объекта пока доступны карта и статистика.
-          section.world-panel
-            span.world-eyebrow Положение в мире
-            h2 Навигация
-            dl.world-facts
-              dt Координаты
-              dd {{ world.node.coordinates.x }}, {{ world.node.coordinates.y }}
-              dt Тип
-              dd {{ nodeKind }}
-              dt Дочерние объекты
-              dd {{ world.node.child_count }}
-            router-link(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`") Перейти к родительскому объекту
-      nav.world-siblings(v-if="world.node.parent_id && world.siblings.total > 1" aria-label="Соседние объекты")
-        span.world-eyebrow Рядом
-        router-link(v-for="sibling in world.siblings.items.filter(item => item.id !== world.node?.id)" :key="sibling.id" :to="`/world/nodes/${sibling.id}`") {{ sibling.name }}
-        router-link(v-if="world.siblings.total > world.siblings.items.length" :to="`/world/nodes/${world.node.parent_id}`") Все соседние объекты
+      world-onboarding(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
 
     section.world-tab-panel(v-if="visitedTabs.includes('life') && (features?.nights || features?.housing)" v-show="activeTab === 'life'" aria-label="Ночлег и здоровье")
       .world-section-title

@@ -26,15 +26,13 @@ onScopeDispose(() => { disposed = true; generation++; });
 function join() { if (quote.value) void runner.submit('/onboarding/join', { settlement_id: props.node.id }, quote.value); }
 </script>
 <template lang="pug">
-section.world-onboarding(aria-label="Начало жизни в мире")
+section.world-onboarding(v-if="!state?.joined" aria-label="Начало жизни в мире")
   n-alert(v-if="error" type="error" role="alert") {{ error }}
-  template(v-if="state?.joined")
-    router-link(:to="`/world/nodes/${state.starter_site_id}`") Моя стоянка
-  template(v-else-if="state && node.type === 'SETTLEMENT'")
-    p Здесь можно начать жизнь в мире и получить место для стоянки.
+  template(v-if="state && node.type === 'SETTLEMENT'")
+    p Здесь можно начать жизнь в мире и получить место для усадьбы.
     n-button(v-if="!quote" :disabled="!writable || !state.join_available || Boolean(pending)" :loading="loading" @click="preview") Выбрать поселение
     template(v-else)
-      p Начать в поселении «{{ node.name }}»? Стоянка предоставляется один раз, бесплатно.
+      p Начать в поселении «{{ node.name }}»? Усадьба предоставляется один раз, бесплатно.
       n-button(type="primary" :disabled="!writable || Boolean(pending)" :loading="busy" @click="join") Начать
   p(v-else-if="state && !state.joined") Выберите город или деревню, в которых хотите начать.
 </template>
