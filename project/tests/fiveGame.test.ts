@@ -46,7 +46,7 @@ describe('5 apples API contract', () => {
   it('sends the observed round token with a move and never uses a mock', async () => {
     client.post.mockResolvedValue({ data: { game: dto } });
     await moveFive(fiveGame(dto), 5);
-    expect(client.post.mock.calls.at(-1)).toEqual([expect.stringContaining('/v1/five/play/1'), { ball: 5, round_id: 7 }]);
+    expect(client.post.mock.calls.at(-1)).toEqual([expect.stringContaining('/v1/five/play/1'), { ball: 5, round_id: 7, round_status: 'wait' }]);
     client.post.mockResolvedValueOnce({ data: dto }); await createFive(10, 4);
     expect(client.post.mock.calls.at(-1)?.[1]).toEqual({ kon: 10, ball: 4 });
     client.post.mockResolvedValueOnce({ data: { count: 2, game: dto } }); await createFive(10, 4, 2);
