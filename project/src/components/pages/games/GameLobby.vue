@@ -28,7 +28,10 @@ const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
 const { data, loading, error, refresh } = usePageRequest(async () => {
   const path = kind.value + (mode.value ? '/' + mode.value : '');
-  return list(path, mode.value ? page.value : 1, { ...params.value, q: undefined, 'per-page': 20 });
+  return list(path, mode.value ? page.value : 1, {
+    ...params.value, q: undefined, 'per-page': 20,
+    sort: saper.value && !mode.value ? 'created_at' : params.value.sort,
+  });
 }, emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
 const showCreate = ref(false);
