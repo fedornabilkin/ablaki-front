@@ -34,7 +34,7 @@ watch(() => [props.result.currentPage, props.disabled, props.result.total] as co
 }, { immediate: true });
 </script>
 <template lang="pug">
-nav.pager(aria-label="Страницы списка")
+nav.pager(v-if="result.total === null ? result.items.length > 0 : result.total > 0" aria-label="Страницы списка")
   .muted(v-if="pages !== null") Всего: {{ result.total }} · Страница {{ page }} из {{ pages }}
   .page-links(v-if="pages !== null ? pages > 1 : page > 1 || next")
     router-link.page-link(v-if="!disabled && page > 1" :to="target(page - 1)" rel="prev" aria-label="Предыдущая страница")

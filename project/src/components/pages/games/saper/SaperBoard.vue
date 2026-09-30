@@ -18,6 +18,7 @@ const message = ref('');
 const error = ref('');
 const moves = ref<Record<number, number>>({});
 const lostCell = ref<number | null>(null);
+const pendingCell = ref<number | null>(null);
 let disposed = false;
 async function start() {
   if (busy.value || started.value) return;
@@ -37,6 +38,7 @@ async function start() {
 async function play(col: number) {
   if (busy.value || !started.value || complete.value || uncertain.value) return;
   busy.value = true; error.value = '';
+  pendingCell.value = col;
   const revision = store.state.auth.revision;
   try {
     await mutate('saper/play/' + props.game.id, 'post', { row: row.value, col });
@@ -55,7 +57,7 @@ async function play(col: number) {
       error.value = errorText(cause);
       uncertain.value = true;
     }
-  } finally { busy.value = false; }
+  } finally { busy.value = false; pendingCell.value = null; }
 }
 function warnUnload(event: BeforeUnloadEvent) {
   if (busy.value || (started.value && !complete.value)) { event.preventDefault(); event.returnValue = ''; }
@@ -84,7 +86,7 @@ n-card(:title="'Игра №' + game.id")
     .minefield-scroll(role="region" aria-label="Игровое поле, прокрутка по горизонтали" tabindex="0")
       .minefield(role="group" aria-label="Игровое поле")
         template(v-for="r in 5" :key="r")
-          n-button(v-for="col in 7" :key="r + '-' + col" :aria-label="'Ряд ' + r + ', клетка ' + col" :type="moves[r] === col ? 'primary' : 'default'" :disabled="busy || !started || complete || uncertain || row !== r" @click="play(col)")
+          n-button(v-for="col in 7" :key="r + '-' + col" :aria-label="'Ряд ' + r + ', клетка ' + col" :type="lostCell === col && row === r ? 'error' : moves[r] === col ? 'success' : 'default'" :loading="pendingCell === col && row === r" :disabled="busy || !started || complete || uncertain || row !== r" @click="play(col)")
             | {{ moves[r] === col ? '✓' : lostCell === col && row === r ? '×' : '·' }}
     .toolbar
       n-button(v-if="!started && !uncertain" type="primary" :loading="busy" @click="start") Начать за {{ field(game.kon) }} Кг

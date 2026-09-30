@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch, onScopeDispose } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, nextTick, ref, watch, onScopeDispose } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NCard, NForm, NButton, NSkeleton, NSwitch } from 'naive-ui';
+import { NAlert, NCard, NForm, NButton, NPopconfirm, NSkeleton, NSwitch } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
@@ -14,12 +14,14 @@ import { useListQuery } from '@/hooks/useListQuery';
 import { giveCommentCredit } from '@/services/api/community';
 import { useForumDraft, forumDraftKey } from '@/hooks/useForumDraft';
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 const id = computed(() => String(route.params.theme_id));
 const { page } = useListQuery();
 const draft = useForumDraft(computed(() => forumDraftKey(store.getters['auth/user']?.id, 'reply:' + id.value)));
 const comment = draft.text;
 const saving = ref(false);
+const composer = ref<{ focus: () => void } | null>(null);
 const saveError = ref('');
 const authenticated = computed(() => store.getters['auth/isAuthenticated']);
 const userId = computed(() => Number(store.getters['auth/user']?.id));
@@ -34,6 +36,27 @@ const theme = usePageRequest(() => detail('forum-theme/' + encodeURIComponent(id
 const starter = computed(() => theme.data.value?.first_comment as RecordData | null);
 const privacyBusy = ref(false), privacyError = ref('');
 const ownsTheme = computed(() => authenticated.value && Number(theme.data.value?.user_id) === userId.value);
+const canClose = computed(() => ownsTheme.value || theme.data.value?.can_moderate === true);
+const deleting = ref(false);
+async function setClosed(value: boolean) {
+  if (!canClose.value || privacyBusy.value) return;
+  const currentId = id.value, account = session.value;
+  privacyBusy.value = true; privacyError.value = '';
+  try {
+    await mutate('forum-theme/' + encodeURIComponent(currentId) + '/close', 'patch', { is_closed: value });
+    if (!disposed && currentId === id.value && account === session.value) await theme.refresh();
+  } catch (cause) { if (!disposed && currentId === id.value && account === session.value) privacyError.value = errorText(cause); }
+  finally { privacyBusy.value = false; }
+}
+async function deleteTheme() {
+  if (deleting.value || theme.data.value?.can_delete !== true) return;
+  deleting.value = true; privacyError.value = '';
+  try {
+    await mutate('forum-theme/' + encodeURIComponent(id.value), 'delete');
+    await router.push('/forum');
+  } catch (cause) { privacyError.value = errorText(cause); }
+  finally { deleting.value = false; }
+}
 async function setPrivacy(value: boolean) {
   if (!ownsTheme.value || privacyBusy.value) return;
   const currentId = id.value, account = session.value;
@@ -77,23 +100,44 @@ async function submit() {
   const revision = store.state.auth.revision;
   saving.value = true;
   saveError.value = '';
+  let submitted = false;
   try {
     await mutate('forum-comment', 'post', { theme_id: Number(themeId), comment: sent.text.trim() });
     draft.clearSubmitted(sent);
     if (disposed || themeId !== id.value || revision !== store.state.auth.revision) return;
+    submitted = true;
     await theme.refresh();
     if (page.value !== 1) page.value = 1;
     else await comments.refresh();
-  } catch (cause) { if (!disposed && themeId === id.value && revision === store.state.auth.revision) saveError.value = errorText(cause); }
-  finally { saving.value = false; }
+  } catch (cause) {
+    if (!disposed && themeId === id.value && revision === store.state.auth.revision) {
+      saveError.value = submitted ? 'Ответ опубликован, но список не обновился. Обновите страницу.' : errorText(cause);
+    }
+  }
+  finally {
+    saving.value = false;
+    if (submitted && !disposed && themeId === id.value && revision === store.state.auth.revision) {
+      await nextTick();
+      composer.value?.focus();
+    }
+  }
 }
 </script>
 <template lang="pug">
 page-header.forum-header(:page-title="theme.data.value ? field(theme.data.value.title) : 'Обсуждение'")
-  .privacy-control(v-if="ownsTheme")
-    n-switch(:value="theme.data.value?.is_private === true" :disabled="privacyBusy" :loading="privacyBusy" aria-label="Скрыть тему и сообщения от гостей" @update:value="setPrivacy")
-    span Только для участников
-  small(v-else-if="theme.data.value?.is_private") Только для участников
+  template(#actions)
+    .privacy-control(v-if="ownsTheme")
+      n-switch(:value="theme.data.value?.is_private === true" :disabled="privacyBusy" :loading="privacyBusy" aria-label="Скрыть тему и сообщения от гостей" @update:value="setPrivacy")
+      span Только для участников
+    small(v-else-if="theme.data.value?.is_private") Только для участников
+    .privacy-control(v-if="canClose")
+      n-switch(:value="theme.data.value?.is_closed === true" :disabled="privacyBusy" :loading="privacyBusy" aria-label="Закрыть тему для ответов" @update:value="setClosed")
+      span Тема закрыта
+    small(v-else-if="theme.data.value?.is_closed") Тема закрыта
+    n-popconfirm(v-if="theme.data.value?.can_delete === true" @positive-click="deleteTheme")
+      template(#trigger)
+        n-button(type="error" secondary :loading="deleting") Удалить тему
+      | Удалить тему и все сообщения? История переданных кредитов сохранится.
   n-alert(v-if="privacyError" type="error") {{ privacyError }}
   .starting-message(v-if="starter")
     forum-post(:key="starter.id + ':' + session" :item="starter" :giving="giving !== null" @give="give(starter, $event)" @updated="updated")
@@ -102,11 +146,12 @@ page-header.forum-header(:page-title="theme.data.value ? field(theme.data.value.
   n-alert(v-if="theme.error.value" type="error")
     | {{ theme.error.value }}
     n-button(text @click="theme.refresh") Повторить
-  n-card(v-if="authenticated && theme.data.value")
+  n-card(v-if="authenticated && theme.data.value && !theme.data.value.is_closed")
     n-form(@submit.prevent="submit")
-      message-composer(:key="id + ':' + userId" id="reply" label="Ваш ответ" v-model="comment" :disabled="saving" :submit-disabled="!theme.data.value" placeholder="Напишите ответ" @submit="submit")
+      message-composer(ref="composer" :key="id + ':' + userId" id="reply" label="Ваш ответ" v-model="comment" :disabled="saving" :submit-disabled="!theme.data.value" placeholder="Напишите ответ" @submit="submit")
       n-alert(v-if="draft.storageError.value" type="warning") {{ draft.storageError.value }}
       n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
+  n-alert(v-else-if="theme.data.value?.is_closed" type="info") Ответы в этой теме закрыты. Благодарить авторов сообщений по-прежнему можно.
   n-alert(v-else-if="['guest', 'error'].includes(store.getters['auth/authStatus'])" type="info")
     router-link(:to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войдите, чтобы ответить
   n-alert(v-if="giftError" type="error") {{ giftError }}

@@ -5,6 +5,7 @@ import { NButton, NCard } from 'naive-ui';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
 import GameHistoryList from './GameHistoryList.vue';
+import GameRecentList from './GameRecentList.vue';
 import { useGameHistory } from '@/hooks/useGameHistory';
 import { formatAccountNumber } from '@/services/api/header';
 import { historyPeriods, type HistoryGameKind, type HistoryScope } from '@/services/api/gameHistory';
@@ -30,7 +31,8 @@ n-card(:title="scope === 'recent' ? 'Последние завершённые �
         n-button(v-for="item in kons.data.value" :key="item.kon" :type="Number(kon) === Number(item.kon) ? 'primary' : 'default'" :aria-pressed="Number(kon) === Number(item.kon)" @click="selectKon(item.kon)") {{ formatAccountNumber(item.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }} ({{ item.count }})
         span.muted(v-if="!kons.data.value.length") За этот период игр нет
     request-state(:loading="history.loading.value" :error="history.error.value" :empty="!history.data.value.items.length" @retry="history.refresh")
-      game-history-list(:games="history.data.value.items" :kind="kind")
+      game-recent-list(v-if="scope === 'recent'" :games="history.data.value.items" :kind="kind")
+      game-history-list(v-else :games="history.data.value.items" :kind="kind")
     page-pager(v-if="scope !== 'recent' && !history.error.value" v-model:page="page" :result="history.data.value" :disabled="history.loading.value" :query-prefix="prefix")
 </template>
 <style scoped>

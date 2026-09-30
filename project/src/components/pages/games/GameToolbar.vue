@@ -2,7 +2,7 @@
 import { computed, ref, onScopeDispose } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NPopconfirm } from 'naive-ui';
+import { NAlert, NButton, NPopover, NPopconfirm } from 'naive-ui';
 import CreateButton from '@/components/CreateButton.vue';
 import { mutate, errorText } from '@/services/api/portal';
 import type { HistoryGameKind } from '@/services/api/gameHistory';
@@ -14,7 +14,14 @@ const removing = ref(false);
 const error = ref('');
 const notice = ref('');
 const base = computed(() => '/games/' + props.kind);
-const tabs = computed(() => [{ to: base.value, label: 'Игры' }, { to: base.value + '/my', label: 'Мои' }, { to: base.value + '/history', label: 'История' }]);
+const tabs = computed(() => [{ to: base.value, label: 'Игры', icon: 'users' }, { to: base.value + '/my', label: 'Мои', icon: 'user' }, { to: base.value + '/history', label: 'История', icon: 'calendar-days' }]);
+const help = computed(() => props.kind === 'saper'
+  ? 'Выберите игру и нажмите «Начать». Затем открывайте по одной клетке в каждом ряду снизу вверх. Мина завершает игру; пройти все ряды — победа.'
+  : props.kind === 'duel'
+    ? 'Выберите удар и блок. После нажатия «В бой» исход схватки определяется выбранными зонами.'
+    : props.kind === 'five'
+      ? 'Каждый игрок выбирает от одного до пяти яблок за ход. Первый набравший 21 очко побеждает.'
+      : 'Выберите орла или решку. После выбора ставка списывается и результат показывается сразу.');
 let disposed = false;
 onScopeDispose(() => { disposed = true; });
 async function removeAll() {
@@ -43,14 +50,26 @@ async function removeAll() {
           font-awesome-icon(icon="fa fa-plus")
         span Создать
     router-link(v-for="tab in tabs" :key="tab.to" :to="tab.to" custom v-slot="{ href, navigate, isExactActive }")
-      n-button(tag="a" :href="href" :type="isExactActive ? 'primary' : 'default'" @click="navigate") {{ tab.label }}
+      n-button.game-tab(tag="a" :href="href" :type="isExactActive ? 'primary' : 'default'" :aria-label="tab.label" @click="navigate")
+        template(#icon)
+          font-awesome-icon(:icon="tab.icon")
+        span.game-tab-label {{ tab.label }}
+    n-popover(trigger="click" placement="bottom")
+      template(#trigger)
+        n-button(aria-label="Правила игры" title="Правила игры" circle)
+          font-awesome-icon(icon="question-circle")
+      p.game-help {{ help }}
     n-popconfirm(:positive-button-props="{ disabled: busy || removing }" @positive-click="removeAll")
       template(#trigger)
-        n-button(:disabled="busy || removing" :loading="removing") Удалить
+        n-button.game-delete(type="error" secondary :disabled="busy || removing" :loading="removing" aria-label="Удалить все свои не начатые игры" title="Удалить все свои не начатые игры")
+          template(#icon)
+            font-awesome-icon(icon="trash-alt")
+          span.game-delete-label Удалить
       | Удалить все свои не начатые игры этого типа и вернуть ставки на счёт? Начатые игры сохранятся.
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="notice" type="success") {{ notice }}
 </template>
 <style scoped>
-@media (max-width: 600px) { .create-link span { display: none; } .create-link :deep(.n-button__icon) { margin: 0; } }
+.game-help { max-width: 20rem; margin: 0; }
+@media (max-width: 600px) { .create-link span, .game-tab-label, .game-delete-label { display: none; } .create-link :deep(.n-button__icon), .game-tab :deep(.n-button__icon), .game-delete :deep(.n-button__icon) { margin: 0; } }
 </style>
