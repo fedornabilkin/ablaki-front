@@ -21,7 +21,7 @@ export async function loadGarden(node: number) {
   const r = record((await apiClient.get(url(node))).data);
   if (id(r.node_id) !== node || r.cultivation_enabled !== false) invalid();
   let offer = null, garden = null;
-  if (r.offer !== null) { const o = record(r.offer); offer = { id: id(o.id), name: text(o.name), price: positive(o.price), base_price: positive(o.base_price) }; }
+  if (r.offer !== null) { const o = record(r.offer); offer = { id: id(o.id), name: text(o.name), price: positive(o.price), base_price: positive(o.base_price), can_afford: o.can_afford === null ? null : bool(o.can_afford) }; }
   if (r.garden !== null) {
     const g = record(r.garden), unlocked = integer(g.unlocked, 1, 10);
     if (g.limit !== 10 || !Array.isArray(g.beds) || g.beds.length !== 10) invalid();
@@ -35,7 +35,7 @@ export async function loadGarden(node: number) {
   }
   const canBuy = bool(r.can_buy), canExpand = bool(r.can_expand);
   if ((canBuy && (!offer || garden)) || (canExpand && (!garden || garden.node_id !== node || garden.unlocked === 10))) invalid();
-  return { offer, garden, can_buy: canBuy, can_expand: canExpand, can_publish: bool(r.can_publish), settlement_id: id(r.settlement_id), settlement_name: text(r.settlement_name), server_time: integer(r.server_time) };
+  return { offer, garden, site_budget_available: r.site_budget_available === null ? null : creditAmount(r.site_budget_available), can_buy: canBuy, can_expand: canExpand, can_publish: bool(r.can_publish), settlement_id: id(r.settlement_id), settlement_name: text(r.settlement_name), server_time: integer(r.server_time) };
 }
 export async function previewGarden(node: number, action: GardenAction, payload: unknown) {
   const input = gardenInput(action, payload);
@@ -55,7 +55,7 @@ export async function previewGarden(node: number, action: GardenAction, payload:
     if (action === 'buy') { id(t.offer_id); text(t.name); }
     else {
       id(t.policy_id); integer(t.policy_revision, 1); const unlocked = integer(t.unlocked, 1, 9), quantity = integer(t.quantity, 1, 10 - unlocked);
-      if (t.curve !== 'linear' || t.currency !== 'Cr' || !Array.isArray(t.unit_prices) || t.unit_prices.length !== quantity) invalid();
+      if (!['linear', 'progressive'].includes(String(t.curve)) || t.currency !== 'Cr' || !Array.isArray(t.unit_prices) || t.unit_prices.length !== quantity) invalid();
       unitPrices = (t.unit_prices as unknown[]).map((value, i) => { const u = record(value), ordinal = integer(u.ordinal, 2, 10); if (ordinal !== unlocked + i + 1) invalid(); return { ordinal, price: positive(u.price) }; });
     }
   } else if (t.previous_offer_id !== null) id(t.previous_offer_id);
