@@ -14,6 +14,7 @@ const props = defineProps<{ nodeId: number; children: WorldNode[]; session: numb
 const state = shallowRef<Awaited<ReturnType<typeof loadNodeEconomy>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewInvestment>> | null>(null);
 const amount = ref(''), purpose = ref('Развитие объекта'), error = ref(''), loading = ref(false), calculating = ref(false);
 const { busy, pending } = props.command;
+const money = (value: string | number) => `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value))} Cr`;
 let generation = 0, previewGeneration = 0, disposed = false;
 async function load() {
   const current = ++generation; previewGeneration++; quote.value = null; state.value = null; loading.value = true; calculating.value = false; error.value = '';
@@ -45,13 +46,13 @@ section.world-economy
   template(v-else-if="state")
     dl(v-if="state.balances")
       dt Бюджет
-      dd {{ state.balances.budget }} Cr
+      dd {{ money(state.balances.budget) }}
       dt Зарезервировано
-      dd {{ state.balances.reserved }} Cr
+      dd {{ money(state.balances.reserved) }}
       dt Доступно на развитие
-      dd {{ state.balances.available }} Cr
+      dd {{ money(state.balances.available) }}
       dt Казна — несобранные поступления
-      dd {{ state.balances.treasury }} Cr
+      dd {{ money(state.balances.treasury) }}
     p(v-else) Детали счетов доступны владельцу объекта.
     n-alert(v-if="!state.wallet_ready" type="info") Денежные операции мира ещё не открыты.
     template(v-if="state.balances")
@@ -70,8 +71,8 @@ section.world-economy
         n-input(v-model:value="purpose" :maxlength="255" :disabled="busy || Boolean(pending)")
       n-button(:loading="calculating" :disabled="busy || Boolean(pending)" @click="preview") Рассчитать взнос
       section(v-if="quote" aria-live="polite")
-        p В бюджет «{{ quote.name }}»: {{ quote.amount }} Cr
-        p Личный баланс: {{ quote.wallet_before }} → {{ quote.wallet_after }} Cr
+        p В бюджет «{{ quote.name }}»: {{ money(quote.amount) }}
+        p Личный баланс: {{ money(quote.wallet_before) }} → {{ money(quote.wallet_after) }}
         n-button(type="primary" :loading="busy" :disabled="Boolean(pending)" @click="invest") Подтвердить вложение
     world-budget-grant(v-if="state.can_grant" :node-id="nodeId" :children="children" :session="session" :command="command")
     template(v-if="state.balances")

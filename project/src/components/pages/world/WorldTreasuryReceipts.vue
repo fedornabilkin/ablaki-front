@@ -22,6 +22,7 @@ async function load() {
 }
 watch([() => props.nodeId, () => props.session, params], load, { immediate: true, flush: 'sync' });
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString('ru-RU');
+const money = (value: string | number) => `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value))} Cr`;
 function duration(seconds: number): string {
   const days = Math.floor(seconds / 86400), hours = Math.floor(seconds % 86400 / 3600), minutes = Math.floor(seconds % 3600 / 60);
   return `${days ? `${days} д. ` : ''}${hours} ч. ${minutes} мин. ${seconds % 60} с.`;
@@ -46,21 +47,21 @@ section.world-receipts#treasury-receipts
       p Получено {{ date(item.received) }} · {{ item.closed === null ? 'В казне' : 'Находилось в казне' }} {{ duration(item.age) }}
       dl
         dt Поступило
-        dd {{ item.original }} Cr
+        dd {{ money(item.original) }}
         dt Осталось в казне
-        dd {{ item.remaining }} Cr
+        dd {{ money(item.remaining) }}
         dt Собрано в бюджет
-        dd {{ item.collected }} Cr
+        dd {{ money(item.collected) }}
         dt Потеряно
-        dd(:class="{ lost: item.lost !== '0.0000' }") {{ item.lost }} Cr
+        dd(:class="{ lost: item.lost !== '0.0000' }") {{ money(item.lost) }}
       p Условия №{{ item.policyRevision }}: защита {{ duration(item.protectedSeconds) }}, затем {{ item.rate / 100 }}% остатка каждые {{ duration(item.period) }}.
       p(v-if="item.closed !== null") Закрыто {{ date(item.closed) }}. Дальнейших потерь нет.
       p(v-else-if="item.state === 'exempt'") Для этого поступления ставка потерь равна нулю.
       template(v-else)
         p Защита {{ item.protectedUntil > state.now ? 'действует до' : 'закончилась' }} {{ date(item.protectedUntil) }}.
         p(v-if="item.next !== null") {{ item.pending ? 'Первый необработанный период' : 'Следующее списание' }}: {{ date(item.next) }}.
-        p(v-if="item.pending") Сумма первого ожидающего списания: {{ item.nextAmount }} Cr. Учтён дробный остаток предыдущих расчётов.
-        p(v-else) Прогноз на этот период: {{ item.nextAmount }} Cr, если не собрать поступление раньше. Учтён дробный остаток предыдущих расчётов.
+        p(v-if="item.pending") Сумма первого ожидающего списания: {{ money(item.nextAmount) }}. Учтён дробный остаток предыдущих расчётов.
+        p(v-else) Прогноз на этот период: {{ money(item.nextAmount) }}, если не собрать поступление раньше. Учтён дробный остаток предыдущих расчётов.
         n-alert(v-if="item.pending" type="info") Ожидают расчёта периодов: {{ item.pending }}. Показана сумма только первого из них; итоговые потери могут быть больше.
         p(v-else-if="item.nextAmount === '0.0000'") Сейчас сумма меньше точности 0.0001 Cr. Дробный остаток сохраняется для последующих периодов.
       p Обработано периодов потерь: {{ item.processed }}.
