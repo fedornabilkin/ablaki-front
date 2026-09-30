@@ -6,7 +6,7 @@ import { isAxiosError } from 'axios';
 import { NAlert, NButton, NCard, useDialog } from 'naive-ui';
 import { startSaper, mutate, field, errorText, type RecordData } from '@/services/api/portal';
 const props = defineProps<{ game: RecordData }>();
-const emit = defineEmits<{ close: []; 'account-change': []; complete: [] }>();
+const emit = defineEmits<{ close: []; 'account-change': []; complete: [response: unknown] }>();
 const dialog = useDialog();
 const store = useStore();
 const row = ref(5);
@@ -41,18 +41,22 @@ async function play(col: number) {
   pendingCell.value = col;
   const revision = store.state.auth.revision;
   try {
-    await mutate('saper/play/' + props.game.id, 'post', { row: row.value, col });
+    const result = await mutate('saper/play/' + props.game.id, 'post', { row: row.value, col });
     if (disposed || revision !== store.state.auth.revision) return;
-    moves.value[row.value] = col;
-    row.value--;
-    if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('account-change'); emit('complete'); }
+    if (result && typeof result === 'object' && 'lost' in result && result.lost === true) {
+      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('complete', result);
+    } else {
+      moves.value[row.value] = col;
+      row.value--;
+      if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('complete', result); }
+    }
   } catch (cause) {
     if (disposed || revision !== store.state.auth.revision) return;
     const response = isAxiosError(cause) ? cause.response : undefined;
     // The existing backend signals a confirmed loss with a specific 400 response.
     const lost = response?.status === 400 && ['Game lost', 'Игра проиграна'].includes(response.data?.message);
     if (lost) {
-      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('account-change'); emit('complete');
+      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('account-change'); emit('complete', null);
     } else {
       error.value = errorText(cause);
       uncertain.value = true;

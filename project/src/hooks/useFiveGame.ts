@@ -2,7 +2,7 @@ import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
 import { cancelFive, createFive, fiveFinished, loadFive, moveFive, type FiveGame } from '@/services/api/fiveGame';
 import { errorText } from '@/services/api/portal';
 
-export function useFiveGame(session: Ref<number>, refreshAccount: () => Promise<unknown>, changed: () => Promise<unknown>) {
+export function useFiveGame(session: Ref<number>, refreshAccount: (value?: FiveGame | null) => Promise<unknown>, changed: (value?: FiveGame | null) => Promise<unknown>) {
   const game = shallowRef<FiveGame | null>(null);
   const busy = ref(false);
   const loading = ref(false);
@@ -30,7 +30,7 @@ export function useFiveGame(session: Ref<number>, refreshAccount: () => Promise<
       game.value = updated; error.value = '';
       if (!fiveFinished(previous) && fiveFinished(updated)) {
         try { await refreshAccount(); } catch { if (current === revision) notice.value = 'Игра завершена. Не удалось обновить счёт — обновите профиль.'; }
-        if (current === revision) await changed();
+        if (current === revision) await changed(updated);
       }
     } catch (cause) { if (!disposed && current === revision) error.value = errorText(cause); }
     finally { if (!disposed && current === revision) { loading.value = false; schedule(); } }
@@ -44,9 +44,9 @@ export function useFiveGame(session: Ref<number>, refreshAccount: () => Promise<
       const updated = await load();
       if (disposed || current !== revision) return;
       game.value = updated; notice.value = message;
-      try { await refreshAccount(); }
+      try { await refreshAccount(updated); }
       catch { if (current === revision) notice.value += ' Не удалось обновить счёт — обновите профиль перед следующей игрой.'; }
-      if (!disposed && current === revision) await changed();
+      if (!disposed && current === revision) await changed(updated);
     } catch (cause) { if (!disposed && current === revision) error.value = errorText(cause); }
     finally { if (!disposed && current === revision) { busy.value = false; schedule(); } }
   }
