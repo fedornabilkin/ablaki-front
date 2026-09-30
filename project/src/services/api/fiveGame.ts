@@ -53,7 +53,7 @@ export async function createFive(kon: number, ball: number, count = 1): Promise<
 }
 export async function moveFive(game: FiveGame, ball: number): Promise<FiveGame> {
   if (!game.last_hod) throw new Error('invalid-response');
-  const data = checkMutation((await apiClient.post(url(`/play/${game.id}`), { ball, round_id: game.last_hod.id })).data);
+  const data = checkMutation((await apiClient.post(url(`/play/${game.id}`), { ball, round_id: game.last_hod.id, round_status: game.last_hod.status })).data);
   if (!data || typeof data !== 'object' || !('game' in data)) throw new Error('invalid-response');
   return fiveGame(data.game);
 }
