@@ -50,7 +50,12 @@ export async function previewGarden(node: number, action: GardenAction, payload:
     const charge = creditAmount(t.personal_charge), before = t.wallet_before === null ? null : creditAmount(t.wallet_before), after = t.wallet_after === null ? null : creditAmount(t.wallet_after);
     if ((charge !== '0.0000' && (!input.top_up || before === null || after === null)) || (charge === '0.0000' && (before !== null || after !== null))) invalid();
     id(t.recipient_account_id); id(t.recipient_policy_id);
-    payment = { total: positive(t.total), available: creditAmount(t.available_before), charge, walletAfter: after, recipient: text(t.recipient_name), recipientId: id(t.recipient_node_id), basePrice: positive(t.base_price) };
+    const isExpansion = action === 'expand';
+    const grossTotal = isExpansion ? positive(t.gross_total) : positive(t.total);
+    const discountAmount = isExpansion ? creditAmount(t.discount_amount) : '0.0000';
+    const discountBps = isExpansion ? integer(t.discount_bps, 0, 10000) : 0;
+    if (discountBps !== (isExpansion && integer(input.quantity, 1, 9) >= 3 ? 500 : 0) || (discountBps === 0 && grossTotal !== t.total)) invalid();
+    payment = { total: positive(t.total), grossTotal, discountAmount, discountBps, available: creditAmount(t.available_before), charge, walletAfter: after, recipient: text(t.recipient_name), recipientId: id(t.recipient_node_id), basePrice: positive(t.base_price) };
     if (t.initial_open !== 1 || t.limit !== 10) invalid();
     if (action === 'buy') { id(t.offer_id); text(t.name); }
     else {

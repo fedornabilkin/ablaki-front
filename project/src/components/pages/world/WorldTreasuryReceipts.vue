@@ -6,6 +6,7 @@ import PagePager from '@/components/PagePager.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import { loadTreasuryReceipts, receiptStates } from '@/services/api/worldTreasuryReceipts';
 import { worldError } from '@/services/api/world';
+import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ nodeId: number; session: number }>();
 const list = useListQuery({ status: 'open' }, { prefix: 'receipts' }), { page, search, filters } = list;
 const params = computed(() => ({ page: page.value, q: list.params.value.q || '', status: filters.value.status || 'all' }));
@@ -32,6 +33,8 @@ onScopeDispose(() => { disposed = true; generation++; });
 <template lang="pug">
 section.world-receipts#treasury-receipts
   h3 Поступления казны
+  world-help-hint(label="Как читать поступления казны")
+    p Здесь показаны несобранные поступления, сумма уже собранная в бюджет и потери по сроку хранения. Просмотр и фильтры ничего не списывают; сбор выполняется отдельно в блоке «Собрать доход».
   p У каждого поступления свой срок защиты и сохранённая ставка потерь. Сбор переводит остаток в бюджет этого объекта.
   n-button(:loading="loading" @click="load") Обновить поступления
   n-alert(v-if="error" type="error" role="alert") {{ error }}

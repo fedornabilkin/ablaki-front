@@ -6,6 +6,7 @@ import PagePager from '@/components/PagePager.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import { financeDirections, financeKinds, loadFinanceReport } from '@/services/api/worldFinanceReport';
 import { worldError } from '@/services/api/world';
+import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ nodeId: number; session: number }>();
 const list = useListQuery({ kind: '', direction: '' }, { prefix: 'finance' }), { page, search, filters } = list;
 const params = computed(() => ({ page: page.value, q: list.params.value.q || '', kind: filters.value.kind || 'all', direction: filters.value.direction || 'all' }));
@@ -30,6 +31,8 @@ onScopeDispose(() => { disposed = true; generation++; });
 <template lang="pug">
 section.world-finance-report#finance-report
   h3 Финансовый отчёт объекта
+  world-help-hint(label="Что показывает финансовый отчёт")
+    p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
   p Личные Cr → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
   p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
   n-button(:loading="loading" @click="load") Обновить отчёт

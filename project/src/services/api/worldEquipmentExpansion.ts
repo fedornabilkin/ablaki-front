@@ -30,7 +30,7 @@ export async function loadEquipmentExpansion(node: number) {
 }
 export async function previewEquipmentExpansion(node: number, payload: unknown) {
   const input = equipmentExpansionInput(payload), quote = parseWorldQuote((await apiClient.post(url(node, 'equipment-expand-preview'), input)).data), t = quote.terms;
-  if (id(t.node_id) !== node || t.quantity !== input.quantity || t.top_up !== input.top_up || t.currency !== 'Cr' || t.curve !== 'linear') invalid();
+  if (id(t.node_id) !== node || t.quantity !== input.quantity || t.top_up !== input.top_up || t.currency !== 'Cr' || !['linear', 'progressive'].includes(String(t.curve))) invalid();
   const initial = integer(t.initial_open, 1, 3), limit = integer(t.limit, initial + 1, 4), unlocked = integer(t.unlocked, initial, limit - 1);
   if (input.quantity > limit - unlocked || !Array.isArray(t.unit_prices) || t.unit_prices.length !== input.quantity) invalid();
   const unitPrices = (t.unit_prices as unknown[]).map((value, index) => { const p = record(value); if (integer(p.ordinal) !== unlocked + index + 1) invalid(); return { ordinal: integer(p.ordinal, 2, limit), price: positive(p.price) }; });
@@ -40,5 +40,7 @@ export async function previewEquipmentExpansion(node: number, payload: unknown) 
   if (typeof t.recipient_name !== 'string' || !t.recipient_name.trim() || t.recipient_name.length > 120) invalid();
   const charge = creditAmount(t.personal_charge), before = t.wallet_before === null ? null : creditAmount(t.wallet_before), after = t.wallet_after === null ? null : creditAmount(t.wallet_after);
   if ((charge !== '0.0000' && (!input.top_up || before === null || after === null)) || (charge === '0.0000' && (before !== null || after !== null))) invalid();
-  return { input, quote, unitPrices, payment: { total: positive(t.total), available: creditAmount(t.available_before), charge, walletAfter: after, recipient: t.recipient_name } };
+  const total = positive(t.total), grossTotal = positive(t.gross_total), discountAmount = creditAmount(t.discount_amount), discountBps = integer(t.discount_bps, 0, 10000);
+  if (discountBps !== (input.quantity >= 3 ? 500 : 0) || (discountBps === 0 && grossTotal !== total)) invalid();
+  return { input, quote, unitPrices, payment: { total, grossTotal, discountAmount, discountBps, available: creditAmount(t.available_before), charge, walletAfter: after, recipient: t.recipient_name } };
 }

@@ -58,6 +58,7 @@ section.equipment-expansion
     section(v-if="quote" aria-live="polite")
       h3 Подтвердить покупку мест
       p Источник оплаты — бюджет этой комнаты. Открытые места сохраняются постоянно.
+      p(v-if="quote.input.quantity >= 3") Системная скидка 5% включена в расчёт, так как вы открываете сразу три места.
       world-expansion-cost(:prices="quote.unitPrices" :payment="quote.payment" place-label="Место")
       n-button(type="primary" :disabled="locked" @click="confirm") Подтвердить оплату
 </template>

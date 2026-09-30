@@ -9,6 +9,7 @@ import { loadOrders, previewOrderCancellation } from '@/services/api/worldOrders
 import { worldError } from '@/services/api/world';
 import WorldOrderDelivery from './WorldOrderDelivery.vue';
 import WorldOrderPublish from './WorldOrderPublish.vue';
+import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ nodeId: number; session: number; command: WorldCommandRunner }>();
 const list = useListQuery({ status: 'open' }, { prefix: 'orders' }), { page, search, filters } = list;
 const params = computed(() => ({ page: page.value, q: list.params.value.q || '', status: filters.value.status }));
@@ -41,6 +42,8 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-orders#settlement-orders
   h2 Заказы поселения
+  world-help-hint(label="Как работают заказы поселения")
+    p Заказ задаёт цену и предельное количество сырья. При сдаче сырьё списывается из рюкзака, а выплата поступает в казну вашей стоянки; выполнить заказ сверх остатка нельзя.
   p Сдавайте собранное сырьё и получайте оплату в казну своей стоянки. Количество и бюджет каждого заказа ограничены.
   n-button(:loading="loading" :disabled="busy" @click="load") Обновить заказы
   n-alert(v-if="error" type="error" role="alert") {{ error }}
