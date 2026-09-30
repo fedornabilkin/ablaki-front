@@ -2,7 +2,7 @@ import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import type { RecordData } from './portal';
 
-export type GameKind = 'orel' | 'saper';
+export type GameKind = 'orel' | 'saper' | 'duel' | 'five';
 export interface GameSummary {
   today: { played: number; wins: number; balance: number; date: string; timezone: string };
   own: { count: number; amount: number };

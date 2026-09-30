@@ -7,17 +7,14 @@ import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
 import GameStakeFilter from './GameStakeFilter.vue';
-import GameQuickStats from './GameQuickStats.vue';
+import GamePageLayout from './GamePageLayout.vue';
 import SaperBoard from './saper/SaperBoard.vue';
-import RecentGames from './RecentGames.vue';
-import GameHistoryList from './GameHistoryList.vue';
 import GameToolbar from './GameToolbar.vue';
 import SaperSuggestions from './saper/SaperSuggestions.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 import { useQuickGames } from '@/hooks/useQuickGames';
-import { gameSummary, type GameSummary } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
@@ -31,16 +28,9 @@ const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
 const { data, loading, error, refresh } = usePageRequest(async () => {
   const path = kind.value + (mode.value ? '/' + mode.value : '');
-  if (!saper.value || mode.value) return list(path, page.value, { ...params.value, q: undefined });
-  const query = { ...params.value, q: undefined, 'per-page': 100, sort: 'created_at' };
-  const first = await list(path, 1, query);
-  const count = first.pageCount ?? Math.ceil((first.total ?? first.items.length) / first.pageSize);
-  const rest = await Promise.all(Array.from({ length: Math.max(0, count - 1) }, (_, index) => list(path, index + 2, query)));
-  return { ...first, items: [first, ...rest].flatMap(result => result.items).sort((a, b) => Number(a.created_at) - Number(b.created_at) || a.id - b.id) };
+  return list(path, mode.value ? page.value : 1, { ...params.value, q: undefined, 'per-page': 20 });
 }, emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
-const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session]);
-watch(overviewVersion, () => { void refreshSummary(); });
 const showCreate = ref(false);
 const kon = ref<number | null>(5);
 const count = ref<number | null>(1);
@@ -118,20 +108,15 @@ function gameCompleted() {
 <template lang="pug">
 page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
   game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
-.container.page.stack
-  .quick-stats-sticky(:aria-busy="summaryLoading")
-    game-quick-stats(v-if="summary" :summary="summary" :unit="unit" :kind="kind")
-    request-state(v-else :loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
-    n-button(v-if="summary && summaryError" size="tiny" @click="refreshSummary") Повторить обновление статистики
+game-page-layout(:kind="kind" :version="overviewVersion")
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
   saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="gameCompleted")
   saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
-  n-card
+  n-card(:title="mode === 'my' ? 'Мои игры' : 'Доступные игры'")
     game-stake-filter.mb-3(v-model="selectedStake" :kind="kind" :scope="mode === 'my' ? 'my' : 'available'" :version="overviewVersion" :disabled="busy")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
-      game-history-list(v-if="mode === 'history'" :games="data.items" :kind="kind")
-      .record-row(v-for="game in (mode === 'history' ? [] : data.items)" :key="game.id" :class="{ 'played-row': playedRows[game.id] }")
+      .record-row(v-for="game in data.items" :key="game.id" :class="{ 'played-row': playedRows[game.id] }")
         div
           strong Игра №{{ game.id }} · {{ field(game.kon) }} {{ unit }}
           .muted
@@ -149,8 +134,7 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
-    page-pager(v-if="!error && (!saper || !!mode)" v-model:page="page" :result="data" :disabled="loading || busy")
-  recent-games(:key="kind" :kind="kind" :version="overviewVersion")
+    page-pager(v-if="!error && mode === 'my'" v-model:page="page" :result="data" :disabled="loading || busy")
 n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
@@ -174,7 +158,6 @@ n-modal(:show="!saper && !!selected" preset="card" title="Орёл или реш
 .game-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
 .game-totals > div { display: flex; flex-direction: column; gap: .25rem; }
 .game-totals strong { font-size: clamp(1rem, 3vw, 1.5rem); overflow-wrap: anywhere; }
-.quick-stats-sticky { position: sticky; top: var(--site-header-height, 4rem); z-index: 20; background: var(--bg-base); }
 .game-result { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; color: var(--primary); font-size: .85rem; }.game-result.win { color: #4ade80; }.game-result.loss, .game-result.error { color: #f87171; }
 .coin-side { font-size: 1rem; }
 .coin-side.hollow :deep(path) { fill: none; stroke: currentColor; stroke-width: 35; }

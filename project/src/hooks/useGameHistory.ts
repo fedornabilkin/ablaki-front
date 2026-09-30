@@ -14,7 +14,7 @@ export function useGameHistory(kind: Ref<HistoryGameKind>, scope: HistoryScope, 
     period: period.value,
     ...(kon.value ? { 'filter[kon]': kon.value } : {}),
     sort: kind.value === 'saper' ? '-time_over_at,-id' : '-updated_at,-id',
-    'per-page': scope === 'recent' ? 5 : 20,
+    'per-page': 20,
   }));
   const currentPage = computed(() => scope === 'recent' ? 1 : page.value);
   const history = usePageRequest(() => list(`${kind.value}/${scope}`, currentPage.value, params.value), emptyPage(), [kind, currentPage, params, version, session]);

@@ -5,6 +5,7 @@ import PageHeader from '../../../PageHeader.vue';
 import { watch } from 'vue';
 import { useRoute } from 'vue-router';
 import GameToolbar from '../GameToolbar.vue';
+import GamePageLayout from '../GamePageLayout.vue';
 
 const dialogCreate = ref(false);
 const route = useRoute();
@@ -13,6 +14,7 @@ watch(() => route.query.create, value => { if (value === '1') dialogCreate.value
 // триггер, заставляющий перезапросить инфу для страницы, который слушают все
 // страницы в дочернем router-view
 const reloadListTrigger = ref(false);
+const overviewVersion = ref(0);
 
 const openDialogCreate = () => {
   dialogCreate.value = true;
@@ -24,7 +26,9 @@ const closeDialogCreate = () => {
 
 const onGameCreated = () => {
   reloadListTrigger.value = !reloadListTrigger.value;
+  overviewVersion.value++;
 };
+const onGameChanged = () => { overviewVersion.value++; };
 
 </script>
 
@@ -32,6 +36,6 @@ const onGameCreated = () => {
   page-header(pageTitle='Дуэль')
     game-toolbar(kind="duel" @create="dialogCreate = true" @changed="onGameCreated")
   create-duel-game(:isOpen='dialogCreate' @gameCreated='onGameCreated' @close='closeDialogCreate')
-  .container
-    router-view(@newGameClick='openDialogCreate' :reloadListTrigger='reloadListTrigger')
+  game-page-layout(kind="duel" :version="overviewVersion")
+    router-view(@newGameClick='openDialogCreate' @changed="onGameChanged" :reloadListTrigger='reloadListTrigger')
 </template>
