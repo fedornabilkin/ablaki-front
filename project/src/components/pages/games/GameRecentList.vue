@@ -44,6 +44,6 @@ const rows = computed(() => props.games.map(game => ({
 .recent-player--opponent { justify-content: flex-start; }
 .avatar-wrap { position: relative; width: fit-content; max-width: 100%; }
 .winner { position: absolute; top: -.55rem; left: -.4rem; z-index: 1; color: var(--primary); filter: drop-shadow(0 1px 1px var(--bg-surface)); }
-.vs { color: #fff; font-size: 2.25rem; line-height: 1; text-align: center; }
+.vs { color: #fff; font-size: 2.75rem; line-height: 1; text-align: center; }
 @media (max-width: 600px) { .recent-players { gap: .25rem; } .recent-player :deep(.user-rating) { display: none; } }
 </style>
