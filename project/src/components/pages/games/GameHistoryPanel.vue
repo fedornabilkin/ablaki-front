@@ -16,7 +16,7 @@ const session = computed(() => store.state.auth.revision);
 const { page, period, kon, kons, history, selectPeriod, selectKon, prefix } = useGameHistory(kind, props.scope, computed(() => props.reloadListTrigger), session);
 </script>
 <template lang="pug">
-n-card(:title="scope === 'recent' ? 'Последние завершённые игры' : 'История игр'")
+n-card(:title="scope === 'recent' ? 'Последние игры' : 'История игр'")
   .stack
     .history-buttons(v-if="scope !== 'recent'" role="group" aria-label="Период истории")
       n-button(v-for="item in historyPeriods" :key="item.value" :type="period === item.value ? 'primary' : 'default'" :aria-pressed="period === item.value" @click="selectPeriod(item.value)") {{ item.label }}

@@ -25,7 +25,7 @@ watch(() => props.version, () => { version.value++; });
   .game-page-columns(:class="{ 'game-page-columns--single': !showRecent }")
     main.game-page-main
       slot
-    aside.game-page-recent(v-if="showRecent" aria-label="Последние завершённые игры")
+    aside.game-page-recent(v-if="showRecent" aria-label="Последние игры")
       recent-games(:kind="kind" :version="version")
 </template>
 <style scoped>
