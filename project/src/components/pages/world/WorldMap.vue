@@ -131,22 +131,22 @@ onScopeDispose(() => { generation++; });
         n-button(size="tiny" aria-label="Сдвинуть карту вниз" @click="pan(0, -7)") ↓
         n-button(size="tiny" aria-label="Сдвинуть карту вправо" @click="pan(7, 0)") →
     .world-map-scroll
-      .world-map-board(:style="{ width: `${columns * cellSize}px`, height: `${rows * cellSize}px` }" role="group" :aria-label="`Карта: ${node.name}`")
+      .world-map-board(:style="{ width: `${columns * cellSize}px`, height: `${rows * cellSize}px` }" role="group" :aria-label="`Карта: ${node.label}`")
         button.world-map-cell(v-for="cell in visibleCells" :key="`${cell.x}:${cell.y}`" type="button" :class="[`state-${cell.state}`, { selected: selectedCell?.x === cell.x && selectedCell?.y === cell.y }]" :style="position(cell.x, cell.y)" :aria-label="`Ячейка ${cell.x}, ${cell.y}: ${cell.state === 'open' ? 'открыта' : cell.state === 'discovered' ? 'исследована' : 'закрыта'}`" @click="selectCellAt($event, cell.x, cell.y)")
           span {{ cell.x }},{{ cell.y }}
           font-awesome-icon(v-if="cell.state === 'discovered'" icon="lock" aria-hidden="true")
         svg.world-map-shapes(:width="columns * cellSize" :height="rows * cellSize" :viewBox="`0 0 ${columns * cellSize} ${rows * cellSize}`" aria-hidden="true")
           polygon(v-for="child in visibleNodes.filter(item => item.footprint)" :key="child.id" :points="shape(child)" :class="{ selected: selectedNodeId === child.id }" @click="selectNode(child)")
-        button.world-map-object(v-for="child in visibleNodes" :key="child.id" type="button" :class="{ selected: selectedNodeId === child.id, owned: child.owned_by_me }" :style="position(child.coordinates.x, child.coordinates.y)" :aria-label="`${nodeLabels[child.type]}: ${child.name}, ${child.coordinates.x}, ${child.coordinates.y}`" @click="selectNode(child)")
+        button.world-map-object(v-for="child in visibleNodes" :key="child.id" type="button" :class="{ selected: selectedNodeId === child.id, owned: child.owned_by_me }" :style="position(child.coordinates.x, child.coordinates.y)" :aria-label="`${nodeLabels[child.type]}: ${child.label}, ${child.coordinates.x}, ${child.coordinates.y}`" @click="selectNode(child)")
           font-awesome-icon(:icon="child.status === 'constructing' ? 'hammer' : child.status === 'active' ? 'check-circle' : child.type === 'PLOT' && child.details.plot_kind === 'campsite' ? 'tent' : 'circle'" aria-hidden="true")
-          span {{ child.name }}
+          span {{ child.label }}
     p.world-map-hint Дочерних объектов: {{ nodes.length }}. Новые ячейки закрыты; свободную ячейку можно выбрать на карте.
   aside.world-map-inspector(aria-live="polite")
     template(v-if="selectedNode")
       span.world-map-kicker {{ selectedNode.type === 'PLOT' && selectedNode.details.plot_kind === 'campsite' ? 'Усадьба' : nodeLabels[selectedNode.type] }}
-      h3 {{ selectedNode.name }}
-      .world-map-mini(v-if="selectedMap" :aria-label="`Карта объекта ${selectedNode.name}`")
-        span(v-for="cell in miniCells" :key="`${cell.x}:${cell.y}`" :class="{ occupied: cell.child }" :title="cell.child?.name ?? `${cell.x}, ${cell.y}`") {{ cell.child ? '●' : '' }}
+      h3 {{ selectedNode.label }}
+      .world-map-mini(v-if="selectedMap" :aria-label="`Карта объекта ${selectedNode.label}`")
+        span(v-for="cell in miniCells" :key="`${cell.x}:${cell.y}`" :class="{ occupied: cell.child }" :title="cell.child?.label ?? `${cell.x}, ${cell.y}`") {{ cell.child ? '●' : '' }}
       dl
         dt Координаты
         dd {{ selectedNode.coordinates.x }}, {{ selectedNode.coordinates.y }}

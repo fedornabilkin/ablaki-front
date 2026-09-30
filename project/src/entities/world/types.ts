@@ -3,7 +3,7 @@ export type NodeType = typeof nodeTypes[number];
 export interface WorldReason { code: string; message?: string }
 export interface WorldAction { code: string; allowed: boolean; reasons: WorldReason[] }
 export interface WorldNode {
-  id: number; type: NodeType; parent_id: number | null; root_id: number; name: string;
+  id: number; type: NodeType; parent_id: number | null; root_id: number; code: string; name: string; label: string;
   status: string; visibility: 'public' | 'private'; revision: number; portable: boolean;
   coordinates: { x: number; y: number }; child_count: number;
   descendant_count: number; population_total: number; owned_by_me: boolean;

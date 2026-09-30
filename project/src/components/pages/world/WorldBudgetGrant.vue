@@ -34,7 +34,7 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   .grant-options(v-if="options.length")
     span Быстрый выбор:
-    n-button(v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.name }} · №{{ child.id }}
+    n-button(v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
   label ID получателя
     n-input-number(v-model:value="destination" :min="1" :max="2147483647" :precision="0" placeholder="Дочерний объект или свой огород")
   label Сумма, Cr

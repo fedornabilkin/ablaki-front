@@ -89,12 +89,12 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
   n-alert(v-else-if="!world.capabilities?.world_read" type="info") Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
-    section.world-hero(:aria-label="nodeKind + ': ' + world.node.name")
+    section.world-hero(:aria-label="nodeKind + ': ' + world.node.label")
       .world-crest(aria-hidden="true")
         font-awesome-icon(:icon="nodeIcon")
       .world-identity
         span.world-eyebrow {{ nodeKind }} · владение №{{ world.node.id }}
-        h1 {{ world.node.name }}
+        h1 {{ world.node.label }}
         p {{ world.node.visibility === 'private' ? 'Личная территория' : 'Открытая территория мира' }}
       .world-hero-metrics
         div
@@ -162,7 +162,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 
     section.world-tab-panel(v-if="visitedTabs.includes('statistics')" v-show="activeTab === 'statistics'" aria-label="Статистика объекта")
       .world-section-title
-        span.world-eyebrow {{ world.node.name }} в цифрах
+        span.world-eyebrow {{ world.node.label }} в цифрах
         h2 Статистика
       .world-stat-grid
         .world-stat-card
@@ -188,7 +188,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         h2 Управление
       dl.world-facts.world-management-facts
         dt Объект
-        dd {{ world.node.name }} · №{{ world.node.id }}
+        dd {{ world.node.label }} · №{{ world.node.id }}
         dt Статус
         dd {{ statuses[world.node.status] || world.node.status }}
         dt Доступ
