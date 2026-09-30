@@ -14,7 +14,7 @@ const props = defineProps({
   reloadListTrigger: { type: Boolean },
 });
 
-const emit = defineEmits(['newGameClick']);
+const emit = defineEmits(['newGameClick', 'played']);
 
 const store = useStore();
 
@@ -23,6 +23,7 @@ const isLoading = ref(true);
 const listError = ref('');
 const { filters } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { kon }; } });
+const randomZone = () => ZONES[Math.floor(Math.random() * ZONES.length)].value;
 let requestVersion = 0;
 onScopeDispose(() => { requestVersion++; });
 
@@ -36,8 +37,8 @@ const fetchGames = () => {
         gamesList.value = games.map((game) => ({
           ...game,
           createdDate: moment.unix(game.created_at).format("HH:mm:ss DD.MM.YYYY"),
-          udar: null,
-          blok: null,
+          udar: randomZone(),
+          blok: randomZone(),
           isLoading: false,
           result: null,
           error: null,
@@ -60,6 +61,7 @@ const onPlay = (row) => {
   duel.play(row.id, row.udar, row.blok)
       .then((res) => {
         row.result = res.game;
+        emit('played', res);
         if (res.gamer) {
           store.dispatch('auth/setData', res.gamer);
         }
@@ -95,6 +97,7 @@ fetchGames();
 </script>
 
 <template lang="pug">
+n-card(title="Доступные игры")
   game-stake-filter.mb-3(v-model="selectedStake" kind="duel" :version="reloadListTrigger" :disabled="gamesList.some(row => row.isLoading)")
   p(v-if="listError" role="alert") {{ listError }}
     n-button(text @click="fetchGames") Повторить
@@ -103,7 +106,7 @@ fetchGames();
       .duel-empty(v-if="!isLoading && !gamesList.length")
         span Свободных схваток нет.
         n-button(text type="primary" @click="emit('newGameClick')") Создай первую!
-      n-card.game-card(v-for="row in gamesList" :key="row.id" :bordered="true")
+      article.record-row(v-for="row in gamesList" :key="row.id")
         .game-row
           .game-info
             .game-user
@@ -122,9 +125,12 @@ fetchGames();
                 size="small"
                 type="error"
                 :secondary="zone.value !== row.udar"
+                :aria-label="'Удар: ' + zone.label"
                 :disabled="row.isLoading"
                 @click="row.udar = zone.value"
-              ) {{ zone.label }}
+              )
+                font-awesome-icon.zone-icon(:icon="zone.icon" aria-hidden="true")
+                span.zone-label {{ zone.label }}
             .pick-group
               span.hint
                 font-awesome-icon(icon='fa fa-shield')
@@ -135,9 +141,12 @@ fetchGames();
                 size="small"
                 type="info"
                 :secondary="zone.value !== row.blok"
+                :aria-label="'Блок: ' + zone.label"
                 :disabled="row.isLoading"
                 @click="row.blok = zone.value"
-              ) {{ zone.label }}
+              )
+                font-awesome-icon.zone-icon(:icon="zone.icon" aria-hidden="true")
+                span.zone-label {{ zone.label }}
             n-button(
               type="primary"
               size="small"
@@ -154,8 +163,10 @@ fetchGames();
 .duel-games {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   min-height: 6rem;
+
+  .record-row { display: block; }
+  .record-row:last-child { border-bottom: 0; }
 
   .duel-empty {
     display: flex;
@@ -229,5 +240,7 @@ fetchGames();
     margin-top: 0.75rem;
     color: #d03050;
   }
+  .zone-icon { margin-right: .35rem; }
+  @media (max-width: 600px) { .zone-label { display: none; } .zone-icon { margin-right: 0; } }
 }
 </style>

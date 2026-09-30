@@ -1,11 +1,18 @@
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
-import type { RecordData } from './portal';
+import { record, type RecordData } from './portal';
 
-export type GameKind = 'orel' | 'saper';
+export type GameKind = 'orel' | 'saper' | 'duel' | 'five';
 export interface GameSummary {
   today: { played: number; wins: number; balance: number; date: string; timezone: string };
   own: { count: number; amount: number };
+}
+export interface GameOverviewSnapshot { summary: GameSummary; recent: RecordData[]; }
+export function overviewSnapshot(value: unknown): GameOverviewSnapshot | null {
+  if (!value || typeof value !== 'object' || !('overview' in value) || !value.overview) return null;
+  const data = object(value.overview);
+  if (!Array.isArray(data.recent)) throw new Error('invalid-response');
+  return { summary: summaryData(data.summary), recent: data.recent.map(record) };
 }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid-response');

@@ -21,6 +21,7 @@ ul.theme-list
     .theme-description
       router-link.record-title(:to="'/forum/read/' + theme.id") {{ field(theme.title) }}
       font-awesome-icon(v-if="theme.is_private" icon="lock" title="Только для участников" aria-label="Только для участников")
+      span.theme-closed(v-if="theme.is_closed") Закрыта
       .theme-preview(v-if="theme.last_comment_text") {{ field(theme.last_comment_text) }}
       .muted.theme-meta
         span(v-if="theme.last_comment_username") Последнее сообщение:
@@ -39,8 +40,9 @@ ul.theme-list
 .theme-list { list-style: none; margin: 0; padding: 0; }
 .record-row:last-child { border-bottom: 0; }
 .theme-description { flex: 1 1 12rem; }
-.theme-author { flex: 0 1 15rem; min-width: 12rem; }
+.theme-author { position: relative; flex: 0 1 15rem; min-width: 12rem; }
 .theme-preview { margin-top: .35rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-closed { margin-left: .5rem; color: var(--text-muted); font-size: .8rem; }
 .theme-meta { display: flex; flex-wrap: wrap; gap: .5rem; font-size: .8rem; margin-top: .3rem; }
 .theme-stats, .theme-stats span { display: flex; align-items: center; gap: .4rem; }
 .theme-stats { gap: 1rem; color: var(--text-muted); font-size: .8rem; }

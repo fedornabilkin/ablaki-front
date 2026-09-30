@@ -1,7 +1,7 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue';
 import { errorText } from '@/services/api/portal';
 
-export function useQuickGames(session: Ref<unknown>, play: (id: number, side: number) => Promise<unknown>, settled: () => Promise<void>) {
+export function useQuickGames(session: Ref<unknown>, play: (id: number, side: number) => Promise<unknown>, settled: () => Promise<void>, completed?: (response: unknown, id: number) => void) {
   const rows = ref<Record<number, { result: 'pending' | 'win' | 'loss' | 'unknown' | 'error'; text: string }>>({});
   const pending = computed(() => Object.values(rows.value).some(row => row.result === 'pending'));
   let generation = 0;
@@ -29,6 +29,7 @@ export function useQuickGames(session: Ref<unknown>, play: (id: number, side: nu
     try {
       const response = await play(id, side);
       if (!isCurrent()) return;
+      completed?.(response, id);
       const game = response && typeof response === 'object' && 'game' in response ? response.game : null;
       const win = game && typeof game === 'object' && 'win' in game ? game.win : null;
       rows.value[id] = typeof win === 'boolean'

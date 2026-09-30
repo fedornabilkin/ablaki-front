@@ -6,7 +6,7 @@ import { isAxiosError } from 'axios';
 import { NAlert, NButton, NCard, useDialog } from 'naive-ui';
 import { startSaper, mutate, field, errorText, type RecordData } from '@/services/api/portal';
 const props = defineProps<{ game: RecordData }>();
-const emit = defineEmits<{ close: []; 'account-change': []; complete: [] }>();
+const emit = defineEmits<{ close: []; 'account-change': []; complete: [response: unknown] }>();
 const dialog = useDialog();
 const store = useStore();
 const row = ref(5);
@@ -18,6 +18,7 @@ const message = ref('');
 const error = ref('');
 const moves = ref<Record<number, number>>({});
 const lostCell = ref<number | null>(null);
+const pendingCell = ref<number | null>(null);
 let disposed = false;
 async function start() {
   if (busy.value || started.value) return;
@@ -37,25 +38,30 @@ async function start() {
 async function play(col: number) {
   if (busy.value || !started.value || complete.value || uncertain.value) return;
   busy.value = true; error.value = '';
+  pendingCell.value = col;
   const revision = store.state.auth.revision;
   try {
-    await mutate('saper/play/' + props.game.id, 'post', { row: row.value, col });
+    const result = await mutate('saper/play/' + props.game.id, 'post', { row: row.value, col });
     if (disposed || revision !== store.state.auth.revision) return;
-    moves.value[row.value] = col;
-    row.value--;
-    if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('account-change'); emit('complete'); }
+    if (result && typeof result === 'object' && 'lost' in result && result.lost === true) {
+      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('complete', result);
+    } else {
+      moves.value[row.value] = col;
+      row.value--;
+      if (row.value === 0) { complete.value = true; message.value = 'Вы прошли поле. Победа!'; emit('complete', result); }
+    }
   } catch (cause) {
     if (disposed || revision !== store.state.auth.revision) return;
     const response = isAxiosError(cause) ? cause.response : undefined;
     // The existing backend signals a confirmed loss with a specific 400 response.
     const lost = response?.status === 400 && ['Game lost', 'Игра проиграна'].includes(response.data?.message);
     if (lost) {
-      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('account-change'); emit('complete');
+      lostCell.value = col; complete.value = true; message.value = 'Мина. Игра проиграна.'; emit('account-change'); emit('complete', null);
     } else {
       error.value = errorText(cause);
       uncertain.value = true;
     }
-  } finally { busy.value = false; }
+  } finally { busy.value = false; pendingCell.value = null; }
 }
 function warnUnload(event: BeforeUnloadEvent) {
   if (busy.value || (started.value && !complete.value)) { event.preventDefault(); event.returnValue = ''; }
@@ -84,7 +90,7 @@ n-card(:title="'Игра №' + game.id")
     .minefield-scroll(role="region" aria-label="Игровое поле, прокрутка по горизонтали" tabindex="0")
       .minefield(role="group" aria-label="Игровое поле")
         template(v-for="r in 5" :key="r")
-          n-button(v-for="col in 7" :key="r + '-' + col" :aria-label="'Ряд ' + r + ', клетка ' + col" :type="moves[r] === col ? 'primary' : 'default'" :disabled="busy || !started || complete || uncertain || row !== r" @click="play(col)")
+          n-button(v-for="col in 7" :key="r + '-' + col" :aria-label="'Ряд ' + r + ', клетка ' + col" :type="lostCell === col && row === r ? 'error' : moves[r] === col ? 'success' : 'default'" :loading="pendingCell === col && row === r" :disabled="busy || !started || complete || uncertain || row !== r" @click="play(col)")
             | {{ moves[r] === col ? '✓' : lostCell === col && row === r ? '×' : '·' }}
     .toolbar
       n-button(v-if="!started && !uncertain" type="primary" :loading="busy" @click="start") Начать за {{ field(game.kon) }} Кг

@@ -25,8 +25,7 @@ onScopeDispose(() => { if (frame) cancelAnimationFrame(frame); });
     .toast-progress(:style="{width: remaining + '%'}")
 </template>
 <style scoped>
-.toast-content { --toast-color: #f59e0b; min-width: 180px; max-width: min(360px, 65vw); }
-.toast-success { --toast-color: #4ade80; }.toast-error { --toast-color: #f87171; }.toast-warning { --toast-color: #fbbf24; }
+.toast-content { --toast-color: var(--primary); min-width: 180px; max-width: min(360px, 65vw); }
 .toast-track { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #ffffff18; overflow: hidden; }
 .toast-progress { height: 3px; background: var(--toast-color); }
 </style>

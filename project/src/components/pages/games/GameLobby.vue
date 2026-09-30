@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInputNumber, NModal, NPopconfirm } from 'naive-ui';
@@ -7,17 +7,15 @@ import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
 import GameStakeFilter from './GameStakeFilter.vue';
-import GameQuickStats from './GameQuickStats.vue';
+import GamePageLayout from './GamePageLayout.vue';
 import SaperBoard from './saper/SaperBoard.vue';
-import RecentGames from './RecentGames.vue';
-import GameHistoryList from './GameHistoryList.vue';
 import GameToolbar from './GameToolbar.vue';
 import SaperSuggestions from './saper/SaperSuggestions.vue';
 import { list, emptyPage, mutate, person, field, date, errorText, type RecordData } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
 import { useQuickGames } from '@/hooks/useQuickGames';
-import { gameSummary, type GameSummary } from '@/services/api/gameOverview';
+import { overviewSnapshot, type GameOverviewSnapshot } from '@/services/api/gameOverview';
 const route = useRoute();
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
@@ -29,10 +27,15 @@ const available = computed(() => person(store.getters['auth/user'])[saper.value 
 const canPlay = (game: RecordData) => Number.isFinite(Number(available.value)) && Number(game.kon) > 0 && Number(available.value) >= Number(game.kon);
 const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
-const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, { ...params.value, q: undefined }), emptyPage(), [kind, mode, page, params, session]);
+const { data, loading, error, refresh } = usePageRequest(async () => {
+  const path = kind.value + (mode.value ? '/' + mode.value : '');
+  return list(path, mode.value ? page.value : 1, {
+    ...params.value, q: undefined, 'per-page': 20,
+    sort: saper.value && !mode.value ? 'created_at' : params.value.sort,
+  });
+}, emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
-const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session]);
-watch(overviewVersion, () => { void refreshSummary(); });
+const snapshot = shallowRef<GameOverviewSnapshot | null>(null);
 const showCreate = ref(false);
 const kon = ref<number | null>(5);
 const count = ref<number | null>(1);
@@ -42,14 +45,25 @@ const notice = ref('');
 const noticeType = ref<'success' | 'warning' | 'info'>('info');
 const selected = ref<RecordData | null>(null);
 const completed = ref(false);
+function removePlayedGame(id: number) {
+  const items = data.value.items.filter(game => game.id !== id);
+  data.value = { ...data.value, items,
+    total: data.value.total === null ? null : Math.max(0, data.value.total - (data.value.items.length - items.length)) };
+}
+function applyPlayedResponse(response: unknown, id: number) {
+  let next: GameOverviewSnapshot | null;
+  try { next = overviewSnapshot(response); }
+  catch { return false; }
+  if (!next) return false;
+  snapshot.value = next;
+  removePlayedGame(id);
+  if (response && typeof response === 'object' && 'gamer' in response && response.gamer) void store.dispatch('auth/setData', response.gamer);
+  return true;
+}
 const { rows: playedRows, submit: submitQuick } = useQuickGames(session,
   (id, hod) => mutate('orel/play/' + id, 'post', { hod }),
-  async () => {
-    const revision = session.value;
-    overviewVersion.value++;
-    try { await store.dispatch('auth/fetchData'); }
-    catch { if (!disposed && session.value === revision) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
-  });
+  async () => {},
+  (response, id) => { if (!applyPlayedResponse(response, id)) { refreshAll(); void accountChange(); } });
 function quickPlay(game: RecordData, hod: number) {
   if ((hod !== 1 && hod !== 2) || saper.value || mode.value || !canPlay(game)) return;
   void submitQuick(game.id, hod);
@@ -59,7 +73,7 @@ watch(() => route.query.create, value => { if (value === '1') showCreate.value =
 watch([kind, mode, session], () => { selected.value = null; showCreate.value = route.query.create === '1'; actionError.value = ''; notice.value = ''; });
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
-const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && kon.value <= 1000000000 && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
+const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && (saper.value || Number.isSafeInteger(kon.value)) && kon.value >= (saper.value ? .01 : 1) && kon.value <= 1000000000 && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
 async function act(path: string, method: 'post' | 'delete', body?: unknown) {
   if (busy.value) return;
   busy.value = true; actionError.value = ''; notice.value = '';
@@ -84,11 +98,16 @@ async function act(path: string, method: 'post' | 'delete', body?: unknown) {
       noticeType.value = 'success';
     }
     showCreate.value = false; selected.value = null;
-    overviewVersion.value++;
-    await refresh();
+    const handled = path.includes('/play/') && applyPlayedResponse(response, Number(path.split('/').at(-1)));
+    if (!handled) {
+      overviewVersion.value++;
+      await refresh();
+    }
     if (!current()) return;
-    try { await store.dispatch('auth/fetchData'); }
-    catch { if (current()) actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей игрой.'; }
+    if (!handled) {
+      try { await store.dispatch('auth/fetchData'); }
+      catch { if (current()) actionError.value = 'Операция выполнена, но счёт не обновился. Обновите профиль перед следующей игрой.'; }
+    }
   } catch (cause) { if (current()) actionError.value = errorText(cause); }
   finally { busy.value = false; }
 }
@@ -98,29 +117,26 @@ function refreshAll() {
 }
 async function accountChange() {
   const revision = session.value;
-  overviewVersion.value++;
-  void refresh();
   try { await store.dispatch('auth/fetchData'); }
   catch { if (!disposed && revision === session.value) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
+}
+function gameCompleted(response: unknown) {
+  completed.value = true;
+  if (!selected.value || !applyPlayedResponse(response, selected.value.id)) refreshAll();
 }
 </script>
 <template lang="pug">
 page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
   game-toolbar(:kind="kind" :busy="busy || (!!selected && !completed)" @create="showCreate = true" @changed="refreshAll")
-.container.page.stack
-  .quick-stats-sticky(:aria-busy="summaryLoading")
-    game-quick-stats(v-if="summary" :summary="summary" :unit="unit" :kind="kind")
-    request-state(v-else :loading="summaryLoading" :error="summaryError" @retry="refreshSummary")
-    n-button(v-if="summary && summaryError" size="tiny" @click="refreshSummary") Повторить обновление статистики
+game-page-layout(:kind="kind" :version="overviewVersion" :snapshot="snapshot")
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
-  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
+  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null" @account-change="accountChange" @complete="gameCompleted")
   saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
-  n-card
+  n-card(:title="mode === 'my' ? 'Мои игры' : 'Доступные игры'")
     game-stake-filter.mb-3(v-model="selectedStake" :kind="kind" :scope="mode === 'my' ? 'my' : 'available'" :version="overviewVersion" :disabled="busy")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
-      game-history-list(v-if="mode === 'history'" :games="data.items" :kind="kind")
-      .record-row(v-for="game in (mode === 'history' ? [] : data.items)" :key="game.id" :class="{ 'played-row': playedRows[game.id] }")
+      .record-row(v-for="game in data.items" :key="game.id" :class="{ 'played-row': playedRows[game.id] }")
         div
           strong Игра №{{ game.id }} · {{ field(game.kon) }} {{ unit }}
           .muted
@@ -138,13 +154,12 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
-    page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
-  recent-games(:key="kind" :kind="kind" :version="overviewVersion")
+    page-pager(v-if="!error && mode === 'my'" v-model:page="page" :result="data" :disabled="loading || busy")
 n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
     n-form-item(:label="'Ставка, ' + unit" :label-props="{ for: 'game-kon' }")
-      n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="0.00001" :input-props="{ id: 'game-kon' , type: 'number', inputmode: 'decimal', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: 0.00001}" v-model:value="kon" :disabled="busy")
+      n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="saper ? 0.00001 : 1" :precision="saper ? 5 : 0" :input-props="{ id: 'game-kon' , type: 'number', inputmode: saper ? 'decimal' : 'numeric', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: saper ? 0.00001 : 1}" v-model:value="kon" :disabled="busy")
     n-form-item(label="Количество игр" :label-props="{ for: 'game-count' }")
       n-input-number(:min="1" :max="100" :step="1" :input-props="{ id: 'game-count' , type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count" :precision="0" :disabled="busy")
     p Итого: {{ kon && count ? kon * count : 0 }} {{ unit }}
@@ -163,7 +178,6 @@ n-modal(:show="!saper && !!selected" preset="card" title="Орёл или реш
 .game-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
 .game-totals > div { display: flex; flex-direction: column; gap: .25rem; }
 .game-totals strong { font-size: clamp(1rem, 3vw, 1.5rem); overflow-wrap: anywhere; }
-.quick-stats-sticky { position: sticky; top: var(--site-header-height, 4rem); z-index: 20; background: var(--bg-base); }
 .game-result { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; color: var(--primary); font-size: .85rem; }.game-result.win { color: #4ade80; }.game-result.loss, .game-result.error { color: #f87171; }
 .coin-side { font-size: 1rem; }
 .coin-side.hollow :deep(path) { fill: none; stroke: currentColor; stroke-width: 35; }

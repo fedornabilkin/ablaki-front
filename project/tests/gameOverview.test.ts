@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { playerOutcome, summaryData, winnerName } from '@/services/api/gameOverview';
+import { overviewSnapshot, playerOutcome, summaryData, winnerName } from '@/services/api/gameOverview';
 
 describe('game outcomes', () => {
   const game = { id: 9, user_id: 1, user_gamer: 2, username: 'creator', username_gamer: 'player', win: true };
@@ -32,5 +32,12 @@ describe('game summary boundary', () => {
     for (const value of [null, {}, { ...summary, today: { ...summary.today, wins: 4 } }, { ...summary, own: { count: 1, amount: -2 } }, { ...summary, today: { ...summary.today, balance: null } }, { ...summary, today: { ...summary.today, played: 1.5 } }]) {
       expect(() => summaryData(value)).toThrow('invalid-response');
     }
+  });
+  it('decodes the overview included in a completed play response', () => {
+    expect(overviewSnapshot({ overview: { summary, recent: [{ id: '9', kon: 5 }] } })).toEqual({
+      summary: summaryData(summary), recent: [{ id: 9, kon: 5 }],
+    });
+    expect(overviewSnapshot({ game: { id: 9 } })).toBeNull();
+    expect(() => overviewSnapshot({ overview: { summary, recent: [{}] } })).toThrow('invalid-response');
   });
 });

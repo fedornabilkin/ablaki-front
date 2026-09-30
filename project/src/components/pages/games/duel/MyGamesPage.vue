@@ -8,20 +8,23 @@ import { duel } from '@/services/api/games/duel.js';
 import { errorHandler } from "@/services/api/errorHandler.js";
 import { zoneName } from './zones.js';
 import GameStakeFilter from '../GameStakeFilter.vue';
+import PagePager from '@/components/PagePager.vue';
 import { useListQuery } from '@/hooks/useListQuery';
+import { list, emptyPage } from '@/services/api/portal';
 
 const props = defineProps({
   reloadListTrigger: { type: Boolean },
 });
 
-const emit = defineEmits(['newGameClick']);
+const emit = defineEmits(['newGameClick', 'changed']);
 
 const notification = useNotification();
 const store = useStore();
 const gamesList = ref([]);
 const isLoading = ref(true);
 const listError = ref('');
-const { filters } = useListQuery({ kon: '' });
+const { page, filters } = useListQuery({ kon: '' });
+const pageData = ref(emptyPage());
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { kon }; } });
 let requestVersion = 0;
 onScopeDispose(() => { requestVersion++; });
@@ -30,10 +33,11 @@ const fetchGames = () => {
   const version = ++requestVersion;
   isLoading.value = true;
   listError.value = '';
-  duel.my(1, selectedStake.value)
+  list('duel/my', page.value, { 'filter[kon]': selectedStake.value || undefined, 'per-page': 20 })
       .then((res) => {
         if (version !== requestVersion) return;
-        gamesList.value = res.list.map((game) => ({
+        pageData.value = res;
+        gamesList.value = res.items.map((game) => ({
           ...game,
           createdDate: moment.unix(game.created_at).format("HH:mm:ss DD.MM.YYYY"),
           isDeleting: false,
@@ -49,6 +53,7 @@ const fetchGames = () => {
 
 watch(() => props.reloadListTrigger, fetchGames);
 watch(selectedStake, fetchGames);
+watch(page, fetchGames);
 watch(() => store.state.auth.revision, () => { gamesList.value = []; fetchGames(); });
 
 const onDelete = (row) => {
@@ -58,6 +63,7 @@ const onDelete = (row) => {
       .then(async () => {
         notification.success({ content: 'Схватка удалена, ставка возвращена', duration: 4500 });
         fetchGames();
+        emit('changed');
         await store.dispatch('auth/fetchData');
       })
       .catch((e) => {
@@ -73,6 +79,7 @@ fetchGames();
 </script>
 
 <template lang="pug">
+n-card(title="Мои игры")
   game-stake-filter.mb-3(v-model="selectedStake" kind="duel" scope="my" :version="gamesList" :disabled="gamesList.some(row => row.isDeleting)")
   p(v-if="listError" role="alert") {{ listError }}
     n-button(text @click="fetchGames") Повторить
@@ -81,7 +88,7 @@ fetchGames();
       .duel-empty(v-if="!isLoading && !gamesList.length")
         span У тебя нет открытых схваток.
         n-button(text type="primary" @click="emit('newGameClick')") Создать
-      n-card.game-card(v-for="row in gamesList" :key="row.id" :bordered="true")
+      article.record-row(v-for="row in gamesList" :key="row.id")
         .game-row
           .game-info
             .game-user
@@ -104,14 +111,17 @@ fetchGames();
             template(#icon)
               font-awesome-icon(icon='fa fa-trash-alt')
             | Удалить
+  page-pager(v-if="!listError" v-model:page="page" :result="pageData" :disabled="isLoading")
 </template>
 
 <style lang="scss" scoped>
 .duel-games {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   min-height: 6rem;
+
+  .record-row { display: block; }
+  .record-row:last-child { border-bottom: 0; }
 
   .duel-empty {
     display: flex;

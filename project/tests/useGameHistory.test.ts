@@ -52,7 +52,7 @@ describe('history period and grouped stakes', () => {
     session.value++; await flush();
     expect(state.kons.data.value).toEqual([]); expect(state.history.data.value.items).toEqual([]);
   });
-  it('always requests five recent games without filters or a grouping request and retries failures', async () => {
+  it('requests five recent games without filters or a grouping request and retries failures', async () => {
     context.route.query = { period: 'week', page: '3', recent_period: 'yesterday', recent_kon: '5' };
     context.get.mockRejectedValueOnce(new Error('offline'));
     const state = scope.run(() => useGameHistory(ref('saper'), 'recent', ref(0), ref(1)))!;
