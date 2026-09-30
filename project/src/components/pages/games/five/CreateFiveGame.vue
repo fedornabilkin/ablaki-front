@@ -14,6 +14,7 @@ const konList = [10, 20, 50, 100, 200, 500];
 const balls = [1, 2, 3, 4, 5];
 
 const kon = ref(10);
+const count = ref(1);
 const ball = ref(3);
 const isLoading = ref(false);
 const notification = useNotification();
@@ -23,11 +24,11 @@ const closeDialog = () => {
 };
 
 const createGame = () => {
-  if (isLoading.value || !Number.isFinite(kon.value) || kon.value < 1 || kon.value > 1000000000) return;
+  if (isLoading.value || !Number.isSafeInteger(kon.value) || kon.value < 1 || kon.value > 1000000000 || !Number.isSafeInteger(count.value) || count.value < 1 || count.value > 100) return;
   isLoading.value = true;
-  five.create(kon.value, ball.value)
+  five.create(kon.value, ball.value, count.value)
       .then(() => {
-        notification.success({ content: 'Партия создана', duration: 4500 });
+        notification.success({ content: count.value === 1 ? 'Партия создана' : `Создано партий: ${count.value}`, duration: 4500 });
         emit('gameCreated');
         emit('close');
       })
@@ -49,12 +50,17 @@ const createGame = () => {
       .row
         .col-sm.label Ставка (банк — две ставки)
         .col-sm-auto
-          n-input-number(:min="1" :max="1000000000" :step="0.00001" :input-props="{type: 'number', inputmode: 'decimal', min: 1, max: 1000000000, step: 0.00001}" v-model:value="kon")
+          n-input-number(:min="1" :max="1000000000" :step="1" :precision="0" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 1000000000, step: 1}" v-model:value="kon")
       .fast-kon.mt-2
         n-button(v-for="btn in konList" :key="btn" type="info" size="small" :disabled="btn === kon" @click="kon = btn") {{ btn }}
 
-      .label.mt-4 Твой первый ход — соперник его не увидит:
-      .balls.mt-2
+      .row.mt-3
+        .col-sm.label Количество игр
+        .col-sm-auto
+          n-input-number(:min="1" :max="100" :step="1" :precision="0" :input-props="{ type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1 }" v-model:value="count")
+
+      .label.mt-4 {{ count === 1 ? 'Твой первый ход — соперник его не увидит:' : 'Первый ход каждой партии будет случайным.' }}
+      .balls.mt-2(v-if="count === 1")
         n-button(
           v-for="b in balls"
           :key="b"

@@ -106,6 +106,7 @@ const columns = [
       :konList="[1,2,3,5,7,10]"
       :kon="1"
       :apiService="apiService"
+      saper
       @close="dialogCreate=false"
     )
 

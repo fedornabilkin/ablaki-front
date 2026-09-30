@@ -14,6 +14,7 @@ const emit = defineEmits(['close', 'gameCreated']);
 const konList = [10, 20, 50, 100, 200, 500];
 
 const kon = ref(10);
+const count = ref(1);
 const udar = ref(null);
 const blok = ref(null);
 const isLoading = ref(false);
@@ -24,11 +25,11 @@ const closeDialog = () => {
 };
 
 const createGame = () => {
-  if (isLoading.value || !Number.isFinite(kon.value) || kon.value < 1 || kon.value > 1000000000 || !udar.value || !blok.value) return;
+  if (isLoading.value || !Number.isSafeInteger(kon.value) || kon.value < 1 || kon.value > 1000000000 || !Number.isSafeInteger(count.value) || count.value < 1 || count.value > 100 || (count.value === 1 && (!udar.value || !blok.value))) return;
   isLoading.value = true;
-  duel.create(kon.value, udar.value, blok.value)
+  duel.create(kon.value, count.value === 1 ? udar.value : 1, count.value === 1 ? blok.value : 1, count.value)
       .then(() => {
-        notification.success({ content: 'Схватка создана', duration: 4500 });
+        notification.success({ content: count.value === 1 ? 'Схватка создана' : `Создано схваток: ${count.value}`, duration: 4500 });
         emit('gameCreated');
         emit('close');
       })
@@ -50,37 +51,49 @@ const createGame = () => {
       .row
         .col-sm.label Ставка (банк — две ставки)
         .col-sm-auto
-          n-input-number(:min="1" :max="1000000000" :step="0.00001" :input-props="{type: 'number', inputmode: 'decimal', min: 1, max: 1000000000, step: 0.00001}" v-model:value="kon")
+          n-input-number(:min="1" :max="1000000000" :step="1" :precision="0" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 1000000000, step: 1}" v-model:value="kon")
       .fast-kon.mt-2
         n-button(v-for="btn in konList" :key="btn" type="info" size="small" :disabled="btn === kon" @click="kon = btn") {{ btn }}
 
-      .label.mt-4
+      .row.mt-3
+        .col-sm.label Количество игр
+        .col-sm-auto
+          n-input-number(:min="1" :max="100" :step="1" :precision="0" :input-props="{ type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1 }" v-model:value="count")
+      p.hint(v-if="count > 1") Удар и блок каждой схватки будут выбраны случайно.
+
+      .label.mt-4(v-if="count === 1")
         font-awesome-icon(icon='fa fa-crosshairs')
         |  Удар по противнику:
-      .zones.mt-2
+      .zones.mt-2(v-if="count === 1")
         n-button(
           v-for="zone in ZONES"
           :key="zone.value"
           type="error"
           :secondary="zone.value !== udar"
+          :aria-label="'Удар: ' + zone.label"
           @click="udar = zone.value"
-        ) {{ zone.label }}
+        )
+          font-awesome-icon.zone-icon(:icon="zone.icon" aria-hidden="true")
+          span.zone-label {{ zone.label }}
 
-      .label.mt-3
+      .label.mt-3(v-if="count === 1")
         font-awesome-icon(icon='fa fa-shield')
         |  Блок для себя:
-      .zones.mt-2
+      .zones.mt-2(v-if="count === 1")
         n-button(
           v-for="zone in ZONES"
           :key="zone.value"
           type="info"
           :secondary="zone.value !== blok"
+          :aria-label="'Блок: ' + zone.label"
           @click="blok = zone.value"
-        ) {{ zone.label }}
+        )
+          font-awesome-icon.zone-icon(:icon="zone.icon" aria-hidden="true")
+          span.zone-label {{ zone.label }}
 
-      .hint.mt-2 Соперник не увидит твой выбор до розыгрыша.
+      .hint.mt-2(v-if="count === 1") Соперник не увидит твой выбор до розыгрыша.
       .mt-3
-        n-button(type="primary" :disabled="!udar || !blok" :loading="isLoading" @click="createGame") Создать
+        n-button(type="primary" :disabled="count === 1 && (!udar || !blok)" :loading="isLoading" @click="createGame") Создать
 </template>
 
 <style lang="scss" scoped>
@@ -107,5 +120,7 @@ const createGame = () => {
     color: var(--text-muted);
     font-size: 0.85rem;
   }
+  .zone-icon { margin-right: .35rem; }
+  @media (max-width: 600px) { .zone-label { display: none; } .zone-icon { margin-right: 0; } }
 }
 </style>

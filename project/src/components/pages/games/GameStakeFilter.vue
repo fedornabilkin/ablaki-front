@@ -19,11 +19,12 @@ watch(request.data, rows => {
   stakes.value = [...stakes.value.map(row => ({ ...row, count: counts.get(Number(row.kon))?.count ?? 0 })), ...rows.filter(row => !known.has(Number(row.kon)))];
 }, { immediate: true });
 const unit = computed(() => props.kind === 'saper' ? 'Кг' : 'Cr');
+const hasGames = computed(() => stakes.value.some(item => item.count > 0));
 const missingSelected = computed(() => props.modelValue && !stakes.value.some(item => Number(item.kon) === Number(props.modelValue)));
 </script>
 <template lang="pug">
 .stake-filter(role="group" aria-label="Фильтр по ставке" :aria-busy="request.loading.value")
-  n-button(size="small" :type="!modelValue ? 'primary' : 'default'" :aria-pressed="!modelValue" :disabled="disabled" @click="emit('update:modelValue', '')") Все
+  n-button(v-if="hasGames" size="small" :type="!modelValue ? 'primary' : 'default'" :aria-pressed="!modelValue" :disabled="disabled" @click="emit('update:modelValue', '')") Все
   n-button(v-for="item in stakes" :key="Number(item.kon)" size="small" :type="Number(modelValue) === Number(item.kon) ? 'primary' : 'default'" :aria-pressed="Number(modelValue) === Number(item.kon)" :title="Number(item.kon) + ' ' + unit + ' × ' + item.count + ' игр'" :disabled="disabled" @click="emit('update:modelValue', item.kon)") {{ Number(item.kon) }}х{{ item.count }}
   n-button(v-if="missingSelected" size="small" type="primary" aria-pressed="true" :disabled="disabled" @click="emit('update:modelValue', '')") {{ modelValue }}х0
   n-button(v-if="request.error.value" size="small" @click="request.refresh") Повторить загрузку ставок

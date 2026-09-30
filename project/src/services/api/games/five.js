@@ -59,12 +59,12 @@ export const five = {
         });
     },
 
-    create: async (kon, ball) => {
+    create: async (kon, ball, count = 1) => {
         if (isStatMockMode()) {
             return fiveMock.create(kon, ball);
         }
         return new Promise((resolve, reject) => {
-            axios.post(`${baseUrlFive}`, {kon, ball}).then(res => {
+            axios.post(`${baseUrlFive}`, {kon, ball, count}).then(res => {
                 if (!(res.data?.errors ?? null)) {
                     resolve(res.data);
                 } else {

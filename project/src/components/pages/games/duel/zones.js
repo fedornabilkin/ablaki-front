@@ -1,8 +1,8 @@
 // зоны дуэли — те же коды, что на бэке
 export const ZONES = [
-    { value: 1, label: 'Голова' },
-    { value: 2, label: 'Корпус' },
-    { value: 3, label: 'Ноги' },
+    { value: 1, label: 'Голова', icon: 'user' },
+    { value: 2, label: 'Корпус', icon: 'shirt' },
+    { value: 3, label: 'Ноги', icon: 'shoe-prints' },
 ];
 
 export const zoneName = (value) => {

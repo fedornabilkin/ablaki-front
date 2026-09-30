@@ -29,7 +29,15 @@ const available = computed(() => person(store.getters['auth/user'])[saper.value 
 const canPlay = (game: RecordData) => Number.isFinite(Number(available.value)) && Number(game.kon) > 0 && Number(available.value) >= Number(game.kon);
 const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
-const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, { ...params.value, q: undefined }), emptyPage(), [kind, mode, page, params, session]);
+const { data, loading, error, refresh } = usePageRequest(async () => {
+  const path = kind.value + (mode.value ? '/' + mode.value : '');
+  if (!saper.value || mode.value) return list(path, page.value, { ...params.value, q: undefined });
+  const query = { ...params.value, q: undefined, 'per-page': 100, sort: 'created_at' };
+  const first = await list(path, 1, query);
+  const count = first.pageCount ?? Math.ceil((first.total ?? first.items.length) / first.pageSize);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, count - 1) }, (_, index) => list(path, index + 2, query)));
+  return { ...first, items: [first, ...rest].flatMap(result => result.items).sort((a, b) => Number(a.created_at) - Number(b.created_at) || a.id - b.id) };
+}, emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
 const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session]);
 watch(overviewVersion, () => { void refreshSummary(); });
@@ -59,7 +67,7 @@ watch(() => route.query.create, value => { if (value === '1') showCreate.value =
 watch([kind, mode, session], () => { selected.value = null; showCreate.value = route.query.create === '1'; actionError.value = ''; notice.value = ''; });
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
-const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && kon.value >= (saper.value ? .01 : 1) && kon.value <= 1000000000 && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
+const validCreate = computed(() => kon.value !== null && Number.isFinite(kon.value) && (saper.value || Number.isSafeInteger(kon.value)) && kon.value >= (saper.value ? .01 : 1) && kon.value <= 1000000000 && count.value !== null && Number.isInteger(count.value) && count.value >= 1 && count.value <= 100 && kon.value * count.value <= Number(available.value));
 async function act(path: string, method: 'post' | 'delete', body?: unknown) {
   if (busy.value) return;
   busy.value = true; actionError.value = ''; notice.value = '';
@@ -98,10 +106,13 @@ function refreshAll() {
 }
 async function accountChange() {
   const revision = session.value;
-  overviewVersion.value++;
-  void refresh();
   try { await store.dispatch('auth/fetchData'); }
   catch { if (!disposed && revision === session.value) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
+}
+function gameCompleted() {
+  completed.value = true;
+  overviewVersion.value++;
+  void refresh();
 }
 </script>
 <template lang="pug">
@@ -114,7 +125,7 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
     n-button(v-if="summary && summaryError" size="tiny" @click="refreshSummary") Повторить обновление статистики
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
-  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
+  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="gameCompleted")
   saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
   n-card
     game-stake-filter.mb-3(v-model="selectedStake" :kind="kind" :scope="mode === 'my' ? 'my' : 'available'" :version="overviewVersion" :disabled="busy")
@@ -138,13 +149,13 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
-    page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
+    page-pager(v-if="!error && (!saper || !!mode)" v-model:page="page" :result="data" :disabled="loading || busy")
   recent-games(:key="kind" :kind="kind" :version="overviewVersion")
 n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
     n-form-item(:label="'Ставка, ' + unit" :label-props="{ for: 'game-kon' }")
-      n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="0.00001" :input-props="{ id: 'game-kon' , type: 'number', inputmode: 'decimal', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: 0.00001}" v-model:value="kon" :disabled="busy")
+      n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="saper ? 0.00001 : 1" :precision="saper ? 5 : 0" :input-props="{ id: 'game-kon' , type: 'number', inputmode: saper ? 'decimal' : 'numeric', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: saper ? 0.00001 : 1}" v-model:value="kon" :disabled="busy")
     n-form-item(label="Количество игр" :label-props="{ for: 'game-count' }")
       n-input-number(:min="1" :max="100" :step="1" :input-props="{ id: 'game-count' , type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count" :precision="0" :disabled="busy")
     p Итого: {{ kon && count ? kon * count : 0 }} {{ unit }}

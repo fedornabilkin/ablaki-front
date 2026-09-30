@@ -51,6 +51,7 @@ page-header(:page-title="login")
             strong {{ field(person(data).forum_credits_sent) }}
             span Передано кредитов на форуме
       .pre-wrap(v-if="!editing") {{ person(data).description || 'Участник пока ничего не рассказал о себе.' }}
+      p.muted(v-if="own && person(data).description && !person(data).description_approved") Описание ожидает утверждения администратором и пока видно только вам.
       n-button.mt-3(v-if="own && !editing" @click="edit") Редактировать описание
       n-form.mt-3(v-if="own && editing" @submit.prevent="save")
         n-form-item(label="О себе" :label-props="{ for: 'description' }")

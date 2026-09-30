@@ -181,7 +181,7 @@ watch(() => props.state, cancel);
 @media(max-width: 850px) {
   .craft-inventory { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
   .inventory-scroll :deep(.inventory-grid) { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
-  .chest-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .chest-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
   .inventory-details { position: sticky; top: calc(var(--site-header-height, 60px) + 8px); }
   .chest-panel { order: -1; }.selected-item, .chest-panel { padding: .4rem; gap: .5rem; }
   .durability-label { display: none; }.chest-header { font-size: .75rem; gap: .3rem; margin: 0; }
