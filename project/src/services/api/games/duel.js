@@ -59,12 +59,12 @@ export const duel = {
         });
     },
 
-    create: async (kon, u1, b1) => {
+    create: async (kon, u1, b1, count = 1) => {
         if (isStatMockMode()) {
             return duelMock.create(kon, u1, b1);
         }
         return new Promise((resolve, reject) => {
-            axios.post(`${baseUrlDuel}`, {kon, u1, b1}).then(res => {
+            axios.post(`${baseUrlDuel}`, {kon, u1, b1, count}).then(res => {
                 if (!(res.data?.errors ?? null)) {
                     resolve(res.data);
                 } else {

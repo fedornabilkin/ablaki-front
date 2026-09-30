@@ -13,9 +13,9 @@ defineProps<{ pageTitle: string; extraLinks?: { link: string; title: string; ico
     slot
 </template>
 <style scoped lang="scss">
-.page-header { margin-top: 1.25rem; padding: 1.125rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: .5rem; }
+.page-header { position: relative; margin-top: 1.25rem; padding: 1.125rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: .5rem; }
 .page-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2rem); }
+h1 { margin: 0; padding-right: 2.5rem; font-size: clamp(1.5rem, 4vw, 2rem); }
 .tab-links { display: flex; flex-wrap: wrap; gap: .375rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; min-width: 0; }
 .actions :deep(a) { display: inline-flex; align-items: center; min-height: 2.75rem; }

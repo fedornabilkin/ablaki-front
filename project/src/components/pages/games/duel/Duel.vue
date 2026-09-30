@@ -33,24 +33,5 @@ const onGameCreated = () => {
     game-toolbar(kind="duel" @create="dialogCreate = true" @changed="onGameCreated")
   create-duel-game(:isOpen='dialogCreate' @gameCreated='onGameCreated' @close='closeDialogCreate')
   .container
-    .duel-rules
-      font-awesome-icon(icon='fa fa-crosshairs')
-      | Выбери удар по противнику и блок для себя: голова, корпус или ноги. Удар проходит, если противник не закрыл эту зону. Попал только один — он забирает банк (две ставки). Попали оба или оба удара в блок — ничья, ставки возвращаются.
     router-view(@newGameClick='openDialogCreate' :reloadListTrigger='reloadListTrigger')
 </template>
-
-<style lang="scss" scoped>
-.duel-rules {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin: 1rem 0;
-  color: var(--text-muted);
-  line-height: 1.5;
-
-  svg {
-    color: var(--primary);
-    flex-shrink: 0;
-  }
-}
-</style>

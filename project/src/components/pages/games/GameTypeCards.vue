@@ -25,7 +25,8 @@ const gameKind = (path: string) => path.split('/').pop() as HistoryGameKind;
 .game-link:focus-visible { outline: none; }
 .game-link:focus-visible::after { outline: 2px solid var(--primary); outline-offset: 3px; }
 .game-card { height: 100%; position: relative; }
-.cards.with-recent { grid-template-columns: 1fr; }
+.cards.with-recent { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .game-layout.with-recent { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: center; gap: 1.5rem; }
+@media (max-width: 70rem) { .cards.with-recent { grid-template-columns: 1fr; } }
 @media (max-width: 40rem) { .game-layout.with-recent { grid-template-columns: 1fr; gap: .75rem; } }
 </style>

@@ -50,7 +50,7 @@ export function useFiveGame(session: Ref<number>, refreshAccount: () => Promise<
     } catch (cause) { if (!disposed && current === revision) error.value = errorText(cause); }
     finally { if (!disposed && current === revision) { busy.value = false; schedule(); } }
   }
-  const create = (kon: number, ball: number) => command(() => createFive(kon, ball), 'Игра создана. Ставка зарезервирована.');
+  const create = (kon: number, ball: number, count = 1) => command(() => createFive(kon, ball, count), count === 1 ? 'Игра создана. Ставка зарезервирована.' : `Создано игр: ${count}. Ставки зарезервированы.`);
   const move = (ball: number) => { const current = game.value; return current ? command(() => moveFive(current, ball), 'Ход принят.') : Promise.resolve(); };
   const cancel = () => { const current = game.value; return current ? command(async () => { await cancelFive(current.id); return null; }, 'Игра отменена. Ставка возвращена.') : Promise.resolve(); };
   watch(session, () => { close(); busy.value = false; notice.value = ''; });

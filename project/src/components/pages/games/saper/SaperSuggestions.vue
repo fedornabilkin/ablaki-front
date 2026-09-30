@@ -18,5 +18,5 @@ const options = usePageRequest(async () => Promise.all(stakes.value.map(async st
   request-state(:loading="options.loading.value" :error="options.error.value" @retry="options.refresh")
     .toolbar
       n-button(v-for="option in options.data.value" :key="option.stake" :disabled="!option.game || balance < option.stake" @click="option.game && $emit('select', option.game)")
-        | {{ option.stake }} Кг{{ !option.game ? ' · нет игр' : balance < option.stake ? ' · недостаточно средств' : '' }}
+        | {{ option.stake }} Кг
 </template>
