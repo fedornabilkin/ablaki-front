@@ -75,12 +75,20 @@ page-header(page-title="Форум")
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
 n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :style="{ width: 'min(35rem, calc(100vw - 2rem))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
   n-form(@submit.prevent="create")
-    n-form-item(label="Заголовок" :label-props="{ for: 'theme-title' }")
-      n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
-    n-form-item(label="Только для участников")
-      n-switch(v-model:value="isPrivate" :disabled="saving || !!createdThemeId" aria-label="Скрыть тему и сообщения от гостей")
+    .theme-title-row
+      n-form-item.theme-title-field(label="Заголовок" :label-props="{ for: 'theme-title' }")
+        n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
+      label.theme-private-field
+        n-switch(v-model:value="isPrivate" :disabled="saving || !!createdThemeId" aria-label="Скрыть тему и сообщения от гостей")
+        span Только для участников
     message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" :submit-disabled="!title.trim()" submit-label="Опубликовать" placeholder="Начните обсуждение" @submit="create")
     n-alert(v-if="messageDraft.storageError.value || titleDraft.storageError.value" type="warning") {{ messageDraft.storageError.value || titleDraft.storageError.value }}
     n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}
     p(v-if="createdThemeId") Тема уже создана. Повторная отправка добавит только сообщение.
 </template>
+<style scoped>
+.theme-title-row { display: flex; align-items: end; gap: .75rem; flex-wrap: wrap; }
+.theme-title-field { flex: 1 1 13rem; min-width: 0; }
+.theme-private-field { display: flex; align-items: center; gap: .4rem; min-height: 2.4rem; margin-bottom: 1.5rem; white-space: nowrap; }
+@media (max-width: 520px) { .theme-private-field { margin-bottom: .75rem; } }
+</style>

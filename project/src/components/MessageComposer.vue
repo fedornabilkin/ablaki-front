@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
 import { NButton, NAlert } from 'naive-ui';
 import { useDictation } from '@/hooks/useDictation';
 import { submitShortcut } from '@/services/submitShortcut';
 const props = withDefaults(defineProps<{ modelValue: string; disabled?: boolean; submitDisabled?: boolean; submitLabel?: string; id: string; label?: string; placeholder?: string; maxlength?: number }>(), { maxlength: 3000, placeholder: 'Напишите сообщение', submitLabel: 'Отправить' });
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void; (event: 'submit'): void }>();
+const inputElement = ref<HTMLTextAreaElement | null>(null);
+defineExpose({ focus: () => inputElement.value?.focus() });
 const voice = useDictation(text => {
   if (!props.disabled) emit('update:modelValue', (props.modelValue + (props.modelValue && !/\s$/.test(props.modelValue) ? ' ' : '') + text).slice(0, props.maxlength));
 });
@@ -17,7 +19,7 @@ function input(event: Event) { emit('update:modelValue', (event.target as HTMLTe
   .composer-heading
     label(v-if="label" :for="id") {{ label }}
     small.character-limit.muted(:id="id + '-limit'" :aria-label="'Символов: ' + modelValue.length + ' из ' + maxlength") {{ modelValue.length }} / {{ maxlength }}
-  textarea.composer-input(:id="id" :value="modelValue" @input="input" :maxlength="maxlength" rows="5" :disabled="disabled" :placeholder="placeholder" :aria-label="placeholder" :aria-describedby="id + '-limit'" @keydown="submitShortcut($event, submit)")
+  textarea.composer-input(ref="inputElement" :id="id" :value="modelValue" @input="input" :maxlength="maxlength" rows="5" :disabled="disabled" :placeholder="placeholder" :aria-label="placeholder" :aria-describedby="id + '-limit'" @keydown="submitShortcut($event, submit)")
   .composer-tools
     n-button(size="small" type="primary" :loading="disabled" :disabled="disabled || submitDisabled || !modelValue.trim()" @click="submit") {{ submitLabel }}
     small.muted(title="Ctrl+Enter — отправить") Ctrl+Enter

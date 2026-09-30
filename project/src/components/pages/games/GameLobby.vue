@@ -29,7 +29,15 @@ const available = computed(() => person(store.getters['auth/user'])[saper.value 
 const canPlay = (game: RecordData) => Number.isFinite(Number(available.value)) && Number(game.kon) > 0 && Number(available.value) >= Number(game.kon);
 const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
-const { data, loading, error, refresh } = usePageRequest(() => list(kind.value + (mode.value ? '/' + mode.value : ''), page.value, { ...params.value, q: undefined }), emptyPage(), [kind, mode, page, params, session]);
+const { data, loading, error, refresh } = usePageRequest(async () => {
+  const path = kind.value + (mode.value ? '/' + mode.value : '');
+  if (!saper.value || mode.value) return list(path, page.value, { ...params.value, q: undefined });
+  const query = { ...params.value, q: undefined, 'per-page': 100, sort: 'created_at' };
+  const first = await list(path, 1, query);
+  const count = first.pageCount ?? Math.ceil((first.total ?? first.items.length) / first.pageSize);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, count - 1) }, (_, index) => list(path, index + 2, query)));
+  return { ...first, items: [first, ...rest].flatMap(result => result.items).sort((a, b) => Number(a.created_at) - Number(b.created_at) || a.id - b.id) };
+}, emptyPage(), [kind, mode, page, params, session]);
 const overviewVersion = ref(0);
 const { data: summary, loading: summaryLoading, error: summaryError, refresh: refreshSummary } = usePageRequest<GameSummary | null>(() => gameSummary(kind.value), null, [kind, session]);
 watch(overviewVersion, () => { void refreshSummary(); });
@@ -98,10 +106,13 @@ function refreshAll() {
 }
 async function accountChange() {
   const revision = session.value;
-  overviewVersion.value++;
-  void refresh();
   try { await store.dispatch('auth/fetchData'); }
   catch { if (!disposed && revision === session.value) actionError.value = 'Не удалось обновить счёт. Обновите профиль.'; }
+}
+function gameCompleted() {
+  completed.value = true;
+  overviewVersion.value++;
+  void refresh();
 }
 </script>
 <template lang="pug">
@@ -114,7 +125,7 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
     n-button(v-if="summary && summaryError" size="tiny" @click="refreshSummary") Повторить обновление статистики
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" :type="noticeType") {{ notice }}
-  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="completed = true")
+  saper-board(v-if="saper && selected" :key="selected.id" :game="selected" @close="selected = null; refreshAll()" @account-change="accountChange" @complete="gameCompleted")
   saper-suggestions(v-if="saper && selected && completed" :key="selected.id" :stake="Number(selected.kon)" :balance="Number(available)" :session="session" @select="selected = $event")
   n-card
     game-stake-filter.mb-3(v-model="selectedStake" :kind="kind" :scope="mode === 'my' ? 'my' : 'available'" :version="overviewVersion" :disabled="busy")
@@ -138,7 +149,7 @@ page-header(:page-title="saper ? 'Сапёр' : 'Орлянка'")
             n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
-    page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy")
+    page-pager(v-if="!error && (!saper || !!mode)" v-model:page="page" :result="data" :disabled="loading || busy")
   recent-games(:key="kind" :kind="kind" :version="overviewVersion")
 n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")

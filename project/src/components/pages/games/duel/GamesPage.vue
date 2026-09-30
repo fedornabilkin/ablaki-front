@@ -23,6 +23,7 @@ const isLoading = ref(true);
 const listError = ref('');
 const { filters } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { kon }; } });
+const randomZone = () => ZONES[Math.floor(Math.random() * ZONES.length)].value;
 let requestVersion = 0;
 onScopeDispose(() => { requestVersion++; });
 
@@ -36,8 +37,8 @@ const fetchGames = () => {
         gamesList.value = games.map((game) => ({
           ...game,
           createdDate: moment.unix(game.created_at).format("HH:mm:ss DD.MM.YYYY"),
-          udar: null,
-          blok: null,
+          udar: randomZone(),
+          blok: randomZone(),
           isLoading: false,
           result: null,
           error: null,

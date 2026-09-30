@@ -6,7 +6,7 @@ import { usePageRequest } from '@/hooks/usePageRequest';
 import { list, type RecordData } from '@/services/api/portal';
 const props = defineProps<{ stake: number; balance: number; session: number }>();
 defineEmits<{ select: [game: RecordData] }>();
-const stakes = computed(() => [1, 2, 4].map(multiplier => Math.round(props.stake * multiplier * 100) / 100));
+const stakes = computed(() => [1, 2, 4].map(multiplier => Math.round(props.stake * multiplier * 100000) / 100000));
 const options = usePageRequest(async () => Promise.all(stakes.value.map(async stake => {
   const page = await list('saper', 1, { 'filter[kon]': stake, 'per-page': 1 });
   return { stake, game: page.items[0] ?? null };
