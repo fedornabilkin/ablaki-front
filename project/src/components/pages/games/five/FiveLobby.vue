@@ -10,6 +10,7 @@ import GameStakeFilter from '../GameStakeFilter.vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import FiveBoard from './FiveBoard.vue';
 import GameToolbar from '../GameToolbar.vue';
+import GamePageLayout from '../GamePageLayout.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useFiveGame } from '@/hooks/useFiveGame';
@@ -28,10 +29,12 @@ const mine = computed(() => route.path.endsWith('/my'));
 const { page, filters, params } = useListQuery({ kon: '' });
 const selectedStake = computed({ get: () => filters.value.kon, set: kon => { filters.value = { ...filters.value, kon }; } });
 const games = usePageRequest(async () => {
-  const result = await list(mine.value ? 'five/my' : 'five', page.value, { ...params.value, q: undefined });
+  const result = await list(mine.value ? 'five/my' : 'five', mine.value ? page.value : 1, { ...params.value, q: undefined, 'per-page': 20 });
   return { ...result, items: result.items.map(fiveGame) };
 }, emptyPage(), [mine, page, params, session]);
 const play = useFiveGame(session, () => store.dispatch('auth/fetchData'), games.refresh);
+const overviewVersion = ref(0);
+watch([games.data, play.game], () => { overviewVersion.value++; });
 const showCreate = ref(false);
 const deleting = ref(false);
 const deleteError = ref('');
@@ -64,7 +67,7 @@ async function create() {
 <template lang="pug">
 page-header(page-title="5 яблок")
   game-toolbar(kind="five" :busy="play.busy.value || deleting" @create="showCreate = true" @changed="games.refresh(); play.close()")
-.container.page.stack
+game-page-layout(kind="five" :version="overviewVersion")
   n-alert(v-if="play.error.value" type="error" title="Не удалось обновить игру") {{ play.error.value }} Обновите состояние перед следующим ходом.
   n-alert(v-if="play.notice.value" type="info") {{ play.notice.value }}
   n-alert(v-if="deleteError" type="error") {{ deleteError }}
@@ -86,7 +89,7 @@ page-header(page-title="5 яблок")
             template(#trigger)
               n-button(:disabled="deleting || play.busy.value") Удалить
             | Удалить игру №{{ game.id }} и вернуть ставку?
-      page-pager(v-if="!games.error.value" v-model:page="page" :result="games.data.value" :disabled="games.loading.value")
+      page-pager(v-if="mine && !games.error.value" v-model:page="page" :result="games.data.value" :disabled="games.loading.value")
 n-modal(:show="showCreate" preset="card" title="Новая игра «5 яблок»" style="width: min(500px, 95vw)" :mask-closable="!play.busy.value" :closable="!play.busy.value" @update:show="value => { if (!play.busy.value) showCreate = value; }")
   .stack
     label Ставка (Cr)
