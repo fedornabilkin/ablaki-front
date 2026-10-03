@@ -1,4 +1,5 @@
 <script setup>
+import { formatCredits } from '@/entities/world/credits';
 import { useToasts } from '@/hooks/useToasts';
 import {onMounted, ref, computed, watch} from 'vue';
 import {useStore} from 'vuex';
@@ -29,7 +30,7 @@ const onBuy = async (item) => {
     const q = getQty(item.id);
     await craft.buyMaterial(item.id, q);
     if (craft.lastPurchase) {
-        message.success(`Куплено ${craft.lastPurchase.qty}× ${craft.lastPurchase.item.name} за ${craft.lastPurchase.cost} Cr`);
+        message.success(`Куплено ${craft.lastPurchase.qty}× ${craft.lastPurchase.item.name} за ${formatCredits(craft.lastPurchase.cost)} Cr`);
         craft.clearResult();
         qtys.value[item.id] = 1;
     } else if (craft.lastError) {
@@ -53,7 +54,7 @@ onMounted(async () => {
             </h5>
             <div class="shop-balance">
                 <font-awesome-icon icon="fa fa-coins"/>
-                <span class="shop-balance-value">{{ balance }}</span>
+                <span class="shop-balance-value">{{ formatCredits(balance) }}</span>
                 <span class="shop-balance-cur">Cr</span>
             </div>
         </header>
@@ -91,7 +92,7 @@ onMounted(async () => {
                     <div class="shop-card-actions">
                         <div class="shop-price">
                             <font-awesome-icon icon="fa fa-coins"/>
-                            <span>{{ item.price_credits }} Cr</span>
+                            <span>{{ formatCredits(item.price_credits) }} Cr</span>
                             <span class="shop-price-each">/ шт.</span>
                         </div>
                         <div class="shop-buy-row">
@@ -116,7 +117,7 @@ onMounted(async () => {
                                 <template #icon>
                                     <font-awesome-icon icon="fa fa-bag-shopping"/>
                                 </template>
-                                {{ canAfford(item) ? `Купить за ${totalCost(item)} Cr` : 'Не хватает' }}
+                                {{ canAfford(item) ? `Купить за ${formatCredits(totalCost(item))} Cr` : 'Не хватает' }}
                             </n-button>
                         </div>
                     </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInputNumber, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -43,10 +44,10 @@ section.equipment-expansion
   template(v-else-if="state")
     p(v-if="!state.supported") Условия покупки этого помещения не предусматривают дополнительные места.
     template(v-else-if="state.expansion")
-      p Доступно {{ state.expansion.unlocked }} из {{ state.expansion.limit }} мест; {{ state.expansion.initial }} включено в покупку. Свободный бюджет комнаты: {{ state.available }} Cr.
+      p Доступно {{ state.expansion.unlocked }} из {{ state.expansion.limit }} мест; {{ state.expansion.initial }} включено в покупку. Свободный бюджет комнаты: {{ formatCredits(state.available) }} Cr.
       p Станцию или сундук нужно разместить отдельно. Новые места сохраняют защиту помещения и не увеличивают его площадь.
       ul.places
-        li(v-for="place in state.expansion.places" :key="place.position") Место {{ place.position }}: {{ place.unlocked ? 'открыто' : `закрыто, ${place.price} Cr` }}
+        li(v-for="place in state.expansion.places" :key="place.position") Место {{ place.position }}: {{ place.unlocked ? 'открыто' : `закрыто, ${formatCredits(place.price)} Cr` }}
       router-link(:to="{ path: `/world/storage/${state.expansion.storageId}`, query: { node_id: nodeId } }") Открыть размещённые вещи
       p(v-if="state.expansion.unlocked === state.expansion.limit") Все предусмотренные места открыты.
       template(v-else)

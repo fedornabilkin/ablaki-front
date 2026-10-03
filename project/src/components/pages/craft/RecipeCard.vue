@@ -1,4 +1,5 @@
 <script setup>
+import { formatCredits } from '@/entities/world/credits';
 import {computed} from 'vue';
 import {NButton, NTag} from 'naive-ui';
 import {useCraftStore} from '@/store/craft';
@@ -66,7 +67,7 @@ const haveOf = (itemId) => craft.inventoryMap.get(itemId) || 0;
         <footer class="recipe-footer">
             <div class="recipe-cost" v-if="recipe.cost_credits > 0">
                 <font-awesome-icon icon="fa fa-coins"/>
-                {{ recipe.cost_credits }} Cr
+                {{ formatCredits(recipe.cost_credits) }} Cr
             </div>
             <div v-else class="recipe-cost-empty"></div>
             <n-button

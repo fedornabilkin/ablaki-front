@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, nextTick, ref, watch, onScopeDispose } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
@@ -86,7 +87,7 @@ async function give(item: RecordData, amount: number) {
     if (starter.value?.id === result.commentId && theme.data.value) {
       theme.data.value = { ...theme.data.value, first_comment: { ...starter.value, gift_count: result.giftCount, gifted_by_me: true } };
     }
-    giftNotice.value = result.alreadyGiven ? 'Вы уже благодарили это сообщение. Повторного списания нет.' : `Автору сообщения передано ${amount} Cr.`;
+    giftNotice.value = result.alreadyGiven ? 'Вы уже благодарили это сообщение. Повторного списания нет.' : `Автору сообщения передано ${formatCredits(amount)} Cr.`;
     try { await store.dispatch('auth/fetchData'); }
     catch { if (!disposed && themeId === id.value && revision === store.state.auth.revision) giftError.value = 'Кредит передан, но счёт не обновился. Обновите профиль.'; }
   } catch (cause) {

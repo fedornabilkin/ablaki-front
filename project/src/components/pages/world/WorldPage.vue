@@ -36,6 +36,7 @@ const nodeId = computed(() => route.params.id === undefined ? null : Number(rout
 const invalidId = computed(() => nodeId.value !== null && (!Number.isSafeInteger(nodeId.value) || nodeId.value < 1 || nodeId.value > 2147483647));
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
+const mapSelection = ref<{ x: number; y: number }[]>([]);
 const purchasedRoom = ref<number | null>(null);
 const command = useWorldCommand(session, owner, result => {
   if (result.room_id) purchasedRoom.value = result.room_id;
@@ -62,7 +63,7 @@ watch([nodeId, session], () => {
   if (homeRedirect !== null && nodeId.value === homeRedirect && world.node?.id === homeRedirect) { homeRedirect = null; return; }
   void load();
 }, { immediate: true });
-watch([nodeId, session], () => { purchasedRoom.value = null; }, { flush: 'sync' });
+watch([nodeId, session], () => { purchasedRoom.value = null; mapSelection.value = []; }, { flush: 'sync' });
 onScopeDispose(() => world.cancel());
 function changed(ids: number[]) { world.invalidate(ids); load(); void auth.dispatch('auth/fetchData'); }
 
@@ -87,7 +88,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 .container.world-page
   .world-toolbar
     router-link(to="/world") Мой дом
-    router-link(to="/craft") Мастерская
     router-link(v-if="world.capabilities?.storage_v2" to="/world/recovery") Восстановление вещей
     n-button(size="small" :loading="world.loading" @click="load") Обновить
   n-alert(v-if="commandError" type="error" role="alert") {{ commandError }}
@@ -103,17 +103,13 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
   n-alert(v-else-if="!world.capabilities?.world_read" type="info") Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
-    nav.world-breadcrumbs(aria-label="Путь в мире")
-      template(v-for="(crumb, index) in world.breadcrumbs" :key="crumb.id")
-        span(v-if="index" aria-hidden="true") /
-        router-link(:to="`/world/nodes/${crumb.id}`" :aria-current="crumb.id === world.node.id ? 'page' : undefined") {{ crumb.label }}
-    router-link.world-parent(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`") ← На уровень выше
     section.world-hero(:aria-label="nodeKind + ': ' + world.node.label")
       .world-crest(aria-hidden="true")
         font-awesome-icon(:icon="nodeIcon")
       .world-identity
         span.world-eyebrow {{ nodeKind }} · владение №{{ world.node.id }}
         h1 {{ world.node.label }}
+        router-link.world-parent(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`") ← На уровень выше
         p {{ world.node.visibility === 'private' ? 'Личная территория' : 'Открытая территория мира' }}
       .world-hero-metrics
         div
@@ -132,7 +128,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           h2 {{ childTitle }}
         span.world-counter {{ world.map?.items.length ?? 0 }} доступно
       .world-children
-        world-map(:node="world.node" :map="world.map" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+        world-map(v-model:selection="mapSelection" :node="world.node" :map="world.map" :writable="Boolean(world.capabilities?.world_write)" :command="command")
     nav.world-tabs(role="tablist" aria-label="Разделы объекта")
       router-link.world-tab(v-for="tab in tabs" :key="tab" :to="tabLink(tab)" :class="{ active: activeTab === tab }" role="tab" :aria-selected="activeTab === tab" :aria-current="activeTab === tab ? 'page' : undefined") {{ tabLabels[tab] }}
 
@@ -156,8 +152,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         span.world-eyebrow Мастерская и размещение
         h2 Вещи и крафт
       .world-inline-links.world-content-card
-        router-link(v-if="features.storage" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
-        router-link(v-if="!features.shelter && world.node.permissions.manage && ['BUILDING', 'ROOM', 'PLOT'].includes(world.node.type)" :to="{ path: '/craft', query: { node: world.node.id } }") Открыть мастерскую
+        router-link(v-if="features.campsite && features.storage" :to="`/world/workspace/${world.node.id}`") Открыть крафт
       world-warehouse-panel.world-content-card(v-if="features.warehouse" :node-id="world.node.id" :session="session" :command="command")
       .world-content-grid.world-content-grid--workshop
         world-storage-panel.world-content-card.world-storage-card(v-if="features.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
@@ -231,14 +226,10 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 </template>
 
 <style scoped>
-.world-breadcrumbs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .9rem; }
-.world-breadcrumbs [aria-current="page"] { font-weight: 700; color: var(--text); }
-.world-parent { display: inline-flex; padding: .5rem 0; width: fit-content; }
+.world-parent { display: inline-flex; margin: .35rem 0 .6rem; padding: .35rem .7rem; width: fit-content; border: 1px solid var(--border); border-radius: .45rem; font-size: .85rem; }
 .world-page { display: grid; gap: 1rem; padding-block: 1.5rem 3rem; max-width: 1320px; }
-.world-toolbar, .world-breadcrumbs, .world-inline-links, .world-siblings { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.world-toolbar, .world-inline-links, .world-siblings { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .world-toolbar { justify-content: flex-end; font-size: .9rem; }
-.world-breadcrumbs { color: var(--text-muted); font-size: .85rem; }
-.world-breadcrumbs a { overflow-wrap: anywhere; }
 .world-hero { display: flex; align-items: center; gap: 1.25rem; padding: clamp(1.25rem, 3vw, 2rem); border: 1px solid var(--border); border-radius: .8rem; background: radial-gradient(circle at 80% 12%, var(--primary-soft), transparent 45%), var(--bg-surface); }
 .world-crest { display: grid; place-items: center; flex: 0 0 4.5rem; height: 4.5rem; border: 1px solid var(--primary); border-radius: .85rem; background: var(--primary-soft); color: var(--primary); font-size: 2rem; }
 .world-identity { min-width: 0; flex: 1; }

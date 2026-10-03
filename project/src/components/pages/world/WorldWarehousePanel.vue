@@ -4,7 +4,7 @@ import { NAlert, NButton, NCheckbox, NProgress } from 'naive-ui';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote, worldError } from '@/services/api/world';
-import { creditAmount } from '@/entities/world/credits';
+import { formatCredits, creditAmount } from '@/entities/world/credits';
 import type { WorldQuote } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 const props = defineProps<{ nodeId: number; session: number; command: WorldCommandRunner }>();
@@ -43,11 +43,11 @@ section.warehouse-panel
     n-alert(v-if="state.used >= state.capacity" type="warning") Склад заполнен. Заберите предметы или расширьте его перед производством.
     router-link(:to="`/world/nodes/${state.finance_node_id}#finance`") Бюджет для оплаты
     template(v-if="state.next_price")
-      p Следующая ячейка: {{ state.next_price }} Cr. Каждая последующая стоит дороже.
+      p Следующая ячейка: {{ formatCredits(state.next_price) }} Cr. Каждая последующая стоит дороже.
       n-checkbox(v-model:checked="topUp" :disabled="locked") Доплатить с личного баланса, если бюджета недостаточно
       n-button(:disabled="locked" :loading="loading" @click="preview") Расширить на одну ячейку
     template(v-if="quote")
-      p К оплате: {{ quote.terms.price }} Cr, с личного баланса: {{ quote.terms.personal_charge }} Cr.
+      p К оплате: {{ formatCredits(quote.terms.price) }} Cr, с личного баланса: {{ formatCredits(quote.terms.personal_charge) }} Cr.
       n-button(type="primary" :disabled="locked" @click="confirm") Подтвердить оплату
 </template>
 <style scoped>

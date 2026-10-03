@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { NAlert, NCard, NSkeleton } from 'naive-ui';
@@ -49,8 +50,8 @@ page-header(page-title="История")
           strong Изменение: {{ change(entry.rating_up) }}
           span.muted Рейтинг после: {{ field(entry.rating) }}
         .stack(v-else)
-          strong {{ change(entry.balance_up) }} Кг · {{ change(entry.credit_up) }} Cr
-          span.muted После: {{ field(entry.balance) }} Кг · {{ field(entry.credit) }} Cr
+          strong {{ change(entry.balance_up) }} Кг · {{ (Number(entry.credit_up) > 0 ? '+' : '') + formatCredits(entry.credit_up) }} Cr
+          span.muted После: {{ field(entry.balance) }} Кг · {{ formatCredits(entry.credit) }} Cr
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
 </template>
 <style scoped>

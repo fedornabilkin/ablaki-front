@@ -1,150 +1,127 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NCheckbox } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
-import type { WorldMapData, WorldNode, WorldQuote } from '@/entities/world/types';
+import type { WorldMapData, WorldNode } from '@/entities/world/types';
+import type { MapPoint } from '@/entities/world/coordinates';
 import { nodeLabels } from '@/entities/world/types';
-import { pixelToWorld, worldToPixel } from '@/entities/world/coordinates';
-import { loadWorldMap, previewMapCell, worldError } from '@/services/api/world';
+import { formatCredits } from '@/entities/world/credits';
+import { mapPurchase, requiredExplorerLevel, selectMapCells } from '@/entities/world/mapSelection';
+import { loadExplorer, previewProfession, previewMapCells, worldError } from '@/services/api/world';
 
-const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner }>();
-const selectedNodeId = ref<number | null>(null), selectedCell = ref<{ x: number; y: number } | null>(null);
-const selectedMap = shallowRef<WorldMapData | null>(null);
-const center = ref<{ x: number; y: number } | null>(null), topUp = ref(false);
-const quote = shallowRef<{ action: 'explore' | 'buy'; input: { x: number; y: number; top_up: boolean }; value: WorldQuote } | null>(null);
-const calculating = ref(false), error = ref('');
+const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[] }>();
+const emit = defineEmits<{ 'update:selection': [MapPoint[]] }>();
+const selectedNodeId = ref<number | null>(null), selected = ref<MapPoint[]>(props.selection ?? []), anchor = ref<MapPoint | null>(null);
+const topUp = ref(true), multiSelect = ref(false), calculating = ref(false), error = ref('');
+const explorer = ref<Awaited<ReturnType<typeof loadExplorer>>>(null);
 let generation = 0;
-const cellSize = 72;
+watch(selected, value => emit('update:selection', value), { flush: 'sync' });
+watch(() => props.map?.exploration?.allowed, async allowed => { if (!allowed) { explorer.value = null; return; } const id = props.node.id; try { const result = await loadExplorer(); if (props.node.id === id) explorer.value = result; } catch { /* Exploration itself still has its authoritative map requirements. */ } }, { immediate: true });
+const size = 72, key = (p: MapPoint) => `${p.x}:${p.y}`;
+const bounds = computed(() => props.map?.bounds ?? props.node.map ?? { x: -2, y: -2, width: 5, height: 5 });
+const width = computed(() => bounds.value.width * size), height = computed(() => bounds.value.height * size);
 const nodes = computed(() => props.map?.items ?? []);
-const selectedNode = computed(() => nodes.value.find(node => node.id === selectedNodeId.value) ?? null);
-const miniBounds = computed(() => {
-  const map = selectedMap.value?.bounds ?? selectedNode.value?.map ?? { x: 0, y: 0, width: 5, height: 5 };
-  return { minX: map.x, minY: map.y, maxX: map.x + Math.min(map.width, 32) - 1, maxY: map.y + Math.min(map.height, 32) - 1 };
-});
-const miniCells = computed(() => {
-  const cells = [];
-  for (let y = miniBounds.value.maxY; y >= miniBounds.value.minY; y--)
-    for (let x = miniBounds.value.minX; x <= miniBounds.value.maxX; x++) {
-      const child = selectedMap.value?.items.find(item => item.coordinates.x === x && item.coordinates.y === y);
-      cells.push({ x, y, child });
-    }
-  return cells;
-});
-const cellStates = computed(() => new Map((props.map?.cells ?? []).map(cell => [`${cell.x}:${cell.y}`, cell.state])));
-const selectedState = computed(() => selectedCell.value ? cellStates.value.get(`${selectedCell.value.x}:${selectedCell.value.y}`) ?? 'closed' : null);
-const bounds = computed(() => {
-  const sizes = { WORLD: [32, 32], REGION: [20, 20], SETTLEMENT: [12, 12], BUILDING: [3, 3], ROOM: [2, 3], PLOT: [5, 5], BED: [1, 1] };
-  const size = sizes[props.node.type];
-  const map = props.map?.bounds ?? props.node.map ?? { x: 0, y: 0, width: size[0], height: size[1] };
-  const width = Math.min(map.width, 32), height = Math.min(map.height, 32);
-  const x = Math.max(map.x, Math.min((center.value?.x ?? map.x) - (center.value ? Math.floor(width / 2) : 0), map.x + map.width - width));
-  const y = Math.max(map.y, Math.min((center.value?.y ?? map.y) - (center.value ? Math.floor(height / 2) : 0), map.y + map.height - height));
-  return { minX: x, maxX: x + width - 1, minY: y, maxY: y + height - 1, panning: map.width > 32 || map.height > 32 };
-});
-const columns = computed(() => bounds.value.maxX - bounds.value.minX + 1);
-const rows = computed(() => bounds.value.maxY - bounds.value.minY + 1);
-const visibleCells = computed(() => {
-  const result: { x: number; y: number; state: string }[] = [];
-  for (let y = bounds.value.maxY; y >= bounds.value.minY; y--) for (let x = bounds.value.minX; x <= bounds.value.maxX; x++) {
-    result.push({ x, y, state: cellStates.value.get(`${x}:${y}`) ?? 'closed' });
-  }
-  return result;
-});
-const visibleNodes = computed(() => nodes.value.filter(node => {
-  const points = node.footprint ?? [node.coordinates];
-  const xs = points.map(point => point.x), ys = points.map(point => point.y);
-  return Math.min(...xs) <= bounds.value.maxX + 1 && Math.max(...xs) >= bounds.value.minX
-    && Math.min(...ys) <= bounds.value.maxY + 1 && Math.max(...ys) >= bounds.value.minY;
-}));
-const shape = (node: WorldNode) => (node.footprint ?? [
-  { x: node.coordinates.x, y: node.coordinates.y }, { x: node.coordinates.x + 1, y: node.coordinates.y },
-  { x: node.coordinates.x + 1, y: node.coordinates.y + 1 }, { x: node.coordinates.x, y: node.coordinates.y + 1 },
-]).map(point => { const pixel = worldToPixel(point, bounds.value, cellSize); return `${pixel.x},${pixel.y}`; }).join(' ');
-const position = (x: number, y: number) => { const pixel = worldToPixel({ x, y }, bounds.value, cellSize); return { left: `${pixel.x}px`, top: `${pixel.y}px` }; };
-function selectNode(node: WorldNode) { selectedNodeId.value = node.id; selectedCell.value = null; quote.value = null; error.value = ''; }
-function selectCell(x: number, y: number) { selectedNodeId.value = null; selectedCell.value = { x, y }; quote.value = null; error.value = ''; }
-function selectCellAt(event: MouseEvent, x: number, y: number) {
-  if (event.detail === 0) { selectCell(x, y); return; }
-  const board = (event.currentTarget as HTMLElement).parentElement;
-  if (!board) return;
-  const rect = board.getBoundingClientRect();
-  const point = pixelToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, bounds.value, cellSize);
-  selectCell(point.x, point.y);
+const selectedNode = computed(() => nodes.value.find(n => n.id === selectedNodeId.value));
+const known = computed(() => new Map((props.map?.cells ?? []).map(c => [key(c), c.state])));
+const state = (p: MapPoint) => known.value.get(key(p)) ?? 'closed';
+const point = computed(() => selected.value.length === 1 ? selected.value[0] : null);
+const selectedState = computed(() => point.value ? state(point.value) : null);
+const discovered = computed(() => (props.map?.cells ?? []).filter(c => c.state === 'discovered'));
+const allDiscovered = computed(() => selected.value.length > 0 && selected.value.every(p => state(p) === 'discovered'));
+const price = computed(() => allDiscovered.value && props.map?.pricing ? mapPurchase(props.map.pricing, selected.value.length) : null);
+const required = computed(() => point.value ? requiredExplorerLevel(point.value) : 1);
+const levelAllowed = computed(() => !!props.map?.exploration?.allowed && (props.map.exploration.level >= required.value));
+const elixirAllowed = computed(() => !!props.map?.exploration?.allowed && props.map.exploration.elixir_quantity > 0);
+const blocked = computed(() => calculating.value || props.command.busy.value || !!props.command.pending.value || !props.writable);
+const position = (p: MapPoint) => ({ x: (p.x - bounds.value.x) * size, y: (bounds.value.y + bounds.value.height - 1 - p.y) * size });
+const polygon = (node: WorldNode) => (node.footprint ?? []).map(p => `${(p.x - bounds.value.x) * size},${(bounds.value.y + bounds.value.height - p.y) * size}`).join(' ');
+const cellPrice = (cell: MapPoint) => {
+  const index = [...selected.value].sort((a, b) => a.y - b.y || a.x - b.x).findIndex(p => key(p) === key(cell));
+  if (!props.map?.pricing) return '';
+  return formatCredits(allDiscovered.value && index >= 0 && price.value ? price.value.unitPrices[index] : props.map.pricing.next_price);
+};
+function choose(p: MapPoint, event?: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }) {
+  if (blocked.value) return;
+  selectedNodeId.value = null; error.value = '';
+  const mode = state(p) !== 'discovered' ? 'single' : event?.shiftKey ? 'range' : event?.ctrlKey || event?.metaKey || multiSelect.value ? 'toggle' : 'single';
+  selected.value = selectMapCells(mode === 'single' ? [] : selected.value.filter(c => state(c) === 'discovered'), p, anchor.value, mode, discovered.value);
+  if (mode !== 'range') anchor.value = p;
 }
-function pan(x: number, y: number) {
-  center.value = { x: (center.value?.x ?? Math.floor((bounds.value.minX + bounds.value.maxX) / 2)) + x,
-    y: (center.value?.y ?? Math.floor((bounds.value.minY + bounds.value.maxY) / 2)) + y };
+function clickMap(event: MouseEvent) {
+  const svg = event.currentTarget as SVGSVGElement, matrix = svg.getScreenCTM();
+  if (!matrix) return;
+  const cursor = svg.createSVGPoint(); cursor.x = event.clientX; cursor.y = event.clientY;
+  const local = cursor.matrixTransform(matrix.inverse());
+  if (local.x < 0 || local.y < 0 || local.x >= width.value || local.y >= height.value) return;
+  choose({ x: bounds.value.x + Math.floor(local.x / size), y: bounds.value.y + bounds.value.height - 1 - Math.floor(local.y / size) }, event);
 }
-function focusNext() {
-  if (!nodes.value.length) return;
-  const current = selectedNodeId.value === null ? -1 : nodes.value.findIndex(node => node.id === selectedNodeId.value);
-  const next = nodes.value[(current + 1) % nodes.value.length];
-  center.value = { ...next.coordinates }; selectNode(next);
+function moveSelection(event: KeyboardEvent) {
+  const delta: Record<string, MapPoint> = { ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 }, ArrowUp: { x: 0, y: 1 }, ArrowDown: { x: 0, y: -1 } };
+  if (!delta[event.key]) return;
+  event.preventDefault(); const current = point.value ?? { x: Math.max(bounds.value.x, Math.min(0, bounds.value.x + bounds.value.width - 1)), y: Math.max(bounds.value.y, Math.min(0, bounds.value.y + bounds.value.height - 1)) };
+  const next = { x: Math.max(bounds.value.x, Math.min(bounds.value.x + bounds.value.width - 1, current.x + delta[event.key].x)), y: Math.max(bounds.value.y, Math.min(bounds.value.y + bounds.value.height - 1, current.y + delta[event.key].y)) };
+  const child = nodes.value.find(n => n.coordinates.x === next.x && n.coordinates.y === next.y);
+  if (child) selectNode(child); else choose(next, event);
 }
-async function preview(action: 'explore' | 'buy') {
-  if (!selectedCell.value || calculating.value || props.command.busy.value || props.command.pending.value) return;
-  const current = ++generation; calculating.value = true; quote.value = null; error.value = '';
-  const input = { ...selectedCell.value, top_up: topUp.value };
-  try { const value = await previewMapCell(props.node.id, action, input.x, input.y, input.top_up);
-    if (current === generation) quote.value = { action, input, value }; }
+function selectNode(node: WorldNode) { selectedNodeId.value = node.id; selected.value = []; error.value = ''; }
+async function act(action: 'explore' | 'buy', elixir = false) {
+  if (blocked.value || !selected.value.length || !props.map?.can_expand) return;
+  if (action === 'explore' && (!point.value || !(elixir ? elixirAllowed.value : levelAllowed.value))) return;
+  if (action === 'buy' && !price.value) return;
+  const expectedPrice = action === 'buy' ? price.value!.total : '0.0000';
+  const input = { cells: selected.value.map(p => ({ x: p.x, y: p.y })), top_up: topUp.value, use_elixir: elixir };
+  const current = ++generation, id = props.node.id; calculating.value = true; error.value = '';
+  try {
+    const quote = await previewMapCells(id, action, input);
+    if (current !== generation) return;
+    if (quote.terms.price !== expectedPrice) { error.value = 'Цена изменилась. Обновите карту перед покупкой.'; return; }
+    await props.command.submit(`/nodes/${id}/map-${action}`, input, quote);
+  } catch (cause) { if (current === generation) error.value = worldError(cause); }
+  finally { if (current === generation) calculating.value = false; }
+}
+async function progress() {
+  if (!explorer.value || blocked.value) return;
+  const action = explorer.value.enrolled ? 'level-up' : 'enroll', id = explorer.value.id;
+  const current = ++generation; calculating.value = true; error.value = '';
+  try { const quote = await previewProfession(id, action); if (current === generation) await props.command.submit(`/professions/${id}/${action}`, {}, quote); }
   catch (cause) { if (current === generation) error.value = worldError(cause); }
   finally { if (current === generation) calculating.value = false; }
 }
-async function confirm() {
-  if (!quote.value) return;
-  const current = quote.value;
-  quote.value = null;
-  await props.command.submit(`/nodes/${props.node.id}/map-${current.action}`, current.input, current.value);
-}
-watch(() => props.node.id, () => { generation++; center.value = null; selectedNodeId.value = null; selectedCell.value = null; quote.value = null; }, { flush: 'sync' });
-watch(() => props.map, () => { generation++; quote.value = null; }, { flush: 'sync' });
-watch(selectedNodeId, async id => {
-  selectedMap.value = null;
-  if (id === null) return;
-  try { const mapped = await loadWorldMap(id); if (selectedNodeId.value === id) selectedMap.value = mapped; }
-  catch { /* The selected object's link remains available if its map cannot load. */ }
-});
-watch(topUp, () => { quote.value = null; });
+watch(() => props.node.id, () => { generation++; calculating.value = false; selectedNodeId.value = null; selected.value = []; anchor.value = null; error.value = ''; }, { flush: 'sync' });
 onScopeDispose(() => { generation++; });
 </script>
 
 <template lang="pug">
 .world-map-layout
   .world-map-main
-    .world-map-controls(v-if="bounds.panning")
-      span Координаты: X {{ bounds.minX }}…{{ bounds.maxX }}, Y {{ bounds.minY }}…{{ bounds.maxY }}
-      .world-map-pan
-        n-button(v-if="nodes.length" size="tiny" @click="focusNext") Следующий объект
-        n-button(size="tiny" aria-label="Сдвинуть карту влево" @click="pan(-7, 0)") ←
-        n-button(size="tiny" aria-label="Сдвинуть карту вверх" @click="pan(0, 7)") ↑
-        n-button(size="tiny" aria-label="Сдвинуть карту вниз" @click="pan(0, -7)") ↓
-        n-button(size="tiny" aria-label="Сдвинуть карту вправо" @click="pan(7, 0)") →
-    .world-map-scroll
-      .world-map-board(:style="{ width: `${columns * cellSize}px`, height: `${rows * cellSize}px` }" role="group" :aria-label="`Карта: ${node.label}`")
-        button.world-map-cell(v-for="cell in visibleCells" :key="`${cell.x}:${cell.y}`" type="button" :class="[`state-${cell.state}`, { selected: selectedCell?.x === cell.x && selectedCell?.y === cell.y }]" :style="position(cell.x, cell.y)" :aria-label="`Ячейка ${cell.x}, ${cell.y}: ${cell.state === 'open' ? 'открыта' : cell.state === 'discovered' ? 'исследована' : 'закрыта'}`" @click="selectCellAt($event, cell.x, cell.y)")
-          span {{ cell.x }},{{ cell.y }}
-          font-awesome-icon(v-if="cell.state === 'discovered'" icon="lock" aria-hidden="true")
-        svg.world-map-shapes(:width="columns * cellSize" :height="rows * cellSize" :viewBox="`0 0 ${columns * cellSize} ${rows * cellSize}`" aria-hidden="true")
-          polygon(v-for="child in visibleNodes.filter(item => item.footprint)" :key="child.id" :points="shape(child)" :class="{ selected: selectedNodeId === child.id }" @click="selectNode(child)")
-        button.world-map-object(v-for="child in visibleNodes" :key="child.id" type="button" :class="{ selected: selectedNodeId === child.id, owned: child.owned_by_me }" :style="position(child.coordinates.x, child.coordinates.y)" :aria-label="`${nodeLabels[child.type]}: ${child.label}, ${child.coordinates.x}, ${child.coordinates.y}`" @click="selectNode(child)")
-          font-awesome-icon(:icon="child.status === 'constructing' ? 'hammer' : child.status === 'active' ? 'check-circle' : child.type === 'PLOT' && child.details.plot_kind === 'campsite' ? 'tent' : 'circle'" aria-hidden="true")
-          span {{ child.label }}
-    p.world-map-hint Карта {{ map?.bounds?.width ?? node.map?.width ?? columns }} × {{ map?.bounds?.height ?? node.map?.height ?? rows }}. Дочерних объектов: {{ nodes.length }}. Новые ячейки закрыты; выберите объект или свободную ячейку.
+    .world-map-window
+      svg.world-map-board(:viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="xMidYMid meet" role="group" tabindex="0" :aria-label="`Карта ${node.label}. Стрелки — выбор ячейки, Shift или Ctrl — несколько ячеек.`" @click="clickMap" @keydown="moveSelection")
+        defs
+          pattern(:id="`world-grid-${node.id}`" :width="size" :height="size" patternUnits="userSpaceOnUse")
+            rect(:width="size" :height="size" class="map-closed")
+            path(:d="`M ${size} 0 L 0 0 0 ${size}`" class="map-grid")
+        rect(:width="width" :height="height" :fill="`url(#world-grid-${node.id})`")
+        g(v-for="cell in map?.cells ?? []" :key="key(cell)" :transform="`translate(${position(cell).x},${position(cell).y})`" class="map-cell")
+          rect(:width="size" :height="size" :class="`map-${cell.state}`")
+          text(v-if="cell.state === 'discovered'" :x="size - 5" y="15" text-anchor="end" class="map-price") {{ cellPrice(cell) }} Cr
+          title Ячейка {{ cell.x }}, {{ cell.y }}: {{ cell.state === 'open' ? 'открыта' : 'исследована' }}
+        rect(v-for="cell in selected" :key="`selected-${key(cell)}`" :x="position(cell).x + 2" :y="position(cell).y + 2" :width="size - 4" :height="size - 4" class="map-selected")
+        polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" @click.stop="selectNode(child)")
+        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, active: selectedNodeId === child.id }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}`" @click.stop="selectNode(child)" @keydown.enter.stop="selectNode(child)" @keydown.space.prevent.stop="selectNode(child)")
+          rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
+          text(:x="size / 2" y="33" text-anchor="middle" class="map-object-symbol") {{ child.type === 'ROOM' ? '▦' : child.type === 'BED' ? '♧' : child.type === 'BUILDING' ? '⌂' : '◆' }}
+          text(:x="size / 2" y="54" text-anchor="middle" class="map-object-label") {{ child.label.length > 10 ? child.label.slice(0, 9) + '…' : child.label }}
+          title {{ child.label }} · {{ child.coordinates.x }}, {{ child.coordinates.y }}
+    p.world-map-hint {{ bounds.width }} × {{ bounds.height }} · X {{ bounds.x }}…{{ bounds.x + bounds.width - 1 }} · Y {{ bounds.y }}…{{ bounds.y + bounds.height - 1 }}. Shift — область, Ctrl / ⌘ — отдельные ячейки. До 100 за покупку.
+    n-checkbox(v-if="map?.can_expand" v-model:checked="multiSelect") Выбирать несколько ячеек
   aside.world-map-inspector(aria-live="polite")
     template(v-if="selectedNode")
-      span.world-map-kicker {{ selectedNode.type === 'PLOT' && selectedNode.details.plot_kind === 'campsite' ? 'Усадьба' : nodeLabels[selectedNode.type] }}
+      span.world-map-kicker {{ nodeLabels[selectedNode.type] }}
       h3 {{ selectedNode.label }}
-      .world-map-mini(v-if="selectedMap" :style="{ gridTemplateColumns: `repeat(${miniBounds.maxX - miniBounds.minX + 1}, 1fr)` }" :aria-label="`Карта объекта ${selectedNode.label}`")
-        span(v-for="cell in miniCells" :key="`${cell.x}:${cell.y}`" :class="{ occupied: cell.child }" :title="cell.child?.label ?? `${cell.x}, ${cell.y}`") {{ cell.child ? '●' : '' }}
       dl
         dt Координаты
         dd {{ selectedNode.coordinates.x }}, {{ selectedNode.coordinates.y }}
-        dt Статус
-        dd
-          font-awesome-icon(v-if="selectedNode.status === 'active'" icon="check-circle" class="world-map-active" aria-label="Действует")
-          font-awesome-icon(v-else-if="selectedNode.status === 'constructing'" icon="hammer" aria-label="Строится")
-          span(v-else) {{ selectedNode.status }}
-        dt Все дочерние объекты
+        dt Дочерние объекты
         dd {{ selectedNode.descendant_count }}
         dt Жители с дочерними
         dd {{ selectedNode.population_total }}
@@ -152,54 +129,56 @@ onScopeDispose(() => { generation++; });
           dt Прочность
           dd {{ selectedNode.details.condition }} / {{ selectedNode.details.max_condition ?? '—' }}
       router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
-    template(v-else-if="selectedCell")
-      span.world-map-kicker Ячейка {{ selectedCell.x }}, {{ selectedCell.y }}
-      h3 {{ selectedState === 'open' ? 'Открыта' : selectedState === 'discovered' ? 'Исследована' : 'Закрыта' }}
+    template(v-else-if="selected.length")
+      span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
+      h3 {{ selectedState === 'open' ? 'Открыта' : allDiscovered ? 'Исследована' : 'Закрыта' }}
       p(v-if="selectedState === 'open'") Здесь можно разместить объект подходящего типа.
-      p(v-else-if="selectedState === 'discovered'") Для использования выкупите ячейку. Цена следующей покупки растёт пропорционально числу уже купленных ячеек.
-      p(v-else) Сначала исследуйте ячейку, затем выкупите её для использования.
-      p(v-if="!map?.can_expand && selectedState !== 'open'") Эти ячейки открываются через развитие объекта.
-      template(v-if="map?.can_expand && writable && selectedState !== 'open'")
-        n-checkbox(v-if="selectedState === 'discovered'" v-model:checked="topUp") Пополнить недостающую сумму с личного баланса
-        n-button(:loading="calculating" :disabled="Boolean(command.pending.value) || command.busy.value" @click="preview(selectedState === 'closed' ? 'explore' : 'buy')") {{ selectedState === 'closed' ? 'Исследовать' : 'Рассчитать покупку' }}
-        template(v-if="quote")
-          p {{ quote.action === 'explore' ? 'Исследование бесплатно.' : `Стоимость: ${quote.value.terms.price} Cr; с личного баланса: ${quote.value.terms.personal_charge} Cr.` }}
-          n-button(type="primary" :disabled="Boolean(command.pending.value) || command.busy.value" @click="confirm") {{ quote.action === 'explore' ? 'Подтвердить исследование' : 'Подтвердить покупку' }}
-      n-alert(v-if="error" type="error" role="alert") {{ error }}
-    p(v-else) Выберите дочерний объект или ячейку на карте.
+      p(v-else-if="!map?.can_expand") {{ map?.exploration?.reason || 'Ячейки открываются через развитие объекта.' }}
+      template(v-else-if="selectedState === 'closed'")
+        p Нужен исследователь {{ required }}-го уровня. Ваш уровень: {{ map?.exploration?.level ?? 0 }}.
+        template(v-if="explorer && !levelAllowed")
+          p(v-if="explorer.enrolled && explorer.next") Опыт: {{ explorer.xp }} / {{ explorer.next.required_xp }}. За исследование — 10 XP.
+          n-button(v-if="!explorer.enrolled || explorer.next" :disabled="blocked || (explorer.enrolled && !explorer.next?.available)" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Стать исследователем · бесплатно' }}
+        n-button(type="primary" :loading="calculating" :disabled="blocked || !levelAllowed" @click="act('explore')") Исследовать
+        n-button(v-if="!levelAllowed" :loading="calculating" :disabled="blocked || !elixirAllowed" @click="act('explore', true)") Применить эликсир · 1 шт.
+        p(v-if="!levelAllowed") В рюкзаке эликсиров: {{ map?.exploration?.elixir_quantity ?? 0 }}
+      template(v-else-if="allDiscovered && price")
+        p.map-total {{ formatCredits(price.total) }} Cr
+        p(v-if="price.discount !== '0.0000'") Скидка 5%: {{ formatCredits(price.discount) }} Cr
+        p(v-else) От трёх ячеек — скидка 5%.
+        n-checkbox(v-model:checked="topUp" :disabled="blocked") Недостающую сумму взять с личного баланса
+        n-button(type="primary" :loading="calculating" :disabled="blocked" @click="act('buy')") Купить {{ selected.length }} · {{ formatCredits(price.total) }} Cr
+    p(v-else) Выберите объект или свободную ячейку на карте.
+    n-alert(v-if="error" type="error" role="alert") {{ error }}
 </template>
 
 <style scoped>
-.world-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem); gap: 1rem; align-items: start; }
+.world-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem); gap: 1rem; align-items: start; }
 .world-map-main { min-width: 0; }
-.world-map-controls, .world-map-pan { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
-.world-map-controls { justify-content: space-between; margin-bottom: .5rem; color: var(--text-muted); font-size: .8rem; }
-.world-map-scroll { max-height: 34rem; overflow: auto; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); }
-.world-map-board { position: relative; }
-.world-map-cell { position: absolute; width: 72px; height: 72px; padding: .2rem; border: 1px solid var(--border); color: var(--text-muted); background: repeating-linear-gradient(135deg, var(--bg-base), var(--bg-base) 8px, var(--bg-surface) 8px, var(--bg-surface) 16px); text-align: left; cursor: pointer; }
-.world-map-cell span { position: absolute; top: .15rem; left: .2rem; font-size: .65rem; }
-.world-map-cell svg { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); }
-.world-map-cell.state-open { background: var(--bg-surface); }
-.world-map-cell.state-discovered { background: var(--bg-surface); }
-.world-map-cell.selected, .world-map-object.selected { outline: 3px solid var(--primary); outline-offset: -3px; }
-.world-map-shapes { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.world-map-shapes polygon { fill: var(--primary-soft); stroke: var(--primary); stroke-width: 2; opacity: .75; pointer-events: all; cursor: pointer; }
-.world-map-shapes polygon.selected { stroke-width: 4; opacity: 1; }
-.world-map-object { position: absolute; z-index: 2; display: grid; place-items: center; gap: .1rem; width: 72px; height: 72px; padding: .25rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--bg-surface); color: var(--primary); cursor: pointer; overflow: hidden; }
-.world-map-object.owned { background: var(--primary-soft); }
-.world-map-object span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; }
-.world-map-object svg { font-size: 1.1rem; }
-.world-map-hint { margin: .55rem 0 0; color: var(--text-muted); font-size: .8rem; }
+.world-map-window { height: clamp(15rem, 54vh, 34rem); padding: .4rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); overflow: hidden; }
+.world-map-board { display: block; width: 100%; height: 100%; cursor: pointer; }
+.map-closed { fill: var(--bg-base); }
+.map-grid { fill: none; stroke: var(--border); stroke-width: 1; }
+.map-cell { pointer-events: none; }
+.map-open { fill: var(--primary-soft); stroke: var(--border); }
+.map-discovered { fill: var(--bg-surface); stroke: var(--border); }
+.map-price { fill: var(--primary); font-size: 12px; font-weight: 700; }
+.map-selected { fill: var(--primary-soft); fill-opacity: .35; stroke: var(--primary); stroke-width: 3; pointer-events: none; }
+.map-footprint { fill: var(--primary-soft); stroke: var(--primary); }
+.map-object rect { fill: var(--bg-surface); stroke: var(--primary); }
+.map-object.owned rect { fill: var(--primary-soft); }
+.map-object.active rect, .map-object:focus rect { stroke-width: 4; }
+.map-object text { fill: var(--primary); pointer-events: none; }
+.map-object-symbol { font-size: 27px; }
+.map-object-label { font-size: 11px; }
+.world-map-hint { margin: .55rem 0; color: var(--text-muted); font-size: .8rem; }
 .world-map-inspector { display: grid; gap: .75rem; min-height: 13rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-surface); }
 .world-map-inspector h3, .world-map-inspector p { margin: 0; }
-.world-map-kicker { color: var(--primary); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
+.world-map-kicker { color: var(--primary); font-size: .8rem; font-weight: 700; }
 .world-map-inspector dl { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; margin: 0; }
 .world-map-inspector dt { color: var(--text-muted); }
 .world-map-inspector dd { margin: 0; text-align: right; }
-.world-map-active { color: #24a057; }
-.world-map-mini { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: .25rem; border: 1px solid var(--border); border-radius: .4rem; }
-.world-map-mini span { display: grid; place-items: center; aspect-ratio: 1; background: var(--bg-base); font-size: .65rem; color: var(--primary); }
-.world-map-mini span.occupied { background: var(--primary-soft); }
 .world-map-open { display: block; padding: .65rem; border-radius: .4rem; background: var(--primary); color: white; text-align: center; }
+.map-total { font-size: 1.5rem; font-weight: 700; }
 @media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; } }
 </style>

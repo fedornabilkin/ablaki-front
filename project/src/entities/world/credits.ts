@@ -12,3 +12,12 @@ export function investmentAmount(value: unknown): string {
   if (amount === '0.0000') throw new Error('invalid-investment-amount');
   return amount;
 }
+
+/** Display only; wire values and ledger arithmetic keep their original precision. */
+export function formatCredits(value: unknown): string {
+  const text = String(value ?? '');
+  if (!/^-?\d+(\.\d+)?$/.test(text)) return '—';
+  const negative = text.startsWith('-'), [whole, fraction = ''] = text.replace(/^-/, '').split('.');
+  const tenths = BigInt(whole) * 10n + BigInt(fraction[0] ?? '0') + (Number(fraction[1] ?? '0') >= 5 ? 1n : 0n);
+  return `${negative && tenths ? '-' : ''}${tenths / 10n}${tenths % 10n ? `.${tenths % 10n}` : ''}`;
+}

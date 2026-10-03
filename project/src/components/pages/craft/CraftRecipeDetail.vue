@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { NButton, NInputNumber, NPopover } from 'naive-ui';
@@ -46,7 +47,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
   .recipe-facts
     span(v-if="state.charge_credits")
       font-awesome-icon(icon="coins")
-      |  {{ requirements.cost }} Cr
+      |  {{ formatCredits(requirements.cost) }} Cr
     span(v-else) Без списания кредитов
     span
       font-awesome-icon(icon="cube")

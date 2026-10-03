@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -167,7 +168,7 @@ n-modal(v-model:show="showCreate" preset="card" title="Создать игру" 
     n-button(type="primary" attr-type="submit" :loading="busy" :disabled="!validCreate") Создать и списать ставку
 n-modal(:show="!saper && !!selected" preset="card" title="Орёл или решка?" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && (selected = null)")
   template(v-if="selected")
-    p Игра №{{ selected.id }} · Ставка {{ field(selected.kon) }} Cr
+    p Игра №{{ selected.id }} · Ставка {{ formatCredits(selected.kon) }} Cr
     p.muted Выбор стороны сразу отправляет ход и списывает ставку.
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     .toolbar

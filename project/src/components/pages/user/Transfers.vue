@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NInputNumber, NPopconfirm, NPopover } from 'naive-ui';
@@ -54,7 +55,7 @@ async function act(path: string, method: 'post' | 'put' | 'delete', body?: unkno
 <template lang="pug">
 page-header(page-title="Переводы кредитов")
 .container.page.stack
-  p Доступно: {{ field(balance) }} Cr
+  p Доступно: {{ formatCredits(balance) }} Cr
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" type="success") {{ notice }}
   .cards
@@ -78,12 +79,12 @@ page-header(page-title="Переводы кредитов")
             template(#icon)
               font-awesome-icon(icon="coins" aria-hidden="true")
             | +{{ value }}
-        p Будет создано: {{ creatable }} · Всего: {{ creatable * (amount || 0) }} Cr
+        p Будет создано: {{ creatable }} · Всего: {{ formatCredits(creatable * (amount || 0)) }} Cr
         p.muted(v-if="creatable < (count || 0)") Количество уменьшено до доступного баланса.
         n-popconfirm(@positive-click="act('transfer', 'post', { amount, count })" :positive-button-props="{ disabled: busy || !canCreate }")
           template(#trigger)
             action-button(icon="paper-plane" :label="creatable > 1 ? 'Создать переводы' : 'Создать перевод'" type="primary" :loading="busy" :disabled="!canCreate")
-          | Создать до {{ count }} переводов по {{ amount }} Cr? Если баланс изменится, сервер создаст доступное количество.
+          | Создать до {{ count }} переводов по {{ formatCredits(amount) }} Cr? Если баланс изменится, сервер создаст доступное количество.
     n-card(title="Получить перевод")
       template(#header-extra)
         n-popover(trigger="click" :width="300")
@@ -108,7 +109,7 @@ page-header(page-title="Переводы кредитов")
         div
           strong Перевод №{{ entry.id }}
           .muted {{ date(entry.created_at) }}
-          p(v-if="entry.amount !== undefined") {{ field(entry.amount) }} Cr
+          p(v-if="entry.amount !== undefined") {{ formatCredits(entry.amount) }} Cr
           p.muted(v-else) Сумма не передана сервером
           .transfer-recipient(v-if="mode === 'history'")
             span.muted Получатель

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
+import { formatCredits } from '@/entities/world/credits';
+import { h, computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NInputNumber, NSelect, NSpin } from 'naive-ui';
@@ -20,6 +21,7 @@ const blocked = computed(() => busy.value || !!pending.value || loading.value ||
 const selectedRecipe = computed(() => state.value?.recipes.find(r => r.id === recipe.value));
 const storageOptions = computed(() => state.value?.storages.map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
 const outputOptions = computed(() => state.value?.storages.filter(s => s.output_allowed).map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
+const recipeLabel = (option: { label: string; available?: boolean }) => h('span', { style: option.available ? { color: 'var(--success, #249653)', fontWeight: '700' } : {} }, `${option.available ? '✓ ' : ''}${option.label}`);
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
 function invalidate() { previewGeneration++; calculation.value = null; calculating.value = false; }
 watch([quantity, sources, output, equipment], invalidate, { deep: true, flush: 'sync' });
@@ -30,7 +32,7 @@ async function load(selected?: number) {
     const value = await loadWorkspace(nodeId.value, selected); if (disposed || generation !== current) return;
     state.value = value; recipe.value = value.recipe_id;
     sources.value = sources.value.filter(id => value.storages.some(s => s.id === id));
-    if (!sources.value.length) sources.value = value.storages.filter(s => s.kind === 'backpack').map(s => s.id);
+    if (!sources.value.length) sources.value = value.storages.slice(0, 20).map(s => s.id);
     if (!value.storages.some(s => s.id === output.value && s.output_allowed)) output.value = value.storages.find(s => s.kind === 'backpack' && s.output_allowed)?.id ?? value.storages.find(s => s.output_allowed)?.id ?? null;
     equipment.value = Object.fromEntries(value.equipment.map(e => [e.item_id, e.candidates.some(c => c.instance_id === equipment.value[e.item_id]) ? equipment.value[e.item_id] : e.candidates[0]?.instance_id ?? null]));
   } catch (cause) { if (generation === current && !disposed) error.value = worldError(cause); }
@@ -66,8 +68,10 @@ page-header(:pageTitle="state ? `Мастерская: ${state.name}` : 'Мас�
   template(v-else-if="state")
     n-alert(v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
     label Рецепт
-      n-select(:value="recipe" :options="state.recipes.map(r => ({ label: `${r.name} × ${r.quantity}`, value: r.id }))" filterable :disabled="blocked" @update:value="changeRecipe")
-    p.missing(v-for="reason in selectedRecipe?.locked_reasons" :key="reason") {{ reason }}
+      n-select(:value="recipe" :options="state.recipes.map(r => ({ label: `${r.name} × ${r.quantity}`, value: r.id, available: r.available }))" :render-label="recipeLabel" filterable :disabled="blocked" @update:value="changeRecipe")
+    p.recipe-legend Зелёным отмечены рецепты на одну партию, для которых есть ресурсы и оборудование в доступных хранилищах стоянки.
+    p.ready(v-if="selectedRecipe?.available") ✓ Ресурсы, инструменты и станции доступны
+    p.missing(v-for="reason in selectedRecipe?.availability_reasons" :key="reason") {{ reason }}
     label Количество изготовлений
       n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="blocked")
     label Источники материалов — расходуются в порядке выбора
@@ -83,7 +87,7 @@ page-header(:pageTitle="state ? `Мастерская: ${state.name}` : 'Мас�
         li(v-for="material in calculation.terms.materials" :key="material.item_id" :class="{ missing: !material.available }") {{ material.name }}: {{ material.have }} / {{ material.quantity }}
         li(v-for="unit in calculation.terms.equipment" :key="`unit-${unit.instance_id}`") Экземпляр №{{ unit.instance_id }}: прочность {{ unit.durability }}/{{ unit.max_durability }}, износ за работу {{ unit.wear }}
       p(:class="{ missing: !calculation.terms.output.fits }") Результат: {{ calculation.terms.output.name }} × {{ calculation.terms.output.quantity }} → хранилище №{{ calculation.terms.output.storage_id }}
-      p Стоимость: {{ calculation.terms.price }} Cr · Опыт рецепта: {{ calculation.terms.experience }} (с учётом действующего предела навыка)
+      p Стоимость: {{ formatCredits(calculation.terms.price) }} Cr · Опыт рецепта: {{ calculation.terms.experience }} (с учётом действующего предела навыка)
       p.missing(v-for="reason in calculation.terms.reasons" :key="reason") {{ reason }}
       n-button(type="primary" :loading="busy" :disabled="blocked || Boolean(calculation.terms.reasons.length)" @click="craft") Изготовить
 </template>
@@ -91,5 +95,7 @@ page-header(:pageTitle="state ? `Мастерская: ${state.name}` : 'Мас�
 .workspace { display: grid; gap: 1rem; max-width: 960px; padding-bottom: 2rem; }
 .workspace label { display: grid; gap: .4rem; }
 .links { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.ready { color: var(--success, #249653); font-weight: 700; }
+.recipe-legend { color: var(--text-muted); }
 .missing { color: var(--error, #d03050); font-weight: 600; }
 </style>

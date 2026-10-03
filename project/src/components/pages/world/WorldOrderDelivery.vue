@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import PagePager from '@/components/PagePager.vue';
@@ -51,7 +52,7 @@ section.order-delivery
       n-input-number(v-model:value="quantity" :min="1" :max="Math.max(1, maximum)" :precision="0" :disabled="busy || Boolean(pending)")
     n-button(:loading="calculating" :disabled="!writable || !selected || !quantity || quantity > maximum || busy || Boolean(pending)" @click="preview") Рассчитать сдачу
   section(v-if="quote" aria-live="polite")
-    p Будет передано {{ quote.input.quantity }} шт. Оплата: {{ quote.earned }} Cr.
+    p Будет передано {{ quote.input.quantity }} шт. Оплата: {{ formatCredits(quote.earned) }} Cr.
     router-link(:to="`/world/nodes/${quote.site_node_id}`") Казна вашей стоянки
     p(v-if="quote.initialize_policy") При первой сдаче стоянка получит начальные условия этого заказа.
     p Отчисления при сборе: {{ quote.policy.rate_bps / 100 }}%. Срок оплаты отчислений: {{ quote.policy.due_seconds / 3600 }} ч.

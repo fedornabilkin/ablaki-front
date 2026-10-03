@@ -112,7 +112,9 @@ export function parseWorldMap(value: unknown, id: number): WorldMapData | WorldP
   // Older servers return the paginated children contract from /map.
   if ('_meta' in row) return parseWorldPage(row);
   if (integer(row.node_id, 1) !== nodeId) invalid();
-  return { ...(row.bounds === undefined ? {} : { bounds: parseMapBounds(row.bounds) }), node_id: nodeId, items: list(row.items, parseWorldNode, Number.MAX_SAFE_INTEGER), can_expand: boolean(row.can_expand),
+  const exploration = row.exploration === undefined ? undefined : (() => { const e = record(row.exploration); return { allowed: boolean(e.allowed), level: integer(e.level, 0, 100), max_level_per_node: integer(e.max_level_per_node, 3, 3), elixir_quantity: integer(e.elixir_quantity), reason: String(e.reason ?? '') }; })();
+  const pricing = row.pricing === undefined ? undefined : (() => { const p = record(row.pricing); if (p.currency !== 'Cr') invalid(); return { paid_cells: integer(p.paid_cells), base_price: creditAmount(p.base_price), next_price: creditAmount(p.next_price), bulk_minimum: integer(p.bulk_minimum, 1, 100), discount_bps: integer(p.discount_bps, 0, 10000), max_quantity: integer(p.max_quantity, 1, 100), currency: 'Cr' as const }; })();
+  return { exploration, pricing, ...(row.bounds === undefined ? {} : { bounds: parseMapBounds(row.bounds) }), node_id: nodeId, items: list(row.items, parseWorldNode, Number.MAX_SAFE_INTEGER), can_expand: boolean(row.can_expand),
     cells: list(row.cells, value => { const cell = record(value); if (!['discovered', 'open'].includes(String(cell.state))) invalid();
       return { x: integer(cell.x, -1000000, 1000000), y: integer(cell.y, -1000000, 1000000), state: cell.state as 'discovered' | 'open' }; }, Number.MAX_SAFE_INTEGER) };
 }
@@ -129,6 +131,19 @@ export async function loadWorldMap(id: number): Promise<WorldMapData> {
   if (items.length !== mapped.total) invalid();
   return { node_id: nodeId, items, cells: [], can_expand: false };
 }
+export async function loadExplorer() {
+  const data = record((await apiClient.get(url('/professions'), { params: { q: 'explorer' } })).data);
+  const rows = list(data.items, record, 20), p = rows.find(p => p.code === 'explorer');
+  if (!p) return null;
+  const next = p.next_level === null ? null : record(p.next_level);
+  return { id: integer(p.id, 1), enrolled: boolean(p.enrolled), level: integer(p.level, 1), xp: integer(p.xp), next: next ? { level: integer(next.level, 1), required_xp: integer(next.required_xp), available: boolean(next.available) } : null };
+}
+export async function previewProfession(id: number, action: 'enroll' | 'level-up') { return parseWorldQuote((await apiClient.post(url(`/professions/${integer(id, 1)}/${action}-preview`), {})).data); }
+export interface MapCellInput { cells: { x: number; y: number }[]; top_up: boolean; use_elixir: boolean }
+export async function previewMapCells(id: number, action: 'explore' | 'buy', input: MapCellInput): Promise<WorldQuote> {
+  return parseWorldQuote((await apiClient.post(url(`/nodes/${integer(id, 1)}/map-${action}-preview`), input)).data);
+}
+/** @deprecated Use previewMapCells, including for a single cell. */
 export async function previewMapCell(id: number, action: 'explore' | 'buy', x: number, y: number, topUp: boolean): Promise<WorldQuote> {
   return parseWorldQuote((await apiClient.post(url(`/nodes/${integer(id, 1)}/map-${action}-preview`), { x: integer(x, -1000000, 1000000), y: integer(y, -1000000, 1000000), top_up: boolean(topUp) })).data);
 }
@@ -146,7 +161,7 @@ export async function sendWorldCommand(path: string, body: Record<string, unknow
   if (!isWorldCommandPath(path)) invalid();
   return parseWorldCommandResult((await apiClient.post(url(path), body)).data);
 }
-export const isWorldCommandPath = (path: string): boolean => /^\/beds\/[1-9]\d*\/(dig|sow|water|harvest|cancel)$/.test(path) || path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|budget-grant|supplies-starter|supplies-gather|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|map-explore|map-buy|warehouse-expand|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
+export const isWorldCommandPath = (path: string): boolean => /^\/professions\/[1-9]\d*\/(enroll|level-up)$/.test(path) || /^\/beds\/[1-9]\d*\/(dig|sow|water|harvest|cancel)$/.test(path) || path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|budget-grant|supplies-starter|supplies-gather|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|map-explore|map-buy|warehouse-expand|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
 export async function loadWorldOnboarding(): Promise<WorldOnboarding> {
   const row = record((await apiClient.get(url('/onboarding'))).data);
   return { world_id: integer(row.world_id, 1), joined: boolean(row.joined), starter_site_id: nullableId(row.starter_site_id), joined_at: nullableId(row.joined_at), grace_until: nullableId(row.grace_until), server_time: integer(row.server_time), join_available: boolean(row.join_available) };

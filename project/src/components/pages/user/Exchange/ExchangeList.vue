@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -67,7 +68,7 @@ async function act(order: ExchangeOrder) {
 <template lang="pug">
 .stack
   .toolbar
-    strong Доступно: {{ field(account.credit) }} Cr · {{ field(account.balance) }} Кг
+    strong Доступно: {{ formatCredits(account.credit) }} Cr · {{ field(account.balance) }} Кг
     n-button(:loading="loading" :disabled="busy !== null" @click="refresh") Обновить
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" type="success") {{ notice }}
@@ -82,7 +83,7 @@ async function act(order: ExchangeOrder) {
             .toolbar
               strong №{{ order.id }} · {{ label(order) }}
               n-tag(size="small") {{ order.type === 'buy' ? 'Автор продаёт' : 'Автор покупает' }}
-            .order-amounts {{ field(order.credit) }} Cr ↔ {{ field(order.amount) }} Кг
+            .order-amounts {{ formatCredits(order.credit) }} Cr ↔ {{ field(order.amount) }} Кг
             small.muted(v-if="typeof order.price === 'number' || typeof order.price === 'string'") {{ field(order.price) }} Кг за 1000 Cr
             .muted
               span Автор:&nbsp;
@@ -97,12 +98,12 @@ async function act(order: ExchangeOrder) {
             n-popconfirm(v-if="mode === 'my'" :disabled="busy !== null || !canCancel(order)" @positive-click="act(order)")
               template(#trigger)
                 n-button(:loading="busy === order.id" :disabled="busy !== null || !canCancel(order)") Отменить
-              | Отменить заявку №{{ order.id }} и вернуть {{ order.type === 'buy' ? order.credit + ' Cr' : order.amount + ' Кг' }}?
+              | Отменить заявку №{{ order.id }} и вернуть {{ order.type === 'buy' ? formatCredits(order.credit) + ' Cr' : order.amount + ' Кг' }}?
             template(v-else)
               n-popconfirm(:disabled="busy !== null || !canProceed(order)" @positive-click="act(order)")
                 template(#trigger)
                   n-button(type="primary" :loading="busy === order.id" :disabled="busy !== null || !canProceed(order)") {{ order.type === 'buy' ? 'Купить' : 'Продать' }}
-                | {{ order.type === 'buy' ? 'Списать ' + order.amount + ' Кг и получить ' + order.credit + ' Cr?' : 'Списать ' + order.credit + ' Cr и получить ' + order.amount + ' Кг?' }}
+                | {{ order.type === 'buy' ? 'Списать ' + order.amount + ' Кг и получить ' + formatCredits(order.credit) + ' Cr?' : 'Списать ' + formatCredits(order.credit) + ' Cr и получить ' + order.amount + ' Кг?' }}
               small.muted(v-if="!canProceed(order)") Недостаточно средств или заявка недоступна.
       page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy !== null")
 </template>

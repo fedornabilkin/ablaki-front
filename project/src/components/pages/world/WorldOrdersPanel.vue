@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -55,7 +56,7 @@ section.world-orders#settlement-orders
     p(v-if="!state.items.length") Заказов по выбранным условиям нет.
     ul.orders
       li(v-for="order in state.items" :key="order.id")
-        h3 {{ order.item_name }} · {{ order.unit_price }} Cr за шт.
+        h3 {{ order.item_name }} · {{ formatCredits(order.unit_price) }} Cr за шт.
         p {{ order.purpose }}
         p Осталось {{ order.remaining_quantity }} из {{ order.quantity }} шт.; ваш оставшийся лимит — {{ order.my_remaining }} шт.
         p {{ labels[order.status] }} · срок до {{ date(order.expires_at) }}
@@ -64,7 +65,7 @@ section.world-orders#settlement-orders
     page-pager(v-model:page="page" query-prefix="orders" :result="state" :disabled="busy")
     world-order-delivery(v-if="chosen" :key="chosen.id" :node-id="nodeId" :session="session" :order="chosen" :writable="state.can_deliver" :command="command")
     section(v-if="cancellation" aria-live="polite")
-      p Заказ №{{ cancellation.input.order_id }} будет закрыт. Освободится {{ cancellation.released }} Cr резерва бюджета.
+      p Заказ №{{ cancellation.input.order_id }} будет закрыт. Освободится {{ formatCredits(cancellation.released) }} Cr резерва бюджета.
       n-button(type="primary" :disabled="busy || Boolean(pending)" @click="cancel") Подтвердить отмену остатка
     world-order-publish(v-if="state.can_publish" :node-id="nodeId" :session="session" :writable="state.can_publish" :command="command")
 </template>
