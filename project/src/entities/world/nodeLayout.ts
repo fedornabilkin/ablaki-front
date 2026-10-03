@@ -1,6 +1,6 @@
 import type { WorldCapabilities, WorldNode } from './types';
 
-export type NodeTab = 'map' | 'life' | 'workshop' | 'finance' | 'development' | 'statistics' | 'manage';
+export type NodeTab = 'map' | 'cultivation' | 'life' | 'workshop' | 'finance' | 'development' | 'statistics' | 'manage';
 
 export interface NodeFeatureSet {
   campsite: boolean;
@@ -15,10 +15,12 @@ export interface NodeFeatureSet {
   building: boolean;
   demolitionHistory: boolean;
   finance: boolean;
+  cultivation: boolean;
+  warehouse: boolean;
 }
 
 export const tabLabels: Record<NodeTab, string> = {
-  map: 'Карта', life: 'Ночлег', workshop: 'Вещи и крафт', finance: 'Казна',
+  map: 'Карта', cultivation: 'Выращивание', life: 'Ночлег', workshop: 'Вещи и крафт', finance: 'Казна',
   development: 'Развитие', statistics: 'Статистика', manage: 'Управление',
 };
 
@@ -39,12 +41,15 @@ export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | 
     construction: storage && ['PLOT', 'BUILDING'].includes(node.type),
     building: storage && node.type === 'BUILDING',
     demolitionHistory: storage && node.type === 'PLOT',
-    finance: !shelter,
+    finance: !shelter && (node.has_finances ?? (!['ROOM', 'BED'].includes(node.type) && node.details.building_kind !== 'warehouse')),
+    cultivation: active && node.type === 'BED' && node.permissions.storage && Boolean(node.details.unlocked),
+    warehouse: active && storage && node.type === 'BUILDING' && ['forge', 'workshop', 'workroom', 'warehouse'].includes(String(node.details.building_kind)),
   };
 }
 
 export function tabsForNode(node: WorldNode, features: NodeFeatureSet): NodeTab[] {
   const tabs: NodeTab[] = ['map'];
+  if (features.cultivation) tabs.push('cultivation');
   if (features.nights || features.housing) tabs.push('life');
   if (features.storage || features.housing) tabs.push('workshop');
   if (features.finance) tabs.push('finance');

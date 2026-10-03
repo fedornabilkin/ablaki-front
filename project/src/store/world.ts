@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
-import { loadWorld, loadWorldNavigation, loadWorldMap, worldError } from '@/services/api/world';
+import { loadWorldScreen, worldError } from '@/services/api/world';
 import type { WorldCapabilities, WorldNode, WorldPage, WorldMapData } from '@/entities/world/types';
 
 const emptyPage = (): WorldPage => ({ items: [], total: 0, pageSize: 20, currentPage: 1, pageCount: 0 });
@@ -18,14 +18,11 @@ export const useWorldStore = defineStore('server-world', () => {
   async function load(id: number | null) {
     const current = ++request; loading.value = true; error.value = ''; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage();
     try {
-      const root = await loadWorld();
+      const screen = await loadWorldScreen(id);
       if (current !== request) return;
-      capabilities.value = root.capabilities;
-      if (!root.capabilities.world_read || !root.world) return;
-      const target = id ?? root.world.id;
-      const [navigation, mapped] = await Promise.all([loadWorldNavigation(target), loadWorldMap(target)]);
-      if (current !== request) return;
-      node.value = navigation.node; breadcrumbs.value = navigation.breadcrumbs; map.value = mapped; siblings.value = navigation.siblings;
+      capabilities.value = screen.capabilities;
+      if (!screen.navigation) return;
+      node.value = screen.navigation.node; breadcrumbs.value = screen.navigation.breadcrumbs; map.value = screen.map; siblings.value = screen.navigation.siblings;
     } catch (cause) { if (current === request) error.value = worldError(cause); }
     finally { if (current === request) loading.value = false; }
   }

@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { creditAmount } from '@/entities/world/credits';
+import type { WorldCapabilities, WorldScreen } from '@/entities/world/types';
 import { nodeTypes, type NodeType, type WorldNode, type WorldPage, type WorldMapData, type WorldRoot, type WorldNavigation, type WorldQuote, type WorldCommandResult, type WorldOnboarding } from '@/entities/world/types';
 
 const invalid = (): never => { throw new Error('invalid-world-response'); };
@@ -12,15 +13,16 @@ const boolean = (value: unknown): boolean => typeof value === 'boolean' ? value 
 const nullableId = (value: unknown) => value === null ? null : integer(value, 1);
 const list = <T>(value: unknown, parse: (value: unknown) => T, max = 100): T[] => Array.isArray(value) && value.length <= max ? value.map(parse) : invalid();
 const hexId = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value) ? value : invalid();
+function parseMapBounds(value: unknown) { const b = record(value); return { x: integer(b.x, -1000000, 1000000), y: integer(b.y, -1000000, 1000000), width: integer(b.width, 1, 2000001), height: integer(b.height, 1, 2000001) }; }
 export function parseWorldNode(value: unknown): WorldNode {
   const row = record(value), coordinates = record(row.coordinates), permissions = record(row.permissions);
   if (!nodeTypes.includes(row.type as NodeType) || !['public', 'private'].includes(String(row.visibility))) invalid();
   const details: WorldNode['details'] = {};
   for (const [key, entry] of Object.entries(record(row.details))) {
-    if (['climate', 'settlement_kind', 'plot_kind', 'exposure_class', 'operational_status'].includes(key)) details[key] = text(entry, 40);
+    if (['building_kind', 'climate', 'settlement_kind', 'plot_kind', 'exposure_class', 'operational_status'].includes(key)) details[key] = text(entry, 40);
     else if (['template_revision_id', 'population', 'plot_limit', 'level', 'condition', 'max_condition', 'active_project_id', 'shelter_instance_id', 'shelter_plot_id', 'area', 'fertility', 'allow_building', 'garden_node_id', 'ordinal', 'unlocked'].includes(key)) details[key] = entry === null ? null : integer(entry);
   }
-  return { id: integer(row.id, 1), type: row.type as NodeType, parent_id: nullableId(row.parent_id), root_id: integer(row.root_id, 1),
+  return { ...(row.map === undefined ? {} : { map: parseMapBounds(row.map) }), ...(row.has_finances === undefined ? {} : { has_finances: boolean(row.has_finances) }), id: integer(row.id, 1), type: row.type as NodeType, parent_id: nullableId(row.parent_id), root_id: integer(row.root_id, 1),
     code: text(row.code ?? `node-${row.id}`, 80), name: text(row.name, 120), label: text(row.label ?? row.name, 120), status: text(row.status, 24), visibility: row.visibility as WorldNode['visibility'], revision: integer(row.revision, 1), portable: row.portable === undefined ? false : boolean(row.portable),
     coordinates: { x: integer(coordinates.x, -1000000, 1000000), y: integer(coordinates.y, -1000000, 1000000) },
     footprint: row.footprint === null || row.footprint === undefined ? null : list(row.footprint, point => {
@@ -39,10 +41,25 @@ export function parseWorldPage(value: unknown): WorldPage {
   return { items, total, pageSize, currentPage, pageCount };
 }
 export function parseWorldRoot(value: unknown): WorldRoot {
-  const row = record(value), flags = record(row.capabilities);
-  if (row.contract_version !== 1 || flags.contract_version !== 1) invalid();
-  return { contract_version: 1, server_time: integer(row.server_time), world: row.world === null ? null : parseWorldNode(row.world), regions: parseWorldPage(row.regions),
-    capabilities: { contract_version: 1, schema_ready: boolean(flags.schema_ready), world_read: boolean(flags.world_read), world_write: boolean(flags.world_write), storage_v2: boolean(flags.storage_v2), economy_tick: boolean(flags.economy_tick) } };
+  const row = record(value);
+  if (row.contract_version !== 1) invalid();
+  return { home_node_id: row.home_node_id === undefined ? null : nullableId(row.home_node_id), contract_version: 1, server_time: integer(row.server_time), world: row.world === null ? null : parseWorldNode(row.world), regions: parseWorldPage(row.regions),
+    capabilities: parseCapabilities(row.capabilities) };
+}
+function parseCapabilities(value: unknown): WorldCapabilities {
+  const flags = record(value);
+  if (flags.contract_version !== 1) invalid();
+  return { contract_version: 1, schema_ready: boolean(flags.schema_ready), world_read: boolean(flags.world_read), world_write: boolean(flags.world_write), storage_v2: boolean(flags.storage_v2), economy_tick: boolean(flags.economy_tick) };
+}
+export function parseWorldScreen(value: unknown, requestedId: number | null): WorldScreen {
+  const row = record(value);
+  if (row.contract_version !== 1) invalid();
+  const capabilities = parseCapabilities(row.capabilities);
+  const navigation = row.navigation === null ? null : parseWorldNavigation(row.navigation);
+  const map = row.map === null ? null : parseWorldMap(row.map, navigation?.node.id ?? invalid());
+  if ((navigation === null) !== (map === null) || (map && !('node_id' in map)) || (!capabilities.world_read && navigation)) invalid();
+  if (navigation && requestedId !== null && navigation.node.id !== integer(requestedId, 1)) invalid();
+  return { contract_version: 1, server_time: integer(row.server_time), capabilities, navigation, map: map as WorldScreen['map'] };
 }
 export function parseWorldNavigation(value: unknown): WorldNavigation {
   const row = record(value);
@@ -82,6 +99,11 @@ export function parseWorldCommandResult(value: unknown): WorldCommandResult {
     changed_node_ids: list(row.changed_node_ids, value => integer(value, 1), 10000), ...(row.changed_storage_ids === undefined ? {} : { changed_storage_ids: list(row.changed_storage_ids, value => integer(value, 1), 10000) }), ...(row.node === undefined ? {} : { node: parseWorldNode(row.node) }) };
 }
 const url = (path: string) => config.makeApiUrl(`v1/world${path}`);
+export async function loadWorldScreen(id: number | null): Promise<WorldScreen> {
+  const path = id === null ? '' : `/nodes/${integer(id, 1)}/navigation`;
+  const params = id === null ? { view: 'home' } : { include: 'map' };
+  return parseWorldScreen((await apiClient.get(url(path), { params })).data, id);
+}
 export async function loadWorld(params: Record<string, unknown> = {}) { return parseWorldRoot((await apiClient.get(url(''), { params: { ...params, envelope: 1 } })).data); }
 export async function loadWorldNavigation(id: number) { return parseWorldNavigation((await apiClient.get(url(`/nodes/${integer(id, 1)}/navigation`))).data); }
 export async function loadWorldChildren(id: number, params: Record<string, unknown>) { return parseWorldPage((await apiClient.get(url(`/nodes/${integer(id, 1)}/children`), { params: { ...params, envelope: 1 } })).data); }
@@ -90,7 +112,7 @@ export function parseWorldMap(value: unknown, id: number): WorldMapData | WorldP
   // Older servers return the paginated children contract from /map.
   if ('_meta' in row) return parseWorldPage(row);
   if (integer(row.node_id, 1) !== nodeId) invalid();
-  return { node_id: nodeId, items: list(row.items, parseWorldNode, Number.MAX_SAFE_INTEGER), can_expand: boolean(row.can_expand),
+  return { ...(row.bounds === undefined ? {} : { bounds: parseMapBounds(row.bounds) }), node_id: nodeId, items: list(row.items, parseWorldNode, Number.MAX_SAFE_INTEGER), can_expand: boolean(row.can_expand),
     cells: list(row.cells, value => { const cell = record(value); if (!['discovered', 'open'].includes(String(cell.state))) invalid();
       return { x: integer(cell.x, -1000000, 1000000), y: integer(cell.y, -1000000, 1000000), state: cell.state as 'discovered' | 'open' }; }, Number.MAX_SAFE_INTEGER) };
 }
@@ -124,7 +146,7 @@ export async function sendWorldCommand(path: string, body: Record<string, unknow
   if (!isWorldCommandPath(path)) invalid();
   return parseWorldCommandResult((await apiClient.post(url(path), body)).data);
 }
-export const isWorldCommandPath = (path: string): boolean => path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|budget-grant|supplies-starter|supplies-gather|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|map-explore|map-buy|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
+export const isWorldCommandPath = (path: string): boolean => /^\/beds\/[1-9]\d*\/(dig|sow|water|harvest|cancel)$/.test(path) || path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|budget-grant|supplies-starter|supplies-gather|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|garden-publish|garden-withdraw|garden-buy|garden-expand|map-explore|map-buy|warehouse-expand|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
 export async function loadWorldOnboarding(): Promise<WorldOnboarding> {
   const row = record((await apiClient.get(url('/onboarding'))).data);
   return { world_id: integer(row.world_id, 1), joined: boolean(row.joined), starter_site_id: nullableId(row.starter_site_id), joined_at: nullableId(row.joined_at), grace_until: nullableId(row.grace_until), server_time: integer(row.server_time), join_available: boolean(row.join_available) };

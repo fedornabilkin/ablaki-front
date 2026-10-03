@@ -21,6 +21,12 @@ const destinationOptions = computed(() => headers.value.filter(row => row.kind !
 const unitOptions = computed(() => item.value?.instances.map(unit => ({ label: `№${unit.id} · ${unit.durability}/${unit.max_durability}`, value: unit.id })) || []);
 const payload = computed<TransferInput | null>(() => view.value && item.value && destination.value && position.value && quantity.value ? ({ inventory_id: item.value.id, source_storage_id: view.value.storage.id, destination_storage_id: destination.value, position: position.value, quantity: quantity.value, instance_id: instance.value }) : null);
 const pager = computed(() => view.value ? { ...view.value, items: view.value.items.map(item => ({ ...item })) } : { items: [], total: 0, pageSize: 100 });
+const cells = computed(() => {
+  if (!view.value) return [];
+  const items = new Map(view.value.items.map(item => [item.position, item]));
+  const size = Math.min(1000, Math.max(view.value.storage.capacity, ...view.value.items.map(item => item.position)));
+  return Array.from({ length: size }, (_, i) => ({ position: i + 1, item: items.get(i + 1) }));
+});
 const placeNames: Record<string, string> = { outdoor: 'На улице', covered: 'Под навесом', indoor: 'В помещении', carried: 'В инвентаре' };
 function link(id: number) { return { path: `/world/storage/${id}`, query: props.nodeId === null ? {} : { node_id: props.nodeId } }; }
 async function load() {
@@ -28,9 +34,15 @@ async function load() {
   try {
     const list = await loadStorageList(props.nodeId);
     if (disposed || current !== generation) return;
-    const id = props.storageId ?? list.find(row => row.kind === 'placement')?.id ?? list[0]?.id;
+    const id = props.storageId ?? list.find(row => row.kind === 'stockpile' && row.node_id === props.nodeId)?.id ?? list.find(row => row.kind === 'placement')?.id ?? list[0]?.id;
     if (!id) { headers.value = list; return; }
     const result = await loadStorage(id, page.value);
+    if (result.storage.kind === 'stockpile') {
+      const first = result.currentPage === 1 ? result : await loadStorage(id, 1);
+      const pages = await Promise.all(Array.from({ length: Math.max(0, first.pageCount - 1) }, (_, i) => loadStorage(id, i + 2)));
+      if (pages.some(p => p.storage.revision !== first.storage.revision)) throw new Error('storage-changed');
+      Object.assign(result, first, { items: [...first.items, ...pages.flatMap(p => p.items)] });
+    }
     if (disposed || current !== generation) return;
     headers.value = list.some(row => row.id === id) ? list : [...list, result.storage]; view.value = result;
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
@@ -67,7 +79,14 @@ section.world-storage(aria-label="Вещи и размещение")
     ul.placement-slots(v-if="view.slots.length")
       li(v-for="slot in view.slots" :key="slot.position") Место {{ slot.position }} · {{ placeNames[slot.exposure_class] }} · {{ slot.available ? 'Доступно' : 'Закрыто' }}
     p(v-if="!view.items.length") Здесь пока нет вещей.
-    ul.storage-items
+    .warehouse-items(v-if="view.storage.kind === 'stockpile'" aria-label="Ячейки склада")
+      button.warehouse-cell(v-for="cell in cells" :key="cell.position" type="button" :class="{ selected: cell.item?.id === selected, empty: !cell.item }" :disabled="!cell.item" :aria-label="cell.item ? `${cell.item.name}, ${cell.item.quantity} шт., ячейка ${cell.position}` : `Пустая ячейка ${cell.position}`" @click="selected = cell.item?.id ?? null")
+        template(v-if="cell.item")
+          font-awesome-icon.cell-icon(:icon="cell.item.icon || 'fa fa-cube'")
+          strong.cell-quantity {{ cell.item.quantity }}
+          span.cell-name {{ cell.item.name }}
+        small(v-else) {{ cell.position }}
+    ul.storage-items(v-else)
       li(v-for="row in view.items" :key="row.id" :class="{selected: selected === row.id}")
         .item-summary
           span {{ row.name }}
@@ -77,7 +96,7 @@ section.world-storage(aria-label="Вещи и размещение")
         router-link(v-for="unit in row.instances" :key="unit.id" :to="`/world/equipment/${unit.id}/wear`") №{{ unit.id }} · {{ unit.durability }}/{{ unit.max_durability }} · {{ placeNames[unit.exposure_class] }} · история прочности
         router-link(v-if="row.inner_storage_id" :to="link(row.inner_storage_id)") Открыть сундук
         n-button(size="small" :disabled="busy || Boolean(pending) || !canWrite" @click="selected = row.id") Выбрать для переноса
-    page-pager(:page="page" :result="pager" query-prefix="storage" :disabled="loading")
+    page-pager(v-if="view.storage.kind !== 'stockpile'" :page="page" :result="pager" query-prefix="storage" :disabled="loading")
   form.transfer-form(v-if="item" @submit.prevent="preview")
     h3 Переместить: {{ item.name }}
     n-select(v-model:value="destination" :options="destinationOptions" :disabled="busy" placeholder="Куда переместить" aria-label="Целевое хранилище")
@@ -90,6 +109,13 @@ section.world-storage(aria-label="Вещи и размещение")
       n-button(type="primary" :loading="busy" :disabled="Boolean(pending) || !canWrite" @click="confirm") Подтвердить перенос
 </template>
 <style scoped>
+.warehouse-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: .5rem; }
+.warehouse-cell { min-height: 84px; position: relative; padding: .5rem; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; }
+.warehouse-cell.selected { outline: 2px solid var(--primary); }
+.warehouse-cell.empty { opacity: .45; cursor: default; }
+.cell-icon { position: absolute; top: .6rem; left: .6rem; font-size: 1.25rem; }
+.cell-quantity { position: absolute; top: .5rem; right: .5rem; font-size: .85rem; }
+.cell-name { display: block; margin-top: 2rem; font-size: .75rem; line-height: 1.2; overflow-wrap: anywhere; }
 .world-storage, .transfer-form { display: grid; gap: .75rem; }
 .storage-links { display: flex; flex-wrap: wrap; gap: .75rem; }
 .storage-items { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: .5rem; }
