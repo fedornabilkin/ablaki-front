@@ -53,7 +53,8 @@ section.world-garden#garden
       p Базовая цена грядки: {{ state.garden.base_price }} Cr. Условия приобретённого огорода сохраняются при изменении предложения поселения.
       ol.garden-beds
         li(v-for="bed in state.garden.beds" :key="bed.node_id" :class="{ 'garden-locked': !bed.unlocked }")
-          router-link(:to="`/world/nodes/${bed.node_id}`") Грядка {{ bed.ordinal }}
+          router-link(:to="`/world/nodes/${bed.node_id}#cultivation`") Грядка {{ bed.ordinal }}
+          router-link(v-if="bed.unlocked" :to="`/world/nodes/${bed.node_id}#cultivation`") Выращивать
           span {{ bed.unlocked ? 'Открыта' : 'Закрыта' }}
           span(v-if="!bed.unlocked") Цена открытия: {{ bed.price }} Cr
       template(v-if="state.can_expand")

@@ -18,10 +18,8 @@ const cellSize = 72;
 const nodes = computed(() => props.map?.items ?? []);
 const selectedNode = computed(() => nodes.value.find(node => node.id === selectedNodeId.value) ?? null);
 const miniBounds = computed(() => {
-  const points = selectedMap.value?.items.map(item => item.coordinates) ?? [];
-  const xs = points.map(point => point.x), ys = points.map(point => point.y);
-  const minX = xs.length ? Math.min(...xs) - 1 : -2, minY = ys.length ? Math.min(...ys) - 1 : -2;
-  return { minX, minY, maxX: minX + 6, maxY: minY + 4 };
+  const map = selectedMap.value?.bounds ?? selectedNode.value?.map ?? { x: 0, y: 0, width: 5, height: 5 };
+  return { minX: map.x, minY: map.y, maxX: map.x + Math.min(map.width, 32) - 1, maxY: map.y + Math.min(map.height, 32) - 1 };
 });
 const miniCells = computed(() => {
   const cells = [];
@@ -35,22 +33,13 @@ const miniCells = computed(() => {
 const cellStates = computed(() => new Map((props.map?.cells ?? []).map(cell => [`${cell.x}:${cell.y}`, cell.state])));
 const selectedState = computed(() => selectedCell.value ? cellStates.value.get(`${selectedCell.value.x}:${selectedCell.value.y}`) ?? 'closed' : null);
 const bounds = computed(() => {
-  const points = [...nodes.value.map(node => node.coordinates), ...(props.map?.cells ?? [])];
-  for (const node of nodes.value) if (node.footprint) points.push(...node.footprint);
-  let minimumX = 0, maximumX = 0, minimumY = 0, maximumY = 0;
-  for (const point of points) {
-    minimumX = Math.min(minimumX, point.x); maximumX = Math.max(maximumX, point.x);
-    minimumY = Math.min(minimumY, point.y); maximumY = Math.max(maximumY, point.y);
-  }
-  const x = center.value?.x ?? nodes.value[0]?.coordinates.x ?? Math.floor((minimumX + maximumX) / 2);
-  const y = center.value?.y ?? nodes.value[0]?.coordinates.y ?? Math.floor((minimumY + maximumY) / 2);
-  return {
-    minX: maximumX - minimumX < 13 ? minimumX - 2 : x - 7,
-    maxX: maximumX - minimumX < 13 ? maximumX + 2 : x + 7,
-    minY: maximumY - minimumY < 13 ? minimumY - 2 : y - 7,
-    maxY: maximumY - minimumY < 13 ? maximumY + 2 : y + 7,
-    panning: maximumX - minimumX >= 13 || maximumY - minimumY >= 13,
-  };
+  const sizes = { WORLD: [32, 32], REGION: [20, 20], SETTLEMENT: [12, 12], BUILDING: [3, 3], ROOM: [2, 3], PLOT: [5, 5], BED: [1, 1] };
+  const size = sizes[props.node.type];
+  const map = props.map?.bounds ?? props.node.map ?? { x: 0, y: 0, width: size[0], height: size[1] };
+  const width = Math.min(map.width, 32), height = Math.min(map.height, 32);
+  const x = Math.max(map.x, Math.min((center.value?.x ?? map.x) - (center.value ? Math.floor(width / 2) : 0), map.x + map.width - width));
+  const y = Math.max(map.y, Math.min((center.value?.y ?? map.y) - (center.value ? Math.floor(height / 2) : 0), map.y + map.height - height));
+  return { minX: x, maxX: x + width - 1, minY: y, maxY: y + height - 1, panning: map.width > 32 || map.height > 32 };
 });
 const columns = computed(() => bounds.value.maxX - bounds.value.minX + 1);
 const rows = computed(() => bounds.value.maxY - bounds.value.minY + 1);
@@ -140,12 +129,12 @@ onScopeDispose(() => { generation++; });
         button.world-map-object(v-for="child in visibleNodes" :key="child.id" type="button" :class="{ selected: selectedNodeId === child.id, owned: child.owned_by_me }" :style="position(child.coordinates.x, child.coordinates.y)" :aria-label="`${nodeLabels[child.type]}: ${child.label}, ${child.coordinates.x}, ${child.coordinates.y}`" @click="selectNode(child)")
           font-awesome-icon(:icon="child.status === 'constructing' ? 'hammer' : child.status === 'active' ? 'check-circle' : child.type === 'PLOT' && child.details.plot_kind === 'campsite' ? 'tent' : 'circle'" aria-hidden="true")
           span {{ child.label }}
-    p.world-map-hint Дочерних объектов: {{ nodes.length }}. Новые ячейки закрыты; свободную ячейку можно выбрать на карте.
+    p.world-map-hint Карта {{ map?.bounds?.width ?? node.map?.width ?? columns }} × {{ map?.bounds?.height ?? node.map?.height ?? rows }}. Дочерних объектов: {{ nodes.length }}. Новые ячейки закрыты; выберите объект или свободную ячейку.
   aside.world-map-inspector(aria-live="polite")
     template(v-if="selectedNode")
       span.world-map-kicker {{ selectedNode.type === 'PLOT' && selectedNode.details.plot_kind === 'campsite' ? 'Усадьба' : nodeLabels[selectedNode.type] }}
       h3 {{ selectedNode.label }}
-      .world-map-mini(v-if="selectedMap" :aria-label="`Карта объекта ${selectedNode.label}`")
+      .world-map-mini(v-if="selectedMap" :style="{ gridTemplateColumns: `repeat(${miniBounds.maxX - miniBounds.minX + 1}, 1fr)` }" :aria-label="`Карта объекта ${selectedNode.label}`")
         span(v-for="cell in miniCells" :key="`${cell.x}:${cell.y}`" :class="{ occupied: cell.child }" :title="cell.child?.label ?? `${cell.x}, ${cell.y}`") {{ cell.child ? '●' : '' }}
       dl
         dt Координаты

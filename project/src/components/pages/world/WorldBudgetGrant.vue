@@ -11,7 +11,7 @@ const props = defineProps<{ nodeId: number; children: WorldNode[]; session: numb
 const destination = ref<number | null>(null), amount = ref(''), purpose = ref('');
 const quote = shallowRef<Awaited<ReturnType<typeof previewBudgetGrant>> | null>(null);
 const calculating = ref(false), error = ref('');
-const options = computed(() => props.children.filter(child => child.permissions.storage && child.status === 'active'));
+const options = computed(() => props.children.filter(child => child.permissions.storage && child.status === 'active' && child.has_finances !== false && !['ROOM', 'BED'].includes(child.type) && child.details.building_kind !== 'warehouse'));
 let generation = 0;
 watch([() => props.nodeId, () => props.session, destination, amount, purpose], () => { generation++; quote.value = null; error.value = ''; });
 onScopeDispose(() => { generation++; });

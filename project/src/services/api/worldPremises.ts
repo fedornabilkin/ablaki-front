@@ -12,13 +12,13 @@ const bool = (value: unknown): boolean => typeof value === 'boolean' ? value : i
 const url = (node: number, action = 'premises') => config.makeApiUrl(`v1/world/nodes/${id(node)}/${action}`);
 export function premisesPublicationInput(value: unknown) {
   const r = record(value);
-  if (r.kind !== 'canopy' && r.kind !== 'workroom' && r.kind !== 'house') invalid();
+  if (!['canopy', 'workroom', 'house', 'forge', 'workshop', 'warehouse'].includes(String(r.kind))) invalid();
   const area = integer(r.area, 1, 4);
   const lodging_places = r.kind === 'house' ? 1 : 0;
   const slots = integer(r.slots, 1, area - lodging_places), expansion_limit = integer(r.expansion_limit ?? slots, slots, area - lodging_places);
   const expansion_base_price = expansion_limit > slots ? investmentAmount(r.expansion_base_price) : null;
   if (expansion_limit === slots && r.expansion_base_price !== undefined && r.expansion_base_price !== null) invalid();
-  return { name: text(r.name).trim(), kind: r.kind as 'canopy' | 'workroom' | 'house', area, slots, price: investmentAmount(r.price), expansion_limit, expansion_base_price, lodging_places };
+  return { name: text(r.name).trim(), kind: r.kind as 'canopy' | 'workroom' | 'house' | 'forge' | 'workshop' | 'warehouse', area, slots, price: investmentAmount(r.price), expansion_limit, expansion_base_price, lodging_places };
 }
 function premises(value: unknown) {
   const r = record(value), input = premisesPublicationInput(r);

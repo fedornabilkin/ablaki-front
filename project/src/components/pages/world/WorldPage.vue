@@ -7,6 +7,8 @@ import { useWorldCommand } from '@/hooks/useWorldCommand';
 import { useWorldStore } from '@/store/world';
 import { nodeLabels, type NodeType } from '@/entities/world/types';
 import { nodeFeatures, tabForHash, tabLabels, tabsForNode, type NodeTab } from '@/entities/world/nodeLayout';
+import WorldCultivationPanel from './WorldCultivationPanel.vue';
+import WorldWarehousePanel from './WorldWarehousePanel.vue';
 import WorldMap from './WorldMap.vue';
 import WorldCampsiteSupplies from './WorldCampsiteSupplies.vue';
 import WorldNodeStatistics from './WorldNodeStatistics.vue';
@@ -44,9 +46,22 @@ const command = useWorldCommand(session, owner, result => {
   } else changed(result.changed_node_ids);
 });
 const { busy: commandBusy, pending: pendingCommand, error: commandError } = command;
-function load() { if (invalidId.value) { world.cancel(); return; } void world.load(nodeId.value); }
-watch(session, value => world.setSession(value), { immediate: true, flush: 'sync' });
-watch([nodeId, session], load, { immediate: true });
+let homeRedirect: number | null = null;
+async function load() {
+  homeRedirect = null;
+  if (invalidId.value) { world.cancel(); return; }
+  const requested = nodeId.value;
+  await world.load(requested);
+  if (requested === null && nodeId.value === null && world.node) {
+    homeRedirect = world.node.id;
+    void router.replace({ path: `/world/nodes/${world.node.id}`, hash: route.hash }).finally(() => { homeRedirect = null; });
+  }
+}
+watch(session, value => { homeRedirect = null; world.setSession(value); }, { immediate: true, flush: 'sync' });
+watch([nodeId, session], () => {
+  if (homeRedirect !== null && nodeId.value === homeRedirect && world.node?.id === homeRedirect) { homeRedirect = null; return; }
+  void load();
+}, { immediate: true });
 watch([nodeId, session], () => { purchasedRoom.value = null; }, { flush: 'sync' });
 onScopeDispose(() => world.cancel());
 function changed(ids: number[]) { world.invalidate(ids); load(); void auth.dispatch('auth/fetchData'); }
@@ -71,8 +86,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 <template lang="pug">
 .container.world-page
   .world-toolbar
-    router-link(to="/world") Мир
-    router-link(to="/city/demo") Локальный город
+    router-link(to="/world") Мой дом
     router-link(to="/craft") Мастерская
     router-link(v-if="world.capabilities?.storage_v2" to="/world/recovery") Восстановление вещей
     n-button(size="small" :loading="world.loading" @click="load") Обновить
@@ -89,6 +103,11 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
   n-alert(v-else-if="!world.capabilities?.world_read" type="info") Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
+    nav.world-breadcrumbs(aria-label="Путь в мире")
+      template(v-for="(crumb, index) in world.breadcrumbs" :key="crumb.id")
+        span(v-if="index" aria-hidden="true") /
+        router-link(:to="`/world/nodes/${crumb.id}`" :aria-current="crumb.id === world.node.id ? 'page' : undefined") {{ crumb.label }}
+    router-link.world-parent(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`") ← На уровень выше
     section.world-hero(:aria-label="nodeKind + ': ' + world.node.label")
       .world-crest(aria-hidden="true")
         font-awesome-icon(:icon="nodeIcon")
@@ -120,6 +139,9 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
     section.world-tab-panel(v-show="activeTab === 'map'" aria-label="Обзор объекта")
       world-onboarding.world-content-card(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
 
+    section.world-tab-panel(v-if="visitedTabs.includes('cultivation') && features?.cultivation" v-show="activeTab === 'cultivation'" aria-label="Выращивание")
+      world-cultivation-panel.world-content-card(:bed-id="world.node.id" :session="session" :command="command")
+
     section.world-tab-panel(v-if="visitedTabs.includes('life') && (features?.nights || features?.housing)" v-show="activeTab === 'life'" aria-label="Ночлег и здоровье")
       .world-section-title
         span.world-eyebrow Жизнь на территории
@@ -136,6 +158,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
       .world-inline-links.world-content-card
         router-link(v-if="features.storage" :to="`/world/workspace/${world.node.id}`") Изготовление в этом месте
         router-link(v-if="!features.shelter && world.node.permissions.manage && ['BUILDING', 'ROOM', 'PLOT'].includes(world.node.type)" :to="{ path: '/craft', query: { node: world.node.id } }") Открыть мастерскую
+      world-warehouse-panel.world-content-card(v-if="features.warehouse" :node-id="world.node.id" :session="session" :command="command")
       .world-content-grid.world-content-grid--workshop
         world-storage-panel.world-content-card.world-storage-card(v-if="features.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
         world-campsite-supplies.world-content-card(v-if="features.campsite && features.storage && world.node.status === 'active'" :node-id="world.node.id" :session="session" :command="command")
@@ -208,6 +231,9 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 </template>
 
 <style scoped>
+.world-breadcrumbs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .9rem; }
+.world-breadcrumbs [aria-current="page"] { font-weight: 700; color: var(--text); }
+.world-parent { display: inline-flex; padding: .5rem 0; width: fit-content; }
 .world-page { display: grid; gap: 1rem; padding-block: 1.5rem 3rem; max-width: 1320px; }
 .world-toolbar, .world-breadcrumbs, .world-inline-links, .world-siblings { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .world-toolbar { justify-content: flex-end; font-size: .9rem; }
