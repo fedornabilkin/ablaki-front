@@ -1,6 +1,6 @@
 # Соглашение по деплою frontend
 
-Статус: владелец подтвердил успешный production-деплой frontend. [Инструкция](../docs/deployment-github-vps.md).
+Статус: владелец подтвердил успешный production-деплой frontend. [Инструкция](../docs/operations/deployment-github-vps.md).
 
 ## Схема
 - GitHub Actions собирает project/dist и передаёт проверенный архив по SSH; статику отдаёт системный nginx.

@@ -2,7 +2,7 @@
 
 Обновлено 6 сентября 2026 года. Production frontend уже работает и остаётся в `/var/www/ablakin.ru`. Test использует HTTP по IP и отдельным портам; DNS и сертификаты для него не нужны. Настройка VPS и GitHub environment выполняется отдельно по командам ниже.
 
-[Workflow](../.github/workflows/node.js.yml), [карта target](../deploy/deployment-target.mjs), [серверный скрипт](../deploy/frontend-deploy.sh), [общая валидация URL](../deploy/check-api.mjs). Настройка backend описана отдельно в [его инструкции](https://github.com/fedornabilkin/ablaki/blob/master/docs/production-test-deployment.md).
+[Workflow](../../.github/workflows/node.js.yml), [карта target](../../deploy/deployment-target.mjs), [серверный скрипт](../../deploy/frontend-deploy.sh), [общая валидация URL](../../deploy/check-api.mjs). Настройка backend описана отдельно в [его инструкции](https://github.com/fedornabilkin/ablaki/blob/master/docs/operations/production-test-deployment.md).
 
 ## 1. Параметры окружений
 
@@ -118,7 +118,7 @@ BASH
 
 ## 4. Системный nginx: test на HTTP-порту 3181
 
-[Test HTTP-конфиг](../deploy/nginx/test-frontend.http.conf.example) содержит `listen 3181`, `server_name 94.250.251.94` и root `/var/code/ablaki-front`. Убедитесь, что порт `3181` предназначен системному nginx и разрешён в firewall VPS. Сертификаты, DNS-записи и HTTPS redirect для этого test vhost не настраиваются.
+[Test HTTP-конфиг](../../deploy/nginx/test-frontend.http.conf.example) содержит `listen 3181`, `server_name 94.250.251.94` и root `/var/code/ablaki-front`. Убедитесь, что порт `3181` предназначен системному nginx и разрешён в firewall VPS. Сертификаты, DNS-записи и HTTPS redirect для этого test vhost не настраиваются.
 
 В существующем vhost замените `root /var/code/ablaki-front/project/dist;` на `root /var/code/ablaki-front;`, включая отдельные root внутри location, если они есть. Найти действующий файл можно командой `sudo nginx -T 2>&1 | grep -n -B 5 -A 15 'listen.*3181'`. Затем выполните `sudo nginx -t && sudo systemctl reload nginx`.
 
@@ -136,7 +136,7 @@ curl -fsS http://94.250.251.94:3181/deploy-version.txt
 
 В test-конфиге нет `default_server` и изменений production-портов 80/443. `/assets/` при отсутствии файла возвращает 404; `index.html` и версия не кешируются; `.well-known` сохраняется при публикации. Скрытые файлы закрыты. Сохранённый отдельный HTTPS-пример для возможного будущего домена сейчас не применяется.
 
-Production frontend использует существующий vhost `ablakin.ru`. [Образец location-блоков](../deploy/nginx/production-frontend.locations.conf.example) предназначен для сверки внутри него, а не для создания второго server. Сертификаты и существующий HTTPS redirect сохраняются.
+Production frontend использует существующий vhost `ablakin.ru`. [Образец location-блоков](../../deploy/nginx/production-frontend.locations.conf.example) предназначен для сверки внутри него, а не для создания второго server. Сертификаты и существующий HTTPS redirect сохраняются.
 
 Frontend nginx обслуживает статику. Запросы API идут на отдельный origin из переменной сборки; `proxy_pass /api` здесь не добавляется. В test это `http://94.250.251.94:3180/`. Backend должен разрешать CORS frontend origin `http://94.250.251.94:3181`, включая OPTIONS и заголовки Authorization/Content-Type. Production использует прежние HTTPS origins.
 
@@ -197,4 +197,4 @@ Releases production и test хранятся отдельно. Готовый к
 | 404 для всех assets | Root vhost на порту 3181 и asset location должны указывать на /var/code/ablaki-front |
 | Повтор SHA не меняет VITE_* | Нужен новый коммит и новая сборка |
 
-Локальные Node tests используют только временный HTTP сервер, без production запросов. Статическая проверка workflow и Bash не заменяет реальную публикацию и проверку rollback на test VPS. [План оставшихся серверных проверок](plan/2026-09-06-production-test-deployment.md).
+Локальные Node tests используют только временный HTTP сервер, без production запросов. Статическая проверка workflow и Bash не заменяет реальную публикацию и проверку rollback на test VPS. [План оставшихся серверных проверок](../plan/2026-09-06-production-test-deployment.md).
