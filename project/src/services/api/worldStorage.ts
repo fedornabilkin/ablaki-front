@@ -38,7 +38,30 @@ export function parseStorageView(value: unknown): StorageView {
 const url = (path: string) => config.makeApiUrl(`v1/world/${path}`);
 export async function loadStorageList(node: number | null) { const r = record((await apiClient.get(url('storages'), { params: node === null ? {} : { node_id: id(node) } })).data); return list(r.items, parseStorageHeader, 200); }
 export async function loadStorage(storage: number, page = 1) { return parseStorageView((await apiClient.get(url(`storage/${id(storage)}`), { params: { page } })).data); }
+/** A cell grid must not present items on another API page as empty destinations. */
+export async function loadStorageContents(storage: number): Promise<StorageView> {
+  const first = await loadStorage(storage);
+  if (first.pageCount > 100) throw new Error('storage-too-large');
+  const items = [...first.items];
+  for (let page = 2; page <= first.pageCount; page += 5) {
+    const pages = await Promise.all(Array.from({ length: Math.min(5, first.pageCount - page + 1) }, (_, i) => loadStorage(storage, page + i)));
+    if (pages.some(part => part.storage.revision !== first.storage.revision || part.total !== first.total)) throw new Error('storage-changed');
+    items.push(...pages.flatMap(part => part.items));
+  }
+  if (items.length !== first.total || new Set(items.map(item => item.position)).size !== items.length || new Set(items.map(item => item.id)).size !== items.length) throw new Error('storage-changed');
+  return { ...first, items };
+}
 export async function previewTransfer(input: TransferInput) { return parseWorldQuote((await apiClient.post(url('storage/transfer-preview'), input)).data); }
+export async function loadPlacementOptions(node: number) {
+  const r = record((await apiClient.get(url(`nodes/${id(node)}/placement-options`))).data);
+  if (r.node_id !== node) invalid();
+  return list(r.items, value => {
+    const i = record(value), p = i.input === null ? null : record(i.input);
+    if (typeof i.available !== 'boolean' || i.available !== (p !== null)) invalid();
+    const input: TransferInput | null = p ? { inventory_id: id(p.inventory_id), source_storage_id: id(p.source_storage_id), destination_storage_id: id(p.destination_storage_id), position: id(p.position), quantity: integer(p.quantity, 1, 1), instance_id: nullable(p.instance_id) } : null;
+    return { id: id(i.id), name: text(i.name, 120), icon: text(i.icon, 64), quantity: integer(i.quantity, 1), available: i.available, input };
+  }, 10000);
+}
 export async function previewChestRepair(storage: number, container: number) {
   const quote = parseWorldQuote((await apiClient.post(url('storage/chest-repair-preview'), { storage_id: id(storage), container_inventory_id: id(container) })).data);
   return { quote, repair: parseRepair(quote.terms.repair) };

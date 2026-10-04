@@ -99,7 +99,8 @@ it('keeps the map and statistics available throughout the world hierarchy', () =
   for (const type of nodeTypes) {
     const current = node(type);
     const tabs = tabsForNode(current, nodeFeatures(current, capabilities));
-    expect(tabs[0]).toBe('map');
+    if (type === 'BED') { expect(tabs).not.toContain('map'); expect(tabs).not.toContain('workshop'); expect(tabs).not.toContain('manage'); }
+    else expect(tabs[0]).toBe('map');
     expect(tabs).toContain('statistics');
   }
   const garden = node('PLOT', { plot_kind: 'garden' });
@@ -163,4 +164,18 @@ it('parses crop expiry and missed watering without accepting invalid states', ()
   const state = { bed_id: 12, dug: false, writable: true, server_time: 301, cycle: { id: 3, crop_revision_id: 1, name: 'Морковь', state: 'ripe', ready_at: 300, water_due_at: 120, water_deadline_at: 180, expires_at: 900, water_missed: true, yield_factor_bps: 5000, can_water: false } };
   expect(parseCultivation(state).cycle).toMatchObject({ expires_at: 900, yield_factor_bps: 5000, water_missed: true });
   expect(() => parseCultivation({ ...state, cycle: { ...state.cycle, state: 'paused' } })).toThrow();
+});
+
+it('keeps the current screen mounted during a command refresh', async () => {
+  setActivePinia(createPinia());
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValueOnce({ data: screen() });
+  const store = useWorldStore(); await store.load(10);
+  const before = store.node, map = store.map;
+  let resolve!: (value: unknown) => void;
+  get.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+  store.invalidate([10], true); const refreshing = store.load(10, true);
+  expect(store.node).toBe(before); expect(store.map).toBe(map); expect(store.loading).toBe(true);
+  resolve({ data: { ...screen(), navigation: { ...screen().navigation, node: { ...screen().navigation.node, revision: 2 } } } });
+  await refreshing;
+  expect(store.node?.revision).toBe(2); expect(store.loading).toBe(false);
 });

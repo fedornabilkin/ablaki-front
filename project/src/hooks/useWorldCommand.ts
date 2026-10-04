@@ -8,6 +8,7 @@ import { orderDeliveryInput, orderPublicationInput } from '@/services/api/worldO
 import { premisesPublicationInput } from '@/services/api/worldPremises';
 import { shelterInput, type ShelterAction } from '@/services/api/worldShelter';
 import { gardenInput, type GardenAction } from '@/services/api/worldGarden';
+import { harvestInput, type HarvestAction } from '@/services/api/worldHarvest';
 import { equipmentExpansionInput } from '@/services/api/worldEquipmentExpansion';
 
 interface PendingCommand { path: string; body: Record<string, unknown> & { request_key: string; quote_id: string; expected_revisions: Record<string, number> } }
@@ -51,6 +52,10 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
         shelterInput(value.path.substring(value.path.lastIndexOf('shelter-') + 8) as ShelterAction, body);
       } else if (/^\/nodes\/[1-9]\d*\/garden-(publish|withdraw|buy|expand)$/.test(value.path)) {
         gardenInput(value.path.substring(value.path.lastIndexOf('garden-') + 7) as GardenAction, body);
+      } else if (/^\/nodes\/[1-9]\d*\/harvest-(price|buy|withdraw)$/.test(value.path)) {
+        harvestInput(value.path.substring(value.path.lastIndexOf('harvest-') + 8) as HarvestAction, body);
+      } else if (/^\/beds\/[1-9]\d*\/(dig|sow|water|harvest|cancel)$/.test(value.path)) {
+        if (value.path.endsWith('/sow') && (!Number.isSafeInteger(body.crop_revision_id) || body.crop_revision_id < 1)) return;
       } else if (/^\/nodes\/[1-9]\d*\/equipment-expand$/.test(value.path)) {
         equipmentExpansionInput(body);
       } else if (/^\/professions\/[1-9]\d*\/(enroll|level-up)$/.test(value.path)) {

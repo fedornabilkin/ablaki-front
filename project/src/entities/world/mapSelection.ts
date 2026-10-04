@@ -23,3 +23,11 @@ export function selectMapCells(current: MapPoint[], point: MapPoint, anchor: Map
   const rectangle = available.filter(p => p.x >= Math.min(from.x, point.x) && p.x <= Math.max(from.x, point.x) && p.y >= Math.min(from.y, point.y) && p.y <= Math.max(from.y, point.y));
   return Array.from(new Map([...current, ...rectangle].map(p => [key(p), p])).values()).slice(0, limit);
 }
+
+/** Only real, unoccupied cells are included; fog and objects are never purchased by a marquee. */
+export function mapAreaCells(from: MapPoint, to: MapPoint, cells: MapPoint[], occupied: MapPoint[], limit = 100): MapPoint[] {
+  const occupiedKeys = new Set(occupied.map(p => `${p.x}:${p.y}`));
+  return cells.filter(p => p.x >= Math.min(from.x, to.x) && p.x <= Math.max(from.x, to.x)
+    && p.y >= Math.min(from.y, to.y) && p.y <= Math.max(from.y, to.y) && !occupiedKeys.has(`${p.x}:${p.y}`))
+    .sort((a, b) => a.y - b.y || a.x - b.x).slice(0, limit);
+}
