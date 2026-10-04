@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, reactive, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
+import WorldHarvestPanel from '../src/components/pages/world/WorldHarvestPanel.vue';
 import WorldMap from '../src/components/pages/world/WorldMap.vue';
 import WorldStoragePanel from '../src/components/pages/world/WorldStoragePanel.vue';
 import WorldStorageGrid from '../src/components/pages/world/WorldStorageGrid.vue';
@@ -12,7 +13,7 @@ import WorldCampsiteSupplies from '../src/components/pages/world/WorldCampsiteSu
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   return { NAlert: block('aside'), NButton: block('button'), NInputNumber: block('input'), NInput: block('input'), NSelect: block('select'), NSpin: block('span'), NCheckbox: block('input') };
@@ -22,6 +23,7 @@ vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, ge
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/worldStorage', () => ({ loadStorageList: mocks.storageList, loadStorageContents: mocks.storage, previewTransfer: mocks.transfer }));
 vi.mock('../src/services/api/worldWorkspace', () => ({ loadWorkspace: mocks.workspace, previewWorkspace: mocks.preview }));
+vi.mock('../src/services/api/worldHarvest', () => ({ loadHarvest: mocks.harvest, previewHarvest: mocks.harvestPreview }));
 vi.mock('../src/services/api/worldGarden', () => ({ loadGarden: mocks.garden, previewGarden: mocks.gardenPreview }));
 vi.mock('../src/services/api/worldEquipmentExpansion', () => ({ loadEquipmentExpansion: mocks.equipment, previewEquipmentExpansion: mocks.equipmentPreview }));
 vi.mock('../src/services/api/worldCultivation', () => ({ loadCultivation: mocks.cultivation, loadCrops: mocks.crops, previewCultivation: mocks.cultivationPreview }));
@@ -30,6 +32,7 @@ vi.mock('../src/services/api/world', () => ({ loadExplorer: async () => null, pr
 
 clientView(WorldStorageGrid, 'components/pages/world/WorldStorageGrid.vue');
 clientView(WorldStoragePanel, 'components/pages/world/WorldStoragePanel.vue');
+clientView(WorldHarvestPanel, 'components/pages/world/WorldHarvestPanel.vue');
 clientView(WorldMap, 'components/pages/world/WorldMap.vue');
 clientView(WorldWorkspace, 'components/pages/world/WorldWorkspace.vue');
 clientView(WorldGardenPanel, 'components/pages/world/WorldGardenPanel.vue');
@@ -223,5 +226,31 @@ describe('one-click world actions', () => {
     expect(mocks.cultivationPreview).toHaveBeenCalledWith(1, 'harvest', {});
     expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Собрать урожай'))!.props.disabled).toBe(false);
     expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+});
+
+describe('garden harvest purchase controls', () => {
+  async function setup() {
+    mocks.harvest.mockResolvedValue({ owned_by_me: false, writable: true, server_time: 100, items: [{ inventory_id: 5, position: 2, name: 'Морковь', icon: 'seedling', quantity: 7, price: '2.5000', harvested_at: 100, fresh_until: 1209700, spoiled: true }] });
+    const view = mount(WorldHarvestPanel, () => ({ nodeId: 10, session: 1, revision: 1, command: mocks.runner })); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Морковь'))!.props.onClick(); await flushView();
+    return { ...view, buy: () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Купить'))! };
+  }
+  it('buys once at the displayed price and shows five storage cells', async () => {
+    const view = await setup(), pending = deferred<any>(); mocks.harvestPreview.mockReturnValue(pending.promise);
+    expect(viewText(view.buy())).toContain('2.5 Cr');
+    view.buy().props.onClick(); view.buy().props.onClick(); await flushView();
+    expect(mocks.harvestPreview).toHaveBeenCalledTimes(1);
+    const input = { inventory_id: 5, quantity: 1 }, q = { ...quote, terms: { total: '2.5000', fits: true } };
+    pending.resolve({ input, quote: q }); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/10/harvest-buy', input, q);
+    expect(viewText(view.root).match(/Свободно/g)).toHaveLength(4);
+  });
+  it('refreshes a changed price and keeps its explanation visible without paying', async () => {
+    const view = await setup();
+    mocks.harvestPreview.mockResolvedValue({ input: { inventory_id: 5, quantity: 1 }, quote: { ...quote, terms: { total: '3.0000', fits: true } } });
+    view.buy().props.onClick(); await flushView();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Цена изменилась');
   });
 });
