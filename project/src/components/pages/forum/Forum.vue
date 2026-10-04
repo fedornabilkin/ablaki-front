@@ -77,7 +77,7 @@ n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :sty
   n-form(@submit.prevent="create")
     .theme-title-row
       n-form-item.theme-title-field(:show-label="false")
-        n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
+        n-input(:input-props="{ id: 'theme-title', 'aria-label': 'Название темы' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
       label.theme-private-field
         n-switch(v-model:value="isPrivate" :disabled="saving || !!createdThemeId" aria-label="Скрыть тему и сообщения от гостей")
         span Видно авторизованным

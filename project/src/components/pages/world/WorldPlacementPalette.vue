@@ -32,7 +32,7 @@ async function load() {
       do {
         const offers = await loadPremises(node.id, { page });
         for (const offer of offers.items) result.push({ key: `building:${offer.id}`, name: offer.name, icon: 'house', price: `${formatCredits(offer.price)} Cr`, available: offers.can_buy && offer.can_afford !== false && offer.requirements_status.allowed && !!offers.area && offers.area.available >= offer.area,
-          availability: offer.can_afford === false ? 'Не хватает бюджета' : !offer.requirements_status.allowed ? 'Не выполнены условия' : !offers.area || offers.area.available < offer.area ? 'Недостаточно площади' : 'Можно построить', execute: async () => {
+          availability: offer.can_afford === false ? 'Не хватает бюджета' : !offer.requirements_status.allowed ? 'Не выполнены условия' : !offers.area || offers.area.available < offer.area ? 'Недостаточно площади' : !offers.can_buy ? 'Покупка недоступна' : 'Можно построить', execute: async () => {
             const quote = await previewPremises(node.id, 'buy', { offer_id: offer.id });
             if (quote.room?.price !== offer.price) throw new Error('price-changed');
             if (canSubmit()) await props.command.submit(`/nodes/${node.id}/premises-buy`, quote.input, quote.quote);
@@ -43,7 +43,7 @@ async function load() {
     })());
     loaders.push(loadGarden(node.id).then(garden => {
       if (!garden.offer || garden.garden) return; const offer = garden.offer;
-      result.push({ key: 'garden', name: offer.name, icon: 'seedling', price: `${formatCredits(offer.price)} Cr`, available: garden.can_buy && offer.can_afford !== false, availability: offer.can_afford === false ? 'Не хватает бюджета' : 'Можно купить', execute: async () => {
+      result.push({ key: 'garden', name: offer.name, icon: 'seedling', price: `${formatCredits(offer.price)} Cr`, available: garden.can_buy && offer.can_afford !== false, availability: offer.can_afford === false ? 'Не хватает бюджета' : !garden.can_buy ? 'Покупка недоступна' : 'Можно купить', execute: async () => {
         const quote = await previewGarden(node.id, 'buy', { top_up: false });
         if (quote.payment?.total !== offer.price) throw new Error('price-changed');
         if (canSubmit()) await props.command.submit(`/nodes/${node.id}/garden-buy`, quote.input, quote.quote);

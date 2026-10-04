@@ -199,7 +199,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         .world-stat-card
           span Статус
           strong {{ statuses[world.node.status] || world.node.status }}
-        .world-stat-card
+        .world-stat-card(v-if="world.node.type !== 'BED'")
           span Прямые дочерние объекты
           strong {{ world.node.child_count }}
         .world-stat-card(v-if="detail.population !== undefined")
@@ -214,7 +214,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         .world-stat-card(v-if="detail.harvested_quantity !== undefined")
           span Собрано урожая
           strong {{ detail.harvested_quantity }} шт.
-      world-node-statistics.world-content-card(:node="world.node" :session="session")
+      world-node-statistics.world-content-card(v-if="world.node.type !== 'BED'" :node="world.node" :session="session")
 
     section.world-tab-panel(v-if="visitedTabs.includes('manage') && world.node.permissions.administer" v-show="activeTab === 'manage'" aria-label="Управление объектом")
       .world-section-title
