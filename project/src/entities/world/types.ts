@@ -13,7 +13,8 @@ export interface WorldNode {
   details: Record<string, string | number | null>; permissions: { manage: boolean; administer: boolean; storage: boolean }; actions: WorldAction[];
 }
 export interface WorldPage { items: WorldNode[]; total: number; pageSize: number; currentPage: number; pageCount: number }
-export interface WorldMapData { bounds?: MapBounds; node_id: number; items: WorldNode[]; cells: { x: number; y: number; state: 'discovered' | 'open' }[]; can_expand: boolean }
+export interface MapExploration { allowed: boolean; level: number; max_level_per_node: number; elixir_quantity: number; reason: string }
+export interface WorldMapData { exploration?: MapExploration; pricing?: import('./mapSelection').MapPricing; bounds?: MapBounds; node_id: number; items: WorldNode[]; cells: { x: number; y: number; state: 'discovered' | 'open' }[]; can_expand: boolean }
 export interface WorldCapabilities { schema_ready: boolean; contract_version: number; world_read: boolean; world_write: boolean; storage_v2: boolean; economy_tick: boolean }
 export interface WorldRoot { home_node_id?: number | null; contract_version: number; server_time: number; capabilities: WorldCapabilities; world: WorldNode | null; regions: WorldPage }
 export interface WorldNavigation { node: WorldNode; breadcrumbs: WorldNode[]; parent_id: number | null; siblings: WorldPage }

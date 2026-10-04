@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { NButton, NInputNumber, NPopover } from 'naive-ui';
@@ -46,7 +47,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
   .recipe-facts
     span(v-if="state.charge_credits")
       font-awesome-icon(icon="coins")
-      |  {{ requirements.cost }} Cr
+      |  {{ formatCredits(requirements.cost) }} Cr
     span(v-else) Без списания кредитов
     span
       font-awesome-icon(icon="cube")
@@ -55,7 +56,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
     li(v-for="reason in requirements.reasons" :key="reason")
       font-awesome-icon(:class="{'shortage-icon': reason.startsWith('Не хватает')}" :icon="reason.startsWith('Не хватает') ? 'exclamation-circle' : 'lock'")
       span {{ reason }}
-  n-button(type="primary" block :loading="busy" :disabled="blocked || !!requirements.reasons.length" @click="emit('craft', recipe.id, quantity || 0)") Создать
+  n-button(type="primary" block :loading="busy" :disabled="blocked || !!requirements.reasons.length" @click="emit('craft', recipe.id, quantity || 0)") Создать · {{ formatCredits(requirements.cost) }} Cr
 </template>
 <style scoped lang="scss">
 .recipe-detail { background: var(--bg-surface); border: 1px solid var(--border); border-radius: .8rem; padding: 1rem; display: grid; gap: .8rem; font-size: .85rem; box-shadow: 0 12px 32px #0004; }

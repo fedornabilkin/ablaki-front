@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { discountedCredits, formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -10,6 +11,11 @@ const state = shallowRef<Awaited<ReturnType<typeof loadGarden>> | null>(null), q
 const form = reactive({ name: '', price: '', base_price: '' });
 const topUp = ref(false), quantity = ref<number | null>(1), error = ref(''), loading = ref(false), calculating = ref(false), { busy, pending } = props.command;
 const locked = computed(() => busy.value || Boolean(pending.value) || !props.writable);
+const expansionPrice = computed(() => {
+  const garden = state.value?.garden, count = quantity.value;
+  if (!garden || !count || !Number.isSafeInteger(count) || count < 1 || count > 10 - garden.unlocked) return null;
+  return discountedCredits(garden.beds.filter(bed => !bed.unlocked).slice(0, count).map(bed => bed.price), count >= 3 ? 500 : 0);
+});
 const labels: Record<GardenAction, string> = { publish: 'Опубликовать цены', withdraw: 'Снять предложение', buy: 'Купить огород', expand: 'Открыть грядки' };
 let generation = 0, previewGeneration = 0, disposed = false;
 function clear() { previewGeneration++; quote.value = null; calculating.value = false; }
@@ -24,10 +30,18 @@ watch([busy, topUp, quantity, () => props.writable], clear, { flush: 'sync' });
 watch(form, clear, { flush: 'sync' });
 async function preview(action: GardenAction) {
   if (locked.value || calculating.value) return;
+  const expectedPrice = action === 'buy' ? state.value?.offer?.price : action === 'expand' ? expansionPrice.value : null;
+  if ((action === 'buy' || action === 'expand') && !expectedPrice) return;
   clear(); const current = previewGeneration; calculating.value = true; error.value = '';
   try {
     const result = await previewGarden(props.nodeId, action, action === 'publish' ? { ...form } : action === 'withdraw' ? {} : { top_up: topUp.value, quantity: quantity.value });
-    if (!disposed && current === previewGeneration) quote.value = result;
+    if (!disposed && current === previewGeneration) {
+      if (action === 'buy' || action === 'expand') {
+        if (result.payment?.total !== expectedPrice) { error.value = 'Цена изменилась. Обновите огород и проверьте стоимость.'; return; }
+        await props.command.submit(`/nodes/${props.nodeId}/garden-${action}`, result.input, result.quote);
+        if (!disposed && !pending.value && !props.command.error.value) void load();
+      } else quote.value = result;
+    }
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = cause instanceof Error && cause.message.startsWith('invalid-') ? 'Проверьте название, цены и количество грядок. Если данные верны, обновите состояние.' : worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
@@ -42,38 +56,40 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-garden#garden
   h2 Огород
-  p Стартовый огород приобретается один раз в этом мире. В нём десять постоянных грядок: первая включена в покупку, остальные открываются последовательно. При открытии сразу трёх и более грядок действует системная скидка 5%. Посев и урожай появятся на следующем этапе.
+  p В огороде десять грядок: первая включена в покупку. Открывайте остальные и выращивайте урожай. При открытии трёх и более грядок — скидка 5%.
   n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить огород
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка огорода")
   template(v-else-if="state")
     template(v-if="state.garden")
       router-link(v-if="state.garden.node_id !== nodeId" :to="`/world/nodes/${state.garden.node_id}#garden`") Открыть свой огород
-      p Открыто {{ state.garden.unlocked }} из 10. Свободный бюджет огорода: {{ state.garden.available_budget }} Cr.
-      p Базовая цена грядки: {{ state.garden.base_price }} Cr. Условия приобретённого огорода сохраняются при изменении предложения поселения.
+      p Открыто {{ state.garden.unlocked }} из 10. Свободный бюджет огорода: {{ formatCredits(state.garden.available_budget) }} Cr.
+      p Базовая цена грядки: {{ formatCredits(state.garden.base_price) }} Cr. Условия приобретённого огорода сохраняются при изменении предложения поселения.
       ol.garden-beds
         li(v-for="bed in state.garden.beds" :key="bed.node_id" :class="{ 'garden-locked': !bed.unlocked }")
+          font-awesome-icon(:icon="bed.unlocked ? 'seedling' : 'lock'" aria-hidden="true")
           router-link(:to="`/world/nodes/${bed.node_id}#cultivation`") Грядка {{ bed.ordinal }}
           router-link(v-if="bed.unlocked" :to="`/world/nodes/${bed.node_id}#cultivation`") Выращивать
           span {{ bed.unlocked ? 'Открыта' : 'Закрыта' }}
-          span(v-if="!bed.unlocked") Цена открытия: {{ bed.price }} Cr
+          span(v-if="!bed.unlocked") Цена открытия: {{ formatCredits(bed.price) }} Cr
       template(v-if="state.can_expand")
         label Количество следующих грядок
           n-input-number(v-model:value="quantity" :min="1" :max="10 - state.garden.unlocked" :precision="0" :disabled="locked")
         n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
-        n-button(:disabled="locked || calculating" @click="preview('expand')") Рассчитать открытие
+        n-button(type="primary" :disabled="locked || calculating || !expansionPrice" @click="preview('expand')") Открыть {{ quantity }} · {{ formatCredits(expansionPrice) }} Cr
       p(v-else-if="state.garden.unlocked === 10") Все грядки открыты. Повторно оплачивать их не нужно.
     template(v-else-if="state.offer")
+      font-awesome-icon(icon="seedling" aria-hidden="true")
       h3 {{ state.offer.name }}
-      p Цена огорода: {{ state.offer.price }} Cr. Цена первой дополнительной грядки — {{ state.offer.base_price }} Cr, затем стоимость каждой следующей растёт на 20%.
-      p(v-if="state.can_buy") В бюджете усадьбы доступно: {{ state.site_budget_available ?? '0.0000' }} Cr.
+      p Цена огорода: {{ formatCredits(state.offer.price) }} Cr. Цена первой дополнительной грядки — {{ formatCredits(state.offer.base_price) }} Cr, затем стоимость каждой следующей растёт на 20%.
+      p(v-if="state.can_buy") В бюджете усадьбы доступно: {{ formatCredits(state.site_budget_available ?? '0.0000') }} Cr.
       n-alert(v-if="state.can_buy && state.offer.can_afford === false" type="warning")
         span Пополните бюджет усадьбы перед покупкой.
         router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
       template(v-if="state.can_buy")
         p Оплата из бюджета этой стоянки. Получатель — казна поселения «{{ state.settlement_name }}».
         n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
-        n-button(:disabled="locked || calculating" @click="preview('buy')") Рассчитать покупку
+        n-button(type="primary" :disabled="locked || calculating || (!topUp && state.offer.can_afford === false)" @click="preview('buy')") Купить огород · {{ formatCredits(state.offer.price) }} Cr
       p(v-else) Покупка доступна на собственной стартовой стоянке после включения экономики и хранения мира.
     p(v-else) Поселение ещё не опубликовало предложение огорода.
     details(v-if="state.can_publish")
@@ -93,7 +109,7 @@ section.world-garden#garden
         world-expansion-cost(:prices="quote.unitPrices" :payment="quote.payment" place-label="Грядка")
         p Покупка и пополнение выполняются вместе. Купленные права постоянны; сброс, возврат и перенос огорода пока недоступны.
       template(v-else-if="quote.action === 'publish'")
-        p {{ quote.input.name }}: огород {{ quote.input.price }} Cr, базовая цена грядки {{ quote.input.base_price }} Cr.
+        p {{ quote.input.name }}: огород {{ formatCredits(quote.input.price) }} Cr, базовая цена грядки {{ formatCredits(quote.input.base_price) }} Cr.
       p(v-else) Новые покупки по предложению прекратятся. Купленные огороды и их расширения сохранятся.
       n-button(type="primary" :disabled="locked" @click="confirm") {{ quote.payment ? 'Подтвердить оплату' : 'Подтвердить' }}
 </template>

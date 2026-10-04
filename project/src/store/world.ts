@@ -15,20 +15,21 @@ export const useWorldStore = defineStore('server-world', () => {
     if (next === session) return;
     session = next; request++; capabilities.value = null; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); error.value = ''; loading.value = false; dataRevision.value++;
   }
-  async function load(id: number | null) {
-    const current = ++request; loading.value = true; error.value = ''; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage();
+  async function load(id: number | null, preserve = false) {
+    const current = ++request; loading.value = true; error.value = '';
+    if (!preserve || node.value?.id !== id) { node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); }
     try {
       const screen = await loadWorldScreen(id);
       if (current !== request) return;
       capabilities.value = screen.capabilities;
-      if (!screen.navigation) return;
+      if (!screen.navigation) { node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); return; }
       node.value = screen.navigation.node; breadcrumbs.value = screen.navigation.breadcrumbs; map.value = screen.map; siblings.value = screen.navigation.siblings;
     } catch (cause) { if (current === request) error.value = worldError(cause); }
     finally { if (current === request) loading.value = false; }
   }
-  function invalidate(ids: number[]) {
+  function invalidate(ids: number[], preserve = false) {
     request++;
-    if (!node.value || ids.includes(node.value.id) || map.value?.items.some(child => ids.includes(child.id))) { node.value = null; map.value = null; }
+    if (!preserve && (!node.value || ids.includes(node.value.id) || map.value?.items.some(child => ids.includes(child.id)))) { node.value = null; map.value = null; }
     dataRevision.value++;
   }
   function cancel() { request++; loading.value = false; }

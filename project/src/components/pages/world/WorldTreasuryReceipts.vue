@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -23,7 +24,7 @@ async function load() {
 }
 watch([() => props.nodeId, () => props.session, params], load, { immediate: true, flush: 'sync' });
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString('ru-RU');
-const money = (value: string | number) => `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value))} Cr`;
+const money = (value: string | number) => `${formatCredits(value)} Cr`;
 function duration(seconds: number): string {
   const days = Math.floor(seconds / 86400), hours = Math.floor(seconds % 86400 / 3600), minutes = Math.floor(seconds % 3600 / 60);
   return `${days ? `${days} д. ` : ''}${hours} ч. ${minutes} мин. ${seconds % 60} с.`;
@@ -66,7 +67,7 @@ section.world-receipts#treasury-receipts
         p(v-if="item.pending") Сумма первого ожидающего списания: {{ money(item.nextAmount) }}. Учтён дробный остаток предыдущих расчётов.
         p(v-else) Прогноз на этот период: {{ money(item.nextAmount) }}, если не собрать поступление раньше. Учтён дробный остаток предыдущих расчётов.
         n-alert(v-if="item.pending" type="info") Ожидают расчёта периодов: {{ item.pending }}. Показана сумма только первого из них; итоговые потери могут быть больше.
-        p(v-else-if="item.nextAmount === '0.0000'") Сейчас сумма меньше точности 0.0001 Cr. Дробный остаток сохраняется для последующих периодов.
+        p(v-else-if="item.nextAmount === '0.0000'") Сейчас списания нет. Дробный остаток сохраняется для последующих периодов.
       p Обработано периодов потерь: {{ item.processed }}.
     page-pager(v-model:page="page" query-prefix="receipts" :result="state")
 </template>

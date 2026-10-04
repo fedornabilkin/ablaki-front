@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -33,7 +34,15 @@ async function preview(action: PremisesAction, offer?: number) {
   clear(); const current = previewGeneration; calculating.value = true; error.value = '';
   try {
     const result = await previewPremises(props.nodeId, action, action === 'publish' ? { ...form, expansion_base_price: form.expansion_base_price || null } : { offer_id: offer });
-    if (!disposed && current === previewGeneration) quote.value = result;
+    if (!disposed && current === previewGeneration) {
+      if (action === 'buy') {
+        const shown = state.value?.items.find(item => item.id === offer);
+        if (!shown || !result.room || !result.payment || shown.template_revision_id !== result.payment.template_revision_id || shown.price !== result.room.price || JSON.stringify(shown.materials) !== JSON.stringify(result.room.materials)) {
+          error.value = 'Условия покупки изменились. Обновите предложения и проверьте стоимость.'; return;
+        }
+        await props.command.submit(`/nodes/${props.nodeId}/premises-buy`, { ...result.input }, result.quote);
+      } else quote.value = result;
+    }
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = cause instanceof Error && cause.message.startsWith('invalid-') ? 'Проверьте название, цены и площадь. Включённые места и предел расширения не должны превышать площадь; расширяемому помещению нужна базовая цена.' : worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
@@ -53,14 +62,16 @@ section.world-premises#premises
   n-spin(v-if="loading" aria-label="Загрузка помещений")
   template(v-else-if="state")
     p(v-if="state.area") Площадь площадки: занято {{ state.area.used }} из {{ state.area.total }}, доступно {{ state.area.available }}.
-    p(v-if="state.can_buy") Доступно в бюджете площадки: {{ state.budget_available ?? '0.0000' }} Cr.
+    p(v-if="state.can_buy") Доступно в бюджете площадки: {{ formatCredits(state.budget_available ?? '0.0000') }} Cr.
     n-alert(v-if="state.area?.unaccounted_building" type="warning") На площадке есть постройка без учтённой площади. Покупка временно недоступна.
     p(v-if="state.area && !state.can_buy") Покупка станет доступна после включения хранения и экономики мира.
     p(v-if="!state.area") Для покупки откройте свою стартовую площадку.
     p(v-if="!state.items.length") Предложений по выбранным условиям нет.
     ul.offers
       li(v-for="item in state.items" :key="item.id" :class="{ 'offer-unaffordable': item.can_afford === false }")
-        h3 {{ item.name }} · {{ item.price }} Cr
+        font-awesome-icon.offer-icon(:icon="item.kind === 'canopy' ? 'tent' : item.kind === 'house' ? 'house' : item.kind === 'warehouse' ? 'box' : 'industry'" aria-hidden="true")
+        h3 {{ item.name }} · {{ formatCredits(item.price) }} Cr
+        strong {{ !state.can_buy ? 'Покупка недоступна' : !item.requirements_status.allowed ? 'Не выполнены требования' : state.area && state.area.available < item.area ? 'Не хватает площади' : item.can_afford === false ? 'Не хватает Cr' : 'Доступно к покупке' }}
         n-alert(v-if="item.can_afford === false" type="warning")
           span Бюджета площадки не хватает.
           router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
@@ -74,15 +85,17 @@ section.world-premises#premises
           ul
             li(v-for="material in item.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
         p(v-if="item.lodging_places") Постоянная койка: 1. После покупки отдельно назначьте ночлег в комнате дома.
-        template(v-if="item.repair")
-          p Договор ремонта: полный ремонт — {{ item.repair.full_price }} Cr из бюджета здания. Цена и материалы пропорциональны повреждению с округлением вверх.
-          p(v-if="item.repair_for_existing") Владельцы прежних зданий этого типа и площади без договора могут принять его на странице своей постройки.
-          ul
-            li(v-for="material in item.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }} при полном повреждении
-        p(v-else) Договор ремонта в покупку не включён.
-        p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ item.expansion_base_price }} Cr, стоимость каждого следующего растёт на 20%.
-        p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
-        n-button(v-if="state.area" :disabled="locked || calculating || !state.can_buy || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Рассчитать стройку' : 'Рассчитать покупку' }}
+        details.offer-details
+          summary Ремонт, защита и расширение
+          template(v-if="item.repair")
+            p Договор ремонта: полный ремонт — {{ formatCredits(item.repair.full_price) }} Cr из бюджета здания. Цена и материалы пропорциональны повреждению с округлением вверх.
+            p(v-if="item.repair_for_existing") Владельцы прежних зданий этого типа и площади без договора могут принять его на странице своей постройки.
+            ul
+              li(v-for="material in item.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }} при полном повреждении
+          p(v-else) Договор ремонта в покупку не включён.
+          p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ formatCredits(item.expansion_base_price) }} Cr, стоимость каждого следующего растёт на 20%.
+          p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
+        n-button(v-if="state.area" type="primary" :disabled="locked || calculating || !state.can_buy || item.can_afford === false || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Построить' : 'Купить' }} · {{ formatCredits(item.price) }} Cr
         n-button(v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
     page-pager(v-model:page="page" query-prefix="premises" :result="state" :disabled="busy")
     details(v-if="state.can_publish")
@@ -108,31 +121,33 @@ section.world-premises#premises
     section(v-if="quote" aria-live="polite")
       h3 {{ quote.action === 'withdraw' ? 'Снять предложение' : quote.action === 'buy' ? 'Подтвердить покупку' : 'Подтвердить публикацию' }}: {{ quote.name }}
       template(v-if="quote.room?.repair")
-        p Договор полного ремонта: {{ quote.room.repair.full_price }} Cr из бюджета здания в казну поселения. Расход пропорционален повреждению с округлением вверх.
+        p Договор полного ремонта: {{ formatCredits(quote.room.repair.full_price) }} Cr из бюджета здания в казну поселения. Расход пропорционален повреждению с округлением вверх.
         ul
           li(v-for="material in quote.room.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
       p(v-else-if="quote.room") Договор ремонта не включён.
       template(v-if="quote.room")
-        p Стоимость: {{ quote.room.price }} Cr; площадь {{ quote.room.area }}; мест {{ quote.room.slots }}.
+        p Стоимость: {{ formatCredits(quote.room.price) }} Cr; площадь {{ quote.room.area }}; мест {{ quote.room.slots }}.
         p(v-if="quote.room.delivery === 'ready'") Готово к размещению оборудования сразу после оплаты.
         template(v-else)
           p Срок строительства: {{ Math.ceil(quote.room.duration_seconds / 60) }} мин. Cr резервируются в бюджете до завершения. Материалы из рюкзака будут храниться отдельно:
           ul
             li(v-for="material in quote.room.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
           p Стройку можно поставить на паузу. Отмена до фактического завершения освобождает весь резерв Cr и возвращает материалы в рюкзак. Для отмены нужно место под весь возврат. После завершения доступно готовое помещение.
-        p(v-if="quote.room.expansion_limit > quote.room.slots") Последующее расширение до {{ quote.room.expansion_limit }} мест из бюджета комнаты. Базовая цена: {{ quote.room.expansion_base_price }} Cr; стоимость каждого следующего места растёт на 20%. Условия сохраняются после покупки.
+        p(v-if="quote.room.expansion_limit > quote.room.slots") Последующее расширение до {{ quote.room.expansion_limit }} мест из бюджета комнаты. Базовая цена: {{ formatCredits(quote.room.expansion_base_price) }} Cr; стоимость каждого следующего места растёт на 20%. Условия сохраняются после покупки.
         p {{ quote.room.exposure_class === 'covered' ? 'Защита: навес.' : 'Защита: помещение.' }} {{ quote.room.lodging_places ? 'Включена одна койка. Ночлег назначается отдельно.' : 'Мест ночлега нет.' }}
       template(v-if="quote.payment")
-        p Источник — бюджет этой площадки. Получатель — казна поселения «{{ quote.payment.recipient_name }}». Личные Cr: 0.0000.
+        p Источник — бюджет этой площадки. Получатель — казна поселения «{{ quote.payment.recipient_name }}». Личные Cr: 0.
         p(v-if="quote.room?.delivery === 'ready'") Покупка постоянная. Возврат, снос и перенос постройки пока недоступны.
       p(v-if="quote.action === 'withdraw'") Новые покупки по этому предложению прекратятся. Купленные помещения сохранятся.
       n-button(type="primary" :disabled="locked" @click="confirm") {{ quote.action === 'buy' ? (quote.room?.delivery === 'construction' ? 'Зарезервировать Cr и материалы, начать стройку' : 'Оплатить из бюджета и получить помещение') : quote.action === 'withdraw' ? 'Подтвердить снятие' : 'Опубликовать' }}
 </template>
 <style scoped>
 .world-premises { display: grid; gap: .75rem; }
-.offers { list-style: none; padding: 0; display: grid; gap: .75rem; }
+.offers { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: .75rem; }
+.offers > li { display: flex; flex-direction: column; gap: .6rem; min-width: 0; }.offers > li h3, .offers > li p { margin: 0; }.offer-icon { color: var(--primary); font-size: 1.8rem; }.offers > li > .n-button { margin-top: auto; }
 .offers li, details { border: 1px solid var(--border); border-radius: .4rem; padding: 1rem; }
 .offers li.offer-unaffordable { border-color: var(--color-danger, #c0392b); }
+.offers .offer-details { padding: .5rem; font-size: .85rem; }.offer-details p { margin-top: .5rem; }
 label { display: grid; gap: .3rem; margin-block: .75rem; max-width: 36rem; }
 summary { cursor: pointer; }
 </style>

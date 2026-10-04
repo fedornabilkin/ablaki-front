@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import PagePager from '@/components/PagePager.vue';
@@ -13,7 +14,7 @@ const collection = shallowRef<Awaited<ReturnType<typeof previewCollection>> | nu
 const payment = shallowRef<Awaited<ReturnType<typeof previewPayment>> | null>(null);
 const loading = ref(false), calculating = ref(false), error = ref('');
 const { busy, pending } = props.command;
-const money = (value: string | number) => `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value))} Cr`;
+const money = (value: string | number) => `${formatCredits(value)} Cr`;
 let generation = 0, previewGeneration = 0, disposed = false;
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString('ru-RU');
 function clearPreview() { previewGeneration++; collection.value = null; payment.value = null; calculating.value = false; }

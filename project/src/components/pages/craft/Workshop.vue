@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch, onMounted, onScopeDispose, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
@@ -10,6 +11,7 @@ import CraftInventory from './CraftInventory.vue';
 import { useCraftToasts } from '@/hooks/useCraftToasts';
 import { useClassicCraft } from '@/hooks/useClassicCraft';
 import { loadCraftHistory, craftError, type CraftEvent } from '@/services/api/classicCraft';
+import { craftRequirements } from '@/entities/craft/classic';
 import { date } from '@/services/api/portal';
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
@@ -18,7 +20,7 @@ const {state, busy, loading, error, notice, pending} = craft;
 const countdown = useGatherCountdown(state, craft.refresh);
 const route = useRoute(), router = useRouter();
 useCraftToasts(notice, session);
-const tab = ref('map'), selected = ref<number | null>(null), category = ref<number | null>(null), search = ref('');
+const tab = ref('recipes'), selected = ref<number | null>(null), category = ref<number | null>(null), search = ref('');
 const showControls = ref(true), showRecipe = ref(true);
 const root = ref<HTMLElement>(), controls = ref<HTMLElement>(), roadmap = ref<InstanceType<typeof CraftRoadmap>>();
 const mapHeight = ref(720), controlsHeight = ref(180), narrow = ref(false);
@@ -34,8 +36,9 @@ watch([() => route.query.item, () => !!state.value], async () => {
 }, {immediate: true});
 const stock = computed(() => new Map(state.value?.inventory.map(i => [i.item_id, i.quantity]) ?? []));
 const recipe = computed(() => state.value?.recipes.find(r => r.id === selected.value));
+const readyRecipes = computed(() => new Set(state.value?.recipes.filter(r => !craftRequirements(state.value!, r, 1).reasons.length).map(r => r.id) ?? []));
 const filtered = computed(() => state.value?.recipes.filter(r => (!category.value || r.category_id === category.value) && items.value.get(r.item_id)?.name.toLowerCase().includes(search.value.trim().toLowerCase())) ?? []);
-const tabs = [{id: 'map', name: 'Карта рецептов'}, {id: 'recipes', name: 'Список'}, {id: 'inventory', name: 'Инвентарь'}, {id: 'history', name: 'История'}];
+const tabs = [{id: 'recipes', name: 'Рецепты'}, {id: 'map', name: 'Карта рецептов'}, {id: 'inventory', name: 'Инвентарь'}, {id: 'history', name: 'История'}];
 const craftIcons: Record<string, string> = {'classic-wood': 'tree', 'classic-stone': 'mountain', 'classic-metal': 'hammer', 'classic-textile': 'shirt', 'classic-alchemy': 'flask'};
 async function select(id: number) {
   selected.value = id; showRecipe.value = true; tab.value = 'map';
@@ -132,14 +135,16 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
         n-input(v-model:value="search" placeholder="Название предмета" aria-label="Поиск рецепта")
         .item-grid
-          button.list-recipe(v-for="r in filtered" :key="r.id" @click="select(r.id)")
+          article.list-recipe(v-for="r in filtered" :key="r.id" :class="{ ready: readyRecipes.has(r.id) }")
             span.stock-corner(:class="{available: (stock.get(r.item_id) || 0) > 0}" :aria-label="(stock.get(r.item_id) || 0) > 0 ? 'Есть в инвентаре' : 'Нет в инвентаре'")
               font-awesome-icon(:icon="(stock.get(r.item_id) || 0) > 0 ? 'check' : 'exclamation-circle'")
-            .item-heading
+            button.item-heading.recipe-select(type="button" @click="select(r.id)" :aria-label="`Открыть рецепт: ${items.get(r.item_id)?.name}`")
               font-awesome-icon(:icon="items.get(r.item_id)?.icon || 'cube'")
               strong {{ items.get(r.item_id)?.name }}
             strong В наличии: {{ stock.get(r.item_id) || 0 }}
-            span {{ r.locked_reasons.length ? 'Закрыт' : 'Открыт' }} · Ур. {{ r.min_level }}
+            span {{ readyRecipes.has(r.id) ? '✓ Можно создать' : r.locked_reasons.length ? 'Закрыт' : 'Не хватает ресурсов или оборудования' }} · Ур. {{ r.min_level }}
+            small Выход: {{ r.output_quantity }} шт.
+            n-button(type="primary" size="small" :disabled="blocked || !readyRecipes.has(r.id)" @click="command('craft', r.id, 1)") Создать · {{ formatCredits(state.charge_credits ? r.cost_credits : 0) }} Cr
         p(v-if="!filtered.length") Рецептов по этому фильтру нет.
       craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command" @submit="craft.submit")
       section.workshop-content(v-if="tab === 'history'" aria-label="История крафта")
@@ -159,7 +164,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
                 td {{ actions[event.action] || event.action }}
                 td {{ event.item_id ? items.get(event.item_id)?.name : 'Сырьё' }}
                 td {{ event.quantity }}
-                td {{ event.credit_change }}
+                td {{ formatCredits(event.credit_change) }}
                 td {{ date(event.created_at) }}
         p(v-if="!historyLoading && !history.length") Операций пока нет.
         n-pagination(v-if="historyPages > 1" v-model:page="historyPage" :page-count="historyPages" :disabled="historyLoading" simple)
@@ -197,6 +202,8 @@ small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-w
 .workshop-main { grid-column: 2 / 4; grid-row: 2; display: grid; gap: .75rem; min-width: 0; }.workshop-messages { display: grid; gap: .5rem; }.workshop-messages.floating { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: min(440px, calc(100% - 24px)); max-height: 35%; overflow: auto; }
 .workshop-content { min-width: 0; }.item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .75rem; margin-top: 1rem; }
 .list-recipe { position: relative; padding: 1rem; border: 1px solid var(--border); background: var(--bg-surface); border-radius: .6rem; display: flex; flex-direction: column; gap: .6rem; color: var(--text); text-align: left; overflow: hidden; cursor: pointer; }.list-recipe > span { color: var(--text-muted); }.item-heading { display: flex; align-items: center; gap: .6rem; padding-right: 16px; }.item-heading svg { color: #d6b685; flex-shrink: 0; }
+.list-recipe.ready { border-color: #249653; background: color-mix(in srgb, #249653 12%, var(--bg-surface)); }
+.recipe-select { font: inherit; color: inherit; text-align: left; border: 0; background: transparent; padding: 0 16px 0 0; cursor: pointer; }.recipe-select:focus-visible { outline: 2px solid var(--primary); }.list-recipe > .n-button { margin-top: auto; }.list-recipe { cursor: default; }
 .stock-corner { position: absolute; top: 0; right: 0; width: 34px; height: 34px; clip-path: polygon(0 0,100% 0,100% 100%); background: #dc2626; }.stock-corner.available { background: #26854e; }.stock-corner svg { position: absolute; right: 4px; top: 4px; font-size: 10px; color: white; }
 .history-table { overflow: auto; margin: 1rem 0; }.history-table table { width: 100%; border-collapse: collapse; }.history-table th, .history-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

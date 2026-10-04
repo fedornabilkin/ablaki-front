@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import { RouterLink } from 'vue-router';
@@ -56,7 +57,7 @@ section.world-construction#construction
         router-link(v-else :to="`/world/nodes/${item.node_id}`") {{ item.name }}
         |  · {{ constructionStatus[item.status] }}
       template(v-if="item.status === 'constructing' || item.status === 'paused'")
-        p Зарезервировано из бюджета: {{ item.price }} Cr.
+        p Зарезервировано из бюджета: {{ formatCredits(item.price) }} Cr.
         p(v-if="item.status === 'paused'") Осталось работы: {{ Math.ceil(item.remaining_seconds / 60) }} мин. На паузе время не убывает.
         p(v-else-if="item.remaining_seconds") Ожидаемое окончание: {{ date(item.finish_at) }}.
         p(v-else) Время работ истекло. Ожидается завершение строительства.
@@ -72,10 +73,10 @@ section.world-construction#construction
     page-pager(v-model:page="page" query-prefix="construction" :result="state" :disabled="busy")
   section(v-if="quote" aria-live="polite")
     h3 {{ labels[quote.action] }}: {{ quote.name }}
-    p(v-if="quote.action === 'pause'") Работы остановятся. Площадь, {{ quote.price }} Cr и материалы останутся зарезервированы.
+    p(v-if="quote.action === 'pause'") Работы остановятся. Площадь, {{ formatCredits(quote.price) }} Cr и материалы останутся зарезервированы.
     p(v-else-if="quote.action === 'resume'") Продолжится оставшееся время работ. Дополнительных списаний нет.
     template(v-else)
-      p Площадь освободится, резерв {{ quote.price }} Cr вернётся в доступный бюджет площадки. Все материалы вернутся в рюкзак. Если места недостаточно, отмена не выполнится и резервы сохранятся.
+      p Площадь освободится, резерв {{ formatCredits(quote.price) }} Cr вернётся в доступный бюджет площадки. Все материалы вернутся в рюкзак. Если места недостаточно, отмена не выполнится и резервы сохранятся.
       ul
         li(v-for="material in quote.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
       p Уже завершённую постройку отменить нельзя.

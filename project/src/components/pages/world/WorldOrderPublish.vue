@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NSelect } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -63,7 +64,7 @@ details.order-publication
   n-checkbox(v-model:checked="form.initialize" :disabled="busy || Boolean(pending)") Использовать текущие финансовые правила поселения как начальные условия стоянок без настроек. Действующие правила стоянок сохраняются.
   n-button(:loading="calculating" :disabled="!writable || busy || Boolean(pending)" @click="preview") Рассчитать резерв
   section(v-if="quote" aria-live="polite")
-    p {{ quote.item_name }}: {{ quote.input.quantity }} шт. по {{ quote.input.unit_price }} Cr. В бюджете будет зарезервировано {{ quote.cost }} Cr.
+    p {{ quote.item_name }}: {{ quote.input.quantity }} шт. по {{ formatCredits(quote.input.unit_price) }} Cr. В бюджете будет зарезервировано {{ formatCredits(quote.cost) }} Cr.
     p На игрока — до {{ quote.input.per_user_limit }} шт. Срок — {{ quote.input.lifetime_hours }} ч.
     p Начальные условия: отчисления {{ quote.policy.rate_bps / 100 }}%, оплата в течение {{ quote.policy.due_seconds / 3600 }} ч после сбора; защита поступления {{ quote.policy.protected_seconds / 3600 }} ч, затем потери {{ quote.policy.loss_rate_bps / 100 }}% каждые {{ quote.policy.loss_period_seconds / 3600 }} ч.
     n-button(type="primary" :disabled="!writable || busy || Boolean(pending)" @click="publish") Зарезервировать бюджет и опубликовать

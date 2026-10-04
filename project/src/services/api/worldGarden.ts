@@ -19,7 +19,8 @@ export function gardenInput(action: GardenAction, value: unknown): Record<string
 }
 export async function loadGarden(node: number) {
   const r = record((await apiClient.get(url(node))).data);
-  if (id(r.node_id) !== node || r.cultivation_enabled !== false) invalid();
+  if (id(r.node_id) !== node) invalid();
+  bool(r.cultivation_enabled);
   let offer = null, garden = null;
   if (r.offer !== null) { const o = record(r.offer); offer = { id: id(o.id), name: text(o.name), price: positive(o.price), base_price: positive(o.base_price), can_afford: o.can_afford === null ? null : bool(o.can_afford) }; }
   if (r.garden !== null) {

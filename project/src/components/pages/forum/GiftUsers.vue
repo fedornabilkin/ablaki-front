@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
 import { NButton, NInput, NModal, NSkeleton } from 'naive-ui';
 import { usePageRequest } from '@/hooks/usePageRequest';
@@ -35,7 +36,7 @@ function parts(username: unknown) {
         template(v-for="part in parts(user.username)" :key="part.text + String(part.match)")
           mark(v-if="part.match") {{ part.text }}
           span(v-else) {{ part.text }}
-        small.muted  {{ Number(user.amount) || 1 }} Cr
+        small.muted  {{ formatCredits(Number(user.amount) || 1) }} Cr
       span.muted(v-if="!filteredUsers.length") Ничего не найдено
 </template>
 <style scoped>

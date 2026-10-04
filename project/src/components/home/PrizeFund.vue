@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
 import { useStore } from 'vuex';
 import { NButton, NCard, NPopover } from 'naive-ui';
@@ -13,7 +14,7 @@ const accountVersion = computed(() => `${store.state.auth.revision}:${person(sto
 const { data, loading, error, refresh } = usePageRequest(() => prizeFund(authenticated.value), null as PrizeFund | null, [accountVersion, authenticated]);
 const { available, claiming, claim } = useDailyRewards();
 const canClaim = computed(() => available.data.value.items.some(item => item.id === 'bonus'));
-const credits = (value: number) => value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const credits = formatCredits;
 </script>
 <template lang="pug">
 n-card(title="Призовой фонд")
@@ -29,19 +30,19 @@ n-card(title="Призовой фонд")
     .fund-days(v-if="data")
       .fund-day
         h3 Сегодня
-        strong.fund-amount(:title="'Фонд сегодня: ' + credits(data.today) + ' Cr'") {{ credits(data.today) }} Cr
+        strong.fund-amount(:title="'Фонд сегодня: ' + credits(data.today) + ' Cr'") {{ formatCredits(data.today) }} Cr
         p(v-if="data.user_today !== null" title="Ваша расчётная доля фонда")
           font-awesome-icon(icon="user" aria-hidden="true")
-          |  {{ credits(data.user_today) }} Cr
+          |  {{ formatCredits(data.user_today) }} Cr
         n-button(v-if="canClaim" type="primary" size="small" :loading="claiming === 'bonus'" :disabled="claiming !== null" @click="claim('bonus')") Получить приз · 1 Cr
         n-button(v-else-if="available.error.value && authenticated" size="small" @click="available.refresh") Повторить
         small.muted(v-else-if="authenticated && !available.loading.value") Приз получен
       .fund-day
         h3 Завтра
-        strong.fund-amount(:title="'Накоплено на завтра: ' + credits(data.tomorrow) + ' Cr'") {{ credits(data.tomorrow) }} Cr
+        strong.fund-amount(:title="'Накоплено на завтра: ' + credits(data.tomorrow) + ' Cr'") {{ formatCredits(data.tomorrow) }} Cr
         p(v-if="data.user_tomorrow !== null" title="Ваш потенциальный приз из завтрашнего фонда")
           font-awesome-icon(icon="user" aria-hidden="true")
-          |  ≈ {{ credits(data.user_tomorrow) }} Cr
+          |  ≈ {{ formatCredits(data.user_tomorrow) }} Cr
     p(v-if="!authenticated")
       router-link(:to="{ path: '/users/login', query: { redirect: '/' } }") Войдите, чтобы увидеть свою долю.
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -15,7 +16,7 @@ const props = defineProps<{ nodeId: number; children: WorldNode[]; session: numb
 const state = shallowRef<Awaited<ReturnType<typeof loadNodeEconomy>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewInvestment>> | null>(null);
 const amount = ref(''), purpose = ref('Развитие объекта'), error = ref(''), loading = ref(false), calculating = ref(false);
 const { busy, pending } = props.command;
-const money = (value: string | number) => `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value))} Cr`;
+const money = (value: string | number) => `${formatCredits(value)} Cr`;
 let generation = 0, previewGeneration = 0, disposed = false;
 async function load() {
   const current = ++generation; previewGeneration++; quote.value = null; state.value = null; loading.value = true; calculating.value = false; error.value = '';

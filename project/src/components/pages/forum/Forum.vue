@@ -76,11 +76,11 @@ page-header(page-title="Форум")
 n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :style="{ width: 'min(35rem, calc(100vw - 2rem))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
   n-form(@submit.prevent="create")
     .theme-title-row
-      n-form-item.theme-title-field(label="Заголовок" :label-props="{ for: 'theme-title' }")
+      n-form-item.theme-title-field(:show-label="false")
         n-input(:input-props="{ id: 'theme-title' }" v-model:value="title" :maxlength="250" :disabled="saving || !!createdThemeId" placeholder="О чём хотите поговорить?")
       label.theme-private-field
         n-switch(v-model:value="isPrivate" :disabled="saving || !!createdThemeId" aria-label="Скрыть тему и сообщения от гостей")
-        span Только для участников
+        span Видно авторизованным
     message-composer(v-if="showCreate" :key="store.state.auth.revision" id="theme-message" v-model="comment" :disabled="saving" :submit-disabled="!title.trim()" submit-label="Опубликовать" placeholder="Начните обсуждение" @submit="create")
     n-alert(v-if="messageDraft.storageError.value || titleDraft.storageError.value" type="warning") {{ messageDraft.storageError.value || titleDraft.storageError.value }}
     n-alert.mb-3(v-if="saveError" type="error") {{ saveError }}

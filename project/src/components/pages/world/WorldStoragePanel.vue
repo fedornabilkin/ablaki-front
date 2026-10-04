@@ -1,126 +1,162 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
 import { NAlert, NButton, NInputNumber, NSelect } from 'naive-ui';
-import PagePager from '@/components/PagePager.vue';
-import { loadStorage, loadStorageList, previewTransfer, type StorageHeader, type StorageView, type TransferInput } from '@/services/api/worldStorage';
+import { loadStorageContents, loadStorageList, previewTransfer, type StorageHeader, type StorageView } from '@/services/api/worldStorage';
+import { storageTransfer } from '@/entities/world/storageInteraction';
 import { worldError } from '@/services/api/world';
-import type { WorldQuote } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldChestRepair from './WorldChestRepair.vue';
+import WorldStorageGrid from './WorldStorageGrid.vue';
+
 const props = defineProps<{ nodeId: number | null; storageId?: number; session: number; writable: boolean; command: WorldCommandRunner }>();
-const route = useRoute(), headers = shallowRef<StorageHeader[]>([]), view = shallowRef<StorageView | null>(null), loading = ref(false), error = ref('');
-const selected = ref<number | null>(null), destination = ref<number | null>(null), position = ref<number | null>(1), quantity = ref<number | null>(1), instance = ref<number | null>(null), quote = shallowRef<WorldQuote | null>(null), previewing = ref(false);
+const headers = shallowRef<StorageHeader[]>([]), view = shallowRef<StorageView | null>(null), targetView = shallowRef<StorageView | null>(null);
+const destination = ref<number | null>(null), selected = ref<number | null>(null), quantity = ref<number | null>(1), instance = ref<number | null>(null);
+const loading = ref(false), targetLoading = ref(false), transferring = ref(false), error = ref(''), notice = ref('');
+const drag = ref<{ pointer: number; x: number; y: number; moved: boolean; item: number } | null>(null), hover = ref<string | null>(null);
+let generation = 0, targetGeneration = 0, operation = 0, disposed = false, suppressClick = false;
 const { busy, pending } = props.command;
-let generation = 0, previewGeneration = 0, disposed = false;
-const page = computed(() => { const value = Number(route.query.storage_page || 1); return Number.isSafeInteger(value) && value > 0 && value <= 1000000 ? value : 1; });
-const item = computed(() => view.value?.items.find(row => row.id === selected.value));
-const target = computed(() => headers.value.find(row => row.id === destination.value));
-const canWrite = computed(() => props.writable && Boolean(view.value?.writable));
-const destinationOptions = computed(() => headers.value.filter(row => row.kind !== 'recovery').map(row => ({ label: `${row.name} · №${row.id}`, value: row.id })));
-const unitOptions = computed(() => item.value?.instances.map(unit => ({ label: `№${unit.id} · ${unit.durability}/${unit.max_durability}`, value: unit.id })) || []);
-const payload = computed<TransferInput | null>(() => view.value && item.value && destination.value && position.value && quantity.value ? ({ inventory_id: item.value.id, source_storage_id: view.value.storage.id, destination_storage_id: destination.value, position: position.value, quantity: quantity.value, instance_id: instance.value }) : null);
-const pager = computed(() => view.value ? { ...view.value, items: view.value.items.map(item => ({ ...item })) } : { items: [], total: 0, pageSize: 100 });
-const cells = computed(() => {
-  if (!view.value) return [];
-  const items = new Map(view.value.items.map(item => [item.position, item]));
-  const size = Math.min(1000, Math.max(view.value.storage.capacity, ...view.value.items.map(item => item.position)));
-  return Array.from({ length: size }, (_, i) => ({ position: i + 1, item: items.get(i + 1) }));
-});
-const placeNames: Record<string, string> = { outdoor: 'На улице', covered: 'Под навесом', indoor: 'В помещении', carried: 'В инвентаре' };
+const blocked = computed(() => loading.value || transferring.value || busy.value || !!pending.value);
+const source = computed(() => [view.value, targetView.value].find(value => value?.items.some(item => item.id === selected.value)) ?? null);
+const item = computed(() => source.value?.items.find(item => item.id === selected.value));
+const destinationOptions = computed(() => headers.value.filter(header => header.kind !== 'recovery' && header.id !== view.value?.storage.id).map(header => ({ label: header.name, value: header.id })));
+const panes = computed(() => [view.value, targetView.value].filter((value): value is StorageView => !!value));
+const unitOptions = computed(() => item.value?.instances.map(unit => ({ label: `Прочность ${unit.durability}/${unit.max_durability} · №${unit.id}`, value: unit.id })) ?? []);
 function link(id: number) { return { path: `/world/storage/${id}`, query: props.nodeId === null ? {} : { node_id: props.nodeId } }; }
+function input(target: StorageView, position: number) {
+  if (!props.writable || !source.value || !item.value) return null;
+  return storageTransfer(source.value, item.value, target, position, target.storage.kind === 'placement' ? 1 : quantity.value ?? 0, instance.value);
+}
+function destinations(target: StorageView) {
+  if (blocked.value) return [];
+  return Array.from({ length: target.storage.capacity }, (_, index) => index + 1).filter(position => input(target, position));
+}
+async function loadTarget() {
+  const current = ++targetGeneration, id = destination.value;
+  targetView.value = null; targetLoading.value = false; cancelDrag();
+  if (!id || id === view.value?.storage.id) return;
+  targetLoading.value = true;
+  try { const result = await loadStorageContents(id); if (!disposed && current === targetGeneration) targetView.value = result; }
+  catch (cause) { if (!disposed && current === targetGeneration) error.value = worldError(cause); }
+  finally { if (!disposed && current === targetGeneration) targetLoading.value = false; }
+}
 async function load() {
-  const current = ++generation; previewGeneration++; view.value = null; headers.value = []; selected.value = null; quote.value = null; error.value = ''; loading.value = true;
+  const current = ++generation; operation++; targetGeneration++; cancelDrag();
+  loading.value = true; transferring.value = false; view.value = null; targetView.value = null; headers.value = []; selected.value = null; error.value = '';
   try {
     const list = await loadStorageList(props.nodeId);
     if (disposed || current !== generation) return;
     const id = props.storageId ?? list.find(row => row.kind === 'stockpile' && row.node_id === props.nodeId)?.id ?? list.find(row => row.kind === 'placement')?.id ?? list[0]?.id;
-    if (!id) { headers.value = list; return; }
-    const result = await loadStorage(id, page.value);
-    if (result.storage.kind === 'stockpile') {
-      const first = result.currentPage === 1 ? result : await loadStorage(id, 1);
-      const pages = await Promise.all(Array.from({ length: Math.max(0, first.pageCount - 1) }, (_, i) => loadStorage(id, i + 2)));
-      if (pages.some(p => p.storage.revision !== first.storage.revision)) throw new Error('storage-changed');
-      Object.assign(result, first, { items: [...first.items, ...pages.flatMap(p => p.items)] });
-    }
+    headers.value = list;
+    if (!id) return;
+    const result = await loadStorageContents(id);
     if (disposed || current !== generation) return;
-    headers.value = list.some(row => row.id === id) ? list : [...list, result.storage]; view.value = result;
+    view.value = result;
+    if (!list.some(header => header.id === id)) headers.value = [...list, result.storage];
+    const next = destinationOptions.value.some(option => option.value === destination.value) ? destination.value : destinationOptions.value[0]?.value ?? null;
+    if (next === destination.value) void loadTarget(); else destination.value = next;
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed && current === generation) loading.value = false; }
 }
-watch([() => props.nodeId, () => props.storageId, () => props.session, page], load, { immediate: true });
-watch([selected, destination, position, quantity, instance], () => { previewGeneration++; quote.value = null; previewing.value = false; });
-watch(selected, () => { instance.value = null; quantity.value = 1; });
-watch(target, value => { if (value?.kind === 'placement') quantity.value = 1; position.value = 1; });
-async function preview() {
-  if (!payload.value || busy.value || pending.value || !canWrite.value) return;
-  const current = ++previewGeneration; previewing.value = true; error.value = '';
-  try { const result = await previewTransfer(payload.value); if (!disposed && current === previewGeneration) quote.value = result; }
-  catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
-  finally { if (!disposed && current === previewGeneration) previewing.value = false; }
+function select(target: StorageView, position: number) {
+  const row = target.items.find(item => item.position === position);
+  if (!row) return;
+  selected.value = row.id; quantity.value = Math.min(row.quantity, 10000); instance.value = null; notice.value = ''; error.value = '';
 }
-async function confirm() { if (quote.value && payload.value) { await props.command.submit('/storage/transfer', { ...payload.value }, quote.value); if (!disposed && !pending.value) void load(); } }
-onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
+function choose(target: StorageView, position: number) {
+  if (suppressClick) { suppressClick = false; return; }
+  if (blocked.value) return;
+  if (input(target, position)) void transfer(target, position);
+  else select(target, position);
+}
+async function transfer(target: StorageView, position: number) {
+  const payload = input(target, position);
+  if (blocked.value || !payload) return;
+  const current = ++operation; transferring.value = true; error.value = ''; notice.value = ''; cancelDrag();
+  try {
+    const quote = await previewTransfer(payload);
+    if (disposed || current !== operation || !props.writable) return;
+    await props.command.submit('/storage/transfer', { ...payload }, quote);
+    if (!disposed && current === operation && !pending.value && !props.command.error.value) { notice.value = 'Предметы перемещены.'; void load(); }
+  } catch (cause) { if (!disposed && current === operation) error.value = worldError(cause); }
+  finally { if (!disposed && current === operation) transferring.value = false; }
+}
+function down(event: PointerEvent, target: StorageView | null, position: number) {
+  suppressClick = false;
+  if (!target) return;
+  const row = target.items.find(item => item.position === position);
+  if (event.button !== 0 || event.pointerType === 'touch' || blocked.value || !props.writable || !target.writable || !row) return;
+  // Keep the chosen stack until an actual drag starts: a tap on a matching stack is a destination.
+  drag.value = { pointer: event.pointerId, x: event.clientX, y: event.clientY, moved: false, item: row.id };
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+}
+function move(event: PointerEvent) {
+  if (!drag.value || drag.value.pointer !== event.pointerId) return;
+  if (!drag.value.moved && Math.hypot(event.clientX - drag.value.x, event.clientY - drag.value.y) > 7) {
+    const pane = panes.value.find(value => value.items.some(item => item.id === drag.value!.item));
+    const row = pane?.items.find(item => item.id === drag.value!.item);
+    if (pane && row && selected.value !== row.id) select(pane, row.position);
+    drag.value.moved = true;
+  }
+  const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-storage][data-position]');
+  hover.value = drag.value.moved && cell?.dataset.drop === 'true' ? `${cell.dataset.storage}:${cell.dataset.position}` : null;
+}
+function up(event: PointerEvent) {
+  if (!drag.value || drag.value.pointer !== event.pointerId) return;
+  move(event);
+  const moved = drag.value.moved, target = hover.value;
+  cancelDrag(); suppressClick = moved;
+  if (!moved || !target) return;
+  const [storage, position] = target.split(':').map(Number), pane = panes.value.find(value => value.storage.id === storage);
+  if (pane) void transfer(pane, position);
+}
+function cancelDrag() { drag.value = null; hover.value = null; }
+watch(destination, loadTarget);
+watch([() => props.nodeId, () => props.storageId, () => props.session], () => { destination.value = null; notice.value = ''; void load(); }, { immediate: true, flush: 'sync' });
+watch(() => props.writable, () => { operation++; transferring.value = false; cancelDrag(); }, { flush: 'sync' });
+onScopeDispose(() => { disposed = true; generation++; targetGeneration++; operation++; });
 </script>
 <template lang="pug">
-section.world-storage(aria-label="Вещи и размещение")
-  h2 Вещи и размещение
-  n-button(size="small" :loading="loading" @click="load") Обновить хранилище
+section.world-storage(aria-label="Вещи и размещение" @keydown.esc="selected = null; cancelDrag()")
+  .storage-heading
+    h2 Вещи и размещение
+    n-button(size="small" :loading="loading" :disabled="blocked" @click="load") Обновить
   n-alert(v-if="error" type="error" role="alert") {{ error }}
-  p(v-if="loading") Загружаем хранилище…
+  p(v-if="notice" role="status") {{ notice }}
+  p.storage-hint Перетащите вещь в свободную ячейку или на такую же стопку. Можно нажать на предмет, затем на подсвеченное место. Перенос — бесплатно; помещение в сундук расходует его прочность.
   nav.storage-links(aria-label="Хранилища")
-    router-link(v-for="header in headers" :key="header.id" :to="link(header.id)" :aria-current="header.id === view?.storage.id ? 'page' : undefined") {{ header.name }} · №{{ header.id }}
-  template(v-if="view")
-    h3 {{ view.storage.name }} · Доступно мест: {{ view.storage.capacity }}
-    router-link(v-if="view.location" :to="`/world/nodes/${view.location.node_id}`") Место: {{ view.location.name }}
-    p(v-if="view.container") Прочность сундука: {{ view.container.durability }} / {{ view.container.max_durability }}
-    world-chest-repair(v-if="view.storage.kind === 'chest'" :storage="view.storage" :command="command" :writable="canWrite" :session="session")
-    p(v-if="view.storage.kind === 'placement'") Станции на улице быстрее изнашиваются. Защиту дают подходящие помещения и навесы.
-    ul.placement-slots(v-if="view.slots.length")
-      li(v-for="slot in view.slots" :key="slot.position") Место {{ slot.position }} · {{ placeNames[slot.exposure_class] }} · {{ slot.available ? 'Доступно' : 'Закрыто' }}
-    p(v-if="!view.items.length") Здесь пока нет вещей.
-    .warehouse-items(v-if="view.storage.kind === 'stockpile'" aria-label="Ячейки склада")
-      button.warehouse-cell(v-for="cell in cells" :key="cell.position" type="button" :class="{ selected: cell.item?.id === selected, empty: !cell.item }" :disabled="!cell.item" :aria-label="cell.item ? `${cell.item.name}, ${cell.item.quantity} шт., ячейка ${cell.position}` : `Пустая ячейка ${cell.position}`" @click="selected = cell.item?.id ?? null")
-        template(v-if="cell.item")
-          font-awesome-icon.cell-icon(:icon="cell.item.icon || 'fa fa-cube'")
-          strong.cell-quantity {{ cell.item.quantity }}
-          span.cell-name {{ cell.item.name }}
-        small(v-else) {{ cell.position }}
-    ul.storage-items(v-else)
-      li(v-for="row in view.items" :key="row.id" :class="{selected: selected === row.id}")
-        .item-summary
-          span {{ row.name }}
-          strong × {{ row.quantity }}
-        small Место {{ row.position }}
-        small(v-if="row.position > view.storage.capacity") Переполнение — предмет можно забрать
-        router-link(v-for="unit in row.instances" :key="unit.id" :to="`/world/equipment/${unit.id}/wear`") №{{ unit.id }} · {{ unit.durability }}/{{ unit.max_durability }} · {{ placeNames[unit.exposure_class] }} · история прочности
-        router-link(v-if="row.inner_storage_id" :to="link(row.inner_storage_id)") Открыть сундук
-        n-button(size="small" :disabled="busy || Boolean(pending) || !canWrite" @click="selected = row.id") Выбрать для переноса
-    page-pager(v-if="view.storage.kind !== 'stockpile'" :page="page" :result="pager" query-prefix="storage" :disabled="loading")
-  form.transfer-form(v-if="item" @submit.prevent="preview")
-    h3 Переместить: {{ item.name }}
-    n-select(v-model:value="destination" :options="destinationOptions" :disabled="busy" placeholder="Куда переместить" aria-label="Целевое хранилище")
-    n-input-number(v-model:value="position" :min="1" :max="target?.capacity || 1" :precision="0" :disabled="busy" aria-label="Номер места")
-    n-input-number(v-model:value="quantity" :min="1" :max="target?.kind === 'placement' || instance ? 1 : item.quantity" :precision="0" :disabled="busy" aria-label="Количество")
-    n-select(v-if="unitOptions.length" v-model:value="instance" :options="unitOptions" clearable :disabled="busy || quantity !== 1" placeholder="Экземпляр: автоматически" aria-label="Экземпляр оборудования")
-    n-button(attr-type="submit" :loading="previewing" :disabled="!payload || busy || Boolean(pending) || !canWrite") Подготовить перенос
-    template(v-if="quote")
-      p Переместить {{ quantity }} шт. в «{{ target?.name }}», место {{ position }}?
-      n-button(type="primary" :loading="busy" :disabled="Boolean(pending) || !canWrite" @click="confirm") Подтвердить перенос
+    router-link(v-for="header in headers" :key="header.id" :to="link(header.id)" :aria-current="header.id === view?.storage.id ? 'page' : undefined") {{ header.name }}
+  p(v-if="loading" role="status") Загружаем вещи…
+  .transfer-controls(v-if="item")
+    strong {{ item.name }}
+    label Количество
+      n-input-number(v-model:value="quantity" :min="1" :max="Math.min(item.quantity, 10000)" :precision="0" :disabled="blocked || !!instance")
+    n-button(size="small" :disabled="blocked || !!instance" @click="quantity = Math.min(item.quantity, 10000)") Вся стопка
+    n-button(size="small" :disabled="blocked" @click="selected = null") Снять выбор
+    small Для размещения станции или сундука переносится 1 шт.
+    n-select(v-if="unitOptions.length" v-model:value="instance" :options="unitOptions" clearable :disabled="blocked || quantity !== 1" placeholder="Экземпляр: автоматически" aria-label="Экземпляр оборудования")
+    router-link(v-if="item.inner_storage_id" :to="link(item.inner_storage_id)") Открыть сундук
+    router-link(v-for="unit in item.instances" :key="unit.id" :to="`/world/equipment/${unit.id}/wear`") Прочность {{ unit.durability }}/{{ unit.max_durability }} · история
+  .storage-panes(v-if="view")
+    section.storage-pane
+      h3 {{ view.storage.name }}
+      small {{ view.items.length }} / {{ view.storage.capacity }} мест занято
+      p(v-if="!props.writable || !view.writable") Только просмотр
+      world-storage-grid(:view="view" :selected="selected" :blocked="blocked" :dragging="drag?.moved ? drag.item : null" :target="hover" :destinations="destinations(view)" @choose="choose(view, $event)" @down="(event, position) => down(event, view, position)" @move="move" @up="up" @cancel="cancelDrag")
+      world-chest-repair(v-if="view.storage.kind === 'chest'" :storage="view.storage" :command="command" :writable="props.writable && view.writable" :session="session")
+    section.storage-pane(v-if="destinationOptions.length")
+      label Второе хранилище
+        n-select(v-model:value="destination" :options="destinationOptions" :disabled="blocked" aria-label="Второе хранилище")
+      p(v-if="targetLoading" role="status") Загружаем ячейки…
+      template(v-else-if="targetView")
+        small {{ targetView.items.length }} / {{ targetView.storage.capacity }} мест занято
+        p(v-if="!props.writable || !targetView.writable") Только просмотр
+        world-storage-grid(:view="targetView" :selected="selected" :blocked="blocked" :dragging="drag?.moved ? drag.item : null" :target="hover" :destinations="destinations(targetView)" @choose="choose(targetView, $event)" @down="(event, position) => down(event, targetView, position)" @move="move" @up="up" @cancel="cancelDrag")
+  p(v-if="!loading && !view && !error") Доступных хранилищ пока нет.
 </template>
 <style scoped>
-.warehouse-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: .5rem; }
-.warehouse-cell { min-height: 84px; position: relative; padding: .5rem; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; }
-.warehouse-cell.selected { outline: 2px solid var(--primary); }
-.warehouse-cell.empty { opacity: .45; cursor: default; }
-.cell-icon { position: absolute; top: .6rem; left: .6rem; font-size: 1.25rem; }
-.cell-quantity { position: absolute; top: .5rem; right: .5rem; font-size: .85rem; }
-.cell-name { display: block; margin-top: 2rem; font-size: .75rem; line-height: 1.2; overflow-wrap: anywhere; }
-.world-storage, .transfer-form { display: grid; gap: .75rem; }
-.storage-links { display: flex; flex-wrap: wrap; gap: .75rem; }
-.storage-items { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: .5rem; }
-.storage-items li { border: 1px solid var(--border); border-radius: .4rem; padding: .75rem; display: grid; gap: .4rem; }
-.storage-items li.selected { outline: 2px solid var(--primary); }
-.item-summary { display: flex; justify-content: space-between; gap: .5rem; }
-.transfer-form { max-width: 32rem; }
+.world-storage { display: grid; gap: .75rem; min-width: 0; }.storage-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }.storage-heading h2 { margin: 0; }.storage-hint { margin: 0; color: var(--text-muted); font-size: .85rem; }
+.storage-links, .transfer-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }.storage-links a { padding: .4rem .6rem; border: 1px solid var(--border); border-radius: .4rem; }.storage-links a[aria-current] { background: var(--primary-soft); }
+.storage-panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }.storage-pane { display: grid; align-content: start; gap: .6rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .6rem; }.storage-pane h3 { margin: 0; }.storage-pane label { display: grid; gap: .35rem; }
+.transfer-controls { padding: .75rem; border: 1px solid var(--primary); border-radius: .5rem; background: var(--primary-soft); }.transfer-controls label { max-width: 9rem; }.transfer-controls > small { flex-basis: 100%; }
+@media(max-width: 700px) { .storage-panes { grid-template-columns: 1fr; } }
 </style>

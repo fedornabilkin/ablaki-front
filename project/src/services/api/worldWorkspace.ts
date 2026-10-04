@@ -17,7 +17,7 @@ function unit(value: unknown) {
 }
 export function parseWorkspace(value: unknown) {
   const r = record(value);
-  const recipes = list(r.recipes, value => { const row = record(value); return { id: id(row.id), name: text(row.name, 120), quantity: integer(row.quantity, 1, 1000), locked_reasons: reasons(row.locked_reasons) }; }, 2000);
+  const recipes = list(r.recipes, value => { const row = record(value); return { id: id(row.id), name: text(row.name, 120), icon: row.icon === undefined ? 'cube' : text(row.icon, 64), quantity: integer(row.quantity, 1, 1000), locked_reasons: reasons(row.locked_reasons), available: row.available === undefined ? false : boolean(row.available), availability_reasons: row.availability_reasons === undefined ? [] : reasons(row.availability_reasons) }; }, 2000);
   const equipment = list(r.equipment, value => { const row = record(value); const item = id(row.item_id), station = boolean(row.is_station), candidates = list(row.candidates, unit);
     if (candidates.some(candidate => candidate.item_id !== item || candidate.is_station !== station) || new Set(candidates.map(c => c.instance_id)).size !== candidates.length) invalid();
     return { item_id: item, name: text(row.name, 120), is_station: station, candidates };

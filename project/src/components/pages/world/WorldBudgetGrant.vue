@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber } from 'naive-ui';
 import { previewBudgetGrant } from '@/services/api/worldEconomy';
@@ -46,8 +47,8 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
     n-input(v-model:value="purpose" :maxlength="255" placeholder="На развитие объекта")
   n-button(:loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
   section.grant-quote(v-if="quote" aria-live="polite")
-    p Перевод: {{ quote.input.amount }} Cr объекту №{{ quote.input.destination_node_id }}.
-    p В источнике останется свободно {{ quote.sourceAvailableAfter }} Cr; бюджет получателя станет {{ quote.destinationBudgetAfter }} Cr.
+    p Перевод: {{ formatCredits(quote.input.amount) }} Cr объекту №{{ quote.input.destination_node_id }}.
+    p В источнике останется свободно {{ formatCredits(quote.sourceAvailableAfter) }} Cr; бюджет получателя станет {{ formatCredits(quote.destinationBudgetAfter) }} Cr.
     n-button(type="primary" :loading="command.busy.value" :disabled="Boolean(command.pending.value)" @click="confirm") Подтвердить перевод
 </template>
 <style scoped>

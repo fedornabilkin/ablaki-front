@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -43,20 +44,20 @@ section.world-finance-report#finance-report
     dl.flows
       template(v-for="flow in state.flows" :key="flow.key")
         dt {{ flow.label }}
-        dd {{ flow.amount }} Cr
+        dd {{ formatCredits(flow.amount) }} Cr
     h4 Остатки и сверка с журналом
     article(v-for="account in state.balances" :key="account.role")
       h5 {{ roles[account.role] }}
-      p Остаток {{ account.amount }} Cr · резерв {{ account.reserved }} Cr · доступно {{ account.available }} Cr
+      p Остаток {{ formatCredits(account.amount) }} Cr · резерв {{ formatCredits(account.reserved) }} Cr · доступно {{ formatCredits(account.available) }} Cr
       p(v-if="account.matches") Остаток совпадает с журналом поступлений и списаний.
-      n-alert(v-else type="warning") По журналу: {{ account.ledgerBalance }} Cr. Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
+      n-alert(v-else type="warning") По журналу: {{ formatCredits(account.ledgerBalance) }} Cr. Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
   h4 Журнал операций
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению операции" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка финансового отчёта")
   template(v-else-if="state")
     p(v-if="!state.items.length") По выбранным условиям операций нет.
     article(v-for="item in state.items" :key="item.id")
-      h5 {{ financeDirections[item.direction] }} · {{ item.amount }} Cr
+      h5 {{ financeDirections[item.direction] }} · {{ formatCredits(item.amount) }} Cr
       p {{ kindLabel(item.kind) }} · №{{ item.id }} · {{ date(item.at) }}
       p {{ item.source ? roles[item.source] : 'Внешний источник' }} → {{ item.destination ? roles[item.destination] : 'Внешний получатель' }}
       p {{ item.purpose }}

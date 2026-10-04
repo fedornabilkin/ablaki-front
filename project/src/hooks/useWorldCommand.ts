@@ -8,6 +8,7 @@ import { orderDeliveryInput, orderPublicationInput } from '@/services/api/worldO
 import { premisesPublicationInput } from '@/services/api/worldPremises';
 import { shelterInput, type ShelterAction } from '@/services/api/worldShelter';
 import { gardenInput, type GardenAction } from '@/services/api/worldGarden';
+import { harvestInput, type HarvestAction } from '@/services/api/worldHarvest';
 import { equipmentExpansionInput } from '@/services/api/worldEquipmentExpansion';
 
 interface PendingCommand { path: string; body: Record<string, unknown> & { request_key: string; quote_id: string; expected_revisions: Record<string, number> } }
@@ -51,10 +52,18 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
         shelterInput(value.path.substring(value.path.lastIndexOf('shelter-') + 8) as ShelterAction, body);
       } else if (/^\/nodes\/[1-9]\d*\/garden-(publish|withdraw|buy|expand)$/.test(value.path)) {
         gardenInput(value.path.substring(value.path.lastIndexOf('garden-') + 7) as GardenAction, body);
+      } else if (/^\/nodes\/[1-9]\d*\/harvest-(price|buy|withdraw)$/.test(value.path)) {
+        harvestInput(value.path.substring(value.path.lastIndexOf('harvest-') + 8) as HarvestAction, body);
+      } else if (/^\/beds\/[1-9]\d*\/(dig|sow|water|harvest|cancel)$/.test(value.path)) {
+        if (value.path.endsWith('/sow') && (!Number.isSafeInteger(body.crop_revision_id) || body.crop_revision_id < 1)) return;
       } else if (/^\/nodes\/[1-9]\d*\/equipment-expand$/.test(value.path)) {
         equipmentExpansionInput(body);
+      } else if (/^\/professions\/[1-9]\d*\/(enroll|level-up)$/.test(value.path)) {
+        if (Object.keys(body).some(key => !['request_key', 'quote_id', 'expected_revisions'].includes(key))) return;
       } else if (/^\/nodes\/[1-9]\d*\/map-(explore|buy)$/.test(value.path)) {
-        if (!Number.isSafeInteger(body.x) || !Number.isSafeInteger(body.y) || Math.abs(body.x) > 1000000 || Math.abs(body.y) > 1000000 || typeof body.top_up !== 'boolean') return;
+        const cells = body.cells ?? [{ x: body.x, y: body.y }];
+        if (!Array.isArray(cells) || cells.length < 1 || cells.length > 100 || cells.some(c => !c || !Number.isSafeInteger(c.x) || !Number.isSafeInteger(c.y) || Math.abs(c.x) > 1000000 || Math.abs(c.y) > 1000000) || new Set(cells.map(c => `${c.x}:${c.y}`)).size !== cells.length || typeof body.top_up !== 'boolean' || (body.use_elixir !== undefined && typeof body.use_elixir !== 'boolean')) return;
+        if (value.path.endsWith('/map-explore') && cells.length !== 1) return;
       } else if (value.path === '/workspace/craft') {
         const validId = (id: unknown) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
         if (['node_id', 'recipe_id', 'quantity', 'output_storage_id'].some(key => !validId(body[key])) || body.quantity > 100) return;

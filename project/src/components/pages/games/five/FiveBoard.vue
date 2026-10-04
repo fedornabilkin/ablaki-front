@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
 import { NAlert, NButton, NCard, NPopconfirm } from 'naive-ui';
 import UserAvatar from '@/components/user/UserAvatar.vue';
@@ -22,20 +23,20 @@ n-card(:title="'Игра №' + game.id")
       .toolbar.five-stats
         span
           font-awesome-icon(icon="coins" aria-hidden="true")
-          |  Ставка: {{ formatAccountNumber(game.kon) }} Cr
+          |  Ставка: {{ formatCredits(game.kon) }} Cr
         span
           font-awesome-icon(icon="box" aria-hidden="true")
-          |  Банк: {{ formatAccountNumber(game.bank) }} Cr
+          |  Банк: {{ formatCredits(game.bank) }} Cr
         span
           font-awesome-icon(icon="trophy" aria-hidden="true")
-          |  Победителю: {{ formatAccountNumber(game.winner_amount) }} Cr
+          |  Победителю: {{ formatCredits(game.winner_amount) }} Cr
       .players
         .player(v-for="participant in participants" :key="participant.side")
           user-avatar(v-if="participant.user" :user="participant.user")
           span.muted(v-else) Ждём соперника
           strong {{ participant.points }} очков
           font-awesome-icon(v-if="game.status === participant.side" icon="trophy" title="Победитель" aria-label="Победитель")
-      n-alert(v-if="fiveFinished(game)" type="success" role="status") Победитель: {{ winnerName }}. Начислено {{ formatAccountNumber(game.winner_amount) }} Cr.
+      n-alert(v-if="fiveFinished(game)" type="success" role="status") Победитель: {{ winnerName }}. Начислено {{ formatCredits(game.winner_amount) }} Cr.
       template(v-else)
         p(v-if="ownPendingBall") Ваш скрытый ход: {{ ownPendingBall }}. Ждём ответа соперника.
         template(v-if="canMoveFive(game, userId, credit)")
@@ -49,7 +50,7 @@ n-card(:title="'Игра №' + game.id")
         n-popconfirm(v-if="game.status === 'free' && role === 'user'" @positive-click="$emit('cancel')")
           template(#trigger)
             n-button(type="error" secondary :disabled="busy || blocked") Отменить игру
-          | Отменить игру и вернуть {{ formatAccountNumber(game.kon) }} Cr?
+          | Отменить игру и вернуть {{ formatCredits(game.kon) }} Cr?
     aside.five-rounds(aria-label="Ходы игроков")
       strong Ходы
       .round-names
