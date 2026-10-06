@@ -38,10 +38,10 @@ export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | 
     garden: active && (publicSettlement || (node.type === 'PLOT' && ['campsite', 'garden'].includes(String(node.details.plot_kind)) && node.permissions.storage)),
     premises: active && (publicSettlement || ownedCampsite),
     orders: active && publicSettlement,
-    construction: storage && ['PLOT', 'BUILDING'].includes(node.type) && node.details.plot_kind !== 'garden',
+    construction: node.status === 'constructing' || (storage && ['PLOT', 'BUILDING', 'ROOM', 'CHEST'].includes(node.type)),
     building: storage && node.type === 'BUILDING',
     demolitionHistory: storage && node.type === 'PLOT' && node.details.plot_kind !== 'garden',
-    finance: !shelter && (node.has_finances ?? (!['ROOM', 'BED'].includes(node.type) && node.details.building_kind !== 'warehouse')),
+    finance: !shelter && (node.owned_by_me || (node.has_finances ?? (!['ROOM', 'BED', 'PLACE'].includes(node.type) && node.details.building_kind !== 'warehouse'))),
     cultivation: active && node.type === 'BED' && node.permissions.storage && Boolean(node.details.unlocked),
     warehouse: active && storage && node.type === 'BUILDING' && ['forge', 'workshop', 'workroom', 'warehouse'].includes(String(node.details.building_kind)),
   };

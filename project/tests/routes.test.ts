@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { routes } from '../src/routes';
+import WorldPage from '../src/components/pages/world/WorldPage.vue';
 const router = createRouter({ history: createMemoryHistory(), routes });
 describe('portal route access', () => {
+  it.each(['/world', '/world/nodes/21'])('opens the interactive world screen at %s', async path => {
+    const resolved = router.resolve(path);
+    expect(resolved.meta.requiresAuth).toBe(true);
+    const load = resolved.matched[0].components!.default as () => Promise<{ default: { __name: string } }>;
+    expect((await load()).default).toBe(WorldPage);
+  });
   it('requires authentication for the live craft workshop', () => {
     expect(router.resolve('/craft').meta.requiresAuth).toBe(true);
     expect(router.resolve('/craft').meta.hideBreadcrumbs).toBe(true);

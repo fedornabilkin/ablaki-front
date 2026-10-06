@@ -20,7 +20,7 @@ let generation = 0, dropSequence = 0;
 watch(selected, value => emit('update:selection', value), { flush: 'sync' });
 watch(() => props.map?.exploration?.allowed, async allowed => { if (!allowed) { explorer.value = null; return; } const id = props.node.id; try { const result = await loadExplorer(); if (props.node.id === id) explorer.value = result; } catch { /* Exploration itself still has its authoritative map requirements. */ } }, { immediate: true });
 const size = 88, key = (p: MapPoint) => `${p.x}:${p.y}`;
-const icons = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling' };
+const icons = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
 const statuses: Record<string, string> = { active: 'Доступен', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'На паузе', damaged: 'Повреждён', destroyed: 'Разрушен' };
 const drag = ref<{ start: MapPoint; end: MapPoint; x: number; y: number; moved: boolean; additive: boolean } | null>(null);
 let suppressClick = false;

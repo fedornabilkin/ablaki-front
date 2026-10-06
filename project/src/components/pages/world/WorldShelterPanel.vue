@@ -4,7 +4,7 @@ import { NAlert, NButton, NCheckbox, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadShelter, previewShelter, type ShelterAction } from '@/services/api/worldShelter';
 import { worldError } from '@/services/api/world';
-const props = defineProps<{ nodeId: number; session: number; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number; session: number; command: WorldCommandRunner; existingOnly?: boolean }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadShelter>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewShelter>> | null>(null);
 const error = ref(''), loading = ref(false), calculating = ref(false), endLodging = ref(false), { busy, pending } = props.command;
 const locked = computed(() => busy.value || Boolean(pending.value) || !state.value?.writable);
@@ -39,7 +39,7 @@ const date = (value: number) => new Date(value * 1000).toLocaleString('ru-RU');
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
-section.world-shelter#shelter
+section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
   h2 Шалаш и ночлег
   p Один бесплатный шалаш на аккаунт. Он даёт одно место ночлега, но не защищает станции и сундуки. Установка не занимает площадь капитальных построек.
   n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить состояние

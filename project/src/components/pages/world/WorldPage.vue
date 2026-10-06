@@ -10,16 +10,15 @@ import { nodeFeatures, tabForHash, tabLabels, tabsForNode, type NodeTab } from '
 import WorldCultivationPanel from './WorldCultivationPanel.vue';
 import WorldWarehousePanel from './WorldWarehousePanel.vue';
 import WorldMap from './WorldMap.vue';
-import WorldCampsiteSupplies from './WorldCampsiteSupplies.vue';
 import WorldNodeStatistics from './WorldNodeStatistics.vue';
 import WorldManagement from './WorldManagement.vue';
-import WorldOnboarding from './WorldOnboarding.vue';
+import WorldStartPanel from './WorldStartPanel.vue';
 import WorldStoragePanel from './WorldStoragePanel.vue';
 import WorldEconomyPanel from './WorldEconomyPanel.vue';
 import WorldFinancePolicy from './WorldFinancePolicy.vue';
 import WorldOrdersPanel from './WorldOrdersPanel.vue';
-import WorldPremisesPanel from './WorldPremisesPanel.vue';
-import WorldConstructionPanel from './WorldConstructionPanel.vue';
+import WorldBuildPanel from './WorldBuildPanel.vue';
+import SimpleBudgetPanel from './SimpleBudgetPanel.vue';
 import WorldBuildingOperationPanel from './WorldBuildingOperationPanel.vue';
 import WorldBuildingRepairPanel from './WorldBuildingRepairPanel.vue';
 import WorldRepairContractsPanel from './WorldRepairContractsPanel.vue';
@@ -76,7 +75,7 @@ const visitedTabs = ref<NodeTab[]>(['map']);
 watch([nodeId, session], () => { visitedTabs.value = ['map']; }, { flush: 'sync' });
 watch(activeTab, tab => { if (!visitedTabs.value.includes(tab)) visitedTabs.value = [...visitedTabs.value, tab]; }, { immediate: true });
 const statuses: Record<string, string> = { active: 'Действует', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'Приостановлен', damaged: 'Повреждён', destroyed: 'Разрушен' };
-const icons: Record<NodeType, string> = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling' };
+const icons: Record<NodeType, string> = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
 const nodeIcon = computed(() => features.value?.campsite ? 'tent' : world.node ? icons[world.node.type] : 'sun');
 const nodeKind = computed(() => features.value?.campsite ? 'Усадьба' : world.node ? nodeLabels[world.node.type] : 'Мир');
 const detail = computed(() => world.node?.details ?? {});
@@ -134,10 +133,10 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
       .world-children
         world-map(v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
           template(#placement)
-            world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :session="session" :revision="world.dataRevision" :command="command")
+            world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :session="session" :revision="world.dataRevision" :command="command" :build-only="true")
 
     section.world-tab-panel(v-if="tabs.includes('map')" v-show="activeTab === 'map'" aria-label="Обзор объекта")
-      world-onboarding.world-content-card(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
+      world-start-panel.world-content-card(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :owner="owner" :session="session" @changed="changed([world.node.id])")
 
     world-harvest-panel.world-content-card(v-if="world.node.details.plot_kind === 'garden'" v-show="activeTab === 'map'" :node-id="world.node.id" :session="session" :revision="world.dataRevision" :command="command")
 
@@ -149,7 +148,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         span.world-eyebrow Жизнь на территории
         h2 Ночлег и здоровье
       .world-content-grid.world-content-grid--life
-        world-shelter-panel.world-content-card(v-if="features.nights" :node-id="world.node.id" :session="session" :command="command")
+        world-shelter-panel.world-content-card(v-if="features.nights" :node-id="world.node.id" :session="session" :command="command" :existing-only="true")
         world-nights-panel.world-content-card(v-if="features.nights" :node-id="world.node.id" :session="session")
         world-housing-panel.world-content-card(v-if="features.housing" :node-id="world.node.id" :session="session" :command="command")
 
@@ -162,14 +161,14 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
       world-warehouse-panel.world-content-card(v-if="features.warehouse" :node-id="world.node.id" :session="session" :command="command")
       .world-content-grid.world-content-grid--workshop
         world-storage-panel.world-content-card.world-storage-card(v-if="features.storage" :node-id="world.node.id" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
-        world-campsite-supplies.world-content-card(v-if="features.campsite && features.storage && world.node.status === 'active'" :node-id="world.node.id" :session="session" :command="command")
         world-equipment-expansion-panel.world-content-card(v-if="features.housing" :node-id="world.node.id" :session="session" :command="command")
 
     section.world-tab-panel(v-if="visitedTabs.includes('finance') && features?.finance" v-show="activeTab === 'finance'" aria-label="Бюджет и казна")
       .world-section-title
         span.world-eyebrow Экономика территории
         h2 Бюджет и казна
-      world-economy-panel(:node-id="world.node.id" :children="world.map?.items ?? []" :session="session" :command="command")
+      simple-budget-panel.world-content-card(v-if="world.node.owned_by_me && world.node.status === 'active'" :node-id="world.node.id" :owner="owner" :session="session" @changed="changed([world.node.id])")
+      world-economy-panel(v-if="world.node.has_finances" :node-id="world.node.id" :children="world.map?.items ?? []" :session="session" :command="command")
 
     section.world-tab-panel(v-if="visitedTabs.includes('development') && tabs.includes('development')" v-show="activeTab === 'development'" aria-label="Развитие объекта")
       .world-section-title
@@ -183,10 +182,9 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           world-repair-contracts-panel.world-content-card(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
           world-demolition-panel.world-content-card(v-if="features?.building" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
         .world-content-grid
-          world-construction-panel.world-content-card(v-if="features?.construction" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-          world-premises-panel.world-content-card(v-if="features?.premises" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+          world-build-panel.world-content-card(v-if="features?.construction && world.capabilities?.world_write" :node-id="world.node.id" :revision="world.node.revision" :session="session" :owner="owner" @changed="changed([world.node.id])")
         .world-content-grid
-          world-garden-panel.world-content-card(v-if="features?.garden" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
+          world-garden-panel.world-content-card(v-if="features?.garden" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" :existing-only="true")
           world-orders-panel.world-content-card(v-if="features?.orders" :node-id="world.node.id" :session="session" :command="command")
           router-link.world-content-card.world-related-link(v-if="features?.campsite && world.node.parent_id" :to="{ path: `/world/nodes/${world.node.parent_id}`, hash: '#settlement-orders' }") Заказы поселения ↗
       world-demolition-history.world-content-card(v-if="features?.demolitionHistory" :node-id="world.node.id" :session="session")

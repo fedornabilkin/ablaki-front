@@ -1,4 +1,4 @@
-export const nodeTypes = ['WORLD', 'REGION', 'SETTLEMENT', 'BUILDING', 'ROOM', 'PLOT', 'BED'] as const;
+export const nodeTypes = ['WORLD', 'REGION', 'SETTLEMENT', 'BUILDING', 'ROOM', 'PLOT', 'BED', 'CHEST', 'PLACE'] as const;
 export type NodeType = typeof nodeTypes[number];
 export interface WorldReason { code: string; message?: string }
 export interface WorldAction { code: string; allowed: boolean; reasons: WorldReason[] }
@@ -22,5 +22,5 @@ export interface WorldScreen { contract_version: number; server_time: number; ca
 export interface WorldQuote { quote_id: string; expires_at: number; expected_revisions: Record<string, number>; terms: Record<string, unknown>; server_time: number }
 export interface WorldCommandResult { operation_id: string; request_key: string; contract_version: number; server_time: number; changed_node_ids: number[]; changed_storage_ids?: number[]; node?: WorldNode; amount?: string; wallet_after?: string; currency?: 'Cr'; building_id?: number; room_id?: number; project_id?: number; finish_at?: number; return_node_id?: number }
 export interface WorldOnboarding { world_id: number; joined: boolean; starter_site_id: number | null; joined_at: number | null; grace_until: number | null; server_time: number; join_available: boolean }
-export const nodeLabels: Record<NodeType, string> = { WORLD: 'Мир', REGION: 'Регион', SETTLEMENT: 'Поселение', BUILDING: 'Постройка', ROOM: 'Помещение', PLOT: 'Участок', BED: 'Грядка' };
-export const nodeIcons: Record<NodeType, string> = { WORLD: 'globe', REGION: 'map', SETTLEMENT: 'city', BUILDING: 'home', ROOM: 'door-open', PLOT: 'seedling', BED: 'leaf' };
+export const nodeLabels: Record<NodeType, string> = { WORLD: 'Мир', REGION: 'Регион', SETTLEMENT: 'Поселение', BUILDING: 'Постройка', ROOM: 'Помещение', PLOT: 'Участок', BED: 'Грядка', CHEST: 'Сундук', PLACE: 'Место' };
+export const nodeIcons: Record<NodeType, string> = { WORLD: 'globe', REGION: 'map', SETTLEMENT: 'city', BUILDING: 'home', ROOM: 'door-open', PLOT: 'seedling', BED: 'leaf', CHEST: 'box', PLACE: 'cube' };

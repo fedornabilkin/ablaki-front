@@ -5,6 +5,7 @@ import { NAlert, NButton, NCard, NInput, NSelect, NProgress } from 'naive-ui';
 import * as api from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
+import { formatCredits } from '@/entities/world/credits';
 const props = defineProps<{ node: api.SimpleNode; owner: number; session: number }>();
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), templates = ref<api.Template[]>([]), project = ref<api.Build | null>(null);
@@ -55,7 +56,7 @@ n-card(title="Строительство")
   template(v-if="project && project.status === 'building'")
     p {{ project.worked_seconds }} / {{ project.required_seconds }} секунд работы
     n-progress(type="line" :percentage="Math.floor(100 * project.worked_seconds / project.required_seconds)")
-    p Бюджет помощников: {{ project.labor_budget }} Cr. Владелец работает бесплатно.
+    p Бюджет помощников: {{ formatCredits(project.labor_budget) }} Cr. Владелец работает бесплатно.
     p Время учитывается, пока эта страница открыта и есть связь с сервером.
     p После обрыва связи учитывается не больше 60 дополнительных секунд.
     n-button(v-if="!working" :disabled="busy || uncertain" @click="start") Начать работу

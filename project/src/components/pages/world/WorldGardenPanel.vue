@@ -6,7 +6,7 @@ import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadGarden, previewGarden, type GardenAction } from '@/services/api/worldGarden';
 import { worldError } from '@/services/api/world';
 import WorldExpansionCost from './WorldExpansionCost.vue';
-const props = defineProps<{ nodeId: number; session: number; writable: boolean; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number; session: number; writable: boolean; command: WorldCommandRunner; existingOnly?: boolean }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadGarden>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewGarden>> | null>(null);
 const form = reactive({ name: '', price: '', base_price: '' });
 const topUp = ref(false), quantity = ref<number | null>(1), error = ref(''), loading = ref(false), calculating = ref(false), { busy, pending } = props.command;
@@ -54,7 +54,7 @@ async function confirm() {
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
-section.world-garden#garden
+section.world-garden#garden(v-if="!existingOnly || state?.garden")
   h2 Огород
   p В огороде десять грядок: первая включена в покупку. Открывайте остальные и выращивайте урожай. При открытии трёх и более грядок — скидка 5%.
   n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить огород

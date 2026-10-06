@@ -10,17 +10,22 @@ import WorldGardenPanel from '../src/components/pages/world/WorldGardenPanel.vue
 import WorldEquipmentExpansionPanel from '../src/components/pages/world/WorldEquipmentExpansionPanel.vue';
 import WorldCultivationPanel from '../src/components/pages/world/WorldCultivationPanel.vue';
 import WorldCampsiteSupplies from '../src/components/pages/world/WorldCampsiteSupplies.vue';
+import SimpleBudgetPanel from '../src/components/pages/world/SimpleBudgetPanel.vue';
+import SimpleBuildPanel from '../src/components/pages/world/SimpleBuildPanel.vue';
+import WorldStartPanel from '../src/components/pages/world/WorldStartPanel.vue';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
-  return { NAlert: block('aside'), NButton: block('button'), NInputNumber: block('input'), NInput: block('input'), NSelect: block('select'), NSpin: block('span'), NCheckbox: block('input') };
+  return { NCard: block('section'), NProgress: block('progress'), NAlert: block('aside'), NButton: block('button'), NInputNumber: block('input'), NInput: block('input'), NSelect: block('select'), NSpin: block('span'), NCheckbox: block('input') };
 });
-vi.mock('vue-router', () => ({ useRoute: () => mocks.route }));
+vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ push: mocks.push }) }));
 vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 1 } }, dispatch: vi.fn() }) }));
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: () => mocks.runner }));
+vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
+vi.mock('../src/services/api/simpleWorld', () => ({ budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, node: (value: unknown) => value, build: (value: unknown) => value }));
 vi.mock('../src/services/api/worldStorage', () => ({ loadStorageList: mocks.storageList, loadStorageContents: mocks.storage, previewTransfer: mocks.transfer }));
 vi.mock('../src/services/api/worldWorkspace', () => ({ loadWorkspace: mocks.workspace, previewWorkspace: mocks.preview }));
 vi.mock('../src/services/api/worldHarvest', () => ({ loadHarvest: mocks.harvest, previewHarvest: mocks.harvestPreview }));
@@ -39,6 +44,9 @@ clientView(WorldGardenPanel, 'components/pages/world/WorldGardenPanel.vue');
 clientView(WorldEquipmentExpansionPanel, 'components/pages/world/WorldEquipmentExpansionPanel.vue');
 clientView(WorldCultivationPanel, 'components/pages/world/WorldCultivationPanel.vue');
 clientView(WorldCampsiteSupplies, 'components/pages/world/WorldCampsiteSupplies.vue');
+clientView(SimpleBudgetPanel, 'components/pages/world/SimpleBudgetPanel.vue');
+clientView(SimpleBuildPanel, 'components/pages/world/SimpleBuildPanel.vue');
+clientView(WorldStartPanel, 'components/pages/world/WorldStartPanel.vue');
 const quote = { quote_id: 'a'.repeat(32), expected_revisions: {}, server_time: 1, expires_at: 99999999, terms: {} };
 const node: WorldNode = { id: 1, type: 'PLOT', label: 'Усадьба', name: 'Усадьба', code: '', root_id: 1, parent_id: null, status: 'active', visibility: 'private', revision: 1, portable: false, coordinates: { x: 0, y: 0 }, child_count: 0, descendant_count: 0, population_total: 0, owned_by_me: true, footprint: null, details: {}, permissions: { administer: false, manage: true, storage: true }, actions: [] };
 let apps: { unmount: () => void }[] = [];
@@ -50,6 +58,37 @@ beforeEach(() => {
 });
 afterEach(() => { apps.forEach(app => app.unmount()); apps = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
+describe('restored world core panels', () => {
+  it('rounds displayed budget balances and refreshes after funding', async () => {
+    mocks.budget.mockResolvedValue({ available: '12.3500', reserved: '0.0000' });
+    const changed = vi.fn();
+    const view = mount(SimpleBudgetPanel, () => ({ nodeId: 1, owner: 1, session: 1, onChanged: changed }));
+    await flushView();
+    expect(viewText(view.root)).toContain('Доступно: 12.4 Cr. Зарезервировано на стройки: 0 Cr.');
+    mocks.runner.submit.mockResolvedValue({});
+    findView(view.root, n => n.tag === 'input')!.props['onUpdate:value']('2.55');
+    findView(view.root, n => n.tag === 'button')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/budget', { amount: '2.55' });
+    expect(changed).toHaveBeenCalledOnce();
+  });
+  it('rounds construction payments without changing the underlying amount', async () => {
+    mocks.templates.mockResolvedValue([]);
+    mocks.builds.mockResolvedValue({ items: [{ id: 5, status: 'building', owner_user_id: 1, required_seconds: 30, worked_seconds: 1, labor_budget: '6.7800' }] });
+    const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing', owner_user_id: 1 }, owner: 1, session: 1 }));
+    await flushView();
+    expect(viewText(view.root)).toContain('Бюджет помощников: 6.8 Cr');
+    expect(viewText(view.root)).not.toContain('6.7800');
+  });
+  it('starts through the current API and opens the new construction in its tab', async () => {
+    mocks.startState.mockResolvedValue(null);
+    mocks.runner.submit.mockResolvedValue({ node: { id: 23 } });
+    const view = mount(WorldStartPanel, () => ({ node: { ...node, type: 'SETTLEMENT' }, owner: 1, session: 1, writable: true }));
+    await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Начать здесь'))!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('start', { city_id: 1 });
+    expect(mocks.push).toHaveBeenCalledWith({ path: '/world/nodes/23', hash: '#development' });
+  });
+});
 function storage(id: number): StorageView {
   return { storage: { id, kind: 'backpack', name: `Хранилище ${id}`, capacity: 3, revision: 1, node_id: 1, container_inventory_id: null }, items: id === 1 ? [{ id: 10, item_id: 2, name: 'Доска', icon: 'cube', quantity: 5, position: 1, revision: 1, instances: [], inner_storage_id: null }] : [], slots: [], container: null, location: null, total: id === 1 ? 1 : 0, pageSize: 100, pageCount: id === 1 ? 1 : 0, currentPage: 1, server_time: 1, writable: true };
 }
