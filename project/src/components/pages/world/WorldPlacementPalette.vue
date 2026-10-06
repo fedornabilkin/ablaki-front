@@ -10,7 +10,7 @@ import { loadShelter, previewShelter } from '@/services/api/worldShelter';
 import { formatCredits } from '@/entities/world/credits';
 import { worldError } from '@/services/api/world';
 interface Tile { key: string; name: string; icon: string; price: string; availability: string; available: boolean; execute: () => Promise<void> }
-const props = defineProps<{ node: WorldNode; session: number; revision: number; writable: boolean; command: WorldCommandRunner }>();
+const props = defineProps<{ node: WorldNode; session: number; revision: number; writable: boolean; command: WorldCommandRunner; buildOnly?: boolean }>();
 const tiles = shallowRef<Tile[]>([]), error = ref(''), loading = ref(false), working = ref(false);
 let generation = 0, disposed = false;
 const locked = computed(() => !props.writable || loading.value || working.value || props.command.busy.value || !!props.command.pending.value);
@@ -26,7 +26,7 @@ async function load() {
       if (canSubmit()) await props.command.submit('/storage/transfer', { ...item.input }, quote);
     } });
   })];
-  if (node.details.plot_kind === 'campsite') {
+  if (node.details.plot_kind === 'campsite' && !props.buildOnly) {
     loaders.push((async () => {
       let page = 1;
       do {
@@ -75,8 +75,9 @@ watch(() => props.revision, () => { if (!working.value) void load(); });
 onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
-section.placement-palette(v-if="tiles.length || error" aria-label="Доступно для размещения")
+section.placement-palette(v-if="tiles.length || error || (buildOnly && node.owned_by_me && ['PLOT', 'BUILDING', 'ROOM', 'CHEST'].includes(node.type))" aria-label="Доступно для размещения")
   h3 Можно разместить здесь
+  router-link(v-if="buildOnly" :to="{ path: `/world/nodes/${node.id}`, hash: '#development' }") Построить объект
   n-alert(v-if="error" type="error") {{ error }}
   .placement-tiles
     button.placement-tile(v-for="tile in tiles" :key="tile.key" type="button" :disabled="locked || !tile.available" @click="act(tile)")

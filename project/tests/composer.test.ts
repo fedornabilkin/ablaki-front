@@ -53,6 +53,11 @@ describe('message composer', () => {
   });
 });
 describe('breadcrumbs', () => {
+  it('names world routes before node data has loaded', () => {
+    expect(breadcrumbs('/world').at(-1)).toEqual({ title: 'Мир' });
+    expect(breadcrumbs('/world/nodes/21', { id: '21' })).toEqual([{ title: 'Главная', to: '/' }, { title: 'Мир', to: '/world' }, { title: 'Объект №21' }]);
+    expect(breadcrumbs('/world/recovery').at(-1)).toEqual({ title: 'Восстановление вещей' });
+  });
   it('has real parent links and never exposes a login key', () => {
     expect(breadcrumbs('/games/five/my')).toEqual([{ title: 'Главная', to: '/' }, { title: 'Игры', to: '/games' }, { title: '5 яблок', to: '/games/five' }, { title: 'Мои игры' }]);
     expect(JSON.stringify(breadcrumbs('/users/login-key/secret'))).not.toContain('secret');

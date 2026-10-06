@@ -89,7 +89,7 @@ it('shows only applicable sections for parent nodes and private rooms', () => {
   const settlement = node('SETTLEMENT', {}, false);
   expect(tabsForNode(settlement, nodeFeatures(settlement, capabilities))).toEqual(['map', 'finance', 'development', 'statistics']);
   const room = node('ROOM');
-  expect(tabsForNode(room, nodeFeatures(room, capabilities))).toEqual(['map', 'life', 'workshop', 'statistics']);
+  expect(tabsForNode(room, nodeFeatures(room, capabilities))).toEqual(['map', 'life', 'workshop', 'development', 'statistics']);
   const shelter = node('BUILDING', { shelter_instance_id: 4 });
   expect(tabsForNode(shelter, nodeFeatures(shelter, capabilities))).toEqual(['map', 'statistics']);
   expect(tabForHash('#building-repair', tabsForNode(shelter, nodeFeatures(shelter, capabilities)))).toBe('map');
@@ -105,6 +105,17 @@ it('keeps the map and statistics available throughout the world hierarchy', () =
   }
   const garden = node('PLOT', { plot_kind: 'garden' });
   expect(tabsForNode(garden, nodeFeatures(garden, capabilities))).toContain('development');
+});
+
+it('opens new construction and budgets inside the restored world screen', () => {
+  for (const type of ['ROOM', 'CHEST', 'PLOT'] as const) {
+    const current = { ...node(type, type === 'PLOT' ? { plot_kind: 'garden' } : {}), owned_by_me: true };
+    expect(parseWorldNode(current).type).toBe(type);
+    expect(tabsForNode(current, nodeFeatures(current, capabilities))).toEqual(expect.arrayContaining(['map', 'finance', 'development']));
+  }
+  const place = { ...node('PLACE'), status: 'constructing' };
+  expect(parseWorldNode(place).type).toBe('PLACE');
+  expect(tabsForNode(place, nodeFeatures(place, capabilities))).toContain('development');
 });
 
 it('accepts campsite supplies and budget transfers through the shared command flow', () => {
