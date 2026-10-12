@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
+import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber } from 'naive-ui';
@@ -38,18 +40,18 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   .grant-options(v-if="options.length")
     span Быстрый выбор:
-    n-button(v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
+    n-button(:theme-overrides="worldActionButtonTheme" v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
   label ID получателя
     n-input-number(v-model:value="destination" :min="1" :max="2147483647" :precision="0" placeholder="Дочерний объект или свой огород")
   label Сумма, Cr
-    n-input(v-model:value="amount" inputmode="decimal" placeholder="10.0000" :maxlength="20")
+    world-credit-input(v-model:value="amount" inputmode="decimal" placeholder="10" :maxlength="20")
   label Назначение
     n-input(v-model:value="purpose" :maxlength="255" placeholder="На развитие объекта")
-  n-button(:loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
   section.grant-quote(v-if="quote" aria-live="polite")
     p Перевод: {{ formatCredits(quote.input.amount) }} Cr объекту №{{ quote.input.destination_node_id }}.
     p В источнике останется свободно {{ formatCredits(quote.sourceAvailableAfter) }} Cr; бюджет получателя станет {{ formatCredits(quote.destinationBudgetAfter) }} Cr.
-    n-button(type="primary" :loading="command.busy.value" :disabled="Boolean(command.pending.value)" @click="confirm") Подтвердить перевод
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="command.busy.value" :disabled="Boolean(command.pending.value)" @click="confirm") Подтвердить перевод
 </template>
 <style scoped>
 .world-budget-grant { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; }

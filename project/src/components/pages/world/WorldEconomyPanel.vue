@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
+import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NSpin } from 'naive-ui';
@@ -43,7 +45,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-economy
   .finance-toolbar
     h3 Счета объекта
-    n-button(size="small" :loading="loading" :disabled="busy" @click="load") Обновить
+    n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" :disabled="busy" @click="load") Обновить
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка счетов")
   template(v-else-if="state")
@@ -78,14 +80,14 @@ section.world-economy
               p Подтверждённый перевод списывает указанную сумму с личного баланса и зачисляет её в бюджет объекта. Это вложение не возвращается автоматически и не попадает в казну.
           p Взнос поступит в бюджет этого объекта. Автоматический возврат и вывод на личный счёт не предусмотрены.
           label Сумма в Cr
-            n-input(v-model:value="amount" placeholder="10.0000" :maxlength="20" :disabled="busy || Boolean(pending)" inputmode="decimal")
+            world-credit-input(v-model:value="amount" placeholder="10" :maxlength="20" :disabled="busy || Boolean(pending)" inputmode="decimal")
           label Назначение
             n-input(v-model:value="purpose" :maxlength="255" :disabled="busy || Boolean(pending)")
-          n-button(:loading="calculating" :disabled="busy || Boolean(pending)" @click="preview") Рассчитать взнос
+          n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="busy || Boolean(pending)" @click="preview") Рассчитать взнос
           section(v-if="quote" aria-live="polite")
             p В бюджет «{{ quote.name }}»: {{ money(quote.amount) }}
             p Личный баланс: {{ money(quote.wallet_before) }} → {{ money(quote.wallet_after) }}
-            n-button(type="primary" :loading="busy" :disabled="Boolean(pending)" @click="invest") Подтвердить вложение
+            n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="busy" :disabled="Boolean(pending)" @click="invest") Подтвердить вложение
       world-budget-grant.world-finance-card(v-if="state.can_grant" :node-id="nodeId" :children="children" :session="session" :command="command")
       world-finance-report.world-finance-card.world-finance-card--wide(v-if="state.balances" :node-id="nodeId" :session="session")
 </template>

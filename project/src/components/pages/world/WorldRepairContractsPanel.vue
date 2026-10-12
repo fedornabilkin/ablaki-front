@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -42,7 +43,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-repair-contracts#repair-contracts
   h2 Договор ремонта
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить договоры
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить договоры
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка договоров ремонта")
   template(v-else-if="state")
@@ -64,7 +65,7 @@ section.world-repair-contracts#repair-contracts
           li(v-for="material in item.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
         ul(v-if="item.reasons.length")
           li(v-for="reason in item.reasons" :key="reason") {{ reason }}
-        n-button(:disabled="locked || calculating || !item.available" @click="preview(item.offer_id)") Рассмотреть договор…
+        n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating || !item.available" @click="preview(item.offer_id)") Рассмотреть договор…
       page-pager(v-model:page="page" query-prefix="repairContracts" :result="state" :disabled="busy")
   n-alert(v-if="quote" type="info" aria-live="polite")
     h3 Принять договор для «{{ quote.buildingName }}»
@@ -77,8 +78,8 @@ section.world-repair-contracts#repair-contracts
       li(v-for="material in quote.offer.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }} при полном повреждении
     p Фактическая цена и расход сырья пропорциональны повреждению и округляются вверх. Материалы предоставляет владелец из рюкзака.
     p Условия закрепятся за зданием и сохранятся после снятия предложения с продажи. Заменить действующий договор этим действием нельзя. Сам ремонт выполняется отдельно.
-    n-button(type="primary" :disabled="locked" @click="confirm") Принять договор
-    n-button(:disabled="busy" @click="clear") Отмена
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") Принять договор
+    n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="clear") Отмена
 </template>
 <style scoped>
 .world-repair-contracts { display: grid; gap: .75rem; }

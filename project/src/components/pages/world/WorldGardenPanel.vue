@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
+import WorldCreditInput from './WorldCreditInput.vue';
 import { discountedCredits, formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NSpin } from 'naive-ui';
+import { useRoute } from 'vue-router';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadGarden, previewGarden, type GardenAction } from '@/services/api/worldGarden';
 import { worldError } from '@/services/api/world';
 import WorldExpansionCost from './WorldExpansionCost.vue';
 const props = defineProps<{ nodeId: number; session: number; writable: boolean; command: WorldCommandRunner; existingOnly?: boolean }>();
+const route = useRoute(), panel = ref<HTMLElement | null>(null);
 const state = shallowRef<Awaited<ReturnType<typeof loadGarden>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewGarden>> | null>(null);
 const form = reactive({ name: '', price: '', base_price: '' });
 const topUp = ref(false), quantity = ref<number | null>(1), error = ref(''), loading = ref(false), calculating = ref(false), { busy, pending } = props.command;
@@ -16,6 +20,7 @@ const expansionPrice = computed(() => {
   if (!garden || !count || !Number.isSafeInteger(count) || count < 1 || count > 10 - garden.unlocked) return null;
   return discountedCredits(garden.beds.filter(bed => !bed.unlocked).slice(0, count).map(bed => bed.price), count >= 3 ? 500 : 0);
 });
+const needsTopUp = computed(() => expansionPrice.value !== null && state.value?.garden && BigInt(expansionPrice.value.replace('.', '')) > BigInt(state.value.garden.available_budget.replace('.', '')));
 const labels: Record<GardenAction, string> = { publish: 'Опубликовать цены', withdraw: 'Снять предложение', buy: 'Купить огород', expand: 'Открыть грядки' };
 let generation = 0, previewGeneration = 0, disposed = false;
 function clear() { previewGeneration++; quote.value = null; calculating.value = false; }
@@ -28,8 +33,10 @@ async function load() {
 watch([() => props.nodeId, () => props.session], () => { topUp.value = false; quantity.value = 1; form.name = ''; form.price = ''; form.base_price = ''; void load(); }, { immediate: true, flush: 'sync' });
 watch([busy, topUp, quantity, () => props.writable], clear, { flush: 'sync' });
 watch(form, clear, { flush: 'sync' });
+watch([() => route.hash, state, error], () => { if (!disposed && route.hash === '#garden') panel.value?.scrollIntoView({ block: 'start' }); }, { flush: 'post' });
 async function preview(action: GardenAction) {
   if (locked.value || calculating.value) return;
+  if (action === 'expand' && needsTopUp.value && !topUp.value) return;
   const expectedPrice = action === 'buy' ? state.value?.offer?.price : action === 'expand' ? expansionPrice.value : null;
   if ((action === 'buy' || action === 'expand') && !expectedPrice) return;
   clear(); const current = previewGeneration; calculating.value = true; error.value = '';
@@ -54,10 +61,10 @@ async function confirm() {
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
-section.world-garden#garden(v-if="!existingOnly || state?.garden")
-  h2 Огород
+section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || error" ref="panel")
+  h2 Открытие грядок
   p В огороде десять грядок: первая включена в покупку. Открывайте остальные и выращивайте урожай. При открытии трёх и более грядок — скидка 5%.
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить огород
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить огород
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка огорода")
   template(v-else-if="state")
@@ -65,6 +72,18 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden")
       router-link(v-if="state.garden.node_id !== nodeId" :to="`/world/nodes/${state.garden.node_id}#garden`") Открыть свой огород
       p Открыто {{ state.garden.unlocked }} из 10. Свободный бюджет огорода: {{ formatCredits(state.garden.available_budget) }} Cr.
       p Базовая цена грядки: {{ formatCredits(state.garden.base_price) }} Cr. Условия приобретённого огорода сохраняются при изменении предложения поселения.
+      section.garden-unlock(v-if="state.can_expand" aria-label="Открыть закрытые грядки")
+        h3 Открыть закрытые грядки
+        p Грядки открываются по порядку. Выберите количество и нажмите «Открыть». Оплата — из бюджета огорода; если денег не хватает, разрешите пополнение с личного баланса.
+        label Количество следующих грядок
+          n-input-number(v-model:value="quantity" :min="1" :max="10 - state.garden.unlocked" :precision="0" :disabled="locked")
+        n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
+        n-alert(v-if="needsTopUp && !topUp" type="warning")
+          p В бюджете огорода недостаточно средств. Пополните его или включите пополнение с личного баланса выше.
+          router-link(:to="`/world/nodes/${nodeId}#finance`") Пополнить бюджет огорода →
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !expansionPrice || (needsTopUp && !topUp)" @click="preview('expand')") Открыть {{ quantity }} · {{ formatCredits(expansionPrice) }} Cr
+      p(v-else-if="state.garden.unlocked === 10") Все грядки открыты. Повторно оплачивать их не нужно.
+      p(v-else-if="state.garden.node_id === nodeId") Открытие грядок сейчас недоступно. Обновите огород, чтобы проверить доступность.
       ol.garden-beds
         li(v-for="bed in state.garden.beds" :key="bed.node_id" :class="{ 'garden-locked': !bed.unlocked }")
           font-awesome-icon(:icon="bed.unlocked ? 'seedling' : 'lock'" aria-hidden="true")
@@ -72,12 +91,6 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden")
           router-link(v-if="bed.unlocked" :to="`/world/nodes/${bed.node_id}#cultivation`") Выращивать
           span {{ bed.unlocked ? 'Открыта' : 'Закрыта' }}
           span(v-if="!bed.unlocked") Цена открытия: {{ formatCredits(bed.price) }} Cr
-      template(v-if="state.can_expand")
-        label Количество следующих грядок
-          n-input-number(v-model:value="quantity" :min="1" :max="10 - state.garden.unlocked" :precision="0" :disabled="locked")
-        n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
-        n-button(type="primary" :disabled="locked || calculating || !expansionPrice" @click="preview('expand')") Открыть {{ quantity }} · {{ formatCredits(expansionPrice) }} Cr
-      p(v-else-if="state.garden.unlocked === 10") Все грядки открыты. Повторно оплачивать их не нужно.
     template(v-else-if="state.offer")
       font-awesome-icon(icon="seedling" aria-hidden="true")
       h3 {{ state.offer.name }}
@@ -89,7 +102,7 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden")
       template(v-if="state.can_buy")
         p Оплата из бюджета этой стоянки. Получатель — казна поселения «{{ state.settlement_name }}».
         n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
-        n-button(type="primary" :disabled="locked || calculating || (!topUp && state.offer.can_afford === false)" @click="preview('buy')") Купить огород · {{ formatCredits(state.offer.price) }} Cr
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || (!topUp && state.offer.can_afford === false)" @click="preview('buy')") Купить огород · {{ formatCredits(state.offer.price) }} Cr
       p(v-else) Покупка доступна на собственной стартовой стоянке после включения экономики и хранения мира.
     p(v-else) Поселение ещё не опубликовало предложение огорода.
     details(v-if="state.can_publish")
@@ -98,11 +111,11 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden")
       label Название
         n-input(v-model:value="form.name" :maxlength="120" :disabled="locked")
       label Цена огорода, Cr
-        n-input(v-model:value="form.price" inputmode="decimal" :maxlength="20" :disabled="locked")
+        world-credit-input(v-model:value="form.price" inputmode="decimal" :maxlength="20" :disabled="locked")
       label Базовая цена открытия грядки, Cr
-        n-input(v-model:value="form.base_price" inputmode="decimal" :maxlength="20" :disabled="locked")
-      n-button(:disabled="locked || calculating" @click="preview('publish')") Рассчитать публикацию
-      n-button(v-if="state.offer" :disabled="locked || calculating" @click="preview('withdraw')") Снять предложение
+        world-credit-input(v-model:value="form.base_price" inputmode="decimal" :maxlength="20" :disabled="locked")
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" @click="preview('publish')") Рассчитать публикацию
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="state.offer" :disabled="locked || calculating" @click="preview('withdraw')") Снять предложение
     section(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
       template(v-if="quote.payment")
@@ -111,12 +124,13 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden")
       template(v-else-if="quote.action === 'publish'")
         p {{ quote.input.name }}: огород {{ formatCredits(quote.input.price) }} Cr, базовая цена грядки {{ formatCredits(quote.input.base_price) }} Cr.
       p(v-else) Новые покупки по предложению прекратятся. Купленные огороды и их расширения сохранятся.
-      n-button(type="primary" :disabled="locked" @click="confirm") {{ quote.payment ? 'Подтвердить оплату' : 'Подтвердить' }}
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") {{ quote.payment ? 'Подтвердить оплату' : 'Подтвердить' }}
 </template>
 <style scoped>
-.world-garden { display: grid; gap: .75rem; }
+.world-garden { display: grid; gap: .75rem; scroll-margin-top: 5rem; }
 .garden-beds { padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
 .garden-beds li, details { display: grid; gap: .5rem; padding: .75rem; border: 1px solid var(--border); border-radius: .4rem; }
 .garden-locked { color: var(--text-muted); }
+.garden-unlock { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .4rem; }
 label { display: grid; gap: .3rem; margin-block: .75rem; max-width: 32rem; }
 </style>

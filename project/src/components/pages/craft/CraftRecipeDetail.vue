@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { NButton, NInputNumber, NPopover } from 'naive-ui';
 import type { CraftRecipe, CraftState } from '@/services/api/classicCraft';
 import { craftRequirements, maxCraftQuantity } from '@/entities/craft/classic';
-const props = defineProps<{state: CraftState; recipe: CraftRecipe; blocked: boolean; busy: boolean}>();
+const props = defineProps<{state: CraftState; recipe: CraftRecipe; blocked: boolean; busy: boolean; craftHref?: string}>();
 const emit = defineEmits<{craft: [id: number, quantity: number]; hide: []}>();
 const quantity = ref<number | null>(1);
+const route = useRoute();
 const items = computed(() => new Map(props.state.items.map(i => [i.id, i])));
 const requirements = computed(() => craftRequirements(props.state, props.recipe, quantity.value ?? 0));
 const maximum = computed(() => maxCraftQuantity(props.state, props.recipe));
@@ -30,12 +32,12 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
   label Количество партий
     .quantity-row
       n-input-number(:min="1" :max="100" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="quantity" :precision="0" :disabled="blocked")
-      n-button(:disabled="blocked || maximum === 0" @click="quantity = maximum") Максимум: {{ maximum }}
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="blocked || maximum === 0" @click="quantity = maximum") Максимум: {{ maximum }}
   ul.resource-list
     li(v-for="r in requirements.resources" :key="r.id" :class="{shortage: r.have < r.needed}")
       span.resource-name
         font-awesome-icon(:icon="items.get(r.id)?.icon || 'cube'")
-        router-link(:to="{path: '/craft', query: {item: r.id}}") {{ r.name }}
+        router-link(:to="{path: '/world/workspace/map', query: { ...(route.query.node ? { node: route.query.node } : {}), item: r.id }}") {{ r.name }}
         n-popover(v-if="r.retained" trigger="hover")
           template(#trigger)
             span.resource-symbol(tabindex="0" :aria-label="r.station ? 'Станция: один предмет сохраняется' : 'Инструмент: один предмет сохраняется'")
@@ -56,7 +58,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
     li(v-for="reason in requirements.reasons" :key="reason")
       font-awesome-icon(:class="{'shortage-icon': reason.startsWith('Не хватает')}" :icon="reason.startsWith('Не хватает') ? 'exclamation-circle' : 'lock'")
       span {{ reason }}
-  n-button(type="primary" block :loading="busy" :disabled="blocked || !!requirements.reasons.length" @click="emit('craft', recipe.id, quantity || 0)") Создать · {{ formatCredits(requirements.cost) }} Cr
+  router-link.craft-location(:to="{ path: craftHref || '/world', query: { recipe_id: recipe.id } }") Изготовить предмет →
 </template>
 <style scoped lang="scss">
 .recipe-detail { background: var(--bg-surface); border: 1px solid var(--border); border-radius: .8rem; padding: 1rem; display: grid; gap: .8rem; font-size: .85rem; box-shadow: 0 12px 32px #0004; }

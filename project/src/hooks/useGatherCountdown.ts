@@ -1,7 +1,8 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue';
 import type { CraftState } from '@/services/api/classicCraft';
 
-export function useGatherCountdown(state: Ref<CraftState | null>, refresh: () => Promise<unknown>) {
+export type GatherState = Pick<CraftState, 'gather_available' | 'gather_available_at' | 'server_time'>;
+export function useGatherCountdown(state: Ref<GatherState | null>, refresh: () => Promise<unknown>) {
   const remaining = ref(0);
   let timer: ReturnType<typeof setInterval> | undefined;
   watch(state, value => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -36,7 +37,7 @@ section.world-finance-report#finance-report
     p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
   p Личные Cr → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
   p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
-  n-button(:loading="loading" @click="load") Обновить отчёт
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить отчёт
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   template(v-if="state")
     p Снимок на {{ date(state.now) }}. Поиск и фильтры ниже меняют только журнал операций.

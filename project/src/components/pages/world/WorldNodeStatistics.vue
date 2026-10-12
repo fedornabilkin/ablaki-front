@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import { nodeLabels, nodeTypes, type NodeType, type WorldNode } from '@/entities/world/types';
@@ -29,7 +30,7 @@ section.world-node-statistics(aria-label="Состав территории")
     div
       span.eyebrow Состав территории
       h2 Объект и его потомки
-    n-button(size="small" :loading="loading" @click="load") Обновить
+    n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" @click="load") Обновить
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка статистики")
   .statistics-grid(v-else)

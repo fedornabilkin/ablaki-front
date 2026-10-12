@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -58,12 +59,12 @@ details.finance-policy
     n-input(v-model:value="form.loss" inputmode="decimal" :maxlength="6" :disabled="!writable || busy || Boolean(pending)")
   label Причина изменения
     n-input(v-model:value="form.reason" :maxlength="255" :disabled="!writable || busy || Boolean(pending)")
-  n-button(:disabled="!writable || busy || Boolean(pending)" :loading="calculating" @click="preview") Подготовить правило
+  n-button(:theme-overrides="worldActionButtonTheme" :disabled="!writable || busy || Boolean(pending)" :loading="calculating" @click="preview") Подготовить правило
   section(v-if="quote" aria-live="polite")
     p Будет опубликовано правило №{{ quote.revision }}. Отчисления: {{ quote.input.rate_bps / 100 }}%; срок оплаты — {{ quote.input.due_seconds / 3600 }} ч.
     p Защита — {{ quote.input.protected_seconds / 3600 }} ч; затем потери {{ quote.input.loss_rate_bps / 100 }}% каждые {{ quote.input.loss_period_seconds / 3600 }} ч.
     p(v-if="quote.parent_node_id") Получатель отчислений — объект №{{ quote.parent_node_id }}.
-    n-button(type="primary" :disabled="!writable || busy || Boolean(pending)" @click="publish") Опубликовать правило
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!writable || busy || Boolean(pending)" @click="publish") Опубликовать правило
 </template>
 <style scoped>
 .finance-policy { border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; }

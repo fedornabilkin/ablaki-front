@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
@@ -55,19 +56,19 @@ onScopeDispose(() => { disposed = true; epoch++; });
     router-link(to="/world") Мир
     router-link(v-if="current?.parent_id" :to="`/world/nodes/${current.parent_id}`") На уровень выше
     router-link(v-if="home" :to="`/world/nodes/${home.id}`") Моя стоянка
-    router-link(to="/craft") Предметы и крафт
-    router-link(v-if="current?.status === 'active' && canOwn" :to="`/world/workspace/${current.id}`") Мастерская
+    router-link(to="/world/workspace/inventory") Инвентарь
+    router-link(v-if="current?.status === 'active' && canOwn" to="/world") Крафт на своей стоянке
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-alert(v-if="message" type="success") {{ message }}
-  n-button(v-if="runner.pending.value" :loading="runner.busy.value" @click="act('retry')") Повторить запрос
+  n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value" :loading="runner.busy.value" @click="act('retry')") Повторить запрос
   n-alert(v-if="command.error.value" type="error") {{ command.error.value }}
-  n-button(v-if="command.pending.value" :loading="command.busy.value" @click="command.retry") Повторить прошлое действие
+  n-button(:theme-overrides="worldActionButtonTheme" v-if="command.pending.value" :loading="command.busy.value" @click="command.retry") Повторить прошлое действие
   n-spin(v-if="loading && !current")
   template(v-else)
     n-card(v-if="current?.hierarchy_level === 3 && !home" title="Начало игры")
       p Получите доски, инструменты, семена и эликсир. Сначала обустройте стоянку, затем постройте шалаш, огород или шахту.
-      n-button(type="primary" :disabled="!!runner.pending.value" :loading="runner.busy.value" @click="act('start')") Начать здесь
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!!runner.pending.value" :loading="runner.busy.value" @click="act('start')") Начать здесь
     list-filters(v-model:search="search" :loading="loading" placeholder="Найти объект" @reset="reset")
     ul.object-list
       li(v-for="child in children" :key="child.id")
@@ -82,7 +83,7 @@ onScopeDispose(() => { disposed = true; epoch++; });
     n-card(v-if="current?.status === 'active' && canOwn && (current.hierarchy_level === 4 || current.building_kind === 'mine')" title="Добыча ресурсов")
       p {{ current.building_kind === 'mine' ? 'Получите руду, уголь и камень. Нужна кирка в рюкзаке.' : 'Соберите древесину, камень, воду и волокна для простых построек и инструментов.' }}
       p Ресурсы можно получить один раз в день.
-      n-button(:loading="runner.busy.value" :disabled="!!runner.pending.value" @click="act('gather')") Собрать ресурсы
+      n-button(:theme-overrides="worldActionButtonTheme" :loading="runner.busy.value" :disabled="!!runner.pending.value" @click="act('gather')") Собрать ресурсы
     simple-budget-panel(v-if="current?.status === 'active' && canOwn" :node-id="current.id" :owner="owner" :session="session")
     n-collapse(v-if="current?.status === 'active' && canOwn")
       n-collapse-item(title="Имущество и хранилища" name="storage")

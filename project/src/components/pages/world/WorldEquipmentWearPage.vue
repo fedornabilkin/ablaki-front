@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -36,7 +37,7 @@ page-header(pageTitle="История прочности")
   router-link(to="/world") Вернуться в мир
   n-alert(v-if="!valid" type="error") Некорректный адрес экземпляра.
   template(v-else)
-    n-button(:loading="loading" @click="load") Обновить историю
+    n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить историю
     n-alert(v-if="error" type="error" role="alert") {{ error }}
     list-filters(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="loading" placeholder="Найти причину изменения" @reset="list.reset")
     n-spin(v-if="loading" aria-label="Загрузка истории прочности")

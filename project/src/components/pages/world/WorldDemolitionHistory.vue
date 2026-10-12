@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -24,7 +25,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 <template lang="pug">
 section.world-demolition-history#demolitions
   h2 История сноса
-  n-button(:loading="loading" @click="load") Обновить историю
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить историю
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти снесённую постройку" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка истории сноса")

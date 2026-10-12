@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -41,7 +42,7 @@ page-header(pageTitle="Восстановление вещей")
   n-alert(v-if="notice" type="success" role="status") {{ notice }}
   n-alert(v-if="pending" type="info")
     p Ответ на действие ещё не получен.
-    n-button(:loading="busy" @click="command.retry") Повторить запрос
+    n-button(:theme-overrides="worldActionButtonTheme" :loading="busy" @click="command.retry") Повторить запрос
   n-spin(v-if="loading" aria-label="Загрузка вещей")
   template(v-else-if="state")
     router-link(v-if="state.recovery_storage_id" :to="`/world/storage/${state.recovery_storage_id}`") Открыть восстановленные вещи
@@ -49,11 +50,11 @@ page-header(pageTitle="Восстановление вещей")
     ul
       li(v-for="item in state.items" :key="item.inventory_id")
         span {{ item.name }} × {{ item.quantity }} · объект №{{ item.node_id }}
-        n-button(:disabled="busy || Boolean(pending) || previewing || !state.writable" @click="preview(item.inventory_id)") Восстановить
+        n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy || Boolean(pending) || previewing || !state.writable" @click="preview(item.inventory_id)") Восстановить
     page-pager(v-model:page="page" :result="state" :disabled="loading || busy")
     section(v-if="calculation")
       p Переместить {{ calculation.name }} × {{ calculation.quantity }} в восстановление вместе с содержимым?
-      n-button(type="primary" :loading="busy" :disabled="Boolean(pending) || !state.writable" @click="recover") Подтвердить
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="busy" :disabled="Boolean(pending) || !state.writable" @click="recover") Подтвердить
 </template>
 <style scoped>
 .recovery { display: grid; gap: 1rem; padding-bottom: 2rem; }

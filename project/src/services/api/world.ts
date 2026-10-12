@@ -2,7 +2,7 @@ import { isAxiosError } from 'axios';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { creditAmount } from '@/entities/world/credits';
-import type { WorldCapabilities, WorldScreen } from '@/entities/world/types';
+import type { WorldCapabilities, WorldScreen, WorldTreeNode } from '@/entities/world/types';
 import { nodeTypes, type NodeType, type WorldNode, type WorldPage, type WorldMapData, type WorldRoot, type WorldNavigation, type WorldQuote, type WorldCommandResult, type WorldOnboarding } from '@/entities/world/types';
 
 const invalid = (): never => { throw new Error('invalid-world-response'); };
@@ -19,10 +19,14 @@ export function parseWorldNode(value: unknown): WorldNode {
   if (!nodeTypes.includes(row.type as NodeType) || !['public', 'private'].includes(String(row.visibility))) invalid();
   const details: WorldNode['details'] = {};
   for (const [key, entry] of Object.entries(record(row.details))) {
-    if (['building_kind', 'climate', 'settlement_kind', 'plot_kind', 'exposure_class', 'operational_status'].includes(key)) details[key] = text(entry, 40);
+    if (['building_kind', 'climate', 'settlement_kind', 'plot_kind', 'exposure_class', 'operational_status'].includes(key)) details[key] = entry === null ? null : text(entry, 40);
+    else if (key === 'settings_json') details[key] = entry === null ? null : text(entry, 65536);
+    else if (key === 'production_enabled' || key === 'repair_active') details[key] = boolean(entry);
+    else if (key === 'storage_capacity') details[key] = integer(entry, 0, 100);
     else if (['harvested_quantity', 'template_revision_id', 'population', 'plot_limit', 'level', 'condition', 'max_condition', 'active_project_id', 'shelter_instance_id', 'shelter_plot_id', 'area', 'fertility', 'allow_building', 'garden_node_id', 'ordinal', 'unlocked'].includes(key)) details[key] = entry === null ? null : integer(entry);
   }
-  return { ...(row.map === undefined ? {} : { map: parseMapBounds(row.map) }), ...(row.has_finances === undefined ? {} : { has_finances: boolean(row.has_finances) }), id: integer(row.id, 1), type: row.type as NodeType, parent_id: nullableId(row.parent_id), root_id: integer(row.root_id, 1),
+  const owner = row.owner === undefined ? undefined : record(row.owner);
+  return { ...(owner ? { owner: { id: owner.id === undefined ? null : nullableId(owner.id), owned_by_me: boolean(owner.owned_by_me), has_finances: boolean(owner.has_finances) } } : {}), ...(row.extensions === undefined ? {} : { extensions: list(row.extensions, value => text(value, 40), 20) }), ...(row.map === undefined ? {} : { map: parseMapBounds(row.map) }), ...(row.has_finances === undefined ? {} : { has_finances: boolean(row.has_finances) }), id: integer(row.id, 1), type: row.type as NodeType, parent_id: nullableId(row.parent_id), root_id: integer(row.root_id, 1),
     code: text(row.code ?? `node-${row.id}`, 80), name: text(row.name, 120), label: text(row.label ?? row.name, 120), status: text(row.status, 24), visibility: row.visibility as WorldNode['visibility'], revision: integer(row.revision, 1), portable: row.portable === undefined ? false : boolean(row.portable),
     coordinates: { x: integer(coordinates.x, -1000000, 1000000), y: integer(coordinates.y, -1000000, 1000000) },
     footprint: row.footprint === null || row.footprint === undefined ? null : list(row.footprint, point => {
@@ -54,12 +58,56 @@ function parseCapabilities(value: unknown): WorldCapabilities {
 export function parseWorldScreen(value: unknown, requestedId: number | null): WorldScreen {
   const row = record(value);
   if (row.contract_version !== 1) invalid();
+  if ('tree_version' in row) return parseWorldTreeScreen(row, requestedId);
   const capabilities = parseCapabilities(row.capabilities);
   const navigation = row.navigation === null ? null : parseWorldNavigation(row.navigation);
   const map = row.map === null ? null : parseWorldMap(row.map, navigation?.node.id ?? invalid());
   if ((navigation === null) !== (map === null) || (map && !('node_id' in map)) || (!capabilities.world_read && navigation)) invalid();
   if (navigation && requestedId !== null && navigation.node.id !== integer(requestedId, 1)) invalid();
   return { contract_version: 1, server_time: integer(row.server_time), capabilities, navigation, map: map as WorldScreen['map'] };
+}
+export function parseWorldTreeScreen(value: unknown, requestedId: number | null): WorldScreen {
+  const row = record(value), capabilities = parseCapabilities(row.capabilities);
+  if (row.contract_version !== 1 || row.tree_version !== 1) invalid();
+  const focus = nullableId(row.focus_id), server_time = integer(row.server_time);
+  if (row.world === null) {
+    if (focus !== null) invalid();
+    return { contract_version: 1, server_time, capabilities, world: null, navigation: null, map: null };
+  }
+  if (!capabilities.world_read || focus === null || requestedId !== null && focus !== requestedId) invalid();
+  const seen = new Set<number>(), byId = new Map<number, WorldTreeNode>(), rawMaps = new Map<number, Record<string, unknown>>();
+  function parse(value: unknown, parent: WorldTreeNode | null, depth: number): WorldTreeNode {
+    if (depth > 32 || seen.size >= 10000) invalid();
+    const r = record(value), geo = record(r.geo), state = record(r.state), owner = record(r.owner), construction = record(r.construction);
+    const parsed = parseWorldNode({ ...r, ...geo, ...state, owned_by_me: owner.owned_by_me, has_finances: owner.has_finances });
+    if (seen.has(parsed.id) || parent && (parsed.parent_id !== parent.id || parsed.root_id !== parent.root_id)) invalid();
+    if (!parent && (parsed.parent_id !== null || parsed.root_id !== parsed.id)) invalid();
+    seen.add(parsed.id);
+    const condition = construction.condition === null ? null : integer(construction.condition);
+    const maximum = construction.max_condition === null ? null : integer(construction.max_condition);
+    const repair = boolean(construction.repair_active);
+    if (condition !== (parsed.details.condition ?? null) || maximum !== (parsed.details.max_condition ?? null) || repair !== (parsed.details.repair_active ?? false)) invalid();
+    const node: WorldTreeNode = { ...parsed, children: [], children_loaded: boolean(r.children_loaded),
+      geo: { coordinates: parsed.coordinates, footprint: parsed.footprint },
+      state: { status: parsed.status, visibility: parsed.visibility, revision: parsed.revision, portable: parsed.portable, details: parsed.details, permissions: parsed.permissions, actions: parsed.actions },
+      construction: { condition, max_condition: maximum, repair_active: repair }, owner: parsed.owner! };
+    byId.set(node.id, node); rawMaps.set(node.id, record(r.map));
+    node.children = list(r.children, child => parse(child, node, depth + 1), 10000);
+    if (node.children.length > node.child_count || node.children_loaded && node.children.length !== node.child_count) invalid();
+    return node;
+  }
+  const world = parse(row.world, null, 0), selected = byId.get(focus) ?? invalid();
+  if (!selected.children_loaded) invalid();
+  const parsedMap = parseWorldMap({ ...rawMaps.get(focus), bounds: selected.map, node_id: focus, items: selected.children }, focus);
+  if (!('node_id' in parsedMap)) invalid();
+  // Reuse the same objects for map, breadcrumbs and the nested world.
+  parsedMap.items = selected.children;
+  Object.assign(selected.map!, { cells: parsedMap.cells, equipment_cells: parsedMap.equipment_cells, can_expand: parsedMap.can_expand, exploration: parsedMap.exploration, pricing: parsedMap.pricing });
+  const breadcrumbs: WorldTreeNode[] = []; let ancestor: WorldTreeNode | undefined = selected;
+  while (ancestor) { breadcrumbs.unshift(ancestor); ancestor = ancestor.parent_id === null ? undefined : byId.get(ancestor.parent_id); }
+  const siblings = selected.parent_id === null ? [] : byId.get(selected.parent_id)?.children ?? [];
+  return { contract_version: 1, server_time, capabilities, world, map: parsedMap, navigation: { node: selected, breadcrumbs, parent_id: selected.parent_id,
+    siblings: { items: siblings, total: siblings.length, pageSize: Math.max(20, siblings.length), currentPage: 1, pageCount: siblings.length ? 1 : 0 } } };
 }
 export function parseWorldNavigation(value: unknown): WorldNavigation {
   const row = record(value);
@@ -69,7 +117,7 @@ export function parseRevisions(value: unknown): Record<string, number> {
   const result: Record<string, number> = {}, row = record(value);
   if (Object.keys(row).length > 256) invalid();
   for (const [key, entry] of Object.entries(row)) {
-    if (!/^((node|storage|inventory|instance|account):[1-9]\d*|catalog|registry)$/.test(key)) invalid();
+    if (!/^((node|storage|inventory|instance|account|actor):[1-9]\d*|catalog|registry)$/.test(key)) invalid();
     result[key] = integer(entry, 1);
   }
   return result;
@@ -101,7 +149,7 @@ export function parseWorldCommandResult(value: unknown): WorldCommandResult {
 const url = (path: string) => config.makeApiUrl(`v1/world${path}`);
 export async function loadWorldScreen(id: number | null): Promise<WorldScreen> {
   const path = id === null ? '' : `/nodes/${integer(id, 1)}/navigation`;
-  const params = id === null ? { view: 'home' } : { include: 'map' };
+  const params = id === null ? { view: 'home', include: 'tree' } : { include: 'tree' };
   return parseWorldScreen((await apiClient.get(url(path), { params })).data, id);
 }
 export async function loadWorld(params: Record<string, unknown> = {}) { return parseWorldRoot((await apiClient.get(url(''), { params: { ...params, envelope: 1 } })).data); }
@@ -113,8 +161,13 @@ export function parseWorldMap(value: unknown, id: number): WorldMapData | WorldP
   if ('_meta' in row) return parseWorldPage(row);
   if (integer(row.node_id, 1) !== nodeId) invalid();
   const exploration = row.exploration === undefined ? undefined : (() => { const e = record(row.exploration); return { allowed: boolean(e.allowed), level: integer(e.level, 0, 100), max_level_per_node: integer(e.max_level_per_node, 3, 3), elixir_quantity: integer(e.elixir_quantity), reason: String(e.reason ?? '') }; })();
-  const pricing = row.pricing === undefined ? undefined : (() => { const p = record(row.pricing); if (p.currency !== 'Cr') invalid(); return { paid_cells: integer(p.paid_cells), base_price: creditAmount(p.base_price), next_price: creditAmount(p.next_price), bulk_minimum: integer(p.bulk_minimum, 1, 100), discount_bps: integer(p.discount_bps, 0, 10000), max_quantity: integer(p.max_quantity, 1, 100), currency: 'Cr' as const }; })();
+  const pricing = row.pricing === undefined ? undefined : (() => { const p = record(row.pricing); if (p.currency !== 'Cr' || p.curve !== undefined && p.curve !== 'rings') invalid(); return { paid_cells: integer(p.paid_cells), base_price: creditAmount(p.base_price), next_price: creditAmount(p.next_price), ...(p.curve === 'rings' ? { curve: 'rings' as const } : {}), bulk_minimum: integer(p.bulk_minimum, 1, 100), discount_bps: integer(p.discount_bps, 0, 10000), max_quantity: integer(p.max_quantity, 1, 100), currency: 'Cr' as const }; })();
   return { exploration, pricing, ...(row.bounds === undefined ? {} : { bounds: parseMapBounds(row.bounds) }), node_id: nodeId, items: list(row.items, parseWorldNode, Number.MAX_SAFE_INTEGER), can_expand: boolean(row.can_expand),
+    ...(row.equipment_cells === undefined ? {} : { equipment_cells: list(row.equipment_cells, value => {
+      const cell = record(value), point = { x: integer(cell.x, -1000000, 1000000), y: integer(cell.y, -1000000, 1000000) };
+      if (cell.item_id === undefined) return point;
+      return { ...point, ...(cell.lodging === undefined ? {} : { lodging: boolean(cell.lodging) }), item_id: integer(cell.item_id, 1), name: text(cell.name, 120), icon: text(cell.icon, 64), description: text(cell.description, 2000), quantity: integer(cell.quantity, 1), inventory_id: nullableId(cell.inventory_id), storage_id: nullableId(cell.storage_id), characteristics: list(cell.characteristics, value => { const property = record(value); return { label: text(property.label, 120), value: text(property.value, 255) }; }, 12) };
+    }, 10000) }),
     cells: list(row.cells, value => { const cell = record(value); if (!['discovered', 'open'].includes(String(cell.state))) invalid();
       return { x: integer(cell.x, -1000000, 1000000), y: integer(cell.y, -1000000, 1000000), state: cell.state as 'discovered' | 'open' }; }, Number.MAX_SAFE_INTEGER) };
 }

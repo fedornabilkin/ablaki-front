@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -37,7 +38,7 @@ section.world-receipts#treasury-receipts
   world-help-hint(label="Как читать поступления казны")
     p Здесь показаны несобранные поступления, сумма уже собранная в бюджет и потери по сроку хранения. Просмотр и фильтры ничего не списывают; сбор выполняется отдельно в блоке «Собрать доход».
   p У каждого поступления свой срок защиты и сохранённая ставка потерь. Сбор переводит остаток в бюджет этого объекта.
-  n-button(:loading="loading" @click="load") Обновить поступления
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить поступления
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению поступления" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка поступлений казны")

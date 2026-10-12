@@ -1,15 +1,19 @@
 import type { MapPoint } from './coordinates';
-export interface MapPricing { paid_cells: number; base_price: string; next_price: string; bulk_minimum: number; discount_bps: number; max_quantity: number; currency: 'Cr' }
+export interface MapPricing { paid_cells: number; base_price: string; next_price: string; curve?: 'rings'; bulk_minimum: number; discount_bps: number; max_quantity: number; currency: 'Cr' }
 export function requiredExplorerLevel(point: MapPoint): number { return Math.max(1, Math.min(3, Math.max(Math.abs(point.x), Math.abs(point.y)))); }
-export function mapPurchase(pricing: MapPricing, quantity: number) {
+export function mapPurchase(pricing: MapPricing, cells: number | MapPoint[]) {
+  const quantity = typeof cells === 'number' ? cells : cells.length;
   if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > pricing.max_quantity) throw new Error('invalid-map-quantity');
-  const base = BigInt(pricing.base_price.replace('.', '')), paid = BigInt(pricing.paid_cells), count = BigInt(quantity);
-  const gross = base * (count * paid + count * (count + 1n) / 2n);
+  const base = BigInt(pricing.base_price.replace('.', '')), paid = BigInt(pricing.paid_cells);
+  const units = Array.from({ length: quantity }, (_, i) => pricing.curve === 'rings'
+    ? base * BigInt(typeof cells === 'number' ? 1 : Math.max(1, Math.abs(cells[i].x), Math.abs(cells[i].y)))
+    : base * (paid + BigInt(i + 1)));
+  const gross = units.reduce((sum, unit) => sum + unit, 0n);
   const discount = quantity >= pricing.bulk_minimum ? gross * BigInt(pricing.discount_bps) / 10000n : 0n;
   const decimal = (n: bigint) => `${n / 10000n}.${String(n % 10000n).padStart(4, '0')}`;
   let cumulative = 0n, discountBefore = 0n;
   const unitPrices = Array.from({ length: quantity }, (_, i) => {
-    const unit = base * (paid + BigInt(i + 1)); cumulative += unit;
+    const unit = units[i]; cumulative += unit;
     const part = quantity >= pricing.bulk_minimum ? cumulative * BigInt(pricing.discount_bps) / 10000n : 0n;
     const net = decimal(unit - (part - discountBefore)); discountBefore = part; return net;
   });

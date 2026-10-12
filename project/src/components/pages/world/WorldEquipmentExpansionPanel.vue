@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { discountedCredits, formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInputNumber, NSpin } from 'naive-ui';
@@ -43,7 +44,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.equipment-expansion
   h2 Места оборудования
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить места
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить места
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка расширений")
   template(v-else-if="state")
@@ -64,7 +65,7 @@ section.equipment-expansion
           n-input-number(v-model:value="quantity" :min="1" :max="state.expansion.limit - state.expansion.unlocked" :precision="0" :disabled="locked")
         n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
         p(v-if="quantity && quantity >= 3") В стоимость включена скидка 5%.
-        n-button(type="primary" :disabled="locked || calculating || !price" @click="preview") Открыть {{ quantity }} · {{ formatCredits(price) }} Cr
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !price" @click="preview") Открыть {{ quantity }} · {{ formatCredits(price) }} Cr
 </template>
 <style scoped>
 .equipment-expansion { display: grid; gap: .75rem; }

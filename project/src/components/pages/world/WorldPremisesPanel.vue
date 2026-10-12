@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
+import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
@@ -56,7 +58,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-premises#premises
   h2 Помещения и жильё
   p Помещение можно купить готовым или построить по опубликованным условиям. Оплата — из бюджета площадки. Станции и сундуки переносятся в готовую комнату отдельно.
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить предложения
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить предложения
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти помещение" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка помещений")
@@ -95,8 +97,8 @@ section.world-premises#premises
           p(v-else) Договор ремонта в покупку не включён.
           p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ formatCredits(item.expansion_base_price) }} Cr, стоимость каждого следующего растёт на 20%.
           p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
-        n-button(v-if="state.area" type="primary" :disabled="locked || calculating || !state.can_buy || item.can_afford === false || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Построить' : 'Купить' }} · {{ formatCredits(item.price) }} Cr
-        n-button(v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="state.area" type="primary" :disabled="locked || calculating || !state.can_buy || item.can_afford === false || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Построить' : 'Купить' }} · {{ formatCredits(item.price) }} Cr
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
     page-pager(v-model:page="page" query-prefix="premises" :result="state" :disabled="busy")
     details(v-if="state.can_publish")
       summary Опубликовать предложение
@@ -113,11 +115,11 @@ section.world-premises#premises
       label Предел мест после расширения (необязательно)
         n-input-number(v-model:value="form.expansion_limit" :min="form.slots || 1" :max="equipmentArea" :precision="0" :disabled="locked" placeholder="Без расширения")
       label Базовая цена дополнительного места, Cr
-        n-input(v-model:value="form.expansion_base_price" inputmode="decimal" :maxlength="20" :disabled="locked" placeholder="Только для расширяемого помещения")
+        world-credit-input(v-model:value="form.expansion_base_price" inputmode="decimal" :maxlength="20" :disabled="locked" placeholder="Только для расширяемого помещения")
       label Полная цена, Cr
-        n-input(v-model:value="form.price" inputmode="decimal" :maxlength="20" :disabled="locked")
+        world-credit-input(v-model:value="form.price" inputmode="decimal" :maxlength="20" :disabled="locked")
       p Условия ремонта можно включить при публикации через админку мира.
-      n-button(:disabled="locked" :loading="calculating" @click="preview('publish')") Рассчитать предложение
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" :loading="calculating" @click="preview('publish')") Рассчитать предложение
     section(v-if="quote" aria-live="polite")
       h3 {{ quote.action === 'withdraw' ? 'Снять предложение' : quote.action === 'buy' ? 'Подтвердить покупку' : 'Подтвердить публикацию' }}: {{ quote.name }}
       template(v-if="quote.room?.repair")
@@ -139,7 +141,7 @@ section.world-premises#premises
         p Источник — бюджет этой площадки. Получатель — казна поселения «{{ quote.payment.recipient_name }}». Личные Cr: 0.
         p(v-if="quote.room?.delivery === 'ready'") Покупка постоянная. Возврат, снос и перенос постройки пока недоступны.
       p(v-if="quote.action === 'withdraw'") Новые покупки по этому предложению прекратятся. Купленные помещения сохранятся.
-      n-button(type="primary" :disabled="locked" @click="confirm") {{ quote.action === 'buy' ? (quote.room?.delivery === 'construction' ? 'Зарезервировать Cr и материалы, начать стройку' : 'Оплатить из бюджета и получить помещение') : quote.action === 'withdraw' ? 'Подтвердить снятие' : 'Опубликовать' }}
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") {{ quote.action === 'buy' ? (quote.room?.delivery === 'construction' ? 'Зарезервировать Cr и материалы, начать стройку' : 'Оплатить из бюджета и получить помещение') : quote.action === 'withdraw' ? 'Подтвердить снятие' : 'Опубликовать' }}
 </template>
 <style scoped>
 .world-premises { display: grid; gap: .75rem; }

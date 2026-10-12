@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -36,7 +37,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-building-repair#building-repair
   h2 Ремонт постройки
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить расчёт
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить расчёт
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка условий ремонта")
   template(v-else-if="state")
@@ -49,7 +50,7 @@ section.world-building-repair#building-repair
         li(v-for="item in state.repair.materials" :key="item.item_id" :class="{ missing: !item.available }") {{ item.name }}: нужно {{ item.quantity }}, есть {{ item.have }}{{ item.available ? '' : ' — недостаточно' }}
     ul(v-if="state.reasons.length")
       li(v-for="reason in state.reasons" :key="reason") {{ reason }}
-    n-button(v-if="state.supported" :disabled="locked || calculating" :loading="calculating" @click="preview") Рассчитать ремонт…
+    n-button(:theme-overrides="worldActionButtonTheme" v-if="state.supported" :disabled="locked || calculating" :loading="calculating" @click="preview") Рассчитать ремонт…
   n-alert(v-if="quote" type="info" aria-live="polite")
     h3 Ремонт: {{ quote.name }}
     p Прочность: {{ quote.repair.condition_before }} → {{ quote.repair.condition_after }}.
@@ -63,8 +64,8 @@ section.world-building-repair#building-repair
     p Ремонт завершится сразу после подтверждения. Цена и материалы рассчитаны по повреждению с округлением вверх.
     p(v-if="quote.statusAfter === 'paused'") Здание останется на паузе. Затем возобновите его работу и назначьте ночлег, если нужно.
     p(v-else) Постройка продолжит работу, назначенный ночлег сохранится.
-    n-button(type="primary" :disabled="locked" @click="confirm") Подтвердить ремонт
-    n-button(:disabled="busy" @click="clear") Отмена
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") Подтвердить ремонт
+    n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="clear") Отмена
 </template>
 <style scoped>
 .world-building-repair { display: grid; gap: .75rem; }

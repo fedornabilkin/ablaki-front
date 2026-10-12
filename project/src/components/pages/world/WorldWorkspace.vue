@@ -1,16 +1,21 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
-import PageHeader from '@/components/PageHeader.vue';
+import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
+import WorldWorkspaceNav from './WorldWorkspaceNav.vue';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
 import { worldError } from '@/services/api/world';
+import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { loadWorkspace, previewWorkspace, type WorkspaceInput } from '@/services/api/worldWorkspace';
 const route = useRoute(), auth = useStore();
+const actionTheme = computed(() => route.path.startsWith('/world/') ? worldActionButtonTheme : undefined);
 const nodeId = computed(() => Number(route.params.id ?? route.query.node));
 const session = computed(() => Number(auth.state.auth.revision)), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
+const craftHref = useCampsiteCraft(session);
 const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null), loading = ref(false), calculating = ref(false), error = ref(''), notice = ref('');
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
@@ -26,7 +31,7 @@ const outputOptions = computed(() => state.value?.storages.filter(s => s.output_
 const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())) ?? []);
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
 function invalidate() { clearTimeout(previewTimer); previewGeneration++; calculation.value = null; calculating.value = false; }
-function schedulePreview() { invalidate(); previewTimer = setTimeout(() => { void preview(); }, 250); }
+function schedulePreview() { invalidate(); previewTimer = setTimeout(() => { void preview(); }, 600); }
 watch([quantity, sources, output, equipment], schedulePreview, { deep: true, flush: 'sync' });
 async function load(selected?: number) {
   const current = ++generation; invalidate(); error.value = ''; loading.value = true;
@@ -64,26 +69,28 @@ async function craft() {
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; notice.value = ''; search.value = ''; void load(); }, { immediate: true, flush: 'sync' });
+watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; notice.value = ''; search.value = ''; const requested = Number(route.query.recipe_id); void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined); }, { immediate: true, flush: 'sync' });
 onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 </script>
 <template lang="pug">
-page-header(:pageTitle="state ? `Мастерская: ${state.name}` : 'Мастерская в мире'")
 .container.workspace
-  nav.links
-    router-link(:to="`/world/nodes/${nodeId}`") Вернуться к объекту
-    router-link(to="/craft") Рецепты и рюкзак
-    n-button(:loading="loading" :disabled="busy" @click="load(recipe ?? undefined)") Обновить
+  world-workspace-hero(:title="state ? `Изготовление: ${state.name}` : 'Изготовление в объекте'" description="Создавайте предметы с оборудованием и ресурсами выбранного объекта." :parent-to="`/world/nodes/${nodeId}`")
+    router-link(v-if="!state && craftHref !== route.path" :to="craftHref") Изготовление на своей стоянке
+  .workspace-navigation
+    world-workspace-nav(:node-id="nodeId" manufacturing)
   n-alert(v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
   n-alert(v-if="notice" type="success" role="status") {{ notice }}
   n-alert(v-if="pending" type="info")
     p Ответ на действие ещё не получен. Повтор отправит тот же запрос.
-    n-button(:loading="busy" @click="command.retry") Повторить запрос
+    n-button(:theme-overrides="actionTheme" :loading="busy" @click="command.retry") Повторить запрос
   n-spin(v-if="loading && !state" aria-label="Загрузка мастерской")
   template(v-if="state")
     n-alert(v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
     .workspace-layout
       section.recipe-catalog(aria-label="Рецепты мастерской")
+        .workspace-section-heading
+          span.workspace-eyebrow Рецепты объекта
+          h2 Что изготовить
         n-input(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
         p.recipe-legend Выберите плитку. Материалы и оборудование подбираются автоматически; стоимость появится в панели справа.
         .recipe-tiles
@@ -115,8 +122,8 @@ page-header(:pageTitle="state ? `Мастерская: ${state.name}` : 'Мас�
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
             p(v-if="!sources.length || !output") Выберите хранилища в настройках ниже.
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
-          n-button(type="primary" block :loading="busy || calculating" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft") {{ calculation ? `Изготовить · ${formatCredits(calculation.terms.price)} Cr` : 'Изготовление недоступно' }}
-          n-button(v-if="error && !calculation" :disabled="blocked" @click="preview") Повторить расчёт
+          n-button(:theme-overrides="actionTheme" type="primary" block :loading="busy || calculating" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft") {{ calculation ? `Изготовить · ${formatCredits(calculation.terms.price)} Cr` : 'Изготовление недоступно' }}
+          n-button(:theme-overrides="actionTheme" v-if="error && !calculation" :disabled="blocked" @click="preview") Повторить расчёт
           details.craft-settings
             summary Материалы, инструменты и место результата
             label Источники материалов — по порядку
@@ -130,16 +137,18 @@ page-header(:pageTitle="state ? `Мастерская: ${state.name}` : 'Мас�
         p(v-else) Выберите рецепт для изготовления.
 </template>
 <style scoped>
-.workspace { display: grid; gap: 1rem; max-width: 1320px; padding-bottom: 2rem; }
+.workspace { display: grid; gap: 1.25rem; max-width: 1320px; padding-block: 1.5rem 3rem; }
+.workspace-navigation { padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
+.workspace-section-heading { margin-bottom: 1rem; }.workspace-section-heading h2 { margin: .25rem 0 0; font-size: 1.2rem; }.workspace-eyebrow { color: var(--primary); text-transform: uppercase; font-size: .72rem; letter-spacing: .1em; font-weight: 700; }
 .workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1rem; align-items: start; }
-.recipe-catalog { min-width: 0; }.recipe-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: .65rem; }
+.recipe-catalog { min-width: 0; padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }.recipe-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: .85rem; padding: 3px; }
 .recipe-tile { display: grid; gap: .4rem; justify-items: start; align-content: start; min-height: 145px; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; }.recipe-tile > svg { font-size: 1.7rem; color: var(--primary); }.recipe-tile span, .recipe-tile small { font-size: .75rem; color: var(--text-muted); }.recipe-tile.ready span { color: var(--success, #249653); }.recipe-tile.selected { outline: 2px solid var(--primary); background: var(--primary-soft); }.recipe-tile:focus-visible { outline: 2px solid var(--primary); }.recipe-tile:disabled { cursor: default; opacity: .6; }
 .craft-command { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--bg-surface); position: sticky; top: 1rem; }.craft-command p, .selected-heading h2 { margin: 0; }.selected-heading { display: flex; align-items: center; gap: .6rem; }.selected-heading h2 { font-size: 1.2rem; }.selected-heading > svg { color: var(--primary); font-size: 1.6rem; }
 .material-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }.material-tile { display: grid; gap: .3rem; padding: .6rem; border: 1px solid var(--border); border-radius: .4rem; font-size: .8rem; }.craft-settings summary { cursor: pointer; color: var(--text-muted); }.craft-settings label, .craft-settings p { margin-top: .7rem; }
 @media(max-width: 760px) { .workspace-layout { grid-template-columns: 1fr; }.craft-command { position: static; }.recipe-tiles { max-height: 45vh; overflow: auto; padding: 3px; } }
 .workspace label { display: grid; gap: .4rem; }
-.links { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.craft-command > .n-button { margin-block: .3rem; }.craft-settings { padding-top: .85rem; border-top: 1px solid var(--border); }.craft-command { padding: 1.25rem; gap: 1rem; top: calc(var(--site-header-height, 0px) + 1rem); }
 .ready { color: var(--success, #249653); font-weight: 700; }
-.recipe-legend { color: var(--text-muted); }
+.recipe-legend { color: var(--text-muted); margin-block: .75rem 1rem; line-height: 1.5; }
 .missing { color: var(--error, #d03050); font-weight: 600; }
 </style>

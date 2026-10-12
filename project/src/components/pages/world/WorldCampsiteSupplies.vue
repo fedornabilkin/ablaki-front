@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import { loadCampsiteSupplies, previewCampsiteSupplies, type SupplyAction } from '@/services/api/worldCampsite';
@@ -37,13 +38,13 @@ const date = (value: number) => new Date(value * 1000).toLocaleString('ru-RU');
 section.world-supplies#supplies(aria-label="Материалы стоянки")
   h2 Сбор материалов
   p Стартовый набор можно получить один раз. Обычные материалы собираются каждый день на своей стоянке.
-  n-button(size="small" :loading="loading" :disabled="loading || command.busy.value || Boolean(command.pending.value)" @click="load") Обновить
+  n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" :disabled="loading || command.busy.value || Boolean(command.pending.value)" @click="load") Обновить
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка материалов")
   template(v-else-if="state")
     .supply-actions
-      n-button(:disabled="!state.starterAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('starter')") {{ state.starterAvailable ? 'Получить набор · бесплатно' : 'Стартовый набор получен' }}
-      n-button(:disabled="!state.gatherAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('gather')") {{ state.gatherAvailable ? 'Собрать материалы · бесплатно' : 'Сегодня уже собрано' }}
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="!state.starterAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('starter')") {{ state.starterAvailable ? 'Получить набор' : 'Стартовый набор получен' }}
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="!state.gatherAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('gather')") {{ state.gatherAvailable ? 'Собрать материалы' : 'Сегодня уже собрано' }}
     p(v-if="!state.gatherAvailable") Следующий сбор: {{ date(state.gatherAvailableAt) }}.
     section.supply-quote(v-if="preview && selected" aria-live="polite")
       h3 {{ selected === 'starter' ? 'Стартовый набор' : 'Сегодняшний сбор' }}

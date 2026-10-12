@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -54,14 +55,14 @@ section.world-treasury
     p Собранные поступления переводятся из казны в бюджет объекта, доступный для расходов и развития.
   p При сборе казна пополняет бюджет объекта. Отчисления резервируются в бюджете и оплачиваются отдельным действием.
   n-alert(v-if="error" type="error" role="alert") {{ error }}
-  n-button(:disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
+  n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
   section(v-if="collection" aria-live="polite")
     p В бюджет поступит: {{ money(collection.collected) }}
     p Резерв на отчисления: {{ money(collection.reserved) }}
     p Доступно на развитие после сбора: {{ money(collection.available_after) }}
     p В казне останется: {{ money(collection.treasury_after) }}
     n-alert(v-if="collection.more_pending" type="info") Поступлений много. После подтверждения можно собрать следующую партию.
-    n-button(type="primary" :disabled="busy || Boolean(pending) || !canCollect" @click="collect") Подтвердить сбор
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending) || !canCollect" @click="collect") Подтвердить сбор
   h3 Отчисления родительскому объекту
   details.help-hint
     summary(aria-label="Как работают отчисления родительскому объекту") ?
@@ -76,12 +77,12 @@ section.world-treasury
         p(v-if="item.paid_at !== null") Оплачено {{ date(item.paid_at) }}
         template(v-else)
           p(:class="{ overdue: item.due_at <= state.server_time }") {{ item.due_at <= state.server_time ? 'Срок оплаты прошёл: ' : 'Оплатить до: ' }}{{ date(item.due_at) }}
-          n-button(:disabled="!canPay || busy || Boolean(pending) || calculating" @click="preview(item.id)") Рассчитать оплату
+          n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canPay || busy || Boolean(pending) || calculating" @click="preview(item.id)") Рассчитать оплату
     page-pager(v-model:page="page" query-prefix="obligations" :result="state" :disabled="busy")
   section(v-if="payment" aria-live="polite")
     p Оплата обязательства №{{ payment.input.obligation_id }}: {{ money(payment.amount) }} в казну объекта №{{ payment.parent_node_id }}.
     p В бюджете останется {{ money(payment.budget_after) }}, из них зарезервировано {{ money(payment.reserved_after) }}.
-    n-button(type="primary" :disabled="!canPay || busy || Boolean(pending)" @click="pay") Подтвердить оплату
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!canPay || busy || Boolean(pending)" @click="pay") Подтвердить оплату
 </template>
 <style scoped>
 .world-treasury { display: grid; gap: .75rem; }

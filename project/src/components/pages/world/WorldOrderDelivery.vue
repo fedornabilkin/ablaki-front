@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInputNumber, NSelect, NSpin } from 'naive-ui';
@@ -45,19 +46,19 @@ section.order-delivery
   n-spin(v-if="loading" aria-label="Загрузка предметов")
   template(v-else-if="stock")
     p(v-if="!stock.items.length") В доступных ячейках рюкзака нет этого сырья. Соберите его в мастерской или перенесите из сундука.
-    router-link(to="/craft") Открыть мастерскую
+    router-link(:to="{ path: '/world/workspace/map', query: { item: order.item_id } }") Найти рецепт предмета
     n-select(v-if="stock.items.length" v-model:value="inventory" :options="options" :disabled="busy || Boolean(pending)" placeholder="Выберите ячейку" aria-label="Ячейка рюкзака")
     page-pager(v-model:page="page" query-prefix="orderstock" :result="stock" :disabled="busy")
     label(v-if="selected") Количество — не более {{ maximum }}
       n-input-number(v-model:value="quantity" :min="1" :max="Math.max(1, maximum)" :precision="0" :disabled="busy || Boolean(pending)")
-    n-button(:loading="calculating" :disabled="!writable || !selected || !quantity || quantity > maximum || busy || Boolean(pending)" @click="preview") Рассчитать сдачу
+    n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!writable || !selected || !quantity || quantity > maximum || busy || Boolean(pending)" @click="preview") Рассчитать сдачу
   section(v-if="quote" aria-live="polite")
     p Будет передано {{ quote.input.quantity }} шт. Оплата: {{ formatCredits(quote.earned) }} Cr.
     router-link(:to="`/world/nodes/${quote.site_node_id}`") Казна вашей стоянки
     p(v-if="quote.initialize_policy") При первой сдаче стоянка получит начальные условия этого заказа.
     p Отчисления при сборе: {{ quote.policy.rate_bps / 100 }}%. Срок оплаты отчислений: {{ quote.policy.due_seconds / 3600 }} ч.
     p Защита поступления: {{ quote.policy.protected_seconds / 3600 }} ч; затем потеря {{ quote.policy.loss_rate_bps / 100 }}% остатка каждые {{ quote.policy.loss_period_seconds / 3600 }} ч.
-    n-button(type="primary" :disabled="!writable || busy || Boolean(pending)" @click="deliver") Передать сырьё и получить оплату
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!writable || busy || Boolean(pending)" @click="deliver") Передать сырьё и получить оплату
 </template>
 <style scoped>
 .order-delivery { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .4rem; }
