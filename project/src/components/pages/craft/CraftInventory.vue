@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch } from 'vue';
 import { NButton, NInputNumber, NModal } from 'naive-ui';
@@ -106,7 +107,7 @@ watch(() => props.state, cancel);
   .inventory-scroll
     .inventory-status
       span Активно {{ active }} / 50 · постоянно {{ permanent }}
-      n-button(v-if="permanent < 50" size="small" :disabled="blocked" @click="requestBuy") Открыть слоты
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="permanent < 50" size="small" :disabled="blocked" @click="requestBuy") Открыть слоты
     p.muted(v-if="state.slots_expire_at") Временные слоты до {{ new Date(state.slots_expire_at * 1000).toLocaleString('ru-RU') }}
     craft-slot-grid(:slots="state.inventory_slots" :count="50" :active="active" :items="items" :selected="selected" :blocked="blocked" :target="overSlot?.container === 0 ? overSlot.position : undefined" :dragging="drag?.moving ? drag.slotId : undefined" label="Инвентарь: 10 на 5 слотов" @element="(position, element) => slotElement(0, position, element)" @choose="select" @down="down" @move="move" @up="up" @cancel="cancel" @destination="position => destination(0, position)" @unlock="requestBuy")
       .trash-cell(role="listitem")
@@ -125,11 +126,11 @@ watch(() => props.state, cancel);
       p(v-if="items.get(selected.item_id)?.storage_kind === 'elixir'") +{{ state.inventory_settings?.elixir_slots }} слотов на {{ state.inventory_settings?.elixir_days }} дней
       .use-item(v-if="usable")
         n-input-number(:min="1" :max="Math.min(10000, selected.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, selected.quantity), step: 1}" v-model:value="useQuantity" :precision="0" :disabled="blocked" aria-label="Количество используемых предметов")
-        n-button(:disabled="blocked || !useQuantity || useQuantity > selected.quantity" @click="use") Использовать
+        n-button(:theme-overrides="worldActionButtonTheme" :disabled="blocked || !useQuantity || useQuantity > selected.quantity" @click="use") Использовать
       .use-item(v-if="!inBackpack || (chest && items.get(selected.item_id)?.storage_kind !== 'chest')")
         n-input-number(:min="1" :max="Math.min(10000, selected.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, selected.quantity), step: 1}" v-model:value="moveQuantity" :precision="0" :disabled="blocked" aria-label="Количество перемещаемых предметов")
-        n-button(v-if="inBackpack && chest" :disabled="blocked || !movable || chest.durability < 1" @click="moveSelected(chest.id)") В сундук
-        n-button(v-else :disabled="blocked || !movable" @click="moveSelected(0)") В инвентарь
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="inBackpack && chest" :disabled="blocked || !movable || chest.durability < 1" @click="moveSelected(chest.id)") В сундук
+        n-button(:theme-overrides="worldActionButtonTheme" v-else :disabled="blocked || !movable" @click="moveSelected(0)") В инвентарь
     section.chest-panel(v-if="chest" aria-label="Сундук")
       .chest-header
         strong Сундук · {{ chest.slots.length }} / {{ chest.capacity }}
@@ -153,14 +154,14 @@ watch(() => props.state, cancel);
             span(v-if="repair.station.durability !== undefined") : прочность {{ repair.station.durability }} / {{ repair.station.max_durability }} (−1 за ремонт)
             span(v-if="repair.station.available === false") · не хватает
         p(v-for="reason in repair.reasons" :key="reason" role="status") {{ reason }}
-        n-button(size="small" :disabled="blocked || !!repair.reasons.length" @click="repairChest") Починить (+{{ repair.restore }})
+        n-button(:theme-overrides="worldActionButtonTheme" size="small" :disabled="blocked || !!repair.reasons.length" @click="repairChest") Починить (+{{ repair.restore }})
   .drag-preview(v-if="drag?.moving" :style="{left: drag.x + 12 + 'px', top: drag.y + 12 + 'px'}" aria-hidden="true")
     font-awesome-icon(icon="cube")
-  n-modal(v-model:show="showDiscard" preset="dialog" title="Удалить предметы?" positive-text="Удалить" negative-text="Отмена" :positive-button-props="{disabled: !validDiscard, type: 'error'}" @positive-click="confirmDiscard")
+  n-modal(:theme-overrides="worldModalTheme" v-model:show="showDiscard" preset="dialog" title="Удалить предметы?" positive-text="Удалить" negative-text="Отмена" :positive-button-props="{disabled: !validDiscard, themeOverrides: worldActionButtonTheme}" :negative-button-props="{themeOverrides: worldActionButtonTheme}" @positive-click="confirmDiscard")
     template(v-if="discarded")
       p {{ items.get(discarded.item_id)?.name }}. Удалённые предметы нельзя восстановить.
       n-input-number(:min="1" :max="Math.min(10000, discarded.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, discarded.quantity), step: 1}" v-model:value="discardQuantity" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
-  n-modal(v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy}" @positive-click="buy")
+  n-modal(:theme-overrides="worldModalTheme" v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy, themeOverrides: worldActionButtonTheme}" :negative-button-props="{themeOverrides: worldActionButtonTheme}" @positive-click="buy")
     p Следующий слот: {{ formatCredits(quotedPrice) }} Cr
     p(v-if="quotedLinear && quotedBase") Каждый следующий слот дороже на {{ formatCredits(quotedBase) }} Cr.
     n-input-number(:min="1" :max="50 - permanent" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 50 - permanent, step: 1}" v-model:value="buyQuantity" :precision="0" :disabled="blocked" aria-label="Количество покупаемых слотов")

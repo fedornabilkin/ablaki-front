@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NProgress } from 'naive-ui';
 import { apiClient } from '@/services/httpClient';
@@ -50,7 +51,7 @@ section.warehouse-panel
     template(v-if="state.next_price")
       p Следующая ячейка: {{ formatCredits(state.next_price) }} Cr. Каждая последующая стоит дороже.
       n-checkbox(v-model:checked="topUp" :disabled="locked") Доплатить с личного баланса, если бюджета недостаточно
-      n-button(:disabled="locked" :loading="loading" @click="preview") Открыть ячейку · {{ formatCredits(state.next_price) }} Cr
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" :loading="loading" @click="preview") Открыть ячейку · {{ formatCredits(state.next_price) }} Cr
 </template>
 <style scoped>
 .warehouse-panel { display: grid; gap: .75rem; }

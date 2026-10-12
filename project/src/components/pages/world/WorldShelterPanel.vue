@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -42,7 +43,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
   h2 Шалаш и ночлег
   p Один бесплатный шалаш на аккаунт. Он даёт одно место ночлега, но не защищает станции и сундуки. Установка не занимает площадь капитальных построек.
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить состояние
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить состояние
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка шалаша")
   template(v-else-if="state")
@@ -50,8 +51,8 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
     n-alert(v-if="!state.night_resolution_enabled" type="info") Назначение ночлега сохраняется, пока вы офлайн. Расчёт болезни и выздоровления ещё не включён.
     p(v-else) Ночлег действует и офлайн. Для защиты всей ночи назначьте исправный шалаш до её начала.
     .shelter-actions(v-if="!state.claimed")
-      n-button(:disabled="locked || calculating" @click="preview('claim')") Получить в рюкзак
-      n-button(:disabled="locked || calculating" @click="preview('claim', true)") Получить и установить здесь
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" @click="preview('claim')") Получить в рюкзак
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" @click="preview('claim', true)") Получить и установить здесь
     template(v-else)
       p Шалаш уже получен. Повторная выдача в другом мире недоступна.
       p(v-if="state.instance_id") Прочность: {{ state.durability }} / {{ state.max_durability }}.
@@ -66,13 +67,13 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
         p(v-else) Ночлег ещё не назначен.
         template(v-if="here")
           .shelter-actions
-            n-button(v-if="!state.lodging" :disabled="locked || calculating || !state.durability || Boolean(state.current_assignment)" @click="preview('lodge')") Назначить ночлег
-            n-button(v-else :disabled="locked || calculating" @click="preview('leave')") Отменить ночлег
+            n-button(:theme-overrides="worldActionButtonTheme" v-if="!state.lodging" :disabled="locked || calculating || !state.durability || Boolean(state.current_assignment)" @click="preview('lodge')") Назначить ночлег
+            n-button(:theme-overrides="worldActionButtonTheme" v-else :disabled="locked || calculating" @click="preview('leave')") Отменить ночлег
           n-checkbox(v-if="state.lodging" v-model:checked="endLodging" :disabled="locked") Прекратить ночлег при складывании шалаша
-          n-button(:disabled="locked || calculating || (Boolean(state.lodging) && !endLodging)" @click="preview('fold')") Сложить в рюкзак
-      n-button(v-else-if="state.instance_id" :disabled="locked || calculating || !state.durability" @click="preview('deploy')") Установить на этой стоянке
+          n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating || (Boolean(state.lodging) && !endLodging)" @click="preview('fold')") Сложить в рюкзак
+      n-button(:theme-overrides="worldActionButtonTheme" v-else-if="state.instance_id" :disabled="locked || calculating || !state.durability" @click="preview('deploy')") Установить на этой стоянке
       router-link(v-if="state.current_assignment?.kind === 'house'" :to="`/world/nodes/${state.current_assignment.node_id}#housing`") Ночлег назначен в доме — открыть назначение
-      n-button(v-if="state.instance_id && state.durability !== null && state.max_durability !== null && state.durability < state.max_durability && (!state.deployment || here)" :disabled="locked || calculating" @click="preview('repair')") Рассчитать ремонт
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="state.instance_id && state.durability !== null && state.max_durability !== null && state.durability < state.max_durability && (!state.deployment || here)" :disabled="locked || calculating" @click="preview('repair')") Рассчитать ремонт
     section(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
       p Стоимость: 0 Cr.
@@ -90,7 +91,7 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
             span(v-if="!material.available") — недостаточно
         n-alert(v-if="!quote.repair.available" type="error" role="alert") {{ quote.repair.reasons.join(' ') }}
         p Установленный шалаш останется на месте, назначенный ночлег сохранится. Ремонт восстановит защиту с текущего момента. Прошлые незащищённые ночи останутся в истории.
-      n-button(type="primary" :disabled="locked || Boolean(quote.repair && !quote.repair.available)" @click="confirm") Подтвердить
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || Boolean(quote.repair && !quote.repair.available)" @click="confirm") Подтвердить
 </template>
 <style scoped>
 .world-shelter { display: grid; gap: .75rem; }

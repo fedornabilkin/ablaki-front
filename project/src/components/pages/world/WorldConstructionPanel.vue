@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -45,7 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-construction#construction
   h2 Строительство
   p Материалы и Cr зарезервированы до завершения. Ночлег и оборудование в новой постройке станут доступны после окончания работ.
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить стройки
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить стройки
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Найти стройку" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка строек")
@@ -63,9 +64,9 @@ section.world-construction#construction
         p(v-else) Время работ истекло. Ожидается завершение строительства.
         ul
           li(v-for="material in item.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
-        n-button(v-if="item.status === 'constructing' && item.remaining_seconds > 0" :disabled="locked || calculating" @click="preview(item.node_id, 'pause')") Приостановить
-        n-button(v-if="item.status === 'paused'" :disabled="locked || calculating" @click="preview(item.node_id, 'resume')") Продолжить
-        n-button(:disabled="locked || calculating" @click="preview(item.node_id, 'cancel')") Отменить стройку…
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="item.status === 'constructing' && item.remaining_seconds > 0" :disabled="locked || calculating" @click="preview(item.node_id, 'pause')") Приостановить
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="item.status === 'paused'" :disabled="locked || calculating" @click="preview(item.node_id, 'resume')") Продолжить
+        n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" @click="preview(item.node_id, 'cancel')") Отменить стройку…
       p(v-if="item.status === 'cancelled'") Резерв Cr освобождён в бюджете. Материалы возвращены в рюкзак.
       p(v-if="item.demolished") Постройка снесена, площадь освобождена. История строительства сохранена.
       p(v-if="item.room_id && !item.demolished")
@@ -80,7 +81,7 @@ section.world-construction#construction
       ul
         li(v-for="material in quote.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
       p Уже завершённую постройку отменить нельзя.
-    n-button(type="primary" :disabled="locked" @click="confirm") Подтвердить
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") Подтвердить
 </template>
 <style scoped>
 .world-construction { display: grid; gap: .75rem; }

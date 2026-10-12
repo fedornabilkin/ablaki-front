@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -46,7 +47,7 @@ section.world-orders#settlement-orders
   world-help-hint(label="Как работают заказы поселения")
     p Заказ задаёт цену и предельное количество сырья. При сдаче сырьё списывается из рюкзака, а выплата поступает в казну вашей стоянки; выполнить заказ сверх остатка нельзя.
   p Сдавайте собранное сырьё и получайте оплату в казну своей стоянки. Количество и бюджет каждого заказа ограничены.
-  n-button(:loading="loading" :disabled="busy" @click="load") Обновить заказы
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy" @click="load") Обновить заказы
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="loading" placeholder="Найти заказ" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка заказов")
@@ -60,13 +61,13 @@ section.world-orders#settlement-orders
         p {{ order.purpose }}
         p Осталось {{ order.remaining_quantity }} из {{ order.quantity }} шт.; ваш оставшийся лимит — {{ order.my_remaining }} шт.
         p {{ labels[order.status] }} · срок до {{ date(order.expires_at) }}
-        n-button(v-if="order.status === 'open'" :disabled="!state.can_deliver || !order.my_remaining || !order.remaining_quantity || busy || Boolean(pending) || calculating" @click="selected = order.id") Выбрать сырьё для сдачи
-        n-button(v-if="state.can_publish && order.can_cancel" :disabled="busy || Boolean(pending) || calculating" @click="previewCancel(order.id)") Отменить остаток заказа
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="order.status === 'open'" :disabled="!state.can_deliver || !order.my_remaining || !order.remaining_quantity || busy || Boolean(pending) || calculating" @click="selected = order.id") Выбрать сырьё для сдачи
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="state.can_publish && order.can_cancel" :disabled="busy || Boolean(pending) || calculating" @click="previewCancel(order.id)") Отменить остаток заказа
     page-pager(v-model:page="page" query-prefix="orders" :result="state" :disabled="busy")
     world-order-delivery(v-if="chosen" :key="chosen.id" :node-id="nodeId" :session="session" :order="chosen" :writable="state.can_deliver" :command="command")
     section(v-if="cancellation" aria-live="polite")
       p Заказ №{{ cancellation.input.order_id }} будет закрыт. Освободится {{ formatCredits(cancellation.released) }} Cr резерва бюджета.
-      n-button(type="primary" :disabled="busy || Boolean(pending)" @click="cancel") Подтвердить отмену остатка
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending)" @click="cancel") Подтвердить отмену остатка
     world-order-publish(v-if="state.can_publish" :node-id="nodeId" :session="session" :writable="state.can_publish" :command="command")
 </template>
 <style scoped>

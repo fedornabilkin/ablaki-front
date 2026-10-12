@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
 import { loadCultivation, loadCrops, previewCultivation, type CultivationAction } from '@/services/api/worldCultivation';
 import { worldError } from '@/services/api/world';
 import type { WorldQuote } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
+import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ bedId: number; session: number; command: WorldCommandRunner; droppedCrop?: { id: number; sequence: number } | null }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadCultivation>> | null>(null), crops = shallowRef<Awaited<ReturnType<typeof loadCrops>>['items']>([]);
 const error = ref(''), loading = ref(false), calculating = ref(false), selected = ref<number | null>(null), page = ref(1), pages = ref(1);
@@ -16,11 +18,11 @@ const locked = computed(() => loading.value || calculating.value || props.comman
 const materials = computed(() => (quote.value?.value.terms.materials ?? []) as { name: string; quantity: number; have: number; available: boolean }[]);
 const tool = computed(() => quote.value?.value.terms.tool as { name: string; durability: number; wear: number; available: boolean } | undefined);
 const canConfirm = computed(() => materials.value.every(m => m.available) && tool.value?.available !== false && (quote.value?.value.terms.output as { fits?: boolean } | undefined)?.fits !== false);
-const primaryAction = computed<CultivationAction | null>(() => !state.value ? null : !cycle.value ? (state.value.dug ? 'sow' : 'dig') : cycle.value.state === 'ripe' ? 'harvest' : cycle.value.can_water ? 'water' : null);
+const primaryAction = computed<CultivationAction | null>(() => !state.value ? null : !cycle.value ? (state.value.dug ? 'sow' : 'dig') : now.value >= cycle.value.expires_at ? null : now.value >= cycle.value.ready_at ? 'harvest' : cycle.value.can_water ? 'water' : null);
 const ready = computed(() => quote.value?.action === primaryAction.value && canConfirm.value);
 const cost = computed(() => [...materials.value.map(m => `${m.quantity} ${m.name}`), ...(tool.value ? [`${tool.value.name}: ${tool.value.wear} прочности`] : [])].join(', ') || 'бесплатно');
 const duration = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return s >= 3600 ? `${Math.floor(s / 3600)} ч ${Math.floor(s % 3600 / 60)} мин` : `${Math.floor(s / 60)} мин ${s % 60} с`; };
-const date = (seconds: number) => new Date(seconds * 1000).toLocaleString('ru-RU');
+const countdown = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
 async function load() {
   const current = ++generation; previewGeneration++; loading.value = true; calculating.value = false; error.value = ''; quote.value = null;
   try {
@@ -96,7 +98,10 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
     template(v-if="!cycle")
       .cultivation-card
         h3 {{ state.dug ? 'Грядка готова к посадке' : 'Подготовка земли' }}
-        n-button(v-if="!state.dug" type="primary" :disabled="locked || !ready" @click="execute") Вскопать · {{ tool ? `${tool.wear} прочности лопаты` : 'нужна лопата' }}
+        .cultivation-dig(v-if="!state.dug")
+          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Вскопать
+          world-help-hint(label="Расход прочности лопаты" symbol="!")
+            p {{ tool ? `Расходуется ${tool.wear} ед. прочности лопаты. ${tool.available ? 'Лопата доступна.' : 'Нужна исправная лопата в рюкзаке.'}` : 'Для перекопки нужна исправная лопата в рюкзаке.' }}
         template(v-else)
           .crop-tiles(aria-label="Культуры для посадки")
             button.crop-tile(v-for="entry in crops" :key="entry.id" type="button" :class="{ selected: selected === entry.id }" :aria-pressed="selected === entry.id" :disabled="locked" :draggable="!locked" @dragstart="dragSeed($event, entry.id)" @click="selected = entry.id")
@@ -105,32 +110,34 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
               small Семян: {{ entry.seed_quantity }} · Урожай: {{ entry.yield_quantity }}
               span {{ selected === entry.id ? (quote?.action === 'sow' ? (canConfirm ? 'Можно посадить' : 'Не хватает ресурсов') : 'Проверяем ресурсы…') : 'Выбрать культуру' }}
           .cultivation-actions(v-if="pages > 1")
-            n-button(:disabled="page <= 1 || locked" @click="page--") Назад
+            n-button(:theme-overrides="worldActionButtonTheme" :disabled="page <= 1 || locked" @click="page--") Назад
             span {{ page }} / {{ pages }}
-            n-button(:disabled="page >= pages || locked" @click="page++") Далее
+            n-button(:theme-overrides="worldActionButtonTheme" :disabled="page >= pages || locked" @click="page++") Далее
           template(v-if="crop")
             p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }} · Рост: {{ duration(crop.grow_seconds) }}
             p(v-if="crop.water_quantity") Полив каждые {{ duration(crop.water_interval_seconds) }}, окно полива — {{ duration(crop.water_window_seconds) }}.
             p Соберите урожай в течение {{ duration(crop.harvest_window_seconds) }} после созревания.
-          n-button(type="primary" :disabled="locked || !ready" @click="execute") Посадить семена
-      p Семена, вода и лопата — из рюкзака. Урожай попадёт на склад огорода.
+          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Посадить семена
+      p Семена, вода и лопата — из рюкзака. Урожай попадёт в мини-склад, а при его отсутствии — в рюкзак.
     template(v-else)
       h3 {{ cycle.name }}
       n-alert(v-if="cycle.state === 'expired'" type="error") Урожай погиб: срок сбора истёк. Уберите остатки, чтобы подготовить новый посев.
       n-alert(v-else-if="cycle.water_missed" type="warning") Полив пропущен. Урожай уменьшен вдвое; рост продолжается.
       .cultivation-metrics
         .cultivation-card
-          span {{ now < cycle.ready_at ? 'До созревания' : 'До гибели урожая' }}
-          strong {{ duration((now < cycle.ready_at ? cycle.ready_at : cycle.expires_at) - now) }}
-          small {{ date(now < cycle.ready_at ? cycle.ready_at : cycle.expires_at) }}
-        .cultivation-card(v-if="cycle.water_due_at && now < cycle.ready_at")
+          span {{ now < cycle.ready_at ? 'До созревания' : 'Урожай созрел' }}
+          strong(v-if="now < cycle.ready_at") {{ countdown(cycle.ready_at - now) }}
+        .cultivation-card
+          span До гибели урожая
+          strong {{ countdown(cycle.expires_at - now) }}
+        .cultivation-card(v-if="cycle.water_due_at && cycle.water_due_at < cycle.ready_at && now < cycle.ready_at")
           span {{ cycle.can_water ? 'Полив доступен' : 'Следующий полив' }}
           strong {{ cycle.can_water ? 'Пора полить' : duration(cycle.water_due_at - now) }}
-          small(v-if="cycle.water_deadline_at") Успейте до {{ date(cycle.water_deadline_at) }}
+          small(v-if="cycle.can_water && cycle.water_deadline_at") На полив осталось {{ countdown(cycle.water_deadline_at - now) }}
       .cultivation-actions
-        n-button(v-if="primaryAction === 'water'" type="primary" :disabled="locked || !ready" @click="execute") Полить
-        n-button(v-if="cycle.state === 'ripe'" type="primary" :disabled="locked || !ready" @click="execute") Собрать урожай · бесплатно
-        n-button(:disabled="locked" @click="preview('cancel')") {{ cycle.state === 'expired' ? 'Убрать погибший урожай' : 'Убрать посев' }}
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="primaryAction === 'water'" type="primary" :disabled="locked || !ready" @click="execute") Полить
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="cycle.state === 'ripe'" type="primary" :disabled="locked || !ready" @click="execute") Собрать урожай
+        n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" @click="preview('cancel')") {{ cycle.state === 'expired' ? 'Убрать погибший урожай' : 'Убрать посев' }}
     .cultivation-card(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
       p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}. Списание Cr: 0.
@@ -139,12 +146,13 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
       p(v-if="tool" :class="{ missing: !tool.available }") {{ tool.name }}: {{ tool.durability }} прочности · {{ tool.available ? 'Доступна' : 'Нужна исправная лопата в рюкзаке' }}
       p(v-if="quote.action === 'harvest'") Будет собрано: {{ quote.value.terms.output?.quantity }} шт.
       p.missing(v-if="!canConfirm") Проверьте ресурсы, лопату и свободные ячейки склада огорода.
-      n-button(v-if="quote.action === 'cancel'" type="primary" :disabled="locked || !canConfirm" @click="confirm") Убрать без возврата ресурсов
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="quote.action === 'cancel'" type="primary" :disabled="locked || !canConfirm" @click="confirm") Убрать без возврата ресурсов
     p(v-if="calculating" role="status") Проверяем расход ресурсов…
-    n-button(v-if="error && primaryAction" :disabled="locked" @click="preview(primaryAction)") Повторить расчёт
+    n-button(:theme-overrides="worldActionButtonTheme" v-if="error && primaryAction" :disabled="locked" @click="preview(primaryAction)") Повторить расчёт
 </template>
 <style scoped>
 .cultivation-panel { display: grid; gap: 1rem; }
+.cultivation-dig { display: flex; align-items: center; gap: .5rem; }
 .crop-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .6rem; }.crop-tile { display: grid; gap: .4rem; padding: .8rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }.crop-tile.selected { outline: 2px solid var(--primary); }.crop-tile > svg { font-size: 1.4rem; color: var(--primary); }.crop-tile span, .crop-tile small { font-size: .75rem; color: var(--text-muted); }
 .cultivation-heading, .cultivation-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
 .cultivation-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }

@@ -61,7 +61,7 @@ onMounted(async () => {
 
         <p class="shop-hint">
             Покупай материалы за кредиты и используй их во вкладке
-            <router-link to="/craft" class="shop-link">«Крафт»</router-link>.
+            <router-link to="/world/workspace/recipes" class="shop-link">«Рецепты»</router-link>.
         </p>
 
         <n-spin :show="loading">

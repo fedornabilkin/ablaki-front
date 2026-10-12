@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
 import { loadWorldOnboarding, previewWorldJoin, worldError } from '@/services/api/world';
@@ -30,10 +31,10 @@ section.world-onboarding(v-if="!state?.joined" aria-label="Начало жизн
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   template(v-if="state && node.type === 'SETTLEMENT'")
     p Здесь можно начать жизнь в мире и получить место для усадьбы.
-    n-button(v-if="!quote" :disabled="!writable || !state.join_available || Boolean(pending)" :loading="loading" @click="preview") Выбрать поселение
+    n-button(:theme-overrides="worldActionButtonTheme" v-if="!quote" :disabled="!writable || !state.join_available || Boolean(pending)" :loading="loading" @click="preview") Выбрать поселение
     template(v-else)
       p Начать в поселении «{{ node.label }}»? Усадьба предоставляется один раз, бесплатно.
-      n-button(type="primary" :disabled="!writable || Boolean(pending)" :loading="busy" @click="join") Начать
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!writable || Boolean(pending)" :loading="busy" @click="join") Начать
   p(v-else-if="state && !state.joined") Выберите город или деревню, в которых хотите начать.
 </template>
 <style scoped>

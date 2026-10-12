@@ -1,14 +1,16 @@
 <script setup lang="ts">
-defineProps<{ label: string }>();
+import { NPopover } from 'naive-ui';
+withDefaults(defineProps<{ label: string; symbol?: string }>(), { symbol: '?' });
 </script>
 <template lang="pug">
-details.world-help-hint
-  summary(:aria-label="label" :title="label") ?
+n-popover(trigger="click" placement="bottom" :style="{ maxWidth: 'min(32rem, 90vw)' }")
+  template(#trigger)
+    button.world-help-hint(type="button" :aria-label="label")
+      font-awesome-icon(:icon="symbol === '!' ? 'exclamation-circle' : 'question-circle'" aria-hidden="true")
   slot
 </template>
 <style scoped>
-.world-help-hint { position: relative; justify-self: start; }
-.world-help-hint summary { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border: 1px solid var(--border); border-radius: 50%; color: var(--text-muted); cursor: pointer; list-style: none; }
-.world-help-hint summary::-webkit-details-marker { display: none; }
+.world-help-hint { display: inline-grid; place-items: center; padding: .2rem; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
+.world-help-hint:focus-visible { outline: 2px solid var(--primary); border-radius: 50%; }
 .world-help-hint :slotted(p) { max-width: 32rem; color: var(--text-muted); font-size: .9rem; }
 </style>

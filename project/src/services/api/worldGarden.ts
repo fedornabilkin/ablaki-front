@@ -14,7 +14,15 @@ export function gardenInput(action: GardenAction, value: unknown): Record<string
   if (action === 'publish') return { name: text(r.name).trim(), price: investmentAmount(r.price), base_price: investmentAmount(r.base_price) };
   if (action === 'withdraw') return {};
   if (action === 'buy') return { top_up: bool(r.top_up) };
-  if (action === 'expand') return { top_up: bool(r.top_up), quantity: integer(r.quantity, 1, 9) };
+  if (action === 'expand') {
+    const input: Record<string, unknown> = { top_up: bool(r.top_up), quantity: integer(r.quantity, 1, 9) };
+    if (r.bed_ids !== undefined) {
+      if (!Array.isArray(r.bed_ids) || r.bed_ids.length !== input.quantity) invalid();
+      const ids = (r.bed_ids as unknown[]).map(id).sort((a, b) => a - b);
+      if (new Set(ids).size !== ids.length) invalid(); input.bed_ids = ids;
+    }
+    return input;
+  }
   return invalid();
 }
 export async function loadGarden(node: number) {
@@ -28,10 +36,10 @@ export async function loadGarden(node: number) {
     if (g.limit !== 10 || !Array.isArray(g.beds) || g.beds.length !== 10) invalid();
     const beds = (g.beds as unknown[]).map((value, index) => {
       const b = record(value), ordinal = integer(b.ordinal, 1, 10), open = bool(b.unlocked), price = creditAmount(b.price);
-      if (ordinal !== index + 1 || open !== (ordinal <= unlocked) || (ordinal === 1 ? price !== '0.0000' : price === '0.0000')) invalid();
+      if (ordinal !== index + 1 || (ordinal === 1 && !open) || (ordinal === 1 ? price !== '0.0000' : price === '0.0000')) invalid();
       return { node_id: id(b.node_id), ordinal, unlocked: open, price };
     });
-    if (new Set(beds.map(b => b.node_id)).size !== 10) invalid();
+    if (new Set(beds.map(b => b.node_id)).size !== 10 || beds.filter(b => b.unlocked).length !== unlocked) invalid();
     garden = { node_id: id(g.node_id), unlocked, beds, base_price: positive(g.base_price), available_budget: creditAmount(g.available_budget) };
   }
   const canBuy = bool(r.can_buy), canExpand = bool(r.can_expand);
@@ -42,7 +50,7 @@ export async function previewGarden(node: number, action: GardenAction, payload:
   const input = gardenInput(action, payload);
   const quote = parseWorldQuote((await apiClient.post(url(node, `garden-${action}-preview`), input)).data), t = quote.terms;
   if (id(t.node_id) !== node) invalid();
-  for (const [key, value] of Object.entries(input)) if (t[key] !== value) invalid();
+  for (const [key, value] of Object.entries(input)) if (JSON.stringify(t[key]) !== JSON.stringify(value)) invalid();
   let payment = null;
   let unitPrices: { ordinal: number; price: string }[] = [];
   if (action === 'buy' || action === 'expand') {
@@ -61,8 +69,9 @@ export async function previewGarden(node: number, action: GardenAction, payload:
     if (action === 'buy') { id(t.offer_id); text(t.name); }
     else {
       id(t.policy_id); integer(t.policy_revision, 1); const unlocked = integer(t.unlocked, 1, 9), quantity = integer(t.quantity, 1, 10 - unlocked);
-      if (!['linear', 'progressive'].includes(String(t.curve)) || t.currency !== 'Cr' || !Array.isArray(t.unit_prices) || t.unit_prices.length !== quantity) invalid();
-      unitPrices = (t.unit_prices as unknown[]).map((value, i) => { const u = record(value), ordinal = integer(u.ordinal, 2, 10); if (ordinal !== unlocked + i + 1) invalid(); return { ordinal, price: positive(u.price) }; });
+      if (!['linear', 'progressive', 'rings'].includes(String(t.curve)) || t.currency !== 'Cr' || !Array.isArray(t.unit_prices) || t.unit_prices.length !== quantity) invalid();
+      unitPrices = (t.unit_prices as unknown[]).map(value => { const u = record(value); return { ordinal: integer(u.ordinal, 2, 10), price: positive(u.price) }; });
+      if (new Set(unitPrices.map(u => u.ordinal)).size !== quantity || unitPrices.some((u, i) => i > 0 && u.ordinal <= unitPrices[i - 1].ordinal)) invalid();
     }
   } else if (t.previous_offer_id !== null) id(t.previous_offer_id);
   return { action, input, quote, payment, unitPrices };

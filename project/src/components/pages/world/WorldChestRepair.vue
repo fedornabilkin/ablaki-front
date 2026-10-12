@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
 import { previewChestRepair, type StorageHeader } from '@/services/api/worldStorage';
@@ -26,7 +27,7 @@ onScopeDispose(() => { generation++; });
 section.chest-repair(v-if="storage.kind === 'chest'")
   h3 Починка сундука
   n-alert(v-if="error" type="error" role="alert") {{ error }}
-  n-button(:loading="loading" :disabled="busy || Boolean(pending) || !writable" @click="preview") Рассчитать ремонт
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending) || !writable" @click="preview") Рассчитать ремонт
   template(v-if="calculation")
     p Восстановление прочности: {{ calculation.repair.restore }}
     ul
@@ -34,7 +35,7 @@ section.chest-repair(v-if="storage.kind === 'chest'")
       li(v-for="tool in calculation.repair.tools" :key="`tool-${tool.item_id}`" :class="{missing: tool.available === false}") {{ tool.name || 'Инструмент' }} · прочность {{ tool.durability }} / {{ tool.max_durability }}
       li(v-if="calculation.repair.station" :class="{missing: calculation.repair.station.available === false}") {{ calculation.repair.station.name }} · {{ calculation.repair.station.durability ?? '—' }} / {{ calculation.repair.station.max_durability ?? '—' }}
     p.missing(v-for="reason in calculation.repair.reasons" :key="reason") {{ reason }}
-    n-button(type="primary" :loading="busy" :disabled="Boolean(pending) || !writable || Boolean(calculation.repair.reasons.length)" @click="repair") Починить
+    n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="busy" :disabled="Boolean(pending) || !writable || Boolean(calculation.repair.reasons.length)" @click="repair") Починить
 </template>
 <style scoped>
 .chest-repair { display: grid; gap: .75rem; }

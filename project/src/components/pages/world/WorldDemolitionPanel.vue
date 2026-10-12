@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NSpin } from 'naive-ui';
 import { RouterLink } from 'vue-router';
@@ -36,14 +37,14 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-demolition#demolition
   h2 Снос постройки
   p Перед сносом заберите имущество, отмените ночлег и завершите финансовые обязательства. Бюджеты и казны здания и комнаты должны быть пустыми.
-  n-button(:loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить условия сноса
+  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить условия сноса
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка условий сноса")
   template(v-else-if="state")
     ul(v-if="state.reasons.length")
       li(v-for="reason in state.reasons" :key="reason.code") {{ reason.message }}
     p(v-if="state.available") Постройка свободна. После сноса освободится площадь: {{ state.area }}.
-    n-button(:disabled="locked || calculating" :loading="calculating" @click="preview") Рассмотреть снос…
+    n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" :loading="calculating" @click="preview") Рассмотреть снос…
   n-alert(v-if="quote" type="warning" aria-live="polite")
     h3 Снести «{{ quote.name }}»
     p Постройка и её комната уйдут в архив. Купленные места оборудования закроются. Площадь {{ quote.area }} освободится для новой покупки или стройки.
@@ -53,8 +54,8 @@ section.world-demolition#demolition
       router-link(:to="`/world/nodes/${quote.plot}`") Площадка, на которой освободится место
     n-checkbox(v-model:checked="acknowledged" :disabled="busy") Подтверждаю снос без возврата стоимости и материалов
     div
-      n-button(type="error" :disabled="locked || !acknowledged" @click="confirm") Снести без возврата
-      n-button(:disabled="busy" @click="clear") Отмена
+      n-button(:theme-overrides="worldActionButtonTheme" type="error" :disabled="locked || !acknowledged" @click="confirm") Снести без возврата
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="clear") Отмена
 </template>
 <style scoped>
 .world-demolition { display: grid; gap: .75rem; }
