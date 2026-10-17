@@ -4,7 +4,7 @@ import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
+import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
 import WorldWorkspaceNav from './WorldWorkspaceNav.vue';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
@@ -19,6 +19,7 @@ const craftHref = useCampsiteCraft(session);
 const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null), loading = ref(false), calculating = ref(false), error = ref(''), notice = ref('');
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
+const useObjectBudget = ref(false);
 const calculation = shallowRef<(Awaited<ReturnType<typeof previewWorkspace>> & { input: WorkspaceInput }) | null>(null);
 let generation = 0, previewGeneration = 0, disposed = false;
 let previewTimer: ReturnType<typeof setTimeout> | undefined;
@@ -32,7 +33,7 @@ const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.t
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
 function invalidate() { clearTimeout(previewTimer); previewGeneration++; calculation.value = null; calculating.value = false; }
 function schedulePreview() { invalidate(); previewTimer = setTimeout(() => { void preview(); }, 600); }
-watch([quantity, sources, output, equipment], schedulePreview, { deep: true, flush: 'sync' });
+watch([quantity, sources, output, equipment, useObjectBudget], schedulePreview, { deep: true, flush: 'sync' });
 async function load(selected?: number) {
   const current = ++generation; invalidate(); error.value = ''; loading.value = true;
   if (!Number.isSafeInteger(nodeId.value) || nodeId.value < 1 || nodeId.value > 2147483647) { error.value = 'Некорректный адрес мастерской.'; loading.value = false; return; }
@@ -51,6 +52,7 @@ async function preview() {
   if (blocked.value || !state.value || !recipe.value || !output.value || !Number.isSafeInteger(quantity.value) || !quantity.value || quantity.value < 1 || quantity.value > 100 || selectedRecipe.value?.locked_reasons.length) return;
   if (!sources.value.length || sources.value.length > 20 || state.value.equipment.some(e => !equipment.value[e.item_id])) return;
   const input: WorkspaceInput = { node_id: nodeId.value, recipe_id: recipe.value, quantity: quantity.value, source_storage_ids: [...sources.value], output_storage_id: output.value, equipment_instance_ids: state.value.equipment.map(e => equipment.value[e.item_id] as number).sort((a, b) => a - b) };
+  if (useObjectBudget.value) input.use_object_budget = true;
   const current = ++previewGeneration; calculating.value = true; calculation.value = null; error.value = ''; notice.value = '';
   try { const result = await previewWorkspace(input); if (!disposed && current === previewGeneration) calculation.value = { ...result, input }; }
   catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
@@ -86,6 +88,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
   n-spin(v-if="loading && !state" aria-label="Загрузка мастерской")
   template(v-if="state")
     n-alert(v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
+    p(v-if="state.quota") Доступно изготовлений за час: {{ state.quota.remaining }} из {{ state.quota.maximum }}. Ближайшее восстановление: {{ new Date(state.quota.restoresAt * 1000).toLocaleString('ru-RU') }}.
     .workspace-layout
       section.recipe-catalog(aria-label="Рецепты мастерской")
         .workspace-section-heading
@@ -107,6 +110,8 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
             h2 {{ selectedRecipe.name }}
           label Количество партий
             n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading || Boolean(pending)")
+          n-checkbox(v-if="state?.object_budget_payment" v-model:checked="useObjectBudget" :disabled="busy || Boolean(pending)") Оплатить из свободного бюджета объекта
+          p(v-if="useObjectBudget") Стоимость будет списана из бюджета текущего объекта; личный баланс не расходуется.
           p(v-if="calculating || loading" role="status") Рассчитываем материалы и стоимость…
           template(v-else-if="calculation")
             .material-tiles

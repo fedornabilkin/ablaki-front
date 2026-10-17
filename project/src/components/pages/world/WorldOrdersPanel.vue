@@ -52,6 +52,7 @@ section.world-orders#settlement-orders
   list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="loading" placeholder="Найти заказ" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка заказов")
   template(v-else-if="state")
+    p(v-if="state.quota") Сегодня доступно продаж: {{ state.quota.remaining }} из {{ state.quota.maximum }}; валовой выручки: {{ formatCredits(state.quota.grossRemaining) }} Cr. Лимит одной сдачи: {{ state.max_sale_quantity }} шт. Восстановление: {{ date(state.quota.restoresAt) }}.
     p(v-if="!state.site_node_id") Начальные заказы доступны игрокам со стартовой стоянкой в этом поселении.
     router-link(v-else :to="`/world/nodes/${state.site_node_id}`") Казна и бюджет вашей стоянки
     p(v-if="!state.items.length") Заказов по выбранным условиям нет.
@@ -64,7 +65,7 @@ section.world-orders#settlement-orders
         n-button(:theme-overrides="worldActionButtonTheme" v-if="order.status === 'open'" :disabled="!state.can_deliver || !order.my_remaining || !order.remaining_quantity || busy || Boolean(pending) || calculating" @click="selected = order.id") Выбрать сырьё для сдачи
         n-button(:theme-overrides="worldActionButtonTheme" v-if="state.can_publish && order.can_cancel" :disabled="busy || Boolean(pending) || calculating" @click="previewCancel(order.id)") Отменить остаток заказа
     page-pager(v-model:page="page" query-prefix="orders" :result="state" :disabled="busy")
-    world-order-delivery(v-if="chosen" :key="chosen.id" :node-id="nodeId" :session="session" :order="chosen" :writable="state.can_deliver" :command="command")
+    world-order-delivery(v-if="chosen" :key="chosen.id" :node-id="nodeId" :session="session" :order="chosen" :max-quantity="state.max_sale_quantity" :writable="state.can_deliver && (!state.quota || state.quota.remaining > 0)" :command="command")
     section(v-if="cancellation" aria-live="polite")
       p Заказ №{{ cancellation.input.order_id }} будет закрыт. Освободится {{ formatCredits(cancellation.released) }} Cr резерва бюджета.
       n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending)" @click="cancel") Подтвердить отмену остатка

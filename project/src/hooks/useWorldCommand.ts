@@ -64,7 +64,10 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
         const cells = body.cells ?? [{ x: body.x, y: body.y }];
         if (!Array.isArray(cells) || cells.length < 1 || cells.length > 100 || cells.some(c => !c || !Number.isSafeInteger(c.x) || !Number.isSafeInteger(c.y) || Math.abs(c.x) > 1000000 || Math.abs(c.y) > 1000000) || new Set(cells.map(c => `${c.x}:${c.y}`)).size !== cells.length || typeof body.top_up !== 'boolean' || (body.use_elixir !== undefined && typeof body.use_elixir !== 'boolean')) return;
         if (value.path.endsWith('/map-explore') && cells.length !== 1) return;
+      } else if (/^\/economy\/storage\/[1-9]\d*\/expand$/.test(value.path)) {
+        if (typeof body.code !== 'string' || !/^[a-z][a-z0-9-]{0,79}$/.test(body.code) || Object.keys(body).some(key => !['code', 'request_key', 'quote_id', 'expected_revisions'].includes(key))) return;
       } else if (value.path === '/workspace/craft') {
+        if (body.use_object_budget !== undefined && typeof body.use_object_budget !== 'boolean') return;
         const validId = (id: unknown) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
         if (['node_id', 'recipe_id', 'quantity', 'output_storage_id'].some(key => !validId(body[key])) || body.quantity > 100) return;
         for (const [field, max] of [['source_storage_ids', 20], ['equipment_instance_ids', 100]] as const) {

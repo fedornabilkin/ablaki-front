@@ -13,7 +13,7 @@ export function parseCultivation(value: unknown) {
   return { bed_id: integer(row.bed_id, 1), dug: bool(row.dug), writable: bool(row.writable), server_time: integer(row.server_time),
     cycle: c ? { id: integer(c.id, 1), crop_revision_id: integer(c.crop_revision_id, 1), name: text(c.name), state: String(c.state),
       ready_at: integer(c.ready_at), water_due_at: time(c.water_due_at), water_deadline_at: time(c.water_deadline_at), expires_at: integer(c.expires_at),
-      water_missed: bool(c.water_missed), can_water: bool(c.can_water), yield_factor_bps: integer(c.yield_factor_bps, 5000, 10000) } : null };
+      water_missed: bool(c.water_missed), can_water: bool(c.can_water), yield_factor_bps: integer(c.yield_factor_bps, 0, 10000), event_loss_bps: c.event_loss_bps === undefined ? 0 : integer(c.event_loss_bps, 0, 10000) } : null };
 }
 export async function loadCultivation(bed: number) { return parseCultivation((await apiClient.get(config.makeApiUrl(`v1/world/beds/${integer(bed, 1)}/cultivation`))).data); }
 export async function loadCrops(page = 1) {

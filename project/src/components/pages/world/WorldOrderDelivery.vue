@@ -8,13 +8,13 @@ import { useListQuery } from '@/hooks/useListQuery';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadOrderStock, previewOrderDelivery, type StarterOrder } from '@/services/api/worldOrders';
 import { worldError } from '@/services/api/world';
-const props = defineProps<{ nodeId: number; session: number; order: StarterOrder; writable: boolean; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number; session: number; order: StarterOrder; maxQuantity?: number; writable: boolean; command: WorldCommandRunner }>();
 const { page } = useListQuery({}, { prefix: 'orderstock' });
 const stock = shallowRef<Awaited<ReturnType<typeof loadOrderStock>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewOrderDelivery>> | null>(null);
 const inventory = ref<number | null>(null), quantity = ref<number | null>(1), error = ref(''), loading = ref(false), calculating = ref(false);
 const { busy, pending } = props.command;
 const selected = computed(() => stock.value?.items.find(item => item.id === inventory.value));
-const maximum = computed(() => Math.min(10000, selected.value?.quantity ?? 0, props.order.remaining_quantity, props.order.my_remaining));
+const maximum = computed(() => Math.min(props.maxQuantity ?? 10000, selected.value?.quantity ?? 0, props.order.remaining_quantity, props.order.my_remaining));
 const options = computed(() => stock.value?.items.map(item => ({ value: item.id, label: `Ячейка ${item.position}: ${item.quantity} шт.` })) ?? []);
 let generation = 0, previewGeneration = 0, disposed = false;
 function clear() { previewGeneration++; quote.value = null; calculating.value = false; }

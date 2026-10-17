@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton, NTooltip, NSkeleton } from 'naive-ui';
+import { NAlert, NButton, NTooltip, NSkeleton, NCheckbox } from 'naive-ui';
 import BuildSettingsModal from './modals/BuildSettingsModal.vue';
 import type { WorldNode, WorldMapData } from '@/entities/world/types';
 import type { MapPoint } from '@/entities/world/coordinates';
@@ -11,6 +11,7 @@ import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { formatDuration } from '@/entities/world/duration';
+import { formatCredits } from '@/entities/world/credits';
 const props = defineProps<{ node: WorldNode; map: WorldMapData | null; selection: MapPoint[]; owner: number; session: number; revision: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const choices = ref<Template[]>([]), project = ref<Build | null>(null), open = ref(false), error = ref(''), loading = ref(false), name = ref('');
@@ -18,6 +19,7 @@ const runner = useSimpleWorldCommand(computed(() => `${props.owner}.${props.node
 const cell = computed(() => selectedFreeCell(props.selection, props.map));
 const craftHref = useCampsiteCraft(computed(() => props.session), computed(() => props.node));
 const missingResources = computed(() => choices.value.some(item => item.available === false));
+const personalContribution = ref(false);
 const blocked = computed(() => !props.writable || !props.node.owned_by_me || props.node.status !== 'active' || loading.value || runner.busy.value || !!runner.pending.value);
 let generation = 0;
 watch(() => [props.node.id, props.session, props.revision], async () => {
@@ -40,7 +42,8 @@ async function choose(item: Template) {
   if (blocked.value || !cell.value || item.available !== true) return;
   const current = generation;
   project.value = null; name.value = item.name; open.value = true;
-  const result = await runner.submit('builds', { parent_id: props.node.id, template_id: item.id, name: item.name, labor_budget: '0', x: cell.value.x, y: cell.value.y });
+  const result = await runner.submit('builds', { parent_id: props.node.id, template_id: item.id, name: item.name, labor_budget: '0', x: cell.value.x, y: cell.value.y,
+    ...(item.economy ? { terms_digest: item.economy.terms_digest, top_up: personalContribution.value } : {}) });
   if (current === generation) accept(result);
 }
 async function retry() { const current = generation, settings = runner.pending.value?.path.endsWith('/settings'); const result = await runner.retry(); if (current === generation) accept(result, settings); }
@@ -50,6 +53,9 @@ onScopeDispose(() => { generation++; });
 section.build-palette(v-if="loading || choices.length || error" aria-label="Доступные объекты")
   h3 Можно построить здесь
   p(v-if="!cell") Выберите свободную открытую ячейку на карте.
+  template(v-if="choices.some(item => item.economy)")
+    p Цена списывается из бюджета текущего объекта. Материалы нужны отдельно; труд владельца бесплатный. Бюджет помощников задаётся отдельно после создания.
+    n-checkbox(v-model:checked="personalContribution" :disabled="blocked") Внести недостающую сумму из личных кредитов
   p(v-if="missingResources")
     router-link(:to="craftHref") Не хватает ресурсов? Открыть крафт →
   n-alert(v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
@@ -64,7 +70,8 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
             font-awesome-icon(:icon="icon(item)" aria-hidden="true")
             strong {{ item.name }}
             small {{ item.material_summary || 'Материалы не нужны' }}
-            span {{ formatDuration(item.world_build_seconds ?? item.build_seconds) }} мира
+            span(v-if="item.economy") {{ formatCredits(item.economy.price_cr) }} Cr · {{ formatDuration(item.build_seconds) }} реального труда
+            span(v-else) {{ formatDuration(item.world_build_seconds ?? item.build_seconds) }} мира
       | {{ reason(item) }}
   build-settings-modal(v-model:show="open" :project="project" :name="name" :owner="owner" :session="session" :creating="runner.busy.value" :creation-error="runner.error.value" navigate @saved="emit('changed')")
 </template>

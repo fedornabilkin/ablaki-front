@@ -2,6 +2,7 @@ import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
+import { parseEconomyQuota } from './worldEconomyQuota';
 const invalid = (): never => { throw new Error('invalid-order-response'); };
 const id = (value: unknown) => integer(value, 1, 2147483647);
 const text = (value: unknown, max = 255): string => typeof value === 'string' && value.length <= max ? value : invalid();
@@ -26,7 +27,7 @@ export async function loadOrders(node: number, params: Record<string, unknown>) 
   });
   const site = r.site_node_id === null ? null : id(r.site_node_id), canDeliver = bool(r.can_deliver);
   if (canDeliver && site === null) invalid();
-  return { ...list, site_node_id: site, can_deliver: canDeliver, can_publish: bool(r.can_publish), server_time: integer(r.server_time) };
+  return { ...list, site_node_id: site, can_deliver: canDeliver, can_publish: bool(r.can_publish), quota: parseEconomyQuota(r.quota), max_sale_quantity: r.max_sale_quantity === undefined ? 10000 : integer(r.max_sale_quantity, 1, 10000), server_time: integer(r.server_time) };
 }
 export type StarterOrder = Awaited<ReturnType<typeof loadOrders>>['items'][number];
 export async function loadOrderItems(node: number, params: Record<string, unknown>) {

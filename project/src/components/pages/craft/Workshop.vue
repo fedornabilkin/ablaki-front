@@ -15,6 +15,8 @@ import { loadCraftHistory, craftError, type CraftEvent } from '@/services/api/cl
 import { craftRequirements } from '@/entities/craft/classic';
 import { date } from '@/services/api/portal';
 import WorldWorkspaceNav from '../world/WorldWorkspaceNav.vue';
+import WorldEconomyHistory from '../world/WorldEconomyHistory.vue';
+import WorldMvpProgress from '../world/WorldMvpProgress.vue';
 import WorldWorkspaceHero from '../world/WorldWorkspaceHero.vue';
 import { workspaceNode } from '@/entities/world/workspaceNavigation';
 const store = useStore();
@@ -153,8 +155,10 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
             small Выход: {{ r.output_quantity }} шт.
             router-link(:to="{ path: craftHref, query: { recipe_id: r.id } }") Изготовить →
         p(v-if="!filtered.length") Рецептов по этому фильтру нет.
+      world-mvp-progress(v-if="tab === 'inventory'" :owner="Number(store.getters['auth/user']?.id ?? 0)" :session="Number(session)" :revision="0" :writable="!blocked")
       craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command" @submit="craft.submit")
       section.workshop-content(v-if="tab === 'history'" aria-label="История крафта")
+        world-economy-history(:session="session")
         n-alert(v-if="historyError" type="error") {{ historyError }}
         n-button(:theme-overrides="worldActionButtonTheme" :loading="historyLoading" @click="refreshHistory") Обновить историю
         .history-table
