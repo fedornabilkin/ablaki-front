@@ -14,6 +14,7 @@ import WorldMap from './WorldMap.vue';
 import WorldNodeStatistics from './WorldNodeStatistics.vue';
 import WorldManagement from './WorldManagement.vue';
 import WorldStartPanel from './WorldStartPanel.vue';
+import WorldMvpProgress from './WorldMvpProgress.vue';
 import WorldStoragePanel from './WorldStoragePanel.vue';
 import WorldEconomyPanel from './WorldEconomyPanel.vue';
 import WorldFinancePolicy from './WorldFinancePolicy.vue';
@@ -177,6 +178,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
     world-start-panel.world-content-card(v-show="activeTab === 'map'" :node="world.node" :writable="Boolean(world.capabilities?.world_write)" :owner="owner" :session="session" @changed="changed([world.node.id])")
+    world-mvp-progress(v-show="activeTab === 'map'" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
     world-node-extensions(v-show="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
 

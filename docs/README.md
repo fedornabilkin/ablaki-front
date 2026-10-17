@@ -7,7 +7,9 @@
 | [operations](operations/) | Инструкции сборки, выкладки и настройки окружений. |
 | [reports](reports/) | Сохранённые итоговые отчёты прошлых проверок. |
 
-Основные документы: [план интерфейса мира](plan/2026-09-26-world-frontend.md), [страницы и интеграция](reference/working-frontend-pages.md), [выкладка](operations/deployment-github-vps.md).
+Актуальный приоритет: сначала экономика — [общий интерфейс закрытого теста](plan/2026-10-15-world-closed-test-ui.md) и [новый контент CONUI](plan/2026-10-16-world-economy-content-ui.md) по [economy.md](../../back/docs/tz/economy.md), затем [рынок MUI](plan/2026-10-16-world-market-ui.md) по [bazar.md](../../back/docs/tz/bazar.md): NPC, наблюдение, P2P. Зависимости и допуск — в [общей очереди](../../back/docs/plan/2026-10-15-world-closed-test.md). Переводы уже реализованы на `/transfer`; банк, оплата и пополнение не предусмотрены.
+
+Основные документы (план мира сохраняет дальнейшее развитие): [план интерфейса мира](plan/2026-09-26-world-frontend.md), [страницы и интеграция](reference/working-frontend-pages.md), [выкладка](operations/deployment-github-vps.md).
 
 Общие ТЗ хранятся в [backend/docs/tz](../../back/docs/tz/README.md), [контракт мира](../../back/docs/architecture/simple-world-api.md) — в архитектуре backend, [инструкция Insomnia](../../back/docs/operations/insomnia.md) — в эксплуатационной документации.
 

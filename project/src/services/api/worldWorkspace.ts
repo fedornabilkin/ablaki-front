@@ -2,6 +2,7 @@ import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { parseStorageHeader } from './worldStorage';
+import { parseEconomyQuota } from './worldEconomyQuota';
 
 const invalid = (): never => { throw new Error('invalid-workspace-response'); };
 const id = (value: unknown) => integer(value, 1, 2147483647);
@@ -26,9 +27,9 @@ export function parseWorkspace(value: unknown) {
   const recipe = r.recipe_id === null ? null : id(r.recipe_id);
   if (recipe !== null && !recipes.some(r => r.id === recipe)) invalid();
   if (new Set(recipes.map(r => r.id)).size !== recipes.length || new Set(equipment.map(e => e.item_id)).size !== equipment.length || new Set(storages.map(s => s.id)).size !== storages.length) invalid();
-  return { node_id: id(r.node_id), name: text(r.name, 120), recipe_id: recipe, recipes, equipment, storages, writable: boolean(r.writable), server_time: integer(r.server_time) };
+  return { node_id: id(r.node_id), name: text(r.name, 120), recipe_id: recipe, recipes, equipment, storages, ...(r.quota ? { quota: parseEconomyQuota(r.quota) } : {}), object_budget_payment: r.object_budget_payment === undefined ? false : boolean(r.object_budget_payment), writable: boolean(r.writable), server_time: integer(r.server_time) };
 }
-export interface WorkspaceInput { node_id: number; recipe_id: number; quantity: number; source_storage_ids: number[]; output_storage_id: number; equipment_instance_ids: number[] }
+export interface WorkspaceInput { node_id: number; recipe_id: number; quantity: number; source_storage_ids: number[]; output_storage_id: number; equipment_instance_ids: number[]; use_object_budget?: boolean }
 export function parseWorkspaceTerms(value: unknown) {
   const r = record(value), output = record(r.output);
   if (typeof r.price !== 'string' || !/^(0|[1-9]\d{0,8})\.0000$/.test(r.price) || r.currency !== 'Cr') invalid();

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton } from 'naive-ui';
+import { NAlert, NButton, NCheckbox } from 'naive-ui';
+import { formatCredits } from '@/entities/world/credits';
 import { loadCultivation, loadCrops, previewCultivation, type CultivationAction } from '@/services/api/worldCultivation';
 import { worldError } from '@/services/api/world';
 import type { WorldQuote } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ bedId: number; session: number; command: WorldCommandRunner; droppedCrop?: { id: number; sequence: number } | null }>();
+const personalContribution = ref(false);
 const state = shallowRef<Awaited<ReturnType<typeof loadCultivation>> | null>(null), crops = shallowRef<Awaited<ReturnType<typeof loadCrops>>['items']>([]);
 const error = ref(''), loading = ref(false), calculating = ref(false), selected = ref<number | null>(null), page = ref(1), pages = ref(1);
 const quote = shallowRef<{ action: CultivationAction; input: Record<string, unknown>; value: WorldQuote } | null>(null);
@@ -36,7 +38,7 @@ async function load() {
 async function preview(action: CultivationAction) {
   if (locked.value || (action === 'sow' && !selected.value)) return;
   const current = ++previewGeneration; calculating.value = true; error.value = ''; quote.value = null;
-  const input = action === 'sow' ? { crop_revision_id: selected.value } : {};
+  const input = { ...(action === 'sow' ? { crop_revision_id: selected.value } : {}), ...(personalContribution.value ? { top_up: true } : {}) };
   try { const value = await previewCultivation(props.bedId, action, input); if (!disposed && current === previewGeneration) quote.value = { action, input, value }; }
   catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
@@ -62,7 +64,8 @@ async function execute() {
 }
 watch([() => props.bedId, () => props.session, page], () => { state.value = null; void load(); }, { immediate: true });
 watch(selected, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
-watch([primaryAction, selected, loading, props.command.busy, props.command.pending], () => { if (primaryAction.value && !locked.value && !quote.value) void preview(primaryAction.value); }, { flush: 'post' });
+watch(personalContribution, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
+watch([primaryAction, selected, personalContribution, loading, props.command.busy, props.command.pending], () => { if (primaryAction.value && !locked.value && !quote.value) void preview(primaryAction.value); }, { flush: 'post' });
 const pendingSeed = ref<number | null>(null);
 function dragSeed(event: DragEvent, id: number) { if (event.dataTransfer) { event.dataTransfer.setData('application/x-ablaki-crop', String(id)); event.dataTransfer.effectAllowed = 'copy'; } }
 function plantDropped(id: number) {
@@ -114,7 +117,7 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
             span {{ page }} / {{ pages }}
             n-button(:theme-overrides="worldActionButtonTheme" :disabled="page >= pages || locked" @click="page++") Далее
           template(v-if="crop")
-            p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }} · Рост: {{ duration(crop.grow_seconds) }}
+            p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }} · Рост: {{ duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds) }}
             p(v-if="crop.water_quantity") Полив каждые {{ duration(crop.water_interval_seconds) }}, окно полива — {{ duration(crop.water_window_seconds) }}.
             p Соберите урожай в течение {{ duration(crop.harvest_window_seconds) }} после созревания.
           n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Посадить семена
@@ -123,6 +126,7 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
       h3 {{ cycle.name }}
       n-alert(v-if="cycle.state === 'expired'" type="error") Урожай погиб: срок сбора истёк. Уберите остатки, чтобы подготовить новый посев.
       n-alert(v-else-if="cycle.water_missed" type="warning") Полив пропущен. Урожай уменьшен вдвое; рост продолжается.
+      n-alert(v-if="cycle.event_loss_bps" type="warning") Погодные события уменьшили урожай на {{ cycle.event_loss_bps / 100 }}%. Защита теплицы уже учтена.
       .cultivation-metrics
         .cultivation-card
           span {{ now < cycle.ready_at ? 'До созревания' : 'Урожай созрел' }}
@@ -140,7 +144,8 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" @click="preview('cancel')") {{ cycle.state === 'expired' ? 'Убрать погибший урожай' : 'Убрать посев' }}
     .cultivation-card(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
-      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}. Списание Cr: 0.
+      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}. Из бюджета огорода: {{ formatCredits(typeof quote.value.terms.price_cr === 'string' ? quote.value.terms.price_cr : '0.0000') }} Cr.
+      n-checkbox(v-if="quote.action !== 'cancel'" v-model:checked="personalContribution" :disabled="locked") Внести недостающую сумму из личных кредитов
       p(v-if="quote.action === 'cancel'") Посев будет убран без возврата семян и воды.
       p(v-for="(material, i) in materials" :key="i" :class="{ missing: !material.available }") {{ material.name }}: {{ material.have }} / {{ material.quantity }} · {{ material.available ? 'Хватает' : 'Недостаточно' }}
       p(v-if="tool" :class="{ missing: !tool.available }") {{ tool.name }}: {{ tool.durability }} прочности · {{ tool.available ? 'Доступна' : 'Нужна исправная лопата в рюкзаке' }}

@@ -9,6 +9,7 @@ import type { WorldNode, WorldMapData } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldChestRepair from './WorldChestRepair.vue';
 import WorldStorageGrid from './WorldStorageGrid.vue';
+import WorldStorageExpansion from './WorldStorageExpansion.vue';
 
 const props = defineProps<{ nodeId: number | null; node?: WorldNode; map?: WorldMapData | null; storageId?: number; session: number; revision?: number; writable: boolean; command: WorldCommandRunner }>();
 const headers = shallowRef<StorageHeader[]>([]), view = shallowRef<StorageView | null>(null), targetView = shallowRef<StorageView | null>(null);
@@ -182,6 +183,7 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
         n-skeleton(v-for="slot in 6" :key="slot" height="100px" :sharp="false")
       template(v-else-if="panel.view")
         small {{ panel.view.items.length }} / {{ panel.view.storage.capacity }} мест занято
+        world-storage-expansion(:storage="panel.view.storage.id" :session="session" :revision="panel.view.storage.revision" :writable="writable" :command="command" @changed="refreshContents()")
         p(v-if="!props.writable || !panel.view.writable") Только просмотр
         .transfer-controls(v-if="item && source?.storage.id === panel.view.storage.id")
           strong {{ item.name }}
