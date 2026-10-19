@@ -1,7 +1,7 @@
 import { gardenInput, loadGarden } from '../src/services/api/worldGarden';
 import { harvestInput, loadHarvest } from '../src/services/api/worldHarvest';
 import { occupiesCell } from '../src/entities/world/coordinates';
-import { parseWorldNode } from '../src/services/api/world';
+import { isClosedTestError, parseWorldNode } from '../src/services/api/world';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../src/services/httpClient';
 import { loadStorageContents } from '../src/services/api/worldStorage';
@@ -13,6 +13,11 @@ function page(number: number, revision = 3) {
     slots: [], container: null, location: null, writable: true, server_time: 1, _meta: { totalCount: 2, perPage: 1, currentPage: number, pageCount: 2 } };
 }
 afterEach(() => vi.restoreAllMocks());
+it('offers testing access help only for the explicit closed-test denial', () => {
+  expect(isClosedTestError({ isAxiosError: true, response: { status: 403, data: { code: 'CLOSED_TEST_ACCESS_REQUIRED' } } })).toBe(true);
+  expect(isClosedTestError({ isAxiosError: true, response: { status: 403, data: { code: 'STORAGE_FORBIDDEN' } } })).toBe(false);
+  expect(isClosedTestError(new Error('offline'))).toBe(false);
+});
 describe('complete storage grids', () => {
   it('loads occupied cells from every page before offering destinations', async () => {
     const get = vi.spyOn(apiClient, 'get').mockResolvedValueOnce({ data: page(1) }).mockResolvedValueOnce({ data: page(2) });

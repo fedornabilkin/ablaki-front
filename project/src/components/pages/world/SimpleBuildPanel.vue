@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import WorldHelpHint from './WorldHelpHint.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { NAlert, NButton, NModal, NProgress, NTooltip } from 'naive-ui';
@@ -110,7 +111,12 @@ onScopeDispose(() => { disposed = true; epoch++; halt(); clearInterval(animation
 </script>
 <template lang="pug">
 section.build-information(aria-label="Строительство")
-  h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
+  .build-heading
+    h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
+    world-help-hint(label="Условия строительных работ")
+      p Бюджет помощников: {{ formatCredits(project?.labor_budget ?? '0') }} Cr. Владелец работает бесплатно.
+      p Время учитывается, пока эта страница открыта и есть связь с сервером.
+      p После обрыва связи учитывается не больше 60 дополнительных секунд.
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
@@ -120,9 +126,6 @@ section.build-information(aria-label="Строительство")
         p Прочность {{ strength }} / {{ maximum }}
         n-progress(type="line" :percentage="Math.min(100, 100 * seconds / Math.max(1, project.required_seconds))" :show-indicator="false")
       font-awesome-icon.build-sync(icon="spinner" :spin="busy || polling" :class="{ active: busy || polling }" :title="busy || polling ? 'Сверяем прогресс' : 'Прогресс синхронизирован'" aria-label="Синхронизация прогресса")
-    p Бюджет помощников: {{ formatCredits(project.labor_budget) }} Cr. Владелец работает бесплатно.
-    p Время учитывается, пока эта страница открыта и есть связь с сервером.
-    p После обрыва связи учитывается не больше 60 дополнительных секунд.
     .build-actions
       n-button(:theme-overrides="worldActionButtonTheme" v-if="!working" type="primary" :disabled="busy || uncertain" @click="start")
         template(#icon)
@@ -138,10 +141,10 @@ section.build-information(aria-label="Строительство")
             template(#icon)
               font-awesome-icon(icon="pencil-alt")
         | Название и бюджет
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="owner === project.owner_user_id" :disabled="busy || uncertain" @click="requestCancel")
+      n-button(:theme-overrides="worldDangerButtonTheme" type="error" v-if="owner === project.owner_user_id" :disabled="busy || uncertain" @click="requestCancel")
         template(#icon)
           font-awesome-icon(icon="times")
-        | {{ repairing ? 'Завершить ремонт досрочно' : 'Отменить стройку' }}
+        | {{ repairing ? 'Завершить ремонт досрочно' : 'Отменить' }}
   p(v-else-if="!project || project.status !== 'building'") Здесь сейчас нет доступной стройки.
   build-settings-modal(v-model:show="settingsOpen" :project="project" :name="node.name" :owner="owner" :session="session" @saved="refresh(); emit('changed')")
   n-modal(v-model:show="cancelOpen" :theme-overrides="worldModalTheme" preset="card" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
@@ -151,8 +154,9 @@ section.build-information(aria-label="Строительство")
     .build-actions
       n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="cancelOpen = false") Продолжить строительство
       n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
-      n-button(:theme-overrides="worldActionButtonTheme" v-else :loading="busy" :disabled="busy" @click="cancelBuild") Подтвердить отмену
+      n-button(:theme-overrides="worldDangerButtonTheme" type="error" v-else :loading="busy" :disabled="busy" @click="cancelBuild") Отменить
 </template>
 <style scoped>
+.build-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }.build-heading h3 { margin: 0; }
 .build-information { display: grid; gap: .75rem; }.build-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }.build-progress-row { display: grid; grid-template-columns: minmax(0, 1fr) 1rem; gap: .5rem; align-items: start; }.build-progress { display: grid; gap: .5rem; }.build-progress p { margin: 0; }.build-sync { opacity: .3; }.build-sync.active { opacity: 1; color: var(--primary); }
 </style>

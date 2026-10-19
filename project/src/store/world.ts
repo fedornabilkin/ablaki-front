@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { reactive, ref, shallowRef } from 'vue';
 import { isAxiosError } from 'axios';
-import { loadWorldScreen, worldError } from '@/services/api/world';
+import { isClosedTestError, loadWorldScreen, worldError } from '@/services/api/world';
 import type { WorldCapabilities, WorldNode, WorldPage, WorldMapData, WorldTreeNode } from '@/entities/world/types';
 import { mergeWorldTree, screenTree } from '@/entities/world/tree';
 
@@ -12,14 +12,14 @@ export const useWorldStore = defineStore('server-world', () => {
   const breadcrumbs = shallowRef<WorldNode[]>([]);
   const map = ref<WorldMapData | null>(null);
   const siblings = shallowRef<WorldPage>(emptyPage());
-  const loading = ref(false), error = ref(''), dataRevision = ref(0);
+  const loading = ref(false), error = ref(''), closedTest = ref(false), dataRevision = ref(0);
   let session: number | null = null, request = 0;
   function setSession(next: number) {
     if (next === session) return;
-    session = next; request++; nodes.clear(); world.value = null; capabilities.value = null; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); error.value = ''; loading.value = false; dataRevision.value++;
+    session = next; request++; nodes.clear(); world.value = null; capabilities.value = null; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); error.value = ''; closedTest.value = false; loading.value = false; dataRevision.value++;
   }
   async function load(id: number | null, preserve = false) {
-    const current = ++request; loading.value = true; error.value = '';
+    const current = ++request; loading.value = true; error.value = ''; closedTest.value = false;
     // Keep the current screen mounted while Vue loads the next level.
     // Session changes still clear private data synchronously in setSession.
     try {
@@ -37,7 +37,7 @@ export const useWorldStore = defineStore('server-world', () => {
         exploration: node.value.map?.exploration ?? screen.map.exploration, pricing: node.value.map?.pricing ?? screen.map.pricing, can_expand: node.value.map?.can_expand ?? screen.map.can_expand } : null;
       if (nextMap && map.value?.node_id === nextMap.node_id) Object.assign(map.value, nextMap); else map.value = nextMap;
       siblings.value = { ...screen.navigation.siblings, items: screen.navigation.siblings.items.map(item => nodes.get(item.id)!) };
-    } catch (cause) { if (current === request) { error.value = worldError(cause); if (node.value?.id !== id || isAxiosError(cause) && [401, 403, 404].includes(cause.response?.status ?? 0)) { nodes.clear(); world.value = null; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); } } }
+    } catch (cause) { if (current === request) { error.value = worldError(cause); closedTest.value = isClosedTestError(cause); if (node.value?.id !== id || isAxiosError(cause) && [401, 403, 404].includes(cause.response?.status ?? 0)) { nodes.clear(); world.value = null; node.value = null; breadcrumbs.value = []; map.value = null; siblings.value = emptyPage(); } } }
     finally { if (current === request) loading.value = false; }
   }
   function invalidate(ids: number[], preserve = false) {
@@ -46,5 +46,5 @@ export const useWorldStore = defineStore('server-world', () => {
     dataRevision.value++;
   }
   function cancel() { request++; loading.value = false; }
-  return { world, capabilities, node, breadcrumbs, map, siblings, loading, error, dataRevision, setSession, load, invalidate, cancel };
+  return { world, capabilities, node, breadcrumbs, map, siblings, loading, error, closedTest, dataRevision, setSession, load, invalidate, cancel };
 });

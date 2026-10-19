@@ -220,6 +220,9 @@ export async function loadWorldOnboarding(): Promise<WorldOnboarding> {
   return { world_id: integer(row.world_id, 1), joined: boolean(row.joined), starter_site_id: nullableId(row.starter_site_id), joined_at: nullableId(row.joined_at), grace_until: nullableId(row.grace_until), server_time: integer(row.server_time), join_available: boolean(row.join_available) };
 }
 export async function previewWorldJoin(settlement: number) { return parseWorldQuote((await apiClient.post(url('/onboarding/preview'), { settlement_id: integer(settlement, 1) })).data); }
+export function isClosedTestError(cause: unknown): boolean {
+  return isAxiosError(cause) && cause.response?.data?.code === 'CLOSED_TEST_ACCESS_REQUIRED';
+}
 export function worldError(cause: unknown): string {
   if (isAxiosError(cause)) {
     const data = cause.response?.data;

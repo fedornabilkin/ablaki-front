@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
-import { discountedCredits, formatCredits } from '@/entities/world/credits';
+import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInputNumber, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -63,9 +63,9 @@ section.equipment-expansion
         p(v-if="!state.writable") Покупки сейчас недоступны. Помещение должно действовать, а экономика и хранение мира — быть включены.
         label Количество следующих мест
           n-input-number(v-model:value="quantity" :min="1" :max="state.expansion.limit - state.expansion.unlocked" :precision="0" :disabled="locked")
-        n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
+        n-checkbox(v-if="needsPersonalTopUp(price, state.available)" v-model:checked="topUp" :disabled="locked") Добавить с баланса
         p(v-if="quantity && quantity >= 3") В стоимость включена скидка 5%.
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !price" @click="preview") Открыть {{ quantity }} · {{ formatCredits(price) }} Cr
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !price" @click="preview") Открыть {{ quantity }}{{ creditCost(price) }}
 </template>
 <style scoped>
 .equipment-expansion { display: grid; gap: .75rem; }

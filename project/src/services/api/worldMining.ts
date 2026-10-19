@@ -3,6 +3,7 @@ import config from '@/config/config';
 import { record } from './world';
 export interface SourceAction { code: string; work_seconds: number; cooldown_seconds: number; available_at?: number; experience?: number; output: { code: string; name: string; quantity: number }[]; tools: string[]; tool_names?: string[]; daily_limit: number | null }
 export interface MiningState { node_id: number; ready: boolean; working: boolean; workers: number; produced_quantity: number; pending_quantity: number; seconds_per_unit: number; server_time: number;
+  work_id?: number | null; required_seconds?: number; live_work?: { accounted_at: number; last_seen_at: number }[];
   actions?: SourceAction[]; worked_seconds?: number; action_code?: string | null; output_storage_id?: number | null; blocked_message?: string | null; quota?: { maximum: number; remaining: number; restores_at: number } }
 export function parseMining(value: unknown): MiningState {
   const row = record(value);
@@ -25,6 +26,10 @@ export function parseMining(value: unknown): MiningState {
   }
   const quota = row.quota === undefined || row.quota === null ? undefined : record(row.quota);
   return { node_id: integer('node_id'), ready: row.ready, working: row.working, workers: integer('workers'), produced_quantity: integer('produced_quantity'), pending_quantity: integer('pending_quantity'), seconds_per_unit: integer('seconds_per_unit'), server_time: integer('server_time'),
+    ...(row.worked_seconds === undefined ? {} : { worked_seconds: uint(row.worked_seconds) }),
+    ...(row.work_id === undefined ? {} : { work_id: row.work_id === null ? null : uint(row.work_id) }),
+    ...(row.required_seconds === undefined ? {} : { required_seconds: uint(row.required_seconds) }),
+    ...(row.live_work === undefined ? {} : { live_work: (() => { if (!Array.isArray(row.live_work) || row.live_work.length > 1000) throw new Error('invalid-world-response'); return row.live_work.map(value => { const worker = record(value); return { accounted_at: uint(worker.accounted_at), last_seen_at: uint(worker.last_seen_at) }; }); })() }),
     ...(actions ? { actions, worked_seconds: uint(row.worked_seconds), action_code: row.action_code === null ? null : string(row.action_code), blocked_message: row.blocked_message === null ? null : string(row.blocked_message) } : {}),
     ...(row.output_storage_id === undefined ? {} : { output_storage_id: row.output_storage_id === null ? null : uint(row.output_storage_id) }),
     ...(quota ? { quota: { maximum: uint(quota.maximum), remaining: uint(quota.remaining), restores_at: uint(quota.restores_at) } } : {}) };

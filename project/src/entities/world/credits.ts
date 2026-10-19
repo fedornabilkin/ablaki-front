@@ -22,6 +22,21 @@ export function formatCredits(value: unknown): string {
   return `${negative && tenths ? '-' : ''}${tenths / 10n}${tenths % 10n ? `.${tenths % 10n}` : ''}`;
 }
 
+/** Compare wire amounts without rounding display values or using floating point. */
+export function creditUnits(value: string): bigint {
+  if (!/^(0|[1-9]\d*)(\.\d{1,4})?$/.test(value)) throw new Error('invalid-credit-amount');
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0'));
+}
+export function needsPersonalTopUp(price: string | null | undefined, available: string | null | undefined): boolean {
+  return price != null && available != null && creditUnits(price) > creditUnits(available);
+}
+export function creditCost(price: string | null | undefined): string {
+  if (price == null || creditUnits(price) === 0n) return '';
+  const rounded = formatCredits(price);
+  return ` · ${rounded === '0' ? price.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') : rounded} Cr`;
+}
+
 export function discountedCredits(prices: string[], discountBps = 0): string {
   if (!Number.isSafeInteger(discountBps) || discountBps < 0 || discountBps > 10000) throw new Error('invalid-discount');
   const gross = prices.reduce((sum, value) => sum + BigInt(creditAmount(value).replace('.', '')), 0n);

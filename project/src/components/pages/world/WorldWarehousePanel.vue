@@ -5,10 +5,12 @@ import { NAlert, NButton, NCheckbox, NProgress } from 'naive-ui';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote, worldError } from '@/services/api/world';
-import { formatCredits, creditAmount } from '@/entities/world/credits';
+import { formatCredits, creditAmount, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
+import { useWorldBudget } from '@/hooks/useWorldBudget';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 const props = defineProps<{ nodeId: number; session: number; command: WorldCommandRunner }>();
 const state = shallowRef<{ capacity: number; used: number; limit: number; next_price: string | null; finance_node_id: number; writable: boolean } | null>(null);
+const { available: availableBudget, refresh: refreshBudget } = useWorldBudget(computed(() => state.value?.finance_node_id ?? null), computed(() => props.session));
 const error = ref(''), loading = ref(false), topUp = ref(true); let generation = 0, disposed = false;
 const locked = computed(() => loading.value || props.command.busy.value || Boolean(props.command.pending.value) || !state.value?.writable);
 const url = (suffix = '') => config.makeApiUrl(`v1/world/nodes/${props.nodeId}/warehouse${suffix}`);
@@ -24,13 +26,13 @@ async function load() {
 }
 async function preview() {
   if (locked.value || !state.value?.next_price) return;
-  const expectedPrice = state.value.next_price, input = { top_up: topUp.value }, current = ++generation; loading.value = true; error.value = '';
+  const expectedPrice = state.value.next_price, input = { top_up: topUp.value && needsPersonalTopUp(state.value.next_price, availableBudget.value) }, current = ++generation; loading.value = true; error.value = '';
   try {
     const q = parseWorldQuote((await apiClient.post(url('-expand-preview'), input)).data);
     if (disposed || current !== generation) return;
     if (q.terms.price !== expectedPrice) { error.value = 'Цена изменилась. Обновите страницу перед расширением.'; return; }
     await props.command.submit(`/nodes/${props.nodeId}/warehouse-expand`, input, q);
-    if (!disposed && current === generation && !props.command.pending.value && !props.command.error.value) await load();
+    if (!disposed && current === generation && !props.command.pending.value && !props.command.error.value) { await load(); void refreshBudget(); }
   }
   catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed && current === generation) loading.value = false; }
@@ -50,8 +52,8 @@ section.warehouse-panel
     router-link(:to="`/world/nodes/${state.finance_node_id}#finance`") Бюджет для оплаты
     template(v-if="state.next_price")
       p Следующая ячейка: {{ formatCredits(state.next_price) }} Cr. Каждая последующая стоит дороже.
-      n-checkbox(v-model:checked="topUp" :disabled="locked") Доплатить с личного баланса, если бюджета недостаточно
-      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" :loading="loading" @click="preview") Открыть ячейку · {{ formatCredits(state.next_price) }} Cr
+      n-checkbox(v-if="needsPersonalTopUp(state.next_price, availableBudget)" v-model:checked="topUp" :disabled="locked") Добавить с баланса
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" :loading="loading" @click="preview") Открыть ячейку{{ creditCost(state.next_price) }}
 </template>
 <style scoped>
 .warehouse-panel { display: grid; gap: .75rem; }

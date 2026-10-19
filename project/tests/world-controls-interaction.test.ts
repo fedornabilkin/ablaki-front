@@ -67,6 +67,7 @@ let apps: { unmount: () => void }[] = [];
 function mount(component: any, props?: () => Record<string, unknown>) { const result = mountView(component, props); apps.push(result.app); return result; }
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.budget.mockResolvedValue({ available: '0.0000', reserved: '0.0000' });
   mocks.explorer.mockResolvedValue(null);
   mocks.runner = { busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn().mockResolvedValue(undefined), retry: vi.fn() };
   mocks.route = reactive({ path: '/world/workspace/1', params: { id: '1' }, query: {} });
@@ -95,23 +96,43 @@ describe('placement construction flow', () => {
     const view = mount(WorldBuildPalette, () => ({ node: parent.value, map: { node_id: 1, items: [], cells: [{ x: 0, y: 0, state: 'open' }], can_expand: true }, selection: selection.value, owner: 1, session: session.value, revision: revision.value, writable: true, onChanged: changed }));
     return { ...view, parent, session, selection, changed };
   }
-  it('places once in the chosen cell and retains the settings dialog when the map refreshes', async () => {
+  it('collects settings before placing once in the chosen cell', async () => {
     const view = setup(); await flushView();
     const tile = () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Огород'))!;
     expect(tile().props.disabled).toBe(true);
     view.selection.value = [{ x: 0, y: 0 }]; await flushView(); expect(tile().props.disabled).toBe(false);
     expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Дом'))!.props.disabled).toBe(true);
     mocks.runner.submit.mockResolvedValue(response); tile().props.onClick(); await flushView();
-    expect(mocks.runner.submit).toHaveBeenCalledWith('builds', { parent_id: 1, template_id: 7, name: 'Огород', labor_budget: '0', x: 0, y: 0 });
-    expect(view.changed).toHaveBeenCalledOnce();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
     expect(findView(view.root, n => n.props.role === 'dialog')).toBeDefined();
+    const save = findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить')!;
+    expect(save.props.disabled).toBeFalsy(); save.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('builds', { parent_id: 1, template_id: 7, name: 'Огород', labor_budget: '0', top_up: false, x: 0, y: 0 });
+    expect(view.changed).toHaveBeenCalledOnce();
+    expect(findView(view.root, n => n.props.role === 'dialog')).toBeUndefined();
   });
   it('ignores an old placement response after changing sessions', async () => {
     const view = setup(); const pending = deferred<typeof response>(); await flushView();
     view.selection.value = [{ x: 0, y: 0 }]; mocks.runner.submit.mockReturnValue(pending.promise); await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Огород'))!.props.onClick();
+    await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить')!.props.onClick();
     view.session.value++; await flushView(); pending.resolve(response); await flushView();
     expect(view.changed).not.toHaveBeenCalled(); expect(findView(view.root, n => n.props.role === 'dialog')).toBeUndefined();
+  });
+  it.each([{ price: '50.0000', available: '10.0000', contribution: true }, { price: '50.0000', available: '50.0000', contribution: false }, { price: '0.0000', available: '0.0000', contribution: false }])('builds with the selected personal contribution: $price / $available', async ({ price, available, contribution }) => {
+    mocks.budget.mockResolvedValue({ available, reserved: '0.0000' });
+    const view = setup();
+    mocks.templates.mockResolvedValue([{ ...catalog[0], economy: { price_cr: price, terms_digest: 'a'.repeat(64), profile_version: 1 } }]);
+    view.session.value++; await flushView();
+    view.selection.value = [{ x: 0, y: 0 }]; await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Огород'))!.props.onClick(); await flushView();
+    const checkbox = findView(view.root, n => n.tag === 'input' && viewText(n).includes('Добавить с баланса'));
+    const save = () => findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить')!;
+    expect(Boolean(checkbox)).toBe(contribution);
+    if (contribution) { expect(save().props.disabled).toBe(true); checkbox!.props['onUpdate:checked'](true); await flushView(); }
+    expect(save().props.disabled).toBeFalsy(); save().props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('builds', expect.objectContaining({ top_up: contribution, terms_digest: 'a'.repeat(64) }));
   });
 });
 describe('restored world core panels', () => {
@@ -121,15 +142,15 @@ describe('restored world core panels', () => {
     const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing' }, owner: 1, session: 1 }));
     await flushView();
     const click = (label: string) => findView(view.root, n => n.tag === 'button' && viewText(n) === label)!.props.onClick();
-    click('Отменить стройку'); await flushView();
+    click('Отменить'); await flushView();
     expect(mocks.runner.submit).not.toHaveBeenCalled();
     expect(viewText(findView(view.root, n => n.props.role === 'dialog')!)).toContain('30% ресурсов не будут возвращены');
     click('Продолжить строительство'); await flushView();
     expect(findView(view.root, n => n.props.role === 'dialog')).toBeUndefined();
     expect(mocks.runner.submit).not.toHaveBeenCalled();
-    click('Отменить стройку'); await flushView();
+    click('Отменить'); await flushView();
     mocks.runner.submit.mockResolvedValue({ build: { ...build, status: 'cancelled' }, return_node_id: 9 });
-    click('Подтвердить отмену'); await flushView();
+    findView(findView(view.root, n => n.props.role === 'dialog')!, n => n.tag === 'button' && viewText(n) === 'Отменить')!.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledExactlyOnceWith('builds/5/cancel', {});
     expect(mocks.push).toHaveBeenCalledWith('/world/nodes/9#map');
     expect(findView(view.root, n => n.props.role === 'dialog')).toBeUndefined();
@@ -139,7 +160,7 @@ describe('restored world core panels', () => {
     const session = ref(1);
     const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing' }, owner: 1, session: session.value }));
     await flushView();
-    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Отменить стройку')!.props.onClick(); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Отменить')!.props.onClick(); await flushView();
     session.value++; await flushView();
     expect(findView(view.root, n => n.props.role === 'dialog')).toBeUndefined();
     expect(mocks.runner.submit).not.toHaveBeenCalled();
@@ -310,7 +331,7 @@ describe('map controls', () => {
   it('buys only the selected nonconsecutive garden cells with one discounted command', async () => {
     const beds = Array.from({ length: 10 }, (_, i) => ({ node_id: 11 + i, ordinal: i + 1, unlocked: i === 0, price: `${i * 10}.0000` }));
     const children = beds.map((b, i) => ({ ...node, id: b.node_id, type: 'BED', details: { unlocked: b.unlocked ? 1 : 0 }, coordinates: { x: i, y: 0 } }));
-    mocks.garden.mockResolvedValue({ garden: { node_id: 1, beds, unlocked: 1 }, can_expand: true });
+    mocks.garden.mockResolvedValue({ garden: { node_id: 1, beds, unlocked: 1, available_budget: '0.0000' }, can_expand: true });
     mocks.gardenPreview.mockResolvedValue({ payment: { total: '142.5000' }, quote });
     const view = mount(WorldMap, () => ({ node: { ...node, extensions: ['garden'], details: { plot_kind: 'garden' } }, session: 1, writable: true, command: mocks.runner, selection: [children[1].coordinates, children[5].coordinates, children[9].coordinates], map: { node_id: 1, items: children, cells: [], can_expand: false } }));
     await flushView(); const buy = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Купить 3'))!;
@@ -337,7 +358,7 @@ describe('map controls', () => {
     await flushView(); const research = () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Исследовать 3'))!;
     expect(research().props.disabled).toBe(true); elixirs.value = 2; await flushView(); expect(research().props.disabled).toBe(false);
     research().props.onClick(); await flushView();
-    expect(mocks.mapPreview).toHaveBeenCalledWith(1, 'explore', { cells: selection, top_up: true, use_elixir: true });
+    expect(mocks.mapPreview).toHaveBeenCalledWith(1, 'explore', { cells: selection, top_up: false, use_elixir: true });
     expect(mocks.runner.submit).toHaveBeenCalledOnce();
   });
   it.each(['WORLD', 'REGION', 'SETTLEMENT', 'BUILDING', 'ROOM', 'PLOT', 'BED', 'CHEST', 'PLACE'] as const)('uses common research controls for $0 objects, including a built garden', async type => {
@@ -349,7 +370,7 @@ describe('map controls', () => {
     expect(mocks.garden).not.toHaveBeenCalled();
     const button = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Исследовать 1'))!;
     expect(button.props.disabled).toBe(false); button.props.onClick(); await flushView();
-    expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/1/map-explore', { cells: selection, top_up: true, use_elixir: false }, expect.any(Object));
+    expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/1/map-explore', { cells: selection, top_up: false, use_elixir: false }, expect.any(Object));
   });
   it.each([{ level: 0, elixirs: 1, useElixir: true }, { level: 3, elixirs: 1, useElixir: false }])('automatically chooses the exploration resource: $level / $elixirs', async ({ level, elixirs, useElixir }) => {
     const selection = ref([{ x: 2, y: 0 }]);
@@ -362,7 +383,7 @@ describe('map controls', () => {
     const button = findView(view.root, element => element.tag === 'button' && viewText(element).includes('Исследовать'))!;
     expect(button.props.disabled).toBe(false);
     button.props.onClick(); await flushView();
-    const input = { cells: [{ x: 2, y: 0 }], top_up: true, use_elixir: useElixir };
+    const input = { cells: [{ x: 2, y: 0 }], top_up: false, use_elixir: useElixir };
     expect(mocks.mapPreview).toHaveBeenCalledWith(1, 'explore', input);
     expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/1/map-explore', input, preview);
   });

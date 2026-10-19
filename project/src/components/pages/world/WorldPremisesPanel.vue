@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
-import { formatCredits } from '@/entities/world/credits';
+import { formatCredits, creditCost } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -97,7 +97,7 @@ section.world-premises#premises
           p(v-else) Договор ремонта в покупку не включён.
           p(v-if="item.expansion_limit > item.slots") Можно открыть до {{ item.expansion_limit }} мест. Первое дополнительное место — {{ formatCredits(item.expansion_base_price) }} Cr, стоимость каждого следующего растёт на 20%.
           p {{ item.exposure_class === 'covered' ? 'Под навесом износ от времени ниже, чем на улице.' : 'Внутри нет износа от времени; износ при работе сохраняется.' }}
-        n-button(:theme-overrides="worldActionButtonTheme" v-if="state.area" type="primary" :disabled="locked || calculating || !state.can_buy || item.can_afford === false || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Построить' : 'Купить' }} · {{ formatCredits(item.price) }} Cr
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="state.area" type="primary" :disabled="locked || calculating || !state.can_buy || item.can_afford === false || !item.requirements_status.allowed || state.area.available < item.area" @click="preview('buy', item.id)") {{ item.delivery === 'construction' ? 'Построить' : 'Купить' }}{{ creditCost(item.price) }}
         n-button(:theme-overrides="worldActionButtonTheme" v-if="state.can_publish" :disabled="locked || calculating" @click="preview('withdraw', item.id)") Снять предложение
     page-pager(v-model:page="page" query-prefix="premises" :result="state" :disabled="busy")
     details(v-if="state.can_publish")
