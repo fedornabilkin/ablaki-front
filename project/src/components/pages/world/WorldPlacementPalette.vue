@@ -16,6 +16,7 @@ const cell = computed(() => selectedFreeCell(props.selection, props.map));
 const craftHref = useCampsiteCraft(computed(() => props.session), computed(() => props.node));
 const locked = computed(() => !cell.value || !props.writable || !props.node.owned_by_me || props.node.status !== 'active' || loading.value || working.value || props.command.busy.value || !!props.command.pending.value);
 async function load() {
+  clearTimeout(selectionTimer);
   const current = ++generation, node = props.node, result: Tile[] = [];
   error.value = ''; loading.value = true;
   const valid = () => !disposed && current === generation;
@@ -39,9 +40,13 @@ async function act(tile: Tile) {
   finally { if (!disposed) working.value = false; }
 }
 watch([() => props.node.id, () => props.session], () => { tiles.value = []; }, { flush: 'sync' });
-watch([() => props.node.id, () => props.session, () => cell.value?.x, () => cell.value?.y], load, { immediate: true });
+let selectionTimer: ReturnType<typeof setTimeout> | undefined;
+watch([() => props.node.id, () => props.session, () => cell.value?.x, () => cell.value?.y], () => {
+  clearTimeout(selectionTimer); generation++; loading.value = true;
+  selectionTimer = setTimeout(() => { void load(); }, 120);
+}, { immediate: true });
 watch(() => props.revision, () => { if (!working.value) void load(); });
-onScopeDispose(() => { disposed = true; generation++; });
+onScopeDispose(() => { disposed = true; generation++; clearTimeout(selectionTimer); });
 </script>
 <template lang="pug">
 section.placement-palette(v-if="loading || tiles.length || error" aria-label="Доступно для размещения")

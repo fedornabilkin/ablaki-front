@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { worldActionButtonTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldDangerButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox } from 'naive-ui';
-import { formatCredits } from '@/entities/world/credits';
+import { creditCost, needsPersonalTopUp } from '@/entities/world/credits';
+import { useWorldBudget } from '@/hooks/useWorldBudget';
 import { loadCultivation, loadCrops, previewCultivation, type CultivationAction } from '@/services/api/worldCultivation';
 import { worldError } from '@/services/api/world';
 import type { WorldQuote } from '@/entities/world/types';
@@ -10,11 +11,13 @@ import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ bedId: number; session: number; command: WorldCommandRunner; droppedCrop?: { id: number; sequence: number } | null }>();
 const personalContribution = ref(false);
+const payerNode = ref<number | null>(null);
+const { available: availableBudget, refresh: refreshBudget } = useWorldBudget(payerNode, computed(() => props.session));
 const state = shallowRef<Awaited<ReturnType<typeof loadCultivation>> | null>(null), crops = shallowRef<Awaited<ReturnType<typeof loadCrops>>['items']>([]);
 const error = ref(''), loading = ref(false), calculating = ref(false), selected = ref<number | null>(null), page = ref(1), pages = ref(1);
 const quote = shallowRef<{ action: CultivationAction; input: Record<string, unknown>; value: WorldQuote } | null>(null);
 const now = ref(Math.floor(Date.now() / 1000)); let offset = 0, generation = 0, previewGeneration = 0, disposed = false;
-const labels: Record<CultivationAction, string> = { dig: 'Вскопать грядку', sow: 'Посадить семена', water: 'Полить', harvest: 'Собрать урожай', cancel: 'Убрать посев' };
+const labels: Record<CultivationAction, string> = { dig: 'Вскопать грядку', sow: 'Посадить семена', water: 'Полить', harvest: 'Собрать урожай', cancel: 'Очистить грядку' };
 const cycle = computed(() => state.value?.cycle), crop = computed(() => crops.value.find(c => c.id === selected.value));
 const locked = computed(() => loading.value || calculating.value || props.command.busy.value || Boolean(props.command.pending.value) || !state.value?.writable);
 const materials = computed(() => (quote.value?.value.terms.materials ?? []) as { name: string; quantity: number; have: number; available: boolean }[]);
@@ -23,6 +26,7 @@ const canConfirm = computed(() => materials.value.every(m => m.available) && too
 const primaryAction = computed<CultivationAction | null>(() => !state.value ? null : !cycle.value ? (state.value.dug ? 'sow' : 'dig') : now.value >= cycle.value.expires_at ? null : now.value >= cycle.value.ready_at ? 'harvest' : cycle.value.can_water ? 'water' : null);
 const ready = computed(() => quote.value?.action === primaryAction.value && canConfirm.value);
 const cost = computed(() => [...materials.value.map(m => `${m.quantity} ${m.name}`), ...(tool.value ? [`${tool.value.name}: ${tool.value.wear} прочности`] : [])].join(', ') || 'бесплатно');
+const price = computed(() => typeof quote.value?.value.terms.price_cr === 'string' ? quote.value.value.terms.price_cr : '0');
 const duration = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return s >= 3600 ? `${Math.floor(s / 3600)} ч ${Math.floor(s % 3600 / 60)} мин` : `${Math.floor(s / 60)} мин ${s % 60} с`; };
 const countdown = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
 async function load() {
@@ -31,6 +35,7 @@ async function load() {
     const [bed, catalogue] = await Promise.all([loadCultivation(props.bedId), loadCrops(page.value)]);
     if (disposed || current !== generation) return;
     state.value = bed; crops.value = catalogue.items; pages.value = catalogue.pageCount; offset = bed.server_time - Math.floor(Date.now() / 1000); now.value = bed.server_time;
+    void refreshBudget();
     if (!catalogue.items.some(c => c.id === selected.value)) selected.value = catalogue.items[0]?.id ?? null;
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed && current === generation) loading.value = false; }
@@ -39,7 +44,7 @@ async function preview(action: CultivationAction) {
   if (locked.value || (action === 'sow' && !selected.value)) return;
   const current = ++previewGeneration; calculating.value = true; error.value = ''; quote.value = null;
   const input = { ...(action === 'sow' ? { crop_revision_id: selected.value } : {}), ...(personalContribution.value ? { top_up: true } : {}) };
-  try { const value = await previewCultivation(props.bedId, action, input); if (!disposed && current === previewGeneration) quote.value = { action, input, value }; }
+  try { const value = await previewCultivation(props.bedId, action, input); if (!disposed && current === previewGeneration) { quote.value = { action, input, value }; if (typeof value.terms.payer_node_id === 'number') payerNode.value = value.terms.payer_node_id; } }
   catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
@@ -62,7 +67,7 @@ async function execute() {
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([() => props.bedId, () => props.session, page], () => { state.value = null; void load(); }, { immediate: true });
+watch([() => props.bedId, () => props.session, page], () => { state.value = null; payerNode.value = null; personalContribution.value = false; void load(); }, { immediate: true });
 watch(selected, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
 watch(personalContribution, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
 watch([primaryAction, selected, personalContribution, loading, props.command.busy, props.command.pending], () => { if (primaryAction.value && !locked.value && !quote.value) void preview(primaryAction.value); }, { flush: 'post' });
@@ -141,17 +146,23 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
       .cultivation-actions
         n-button(:theme-overrides="worldActionButtonTheme" v-if="primaryAction === 'water'" type="primary" :disabled="locked || !ready" @click="execute") Полить
         n-button(:theme-overrides="worldActionButtonTheme" v-if="cycle.state === 'ripe'" type="primary" :disabled="locked || !ready" @click="execute") Собрать урожай
-        n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" @click="preview('cancel')") {{ cycle.state === 'expired' ? 'Убрать погибший урожай' : 'Убрать посев' }}
+        n-button(:theme-overrides="worldDangerButtonTheme" type="error" :disabled="locked" @click="preview('cancel')")
+          template(#icon)
+            font-awesome-icon(icon="times" aria-hidden="true")
+          | Очистить грядку
     .cultivation-card(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
-      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}. Из бюджета огорода: {{ formatCredits(typeof quote.value.terms.price_cr === 'string' ? quote.value.terms.price_cr : '0.0000') }} Cr.
-      n-checkbox(v-if="quote.action !== 'cancel'" v-model:checked="personalContribution" :disabled="locked") Внести недостающую сумму из личных кредитов
+      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}{{ creditCost(price) }}.
+      n-checkbox(v-if="quote.action !== 'cancel' && needsPersonalTopUp(price, availableBudget)" v-model:checked="personalContribution" :disabled="locked") Добавить с баланса
       p(v-if="quote.action === 'cancel'") Посев будет убран без возврата семян и воды.
       p(v-for="(material, i) in materials" :key="i" :class="{ missing: !material.available }") {{ material.name }}: {{ material.have }} / {{ material.quantity }} · {{ material.available ? 'Хватает' : 'Недостаточно' }}
       p(v-if="tool" :class="{ missing: !tool.available }") {{ tool.name }}: {{ tool.durability }} прочности · {{ tool.available ? 'Доступна' : 'Нужна исправная лопата в рюкзаке' }}
       p(v-if="quote.action === 'harvest'") Будет собрано: {{ quote.value.terms.output?.quantity }} шт.
       p.missing(v-if="!canConfirm") Проверьте ресурсы, лопату и свободные ячейки склада огорода.
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="quote.action === 'cancel'" type="primary" :disabled="locked || !canConfirm" @click="confirm") Убрать без возврата ресурсов
+      n-button(:theme-overrides="worldDangerButtonTheme" v-if="quote.action === 'cancel'" type="error" :disabled="locked || !canConfirm" @click="confirm")
+        template(#icon)
+          font-awesome-icon(icon="times" aria-hidden="true")
+        | Очистить грядку
     p(v-if="calculating" role="status") Проверяем расход ресурсов…
     n-button(:theme-overrides="worldActionButtonTheme" v-if="error && primaryAction" :disabled="locked" @click="preview(primaryAction)") Повторить расчёт
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
-import { formatCredits } from '@/entities/world/credits';
+import { formatCredits, creditCost } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -127,7 +127,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
             p(v-if="!sources.length || !output") Выберите хранилища в настройках ниже.
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
-          n-button(:theme-overrides="actionTheme" type="primary" block :loading="busy || calculating" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft") {{ calculation ? `Изготовить · ${formatCredits(calculation.terms.price)} Cr` : 'Изготовление недоступно' }}
+          n-button(:theme-overrides="actionTheme" type="primary" block :loading="busy || calculating" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft") {{ calculation ? `Изготовить${creditCost(calculation.terms.price)}` : 'Изготовление недоступно' }}
           n-button(:theme-overrides="actionTheme" v-if="error && !calculation" :disabled="blocked" @click="preview") Повторить расчёт
           details.craft-settings
             summary Материалы, инструменты и место результата

@@ -12,15 +12,12 @@ import { nodeFeatures, tabForHash, tabLabels, tabsForNode, type NodeTab } from '
 import WorldNodeExtensions from './WorldNodeExtensions.vue';
 import WorldMap from './WorldMap.vue';
 import WorldNodeStatistics from './WorldNodeStatistics.vue';
-import WorldManagement from './WorldManagement.vue';
 import WorldStartPanel from './WorldStartPanel.vue';
-import WorldMvpProgress from './WorldMvpProgress.vue';
 import WorldStoragePanel from './WorldStoragePanel.vue';
 import WorldEconomyPanel from './WorldEconomyPanel.vue';
 import WorldFinancePolicy from './WorldFinancePolicy.vue';
 import WorldBuildPanel from './WorldBuildPanel.vue';
 import WorldRepairPanel from './WorldRepairPanel.vue';
-import SimpleBudgetPanel from './SimpleBudgetPanel.vue';
 import WorldPlacementPalette from './WorldPlacementPalette.vue';
 import WorldHeroFinances from './WorldHeroFinances.vue';
 import WorldBuildPalette from './WorldBuildPalette.vue';
@@ -135,9 +132,15 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
   n-alert(v-if="invalidId" type="error") Некорректный адрес объекта.
   n-alert(v-else-if="world.error && !world.node" type="error" role="alert")
     p {{ world.error }}
+    template(v-if="world.closedTest")
+      p Можно сообщить на форуме о желании принять участие в тестировании.
+      router-link(to="/forum/read/80") Участие в тестировании →
     router-link(to="/world") Вернуться к карте мира
   n-spin(v-else-if="world.loading && !world.node" size="large" aria-label="Загрузка мира")
-  n-alert(v-else-if="!world.capabilities?.world_read" type="info") Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
+  n-alert(v-else-if="!world.capabilities?.world_read" type="info")
+    p Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
+    p Можно сообщить на форуме о желании принять участие в тестировании.
+    router-link(to="/forum/read/80") Участие в тестировании →
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
     n-alert(v-if="world.error" type="error" role="alert") {{ world.error }}
@@ -178,7 +181,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
     world-start-panel.world-content-card(v-show="activeTab === 'map'" :node="world.node" :writable="Boolean(world.capabilities?.world_write)" :owner="owner" :session="session" @changed="changed([world.node.id])")
-    world-mvp-progress(v-show="activeTab === 'map'" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
     world-node-extensions(v-show="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
 
@@ -201,7 +203,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
       .world-section-title
         span.world-eyebrow Экономика территории
         h2 Бюджет и казна
-      simple-budget-panel.world-content-card(v-if="world.node.owned_by_me && world.node.status === 'active'" :node-id="world.node.id" :owner="owner" :session="session" @changed="changed([world.node.id])")
       world-economy-panel(v-if="world.node.permissions.manage" :node-id="world.node.id" :children="world.map?.items ?? []" :session="session" :command="command")
       p(v-else) Финансовые данные доступны владельцу объекта.
 
@@ -239,7 +240,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             dt {{ fact.label }}
             dd {{ fact.value }}
         world-finance-policy.world-content-card(v-if="features?.finance" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
-        world-management.world-content-card(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
 </template>
 
 <style scoped>

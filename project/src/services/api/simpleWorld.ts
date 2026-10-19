@@ -53,7 +53,7 @@ export async function templates(parent: number) {
   };
   const result: Template[] = [];
   for (let current = 1; current <= 100; current++) {
-    const catalog = page((await apiClient.get(url('templates'), { params: { parent_id: parent, envelope: 1, page: current } })).data, parse);
+    const catalog = page((await apiClient.get(url('templates'), { params: { parent_id: parent, envelope: 1, page: current, 'per-page': 100 } })).data, parse);
     if (!catalog.pageSize || !catalog.items.length && result.length < catalog.total) throw new Error('invalid-world-response');
     result.push(...catalog.items);
     if (result.length >= catalog.total) {

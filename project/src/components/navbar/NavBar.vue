@@ -7,7 +7,10 @@ import { navigation } from '@/config/navigation';
 import HeaderAccount from './HeaderAccount.vue';
 import DailyRewards from './DailyRewards.vue';
 import OnlineUsers from './OnlineUsers.vue';
+import WorldMvpProgress from '@/components/pages/world/WorldMvpProgress.vue';
+import { useWorldStore } from '@/store/world';
 const store = useStore();
+const world = useWorldStore();
 const route = useRoute();
 const user = computed(() => store.getters['auth/user']);
 const guest = computed(() => ['guest', 'error'].includes(store.getters['auth/authStatus']) && !user.value);
@@ -28,6 +31,10 @@ onMounted(() => {
 });
 onScopeDispose(() => { window.removeEventListener('scroll', updateCompact); headerObserver?.disconnect(); });
 const loginTarget = computed(() => route.path === '/users/login' ? route.fullPath : { path: '/users/login', query: { redirect: route.fullPath } });
+function journeyChanged() {
+  if (world.node) { const id = world.node.id; world.invalidate([id], true); if (/^\/world(?:\/nodes\/\d+)?$/.test(route.path)) void world.load(id, true); }
+  void store.dispatch('auth/fetchData');
+}
 </script>
 <template lang="pug">
 header.site-header(ref="header" :class="{ compact }")
@@ -41,9 +48,10 @@ header.site-header(ref="header" :class="{ compact }")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
-  .container.header-nav(v-if="!compact")
-    online-users(:collapsed="compact")
+  .container.header-nav
+    online-users
     daily-rewards(v-if="user")
+    world-mvp-progress(v-if="user && (route.path === '/world' || route.path.startsWith('/world/'))" :owner="Number(user.id)" :session="Number(store.state.auth.revision)" :revision="world.dataRevision" :writable="world.capabilities?.world_write ?? true" @changed="journeyChanged")
     nav.desktop-nav(aria-label="Основная навигация")
       router-link.nav-item(v-for="link in links" :key="link.to" :to="link.to" :class="{'account-link': link.account}" :aria-label="link.title")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")

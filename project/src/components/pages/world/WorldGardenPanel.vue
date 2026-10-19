@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
-import { discountedCredits, formatCredits } from '@/entities/world/credits';
+import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NSpin } from 'naive-ui';
 import { useRoute } from 'vue-router';
@@ -77,11 +77,11 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
         p Грядки открываются по порядку. Выберите количество и нажмите «Открыть». Оплата — из бюджета огорода; если денег не хватает, разрешите пополнение с личного баланса.
         label Количество следующих грядок
           n-input-number(v-model:value="quantity" :min="1" :max="10 - state.garden.unlocked" :precision="0" :disabled="locked")
-        n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
+        n-checkbox(v-if="needsTopUp" v-model:checked="topUp" :disabled="locked") Добавить с баланса
         n-alert(v-if="needsTopUp && !topUp" type="warning")
           p В бюджете огорода недостаточно средств. Пополните его или включите пополнение с личного баланса выше.
           router-link(:to="`/world/nodes/${nodeId}#finance`") Пополнить бюджет огорода →
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !expansionPrice || (needsTopUp && !topUp)" @click="preview('expand')") Открыть {{ quantity }} · {{ formatCredits(expansionPrice) }} Cr
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !expansionPrice || (needsTopUp && !topUp)" @click="preview('expand')") Открыть {{ quantity }}{{ creditCost(expansionPrice) }}
       p(v-else-if="state.garden.unlocked === 10") Все грядки открыты. Повторно оплачивать их не нужно.
       p(v-else-if="state.garden.node_id === nodeId") Открытие грядок сейчас недоступно. Обновите огород, чтобы проверить доступность.
       ol.garden-beds
@@ -101,8 +101,8 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
         router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
       template(v-if="state.can_buy")
         p Оплата из бюджета этой стоянки. Получатель — казна поселения «{{ state.settlement_name }}».
-        n-checkbox(v-model:checked="topUp" :disabled="locked") Пополнить недостающую сумму с личного баланса
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || (!topUp && state.offer.can_afford === false)" @click="preview('buy')") Купить огород · {{ formatCredits(state.offer.price) }} Cr
+        n-checkbox(v-if="needsPersonalTopUp(state.offer.price, state.site_budget_available)" v-model:checked="topUp" :disabled="locked") Добавить с баланса
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || (!topUp && state.offer.can_afford === false)" @click="preview('buy')") Купить огород{{ creditCost(state.offer.price) }}
       p(v-else) Покупка доступна на собственной стартовой стоянке после включения экономики и хранения мира.
     p(v-else) Поселение ещё не опубликовало предложение огорода.
     details(v-if="state.can_publish")

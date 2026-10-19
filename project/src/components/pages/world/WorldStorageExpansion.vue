@@ -5,7 +5,7 @@ import { loadEconomyStorage, previewEconomyStorage, type EconomyStorageState } f
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldQuote } from '@/entities/world/types';
 import { worldError } from '@/services/api/world';
-import { formatCredits } from '@/entities/world/credits';
+import { formatCredits, creditCost } from '@/entities/world/credits';
 const props = defineProps<{ storage: number; session: number; revision: number; writable: boolean; command: WorldCommandRunner }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<EconomyStorageState | null>(null), selected = ref<string | null>(null), quote = ref<WorldQuote | null>(null), loading = ref(false), loadingState = ref(false), error = ref('');
@@ -39,7 +39,7 @@ section.storage-expansion(v-if="state?.options.length || error" aria-label="Ра
   n-button(v-if="error" :loading="loadingState" :disabled="loadingState" @click="load") Повторить загрузку
   p(v-if="state") Постоянная вместимость: {{ state.capacity }}. Пакет оплачивается с личного баланса.
   .storage-expansion-options(v-if="state")
-    n-button(v-for="pack in state.options" :key="pack.code" size="small" :disabled="blocked" :aria-pressed="selected === pack.code" @click="choose(pack.code)") +{{ pack.slots }} мест · {{ formatCredits(pack.price) }} Cr
+    n-button(v-for="pack in state.options" :key="pack.code" size="small" :disabled="blocked" :aria-pressed="selected === pack.code" @click="choose(pack.code)") +{{ pack.slots }} мест{{ creditCost(pack.price) }}
   p(v-if="quote") Новая вместимость: {{ quote.terms.capacity_after }}. Стоимость: {{ formatCredits(String(quote.terms.price_cr)) }} Cr.
   n-button(v-if="quote" :disabled="blocked" @click="confirm") Оплатить расширение
 </template>

@@ -4,7 +4,7 @@ import WorldCreditInput from './WorldCreditInput.vue';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
 import { loadHarvest, previewHarvest, type HarvestAction } from '@/services/api/worldHarvest';
-import { formatCredits } from '@/entities/world/credits';
+import { formatCredits, creditCost } from '@/entities/world/credits';
 import { worldError } from '@/services/api/world';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 const props = defineProps<{ nodeId: number; session: number; revision: number; command: WorldCommandRunner }>();
@@ -88,7 +88,7 @@ section.harvest-panel(aria-label="Продукция склада")
     section.harvest-action-block(v-else aria-label="Покупка урожая")
       label Количество
         n-input-number(v-model:value="quantity" :min="1" :max="item.quantity" :precision="0" :disabled="locked")
-      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !state?.allow_sales || !item.price || !quantity || !item.quantity" @click="act('buy')") Купить {{ quantity }} · {{ formatCredits(total) }} Cr
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !state?.allow_sales || !item.price || !quantity || !item.quantity" @click="act('buy')") Купить {{ quantity }}{{ creditCost(total) }}
 </template>
 <style scoped>
 .harvest-panel { display: grid; gap: .75rem; }.harvest-panel p, .harvest-cell small { color: var(--text-muted); }

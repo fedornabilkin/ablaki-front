@@ -7,7 +7,8 @@ import type { WorldMapData, WorldNode } from '@/entities/world/types';
 import { occupiesCell } from '@/entities/world/coordinates';
 import type { MapPoint } from '@/entities/world/coordinates';
 import { nodeLabels } from '@/entities/world/types';
-import { discountedCredits, formatCredits } from '@/entities/world/credits';
+import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
+import { useWorldBudget } from '@/hooks/useWorldBudget';
 import { loadGarden, previewGarden } from '@/services/api/worldGarden';
 import { mapAreaCells, mapPurchase, requiredExplorerLevel, selectMapCells } from '@/entities/world/mapSelection';
 import { loadExplorer, previewProfession, previewMapCells, worldError } from '@/services/api/world';
@@ -21,6 +22,7 @@ import { useStore } from 'vuex';
 const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number }>();
 const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: number[]] }>();
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
+const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
 const selected = ref<MapPoint[]>(props.selection ?? []), anchor = ref<MapPoint | null>(null);
 const topUp = ref(true), calculating = ref(false), error = ref(''), droppedCrop = ref<{ id: number; sequence: number } | null>(null);
 const explorer = ref<Awaited<ReturnType<typeof loadExplorer>>>(null);
@@ -170,11 +172,12 @@ async function act(action: 'explore' | 'buy') {
   if (action === 'explore' && (!props.map?.can_expand || !allClosed.value || !(elixir ? elixirAllowed.value : levelAllowed.value))) return;
   if (action === 'buy' && !canBuy.value) return;
   const expectedPrice = action === 'buy' ? price.value!.total : '0.0000';
-  const input = { cells: selected.value.map(p => ({ x: p.x, y: p.y })), top_up: topUp.value, use_elixir: elixir };
+  const personalTopUp = action === 'buy' && topUp.value && needsPersonalTopUp(expectedPrice, gardenSelection.value ? garden.value?.garden?.available_budget : availableBudget.value);
+  const input = { cells: selected.value.map(p => ({ x: p.x, y: p.y })), top_up: personalTopUp, use_elixir: elixir };
   const current = ++generation, id = props.node.id; calculating.value = true; error.value = '';
   try {
     if (action === 'buy' && gardenSelection.value) {
-      const payload = { quantity: selected.value.length, bed_ids: selectedBeds.value.map(n => n.id).sort((a, b) => a - b), top_up: topUp.value };
+      const payload = { quantity: selected.value.length, bed_ids: selectedBeds.value.map(n => n.id).sort((a, b) => a - b), top_up: personalTopUp };
       const result = await previewGarden(id, 'expand', payload);
       if (current !== generation || !props.writable) return;
       if (result.payment?.total !== expectedPrice) { error.value = 'Цена изменилась. Обновите карту перед покупкой.'; return; }
@@ -242,7 +245,8 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           text(x="7" y="82" class="map-coordinate") {{ child.coordinates.x }}, {{ child.coordinates.y }}
           title {{ child.label }} · {{ child.coordinates.x }}, {{ child.coordinates.y }}
         rect(v-if="marquee" v-bind="marquee" class="map-marquee")
-    slot(name="placement")
+    .world-map-placement
+      slot(name="placement")
   aside.world-map-inspector(aria-live="polite")
     slot(name="information")
     button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
@@ -289,8 +293,8 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       n-button(:theme-overrides="worldActionButtonTheme" v-if="!isGarden && selected.some(p => state(p) === 'closed')" type="primary" :loading="calculating" :disabled="blocked || !map?.can_expand || !allClosed || (!levelAllowed && !elixirAllowed)" @click="act('explore')") {{ !levelAllowed && elixirAllowed ? `Исследовать ${selected.length} · ${neededElixirs} эликс.` : `Исследовать ${selected.length}` }}
       template(v-if="isGarden || selected.some(p => state(p) === 'discovered')")
         p(v-if="price") {{ selected.length }} ячеек: {{ formatCredits(price.gross) }} Cr − {{ formatCredits(price.discount) }} Cr скидки = {{ formatCredits(price.total) }} Cr
-        n-checkbox(v-model:checked="topUp" :disabled="blocked") Недостающую сумму взять с личного баланса
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }} · {{ formatCredits(price?.total) }} Cr
+        n-checkbox(v-if="needsPersonalTopUp(price?.total, gardenSelection ? garden?.garden?.available_budget : availableBudget)" v-model:checked="topUp" :disabled="blocked") Добавить с баланса
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}{{ creditCost(price?.total) }}
       n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
     world-help-hint(v-else-if="!selected.length && node.status !== 'constructing'" label="Как выбрать ячейки" symbol="!")
       p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
@@ -353,5 +357,5 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-map-inspector dd { margin: 0; text-align: right; }
 .world-map-open { display: block; padding: .65rem; border-radius: .4rem; background: var(--primary); color: white; text-align: center; }
 .map-total { font-size: 1.5rem; font-weight: 700; }
-@media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; }.world-map-main { display: contents; }.world-map-window { grid-row: 1; }.world-map-inspector { grid-row: 2; }.world-map-placement { grid-row: 3; } }
 </style>
