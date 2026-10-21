@@ -18,7 +18,7 @@ const session = computed(() => store.state.auth.revision);
       router-link.metric-link(to="/rating" title="Рейтинг" :aria-label="'Рейтинг: ' + formatAccountNumber(account.rating) + '. История рейтинга'")
         font-awesome-icon(icon="star" aria-hidden="true")
         animated-number(:value="account.rating" :identity="session")
-      router-link.metric-link(to="/exchange" title="Кредиты, Cr" :aria-label="'Кредиты: ' + formatCredits(account.credit) + ' Cr. Биржа'")
+      router-link.metric-link(to="/exchange" title="Кредиты" :aria-label="'Кредиты: ' + formatCredits(account.credit) + '. Биржа'")
         font-awesome-icon(icon="coins" aria-hidden="true")
         animated-number(:value="account.credit" :identity="session")
       router-link.metric-link(to="/balance" title="Баланс, Кг" :aria-label="'Баланс: ' + formatAccountNumber(account.balance) + ' Кг. История счёта'")

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -25,7 +26,6 @@ async function load() {
 }
 watch([() => props.nodeId, () => props.session, params], load, { immediate: true, flush: 'sync' });
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString('ru-RU');
-const money = (value: string | number) => `${formatCredits(value)} Cr`;
 function duration(seconds: number): string {
   const days = Math.floor(seconds / 86400), hours = Math.floor(seconds % 86400 / 3600), minutes = Math.floor(seconds % 3600 / 60);
   return `${days ? `${days} д. ` : ''}${hours} ч. ${minutes} мин. ${seconds % 60} с.`;
@@ -52,21 +52,21 @@ section.world-receipts#treasury-receipts
       p Получено {{ date(item.received) }} · {{ item.closed === null ? 'В казне' : 'Находилось в казне' }} {{ duration(item.age) }}
       dl
         dt Поступило
-        dd {{ money(item.original) }}
+        dd #[world-credits(:value="item.original")]
         dt Осталось в казне
-        dd {{ money(item.remaining) }}
+        dd #[world-credits(:value="item.remaining")]
         dt Собрано в бюджет
-        dd {{ money(item.collected) }}
+        dd #[world-credits(:value="item.collected")]
         dt Потеряно
-        dd(:class="{ lost: item.lost !== '0.0000' }") {{ money(item.lost) }}
+        dd(:class="{ lost: item.lost !== '0.0000' }") #[world-credits(:value="item.lost")]
       p Условия №{{ item.policyRevision }}: защита {{ duration(item.protectedSeconds) }}, затем {{ item.rate / 100 }}% остатка каждые {{ duration(item.period) }}.
       p(v-if="item.closed !== null") Закрыто {{ date(item.closed) }}. Дальнейших потерь нет.
       p(v-else-if="item.state === 'exempt'") Для этого поступления ставка потерь равна нулю.
       template(v-else)
         p Защита {{ item.protectedUntil > state.now ? 'действует до' : 'закончилась' }} {{ date(item.protectedUntil) }}.
         p(v-if="item.next !== null") {{ item.pending ? 'Первый необработанный период' : 'Следующее списание' }}: {{ date(item.next) }}.
-        p(v-if="item.pending") Сумма первого ожидающего списания: {{ money(item.nextAmount) }}. Учтён дробный остаток предыдущих расчётов.
-        p(v-else) Прогноз на этот период: {{ money(item.nextAmount) }}, если не собрать поступление раньше. Учтён дробный остаток предыдущих расчётов.
+        p(v-if="item.pending") Сумма первого ожидающего списания: #[world-credits(:value="item.nextAmount")] . Учтён дробный остаток предыдущих расчётов.
+        p(v-else) Прогноз на этот период: #[world-credits(:value="item.nextAmount")] , если не собрать поступление раньше. Учтён дробный остаток предыдущих расчётов.
         n-alert(v-if="item.pending" type="info") Ожидают расчёта периодов: {{ item.pending }}. Показана сумма только первого из них; итоговые потери могут быть больше.
         p(v-else-if="item.nextAmount === '0.0000'") Сейчас списания нет. Дробный остаток сохраняется для последующих периодов.
       p Обработано периодов потерь: {{ item.processed }}.

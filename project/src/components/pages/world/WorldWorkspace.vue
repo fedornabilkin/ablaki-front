@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
-import { formatCredits, creditCost } from '@/entities/world/credits';
+import { creditCost } from '@/entities/world/credits';
+import { projectCraftTerms } from '@/entities/world/craftPreview';
+import WorldPaymentSources from './WorldPaymentSources.vue';
+import WorldHelpHint from './WorldHelpHint.vue';
+import WorldQuotaNotice from './WorldQuotaNotice.vue';
+import WorldCredits from './WorldCredits.vue';
+import type { CraftResult } from '@/entities/world/types';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
+import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
 import WorldWorkspaceNav from './WorldWorkspaceNav.vue';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
@@ -19,23 +25,27 @@ const craftHref = useCampsiteCraft(session);
 const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null), loading = ref(false), calculating = ref(false), error = ref(''), notice = ref('');
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
+const lastResult = ref<CraftResult | null>(null);
 const useObjectBudget = ref(false);
+const waitingForPreview = ref(false);
 const calculation = shallowRef<(Awaited<ReturnType<typeof previewWorkspace>> & { input: WorkspaceInput }) | null>(null);
 let generation = 0, previewGeneration = 0, disposed = false;
 let previewTimer: ReturnType<typeof setTimeout> | undefined;
-const command = useWorldCommand(session, owner, () => { notice.value = 'Действие выполнено. Данные обновлены.'; void auth.dispatch('auth/fetchData'); void load(recipe.value ?? undefined); });
+const command = useWorldCommand(session, owner, result => { lastResult.value = result.craft_result ?? null; notice.value = 'Изготовление завершено.'; void auth.dispatch('auth/fetchData'); void load(recipe.value ?? undefined); });
 const { busy, pending, error: commandError } = command;
-const blocked = computed(() => busy.value || !!pending.value || loading.value || calculating.value || !state.value?.writable);
+const blocked = computed(() => busy.value || !!pending.value || loading.value || calculating.value || waitingForPreview.value || !state.value?.writable || (state.value?.quota && (quantity.value ?? 0) > state.value.quota.remaining));
+const displayedTerms = computed(() => calculation.value && calculation.value.input.recipe_id === recipe.value
+  ? projectCraftTerms(calculation.value.terms, calculation.value.input.quantity, quantity.value ?? 0) : null);
 const selectedRecipe = computed(() => state.value?.recipes.find(r => r.id === recipe.value));
 const storageOptions = computed(() => state.value?.storages.map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
 const outputOptions = computed(() => state.value?.storages.filter(s => s.output_allowed).map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
 const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())) ?? []);
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
-function invalidate() { clearTimeout(previewTimer); previewGeneration++; calculation.value = null; calculating.value = false; }
-function schedulePreview() { invalidate(); previewTimer = setTimeout(() => { void preview(); }, 600); }
+function invalidate(clear = false) { clearTimeout(previewTimer); previewGeneration++; if (clear) calculation.value = null; calculating.value = false; waitingForPreview.value = false; }
+function schedulePreview() { invalidate(); if (loading.value || disposed) return; waitingForPreview.value = true; previewTimer = setTimeout(() => { void preview(); }, 600); }
 watch([quantity, sources, output, equipment, useObjectBudget], schedulePreview, { deep: true, flush: 'sync' });
 async function load(selected?: number) {
-  const current = ++generation; invalidate(); error.value = ''; loading.value = true;
+  const current = ++generation; invalidate(true); error.value = ''; loading.value = true;
   if (!Number.isSafeInteger(nodeId.value) || nodeId.value < 1 || nodeId.value > 2147483647) { error.value = 'Некорректный адрес мастерской.'; loading.value = false; return; }
   try {
     const value = await loadWorkspace(nodeId.value, selected); if (disposed || generation !== current) return;
@@ -47,15 +57,16 @@ async function load(selected?: number) {
   } catch (cause) { if (generation === current && !disposed) { state.value = null; error.value = worldError(cause); } }
   finally { if (generation === current && !disposed) { loading.value = false; if (!error.value) schedulePreview(); } }
 }
-function changeRecipe(value: number) { if (busy.value || pending.value || loading.value) return; recipe.value = value; notice.value = ''; void load(value); }
+function changeRecipe(value: number) { if (busy.value || pending.value || loading.value) return; recipe.value = value; notice.value = ''; lastResult.value = null; void load(value); }
 async function preview() {
-  if (blocked.value || !state.value || !recipe.value || !output.value || !Number.isSafeInteger(quantity.value) || !quantity.value || quantity.value < 1 || quantity.value > 100 || selectedRecipe.value?.locked_reasons.length) return;
-  if (!sources.value.length || sources.value.length > 20 || state.value.equipment.some(e => !equipment.value[e.item_id])) return;
+  waitingForPreview.value = false;
+  if (busy.value || pending.value || loading.value || !state.value?.writable || !recipe.value || !output.value || !Number.isSafeInteger(quantity.value) || !quantity.value || quantity.value < 1 || quantity.value > 100 || selectedRecipe.value?.locked_reasons.length) { calculation.value = null; return; }
+  if (!sources.value.length || sources.value.length > 20 || state.value.equipment.some(e => !equipment.value[e.item_id])) { calculation.value = null; return; }
   const input: WorkspaceInput = { node_id: nodeId.value, recipe_id: recipe.value, quantity: quantity.value, source_storage_ids: [...sources.value], output_storage_id: output.value, equipment_instance_ids: state.value.equipment.map(e => equipment.value[e.item_id] as number).sort((a, b) => a - b) };
-  if (useObjectBudget.value) input.use_object_budget = true;
-  const current = ++previewGeneration; calculating.value = true; calculation.value = null; error.value = ''; notice.value = '';
+  if (useObjectBudget.value && displayedTerms.value?.price !== '0.0000') input.use_object_budget = true;
+  const current = ++previewGeneration; calculating.value = true; error.value = '';
   try { const result = await previewWorkspace(input); if (!disposed && current === previewGeneration) calculation.value = { ...result, input }; }
-  catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
+  catch (cause) { if (!disposed && current === previewGeneration) { calculation.value = null; error.value = worldError(cause); } }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
 async function craft() {
@@ -71,7 +82,7 @@ async function craft() {
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; notice.value = ''; search.value = ''; const requested = Number(route.query.recipe_id); void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined); }, { immediate: true, flush: 'sync' });
+watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; notice.value = ''; lastResult.value = null; search.value = ''; const requested = Number(route.query.recipe_id); void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined); }, { immediate: true, flush: 'sync' });
 onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 </script>
 <template lang="pug">
@@ -81,14 +92,12 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
   .workspace-navigation
     world-workspace-nav(:node-id="nodeId" manufacturing)
   n-alert(v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
-  n-alert(v-if="notice" type="success" role="status") {{ notice }}
-  n-alert(v-if="pending" type="info")
+  n-alert(v-if="pending && !busy" type="info")
     p Ответ на действие ещё не получен. Повтор отправит тот же запрос.
     n-button(:theme-overrides="actionTheme" :loading="busy" @click="command.retry") Повторить запрос
   n-spin(v-if="loading && !state" aria-label="Загрузка мастерской")
   template(v-if="state")
     n-alert(v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
-    p(v-if="state.quota") Доступно изготовлений за час: {{ state.quota.remaining }} из {{ state.quota.maximum }}. Ближайшее восстановление: {{ new Date(state.quota.restoresAt * 1000).toLocaleString('ru-RU') }}.
     .workspace-layout
       section.recipe-catalog(aria-label="Рецепты мастерской")
         .workspace-section-heading
@@ -97,37 +106,52 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
         n-input(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
         p.recipe-legend Выберите плитку. Материалы и оборудование подбираются автоматически; стоимость появится в панели справа.
         .recipe-tiles
-          button.recipe-tile(v-for="entry in filteredRecipes" :key="entry.id" type="button" :class="{ selected: recipe === entry.id, ready: entry.available }" :aria-pressed="recipe === entry.id" :disabled="busy || loading || Boolean(pending)" @click="changeRecipe(entry.id)")
-            font-awesome-icon(:icon="entry.icon || 'cube'" aria-hidden="true")
-            strong {{ entry.name }}
-            small ×{{ entry.quantity }} за партию
-            span {{ entry.available ? '✓ Доступно' : entry.locked_reasons.length ? 'Закрыто' : 'Не хватает ресурсов' }}
+          .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
+            button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading || Boolean(pending) || Boolean(entry.locked_reasons.length)" @click="changeRecipe(entry.id)")
+              font-awesome-icon(:icon="entry.icon || 'cube'" aria-hidden="true")
+              strong {{ entry.name }}
+              small ×{{ entry.quantity }} за партию
+              span(v-if="entry.locked_reasons.length")
+                font-awesome-icon(icon="lock" aria-hidden="true")
+                |  Закрыто
+              span(v-else-if="!entry.available") Не хватает ресурсов
+            world-help-hint.recipe-lock-info(v-if="entry.locked_reasons.length" :label="`Как открыть ${entry.name}`" symbol="i")
+              strong Как открыть изготовление
+              p(v-for="reason in entry.locked_reasons" :key="reason") {{ reason }}
+              p Выполните указанные условия и обновите мастерскую.
         p(v-if="!filteredRecipes.length") Рецептов по этому запросу нет.
       aside.craft-command(aria-label="Изготовление выбранного предмета" aria-live="polite")
+        world-quota-notice(v-if="state.quota" :quota="state.quota" :requested="quantity ?? 1" :server-time="state.server_time")
         template(v-if="selectedRecipe")
           .selected-heading
             font-awesome-icon(:icon="selectedRecipe.icon || 'cube'" aria-hidden="true")
             h2 {{ selectedRecipe.name }}
-          label Количество партий
-            n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading || Boolean(pending)")
-          n-checkbox(v-if="state?.object_budget_payment" v-model:checked="useObjectBudget" :disabled="busy || Boolean(pending)") Оплатить из свободного бюджета объекта
-          p(v-if="useObjectBudget") Стоимость будет списана из бюджета текущего объекта; личный баланс не расходуется.
-          p(v-if="calculating || loading" role="status") Рассчитываем материалы и стоимость…
-          template(v-else-if="calculation")
+          label.batch-count Количество партий
+            n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading || Boolean(pending)" aria-label="Количество партий")
+          world-payment-sources(v-model:checked="useObjectBudget" :mode="state.object_budget_payment ? 'budget-choice' : 'personal'" :price="displayedTerms?.price" :disabled="busy || Boolean(pending)")
+          template(v-if="displayedTerms")
             .material-tiles
-              .material-tile(v-for="material in calculation.terms.materials" :key="material.item_id" :class="{ missing: !material.available }")
+              .material-tile(v-for="material in displayedTerms.materials" :key="material.item_id" :class="{ missing: !material.available }")
                 font-awesome-icon(icon="cubes" aria-hidden="true")
                 strong {{ material.name }}
                 span {{ material.have }} / {{ material.quantity }}
-                small {{ material.available ? 'В наличии' : 'Не хватает' }}
-            p(:class="{ missing: !calculation.terms.output.fits }") Результат: {{ calculation.terms.output.name }} × {{ calculation.terms.output.quantity }}
-            p +{{ calculation.terms.experience }} XP · {{ state.storages.find(s => s.id === output)?.name }}
-            p.missing(v-for="reason in calculation.terms.reasons" :key="reason") {{ reason }}
+            p(:class="{ missing: !displayedTerms.output.fits }") Результат: {{ displayedTerms.output.name }} × {{ displayedTerms.output.quantity }}
+            p +{{ displayedTerms.experience }} XP · {{ state.storages.find(s => s.id === output)?.name }}
+            p.missing(v-for="reason in (calculating || waitingForPreview ? [] : displayedTerms.reasons)" :key="reason") {{ reason }}
           template(v-else)
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
             p(v-if="!sources.length || !output") Выберите хранилища в настройках ниже.
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
-          n-button(:theme-overrides="actionTheme" type="primary" block :loading="busy || calculating" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft") {{ calculation ? `Изготовить${creditCost(calculation.terms.price)}` : 'Изготовление недоступно' }}
+          n-button(:theme-overrides="actionTheme" type="primary" block :loading="busy || calculating || waitingForPreview || loading" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft")
+            | {{ displayedTerms ? 'Изготовить' : calculating || waitingForPreview || loading ? 'Рассчитываем…' : 'Изготовление недоступно' }}
+            world-credits(v-if="displayedTerms" :value="displayedTerms.price" cost)
+          n-alert.craft-result(v-if="notice" type="success" role="status")
+            strong {{ notice }}
+            template(v-if="lastResult")
+              p Получено: {{ lastResult.output.name }} × {{ lastResult.output.quantity }}
+              p Затрачено: {{ lastResult.materials.map(material => `${material.name} × ${material.quantity}`).join(', ') || 'без материалов' }}
+              p(v-if="lastResult.price !== '0.0000'") Кредиты: #[world-credits(:value="lastResult.price")]
+              p Опыт: +{{ lastResult.experience }} XP
           n-button(:theme-overrides="actionTheme" v-if="error && !calculation" :disabled="blocked" @click="preview") Повторить расчёт
           details.craft-settings
             summary Материалы, инструменты и место результата
@@ -137,7 +161,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
               n-select(v-model:value="output" :options="outputOptions" :disabled="busy || loading || Boolean(pending)")
             label(v-for="role in state.equipment" :key="role.item_id") {{ role.is_station ? 'Станция' : 'Инструмент' }}: {{ role.name }}
               n-select(v-model:value="equipment[role.item_id]" :options="role.candidates.map(c => ({ label: `Прочность ${c.durability}/${c.max_durability} · ${exposure[c.exposure_class]}`, value: c.instance_id }))" :disabled="busy || loading || Boolean(pending)" placeholder="Нет доступного экземпляра")
-            p(v-for="unit in calculation?.terms.equipment ?? []" :key="unit.instance_id") Износ за работу: {{ unit.wear }} · прочность {{ unit.durability }}/{{ unit.max_durability }}
+            p(v-for="unit in displayedTerms?.equipment ?? []" :key="unit.instance_id") Износ за работу: {{ unit.wear }} · прочность {{ unit.durability }}/{{ unit.max_durability }}
             router-link(:to="`/world/nodes/${nodeId}#workshop`") Разместить вещи и оборудование →
         p(v-else) Выберите рецепт для изготовления.
 </template>
@@ -153,7 +177,11 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 @media(max-width: 760px) { .workspace-layout { grid-template-columns: 1fr; }.craft-command { position: static; }.recipe-tiles { max-height: 45vh; overflow: auto; padding: 3px; } }
 .workspace label { display: grid; gap: .4rem; }
 .craft-command > .n-button { margin-block: .3rem; }.craft-settings { padding-top: .85rem; border-top: 1px solid var(--border); }.craft-command { padding: 1.25rem; gap: 1rem; top: calc(var(--site-header-height, 0px) + 1rem); }
-.ready { color: var(--success, #249653); font-weight: 700; }
+.recipe-tile.ready { background: linear-gradient(135deg, rgba(54, 173, 106, .13), transparent 85%), var(--bg-surface); }
+.recipe-tile.shortage { background: linear-gradient(135deg, rgba(208, 48, 80, .10), transparent 85%), var(--bg-surface); }
+.recipe-tile.locked { background: repeating-linear-gradient(135deg, transparent 0 7px, rgba(128,128,128,.09) 7px 14px), var(--bg-surface); }
+.recipe-tile.selected { outline: none; border-color: var(--border); }
 .recipe-legend { color: var(--text-muted); margin-block: .75rem 1rem; line-height: 1.5; }
 .missing { color: var(--error, #d03050); font-weight: 600; }
+.recipe-tile-wrap { position: relative; min-width: 0; }.recipe-tile-wrap > .recipe-tile { width: 100%; height: 100%; padding-right: 1.9rem; }.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .4rem; right: .4rem; z-index: 1; }.workspace .batch-count { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }.batch-count .n-input-number { width: 8rem; flex: 0 0 8rem; }.craft-result p { margin-top: .35rem; }.craft-command :deep(.world-credits) { margin-left: .5rem; }
 </style>

@@ -4,6 +4,9 @@ import { readFileSync } from 'node:fs';
 import { parse, compileScript } from '@vue/compiler-sfc';
 import { compile } from '@vue/compiler-dom';
 import pug from 'pug';
+import WorldCredits from '../../src/components/pages/world/WorldCredits.vue';
+import WorldCountdown from '../../src/components/pages/world/WorldCountdown.vue';
+import WorldQuotaNotice from '../../src/components/pages/world/WorldQuotaNotice.vue';
 
 // Exercise the actual client template and its handlers without requiring a browser installation.
 export function clientView(component: any, file: string) {
@@ -13,8 +16,12 @@ export function clientView(component: any, file: string) {
   component.render = new Function('Vue', code)(Vue);
   return component;
 }
-export interface ViewNode { tag: string; props: Record<string, any>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
-function element(tag: string): ViewNode { return { tag, props: {}, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
+// Shared display primitives must use their actual client templates in renderer tests too.
+clientView(WorldCredits, 'components/pages/world/WorldCredits.vue');
+clientView(WorldCountdown, 'components/pages/world/WorldCountdown.vue');
+clientView(WorldQuotaNotice, 'components/pages/world/WorldQuotaNotice.vue');
+export interface ViewNode { tag: string; props: Record<string, any>; style: Record<string, string>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
+function element(tag: string): ViewNode { return { tag, props: {}, style: { display: '' }, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
 const renderer = createRenderer<ViewNode, ViewNode>({
   createElement: element, createText: text => ({ ...element('#text'), text }), createComment: () => element('#comment'),
   setText: (node, text) => { node.text = text; }, setElementText: (node, text) => { node.text = text; node.children = []; },

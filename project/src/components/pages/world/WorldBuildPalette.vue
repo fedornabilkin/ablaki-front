@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton, NTooltip, NSkeleton } from 'naive-ui';
+import { NAlert, NButton, NSkeleton } from 'naive-ui';
 import { useRouter } from 'vue-router';
 import WorldHelpHint from './WorldHelpHint.vue';
 import { useWorldBudget } from '@/hooks/useWorldBudget';
@@ -72,22 +73,26 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
   .build-tiles(v-if="loading && !choices.length" role="status" aria-label="Загрузка плиток")
     n-skeleton(v-for="index in 6" :key="index" height="120px" :sharp="false")
   .build-tiles(v-else)
-    n-tooltip(v-for="item in choices" :key="item.id")
-      template(#trigger)
-        span.build-tile-wrap
-          button.build-tile(type="button" :disabled="blocked || !cell || item.available !== true" @click="choose(item)")
-            font-awesome-icon(:icon="icon(item)" aria-hidden="true")
-            strong {{ item.name }}
-            small {{ item.material_summary || 'Материалы не нужны' }}
-            span(v-if="item.economy && creditCost(item.economy.price_cr)") {{ creditCost(item.economy.price_cr).slice(3) }}
-            span.build-duration
-              font-awesome-icon(icon="clock" aria-hidden="true")
-              |  {{ formatDuration(item.build_seconds) }}
-      | {{ reason(item) }} Трудоёмкость: {{ formatDuration(item.build_seconds) }} реального времени работы. Владелец работает бесплатно; помощникам выделяется отдельный бюджет.
+    .build-tile-wrap(v-for="item in choices" :key="item.id")
+      .tile-information
+        world-help-hint(:label="`Описание: ${item.name}`" symbol="i")
+          p {{ item.description || item.name }}
+          p {{ reason(item) }}
+          p Трудоёмкость: {{ formatDuration(item.build_seconds) }} реального времени работы. Владелец работает бесплатно; помощникам выделяется отдельный бюджет.
+      button.build-tile(type="button" :disabled="blocked || !cell || item.available !== true" @click="choose(item)")
+        font-awesome-icon(:icon="icon(item)" aria-hidden="true")
+        strong {{ item.name }}
+        small {{ item.material_summary || 'Материалы не нужны' }}
+        .build-costs
+          world-credits(v-if="item.economy" :value="item.economy.price_cr" cost)
+          span.build-duration
+            font-awesome-icon(icon="clock" aria-hidden="true")
+            |  {{ formatDuration(item.build_seconds) }}
   build-settings-modal(v-model:show="open" :project="project" :name="name" :owner="owner" :session="session" :draft="draft" :budget-error="budgetError" :creating="runner.busy.value" :creation-error="runner.error.value" :creation-pending="!!runner.pending.value" @refresh-budget="refreshBudget" @create="create" @saved="emit('changed')")
 </template>
 <style scoped>
 .build-tile:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
+.build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .4rem; top: .4rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { padding-right: 1.3rem; }
 .palette-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }
 .build-palette { margin-top: 1rem; }.build-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }.build-tile-wrap { display: grid; }.build-tile { display: grid; gap: .4rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; width: 100%; }.build-tile:hover { border-color: var(--primary); }.build-tile:disabled { opacity: .55; cursor: default; }.build-tile svg { color: var(--primary); font-size: 1.4rem; }.build-tile small, .build-tile span { color: var(--text-muted); font-size: .8rem; }
 </style>

@@ -1,9 +1,10 @@
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { record } from './world';
-export interface SourceAction { code: string; work_seconds: number; cooldown_seconds: number; available_at?: number; experience?: number; output: { code: string; name: string; quantity: number }[]; tools: string[]; tool_names?: string[]; daily_limit: number | null }
+export interface SourceAction { code: string; work_seconds: number; cooldown_seconds: number; available_at?: number; experience?: number; unavailable_reason?: string | null; output: { code: string; name: string; quantity: number }[]; tools: string[]; tool_names?: string[]; daily_limit: number | null }
 export interface MiningState { node_id: number; ready: boolean; working: boolean; workers: number; produced_quantity: number; pending_quantity: number; seconds_per_unit: number; server_time: number;
   work_id?: number | null; required_seconds?: number; live_work?: { accounted_at: number; last_seen_at: number }[];
+  unavailable_reason?: string | null;
   actions?: SourceAction[]; worked_seconds?: number; action_code?: string | null; output_storage_id?: number | null; blocked_message?: string | null; quota?: { maximum: number; remaining: number; restores_at: number } }
 export function parseMining(value: unknown): MiningState {
   const row = record(value);
@@ -18,6 +19,7 @@ export function parseMining(value: unknown): MiningState {
       const action = record(value);
       if (!Array.isArray(action.output) || action.output.length > 10 || !Array.isArray(action.tools) || action.tools.length > 10) throw new Error('invalid-world-response');
       return { code: string(action.code), work_seconds: uint(action.work_seconds), cooldown_seconds: uint(action.cooldown_seconds),
+        ...(action.unavailable_reason === undefined ? {} : { unavailable_reason: action.unavailable_reason === null ? null : string(action.unavailable_reason) }),
         ...(action.available_at === undefined ? {} : { available_at: uint(action.available_at) }),
         ...(action.experience === undefined ? {} : { experience: uint(action.experience) }),
         output: action.output.map(value => { const item = record(value); return { code: string(item.code), name: string(item.name), quantity: uint(item.quantity) }; }),
@@ -26,6 +28,7 @@ export function parseMining(value: unknown): MiningState {
   }
   const quota = row.quota === undefined || row.quota === null ? undefined : record(row.quota);
   return { node_id: integer('node_id'), ready: row.ready, working: row.working, workers: integer('workers'), produced_quantity: integer('produced_quantity'), pending_quantity: integer('pending_quantity'), seconds_per_unit: integer('seconds_per_unit'), server_time: integer('server_time'),
+    ...(row.unavailable_reason === undefined ? {} : { unavailable_reason: row.unavailable_reason === null ? null : string(row.unavailable_reason) }),
     ...(row.worked_seconds === undefined ? {} : { worked_seconds: uint(row.worked_seconds) }),
     ...(row.work_id === undefined ? {} : { work_id: row.work_id === null ? null : uint(row.work_id) }),
     ...(row.required_seconds === undefined ? {} : { required_seconds: uint(row.required_seconds) }),

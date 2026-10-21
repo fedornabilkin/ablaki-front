@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox } from 'naive-ui';
@@ -152,8 +154,8 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
           | Очистить грядку
     .cultivation-card(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
-      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}{{ creditCost(price) }}.
-      n-checkbox(v-if="quote.action !== 'cancel' && needsPersonalTopUp(price, availableBudget)" v-model:checked="personalContribution" :disabled="locked") Добавить с баланса
+      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}#[world-credits(:value="price ?? '0'" cost)].
+      world-payment-sources(v-if="quote.action !== 'cancel'" v-model:checked="personalContribution" :price="price" :available="availableBudget" :disabled="locked")
       p(v-if="quote.action === 'cancel'") Посев будет убран без возврата семян и воды.
       p(v-for="(material, i) in materials" :key="i" :class="{ missing: !material.available }") {{ material.name }}: {{ material.have }} / {{ material.quantity }} · {{ material.available ? 'Хватает' : 'Недостаточно' }}
       p(v-if="tool" :class="{ missing: !tool.available }") {{ tool.name }}: {{ tool.durability }} прочности · {{ tool.available ? 'Доступна' : 'Нужна исправная лопата в рюкзаке' }}

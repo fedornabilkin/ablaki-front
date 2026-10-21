@@ -4,7 +4,7 @@ import { record } from './world';
 
 export interface SimpleNode { id: number; parent_id: number | null; name: string; hierarchy_level: number; node_type: string; building_kind: string | null; owner_user_id: number | null; status: string; revision: number }
 export interface Build { id: number; node_id: number; owner_user_id: number; status: string; required_seconds: number; worked_seconds: number; labor_budget: string; job_kind?: string; initial_condition?: number; max_condition?: number; condition?: number; funding_node_id?: number; budget_available?: string; world_time_rate?: number; server_time?: number; live_work?: { accounted_at: number; last_seen_at: number }[] }
-export interface Template { id: number; name: string; build_seconds: number; material_summary: string; kind?: string; available?: boolean; unavailable_reason?: string; world_build_seconds?: number; world_time_rate?: number; economy?: { profile_version: number; price_cr: string; terms_digest: string } }
+export interface Template { id: number; name: string; description?: string; build_seconds: number; material_summary: string; kind?: string; available?: boolean; unavailable_reason?: string; world_build_seconds?: number; world_time_rate?: number; economy?: { profile_version: number; price_cr: string; terms_digest: string } }
 const number = (value: unknown): number => {
   const result = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (typeof result !== 'number' || !Number.isSafeInteger(result) || result < 0) throw new Error('invalid-world-response');
@@ -46,7 +46,7 @@ export async function templates(parent: number) {
     if (row.available !== undefined && typeof row.available !== 'boolean') throw new Error('invalid-world-response');
     const economy = row.economy === undefined || row.economy === null ? undefined : record(row.economy);
     if (economy && (typeof economy.terms_digest !== 'string' || !/^[a-f0-9]{64}$/.test(economy.terms_digest))) throw new Error('invalid-world-response');
-    return { id: number(row.id), name: text(row.name), build_seconds: number(row.build_seconds), material_summary: text(row.material_summary), ...(row.kind === undefined ? {} : { kind: text(row.kind) }),
+    return { id: number(row.id), name: text(row.name), ...(row.description == null ? {} : { description: text(row.description) }), build_seconds: number(row.build_seconds), material_summary: text(row.material_summary), ...(row.kind === undefined ? {} : { kind: text(row.kind) }),
       ...(row.available === undefined ? {} : { available: row.available as boolean, unavailable_reason: text(row.unavailable_reason) }),
       ...(row.world_build_seconds === undefined ? {} : { world_build_seconds: number(row.world_build_seconds), world_time_rate: number(row.world_time_rate) }),
       ...(economy ? { economy: { profile_version: number(economy.profile_version), price_cr: money(economy.price_cr), terms_digest: text(economy.terms_digest) } } : {}) };

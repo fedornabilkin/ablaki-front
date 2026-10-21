@@ -32,7 +32,10 @@ n-card(:title="scope === 'recent' ? 'Последние игры' : 'Истор�
         span(role="alert") {{ kons.error.value }}
         n-button(@click="kons.refresh") Повторить
       template(v-else)
-        n-button(v-for="item in kons.data.value" :key="item.kon" :type="Number(kon) === Number(item.kon) ? 'primary' : 'default'" :aria-pressed="Number(kon) === Number(item.kon)" @click="selectKon(item.kon)") {{ kind === 'saper' ? formatAccountNumber(item.kon) : formatCredits(item.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }} ({{ item.count }})
+        n-button(v-for="item in kons.data.value" :key="item.kon" :type="Number(kon) === Number(item.kon) ? 'primary' : 'default'" :aria-pressed="Number(kon) === Number(item.kon)" @click="selectKon(item.kon)")
+          template(v-if="kind === 'saper'") {{ formatAccountNumber(item.kon) }} Кг
+          world-credits(v-else :value="item.kon")
+          |  ({{ item.count }})
         span.muted(v-if="!kons.data.value.length") За этот период игр нет
     request-state(:loading="history.loading.value" :error="history.error.value" :empty="!history.data.value.items.length" @retry="history.refresh")
       game-recent-list(:games="history.data.value.items" :kind="kind")

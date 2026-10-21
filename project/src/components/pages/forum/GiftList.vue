@@ -13,7 +13,7 @@ const { data, loading, error, refresh } = usePageRequest(() => list(`forum-comme
 </script>
 <template lang="pug">
 .stack
-  p.muted Каждый участник передал автору сообщения 1 Cr.
+  p.muted Каждый участник передал автору сообщения 1 кредиты.
   list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
   request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
     .record-row(v-for="gift in data.items" :key="gift.id")

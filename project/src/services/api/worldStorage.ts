@@ -59,7 +59,7 @@ export async function loadPlacementOptions(node: number, cell?: { x: number; y: 
     const i = record(value), p = i.input === null ? null : record(i.input);
     if (typeof i.available !== 'boolean' || i.available !== (p !== null)) invalid();
     const input: TransferInput | null = p ? { inventory_id: id(p.inventory_id), source_storage_id: id(p.source_storage_id), destination_storage_id: id(p.destination_storage_id), position: id(p.position), quantity: integer(p.quantity, 1, 1), instance_id: nullable(p.instance_id) } : null;
-    return { id: id(i.id), name: text(i.name, 120), icon: text(i.icon, 64), quantity: integer(i.quantity, i.requires_crafting === true ? 0 : 1), available: i.available, input, requires_crafting: i.requires_crafting === true };
+    return { id: id(i.id), name: text(i.name, 120), description: i.description == null ? '' : text(i.description, 5000), icon: text(i.icon, 64), quantity: integer(i.quantity, i.requires_crafting === true ? 0 : 1), available: i.available, input, requires_crafting: i.requires_crafting === true };
   }, 10000);
 }
 export async function previewChestRepair(storage: number, container: number) {

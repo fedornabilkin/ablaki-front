@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed } from 'vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import { formatCredits } from '@/entities/world/credits';
@@ -19,7 +20,8 @@ const rows = computed(() => props.games.map(game => ({
 .recent-games
   .recent-game(v-for="row in rows" :key="row.game.id")
     .recent-meta
-      strong.recent-stake {{ kind === 'saper' ? formatAccountNumber(row.game.kon) : formatCredits(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
+      strong.recent-stake(v-if="kind === 'saper'") {{ formatAccountNumber(row.game.kon) }} Кг
+      world-credits.recent-stake(v-else :value="row.game.kon")
       small.muted {{ historyTime(row.completedAt) }}
     .recent-players
       .recent-player.recent-player--creator

@@ -4,7 +4,7 @@ import { command } from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 
 interface Pending { path: string; body: Record<string, unknown>; key: string }
-const allowed = /^(start|builds|builds\/[1-9]\d*\/(start|heartbeat|stop|cancel|settings)|objects\/[1-9]\d*\/(budget|gather|repair|mining\/(start|heartbeat|stop))|economy\/(food|goals\/claim))$/;
+const allowed = /^(start|builds|builds\/[1-9]\d*\/(start|heartbeat|stop|cancel|settings)|objects\/[1-9]\d*\/(budget|gather|repair|mining\/(start|heartbeat|stop))|economy\/(food|goals\/(claim|fund)))$/;
 /** Keep the same payload and key until the server has confirmed the result. */
 export function useSimpleWorldCommand(scope: Ref<string>, session: Ref<number>) {
   const busy = ref(false), error = ref(''), pending = shallowRef<Pending | null>(null);

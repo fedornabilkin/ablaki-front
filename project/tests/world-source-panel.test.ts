@@ -29,6 +29,24 @@ beforeEach(() => {
 });
 afterEach(() => { app?.unmount(); app = undefined; vi.useRealTimers(); });
 describe('source batch destination', () => {
+  it('explains a missing tool and blocks the start before sending a command', async () => {
+    mocks.load.mockResolvedValue({ ...state(), actions: [{ ...state().actions[0], unavailable_reason: 'Нужен исправный инструмент: Молоток.' }] });
+    const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true })); app = view.app; await flushView();
+    const button = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Работать над партией'))!;
+    expect(button.props.disabled).toBe(true); expect(viewText(view.root)).toContain('Нужен исправный инструмент: Молоток.');
+    button.props.onClick(); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('uses the same action control while starting and synchronizing a batch', async () => {
+    vi.useFakeTimers();
+    const working = { ...state(), working: true, action_code: 'gather-log', required_seconds: 120 };
+    const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true })); app = view.app; await flushView();
+    const button = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Работать над партией'))!;
+    mocks.runner.submit.mockImplementation(async () => { mocks.runner.busy.value = true; mocks.runner.pending.value = {}; await Promise.resolve(); mocks.runner.busy.value = false; mocks.runner.pending.value = null; return working; });
+    button.props.onClick(); await flushView(); await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(mocks.runner.submit).toHaveBeenLastCalledWith('objects/4/mining/heartbeat', {});
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Приостановить добычу'))).toBe(button);
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Повторить запрос'))).toBeUndefined();
+  });
   it('animates between server replies, then checks completion while preserving the work controls', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
     const working = { ...state(), working: true, action_code: 'gather-log', required_seconds: 2, work_id: 7, live_work: [{ accounted_at: 100, last_seen_at: 100 }] };

@@ -16,7 +16,6 @@ import { craftRequirements } from '@/entities/craft/classic';
 import { date } from '@/services/api/portal';
 import WorldWorkspaceNav from '../world/WorldWorkspaceNav.vue';
 import WorldEconomyHistory from '../world/WorldEconomyHistory.vue';
-import WorldMvpProgress from '../world/WorldMvpProgress.vue';
 import WorldWorkspaceHero from '../world/WorldWorkspaceHero.vue';
 import { workspaceNode } from '@/entities/world/workspaceNavigation';
 const store = useStore();
@@ -144,18 +143,17 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
         n-input(v-model:value="search" placeholder="Название предмета" aria-label="Поиск рецепта")
         .item-grid
-          article.list-recipe(v-for="r in filtered" :key="r.id" :class="{ ready: readyRecipes.has(r.id) }")
-            span.stock-corner(:class="{available: (stock.get(r.item_id) || 0) > 0}" :aria-label="(stock.get(r.item_id) || 0) > 0 ? 'Есть в инвентаре' : 'Нет в инвентаре'")
-              font-awesome-icon(:icon="(stock.get(r.item_id) || 0) > 0 ? 'check' : 'exclamation-circle'")
+          article.list-recipe(v-for="r in filtered" :key="r.id" :class="{ ready: readyRecipes.has(r.id), locked: r.locked_reasons.length > 0, shortage: !readyRecipes.has(r.id) && !r.locked_reasons.length }")
+            font-awesome-icon.recipe-lock(v-if="r.locked_reasons.length" icon="lock" title="Рецепт закрыт")
             router-link.item-heading.recipe-select(:to="{ path: '/world/workspace/map', query: { ...(nodeId ? { node: nodeId } : {}), item: r.item_id } }" :aria-label="`Открыть рецепт: ${items.get(r.item_id)?.name}`")
               font-awesome-icon(:icon="items.get(r.item_id)?.icon || 'cube'")
               strong {{ items.get(r.item_id)?.name }}
             strong В наличии: {{ stock.get(r.item_id) || 0 }}
-            span {{ readyRecipes.has(r.id) ? '✓ Можно создать' : r.locked_reasons.length ? 'Закрыт' : 'Не хватает ресурсов или оборудования' }} · Ур. {{ r.min_level }}
+            span(v-if="!readyRecipes.has(r.id)") {{ r.locked_reasons.length ? 'Закрыт' : 'Не хватает ресурсов или оборудования' }}
+            small Ур. {{ r.min_level }}
             small Выход: {{ r.output_quantity }} шт.
             router-link(:to="{ path: craftHref, query: { recipe_id: r.id } }") Изготовить →
         p(v-if="!filtered.length") Рецептов по этому фильтру нет.
-      world-mvp-progress(v-if="tab === 'inventory'" :owner="Number(store.getters['auth/user']?.id ?? 0)" :session="Number(session)" :revision="0" :writable="!blocked")
       craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command" @submit="craft.submit")
       section.workshop-content(v-if="tab === 'history'" aria-label="История крафта")
         world-economy-history(:session="session")
@@ -168,7 +166,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
                 th Операция
                 th Предмет
                 th Количество
-                th Cr
+                th кредиты
                 th Дата и время
             tbody
               tr(v-for="event in history" :key="event.id")
@@ -229,9 +227,11 @@ small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-w
 .workshop-main { grid-column: 2 / 4; grid-row: 2; display: grid; gap: .75rem; min-width: 0; }.workshop-messages { display: grid; gap: .5rem; }.workshop-messages.floating { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: min(440px, calc(100% - 24px)); max-height: 35%; overflow: auto; }
 .workshop-content { min-width: 0; }.item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .75rem; margin-top: 1rem; }
 .list-recipe { position: relative; padding: 1rem; border: 1px solid var(--border); background: var(--bg-surface); border-radius: .6rem; display: flex; flex-direction: column; gap: .6rem; color: var(--text); text-align: left; overflow: hidden; cursor: pointer; }.list-recipe > span { color: var(--text-muted); }.item-heading { display: flex; align-items: center; gap: .6rem; padding-right: 16px; }.item-heading svg { color: #d6b685; flex-shrink: 0; }
-.list-recipe.ready { border-color: #249653; background: color-mix(in srgb, #249653 12%, var(--bg-surface)); }
+.list-recipe.ready { background: linear-gradient(135deg, #2496531f, var(--bg-surface) 80%); }
+.list-recipe.shortage { background: linear-gradient(135deg, #d030501a, var(--bg-surface) 80%); }
+.list-recipe.locked { background: repeating-linear-gradient(135deg, transparent 0 8px, #ffffff06 8px 16px), var(--bg-surface); }
+.recipe-lock { position: absolute; top: .65rem; right: .65rem; color: var(--text-muted); }
 .recipe-select { font: inherit; color: inherit; text-align: left; border: 0; background: transparent; padding: 0 16px 0 0; cursor: pointer; }.recipe-select:focus-visible { outline: 2px solid var(--primary); }.list-recipe > .n-button { margin-top: auto; }.list-recipe { cursor: default; }
-.stock-corner { position: absolute; top: 0; right: 0; width: 34px; height: 34px; clip-path: polygon(0 0,100% 0,100% 100%); background: #dc2626; }.stock-corner.available { background: #26854e; }.stock-corner svg { position: absolute; right: 4px; top: 4px; font-size: 10px; color: white; }
 .history-table { overflow: auto; margin: 1rem 0; }.history-table table { width: 100%; border-collapse: collapse; }.history-table th, .history-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media(max-width: 1100px) {

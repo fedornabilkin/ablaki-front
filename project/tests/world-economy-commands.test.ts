@@ -15,6 +15,15 @@ beforeEach(() => {
 });
 afterEach(() => { scopes.splice(0).forEach(scope => scope.stop()); vi.unstubAllGlobals(); });
 describe('new economy command recovery', () => {
+  it('returns the confirmed profession result to the initiating control', async () => {
+    const completed = vi.fn(), quote = { quote_id: 'a'.repeat(32), expected_revisions: {}, terms: {}, expires_at: 1000, server_time: 1 };
+    calls.quoted.mockImplementationOnce((_path, body) => Promise.resolve({ request_key: body.request_key, changed_node_ids: [7] }));
+    const runner = scope(() => useWorldCommand(ref(1), ref(11), completed));
+    const result = await runner.submit('/professions/5/enroll', {}, quote);
+    expect(result).toEqual(completed.mock.calls[0][0]);
+    expect(result?.changed_node_ids).toEqual([7]);
+    expect(runner.pending.value).toBeNull(); expect(runner.busy.value).toBe(false);
+  });
   it.each([['economy/food', { code: 'world-cooked-carrot', health_revision: 1 }], ['economy/goals/claim', { code: 'day-1' }]])('restores %s with its original immutable key after a lost response', async (path, body) => {
     calls.simple.mockRejectedValueOnce(new Error('offline'));
     const first = scope(() => useSimpleWorldCommand(ref('11.mvp'), ref(1)));

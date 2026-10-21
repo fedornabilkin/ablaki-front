@@ -4,7 +4,7 @@ import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NSpin } from 'naive-ui';
-import PageHeader from '@/components/PageHeader.vue';
+import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
 import ListFilters from '@/components/ListFilters.vue';
 import PagePager from '@/components/PagePager.vue';
 import { useListQuery } from '@/hooks/useListQuery';
@@ -32,9 +32,8 @@ watch([instance, session, params], load, { immediate: true, flush: 'sync' });
 onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
-page-header(pageTitle="История прочности")
 .container.equipment-history
-  router-link(to="/world") Вернуться в мир
+  world-workspace-hero(title="История прочности" icon="hammer" :parent-to="state?.returnNode ? `/world/nodes/${state.returnNode}` : '/world'" parent-label="Вернуться в мир")
   n-alert(v-if="!valid" type="error") Некорректный адрес экземпляра.
   template(v-else)
     n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить историю

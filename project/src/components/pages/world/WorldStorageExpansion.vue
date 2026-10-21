@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
 import { loadEconomyStorage, previewEconomyStorage, type EconomyStorageState } from '@/services/api/worldEconomyStorage';
@@ -6,6 +7,7 @@ import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldQuote } from '@/entities/world/types';
 import { worldError } from '@/services/api/world';
 import { formatCredits, creditCost } from '@/entities/world/credits';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 const props = defineProps<{ storage: number; session: number; revision: number; writable: boolean; command: WorldCommandRunner }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<EconomyStorageState | null>(null), selected = ref<string | null>(null), quote = ref<WorldQuote | null>(null), loading = ref(false), loadingState = ref(false), error = ref('');
@@ -39,8 +41,9 @@ section.storage-expansion(v-if="state?.options.length || error" aria-label="Ра
   n-button(v-if="error" :loading="loadingState" :disabled="loadingState" @click="load") Повторить загрузку
   p(v-if="state") Постоянная вместимость: {{ state.capacity }}. Пакет оплачивается с личного баланса.
   .storage-expansion-options(v-if="state")
-    n-button(v-for="pack in state.options" :key="pack.code" size="small" :disabled="blocked" :aria-pressed="selected === pack.code" @click="choose(pack.code)") +{{ pack.slots }} мест{{ creditCost(pack.price) }}
-  p(v-if="quote") Новая вместимость: {{ quote.terms.capacity_after }}. Стоимость: {{ formatCredits(String(quote.terms.price_cr)) }} Cr.
+    n-button(v-for="pack in state.options" :key="pack.code" size="small" :disabled="blocked" :aria-pressed="selected === pack.code" @click="choose(pack.code)") +{{ pack.slots }} мест#[world-credits(:value="pack.price ?? '0'" cost)]
+  p(v-if="quote") Новая вместимость: {{ quote.terms.capacity_after }}. Стоимость: #[world-credits(:value="String(quote.terms.price_cr)")] .
+  world-payment-sources(v-if="quote" mode="personal" :price="String(quote.terms.price_cr)")
   n-button(v-if="quote" :disabled="blocked" @click="confirm") Оплатить расширение
 </template>
 <style scoped>

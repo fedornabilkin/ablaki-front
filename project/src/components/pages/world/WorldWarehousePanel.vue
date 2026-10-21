@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NProgress } from 'naive-ui';
@@ -51,9 +53,9 @@ section.warehouse-panel
     n-alert(v-if="state.used >= state.capacity" type="warning") Склад заполнен. Заберите предметы или расширьте его перед производством.
     router-link(:to="`/world/nodes/${state.finance_node_id}#finance`") Бюджет для оплаты
     template(v-if="state.next_price")
-      p Следующая ячейка: {{ formatCredits(state.next_price) }} Cr. Каждая последующая стоит дороже.
-      n-checkbox(v-if="needsPersonalTopUp(state.next_price, availableBudget)" v-model:checked="topUp" :disabled="locked") Добавить с баланса
-      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" :loading="loading" @click="preview") Открыть ячейку{{ creditCost(state.next_price) }}
+      p Следующая ячейка: #[world-credits(:value="state.next_price")] . Каждая последующая стоит дороже.
+      world-payment-sources(v-model:checked="topUp" :price="state.next_price" :available="availableBudget" :disabled="locked")
+      n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked" :loading="loading" @click="preview") Открыть ячейку#[world-credits(:value="state.next_price ?? '0'" cost)]
 </template>
 <style scoped>
 .warehouse-panel { display: grid; gap: .75rem; }

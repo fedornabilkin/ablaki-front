@@ -1,6 +1,6 @@
 import type { WorldCapabilities, WorldNode } from './types';
 
-export type NodeTab = 'map' | 'cultivation' | 'workshop' | 'finance' | 'statistics' | 'manage';
+export type NodeTab = 'map' | 'cultivation' | 'workshop' | 'finance' | 'statistics';
 
 export interface NodeFeatureSet {
   storage: boolean;
@@ -12,7 +12,7 @@ export interface NodeFeatureSet {
 
 export const tabLabels: Record<NodeTab, string> = {
   map: 'Карта', cultivation: 'Выращивание', workshop: 'Вещи и крафт', finance: 'Казна',
-  statistics: 'Статистика', manage: 'Управление',
+  statistics: 'Статистика',
 };
 
 export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | null): NodeFeatureSet {
@@ -33,11 +33,11 @@ export function tabsForNode(node: WorldNode, features: NodeFeatureSet): NodeTab[
   if (features.cultivation) tabs.push('cultivation');
   tabs.push('workshop', 'finance');
   tabs.push('statistics');
-  if (node.permissions.administer) tabs.push('manage');
   return tabs;
 }
 
 const anchorTabs: Record<string, NodeTab> = {
+  manage: 'finance',
   life: 'map', shelter: 'map', nights: 'map', housing: 'map',
   supplies: 'workshop',
   garden: 'map', premises: 'map', 'settlement-orders': 'map',

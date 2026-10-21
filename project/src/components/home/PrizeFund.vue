@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
 import { useStore } from 'vuex';
@@ -25,24 +26,24 @@ n-card(title="Призовой фонд")
           font-awesome-icon(icon="question-circle" aria-hidden="true")
       p Фонд на сегодня — кредитные комиссии за вчера, на завтра — комиссии за сегодня. Сутки считаются по московскому времени.
       p Доля зависит от вашего рейтинга относительно суммы положительных рейтингов и округляется вверх. Завтрашний фонд меняется в течение дня.
-      p Это прогноз; ежедневный бонус пока составляет 1 Cr.
+      p Это прогноз; ежедневный бонус пока составляет #[world-credits(value="1")].
   request-state(:loading="loading" :error="error" :empty="!data" @retry="refresh")
     .fund-days(v-if="data")
       .fund-day
         h3 Сегодня
-        strong.fund-amount(:title="'Фонд сегодня: ' + credits(data.today) + ' Cr'") {{ formatCredits(data.today) }} Cr
+        strong.fund-amount(:title="'Фонд сегодня: ' + credits(data.today) + ' кредиты'") #[world-credits(:value="data.today")]
         p(v-if="data.user_today !== null" title="Ваша расчётная доля фонда")
           font-awesome-icon(icon="user" aria-hidden="true")
-          |  {{ formatCredits(data.user_today) }} Cr
-        n-button(v-if="canClaim" type="primary" size="small" :loading="claiming === 'bonus'" :disabled="claiming !== null" @click="claim('bonus')") Получить приз · 1 Cr
+          |  #[world-credits(:value="data.user_today")]
+        n-button(v-if="canClaim" type="primary" size="small" :loading="claiming === 'bonus'" :disabled="claiming !== null" @click="claim('bonus')") Получить приз · #[world-credits(value="1")]
         n-button(v-else-if="available.error.value && authenticated" size="small" @click="available.refresh") Повторить
         small.muted(v-else-if="authenticated && !available.loading.value") Приз получен
       .fund-day
         h3 Завтра
-        strong.fund-amount(:title="'Накоплено на завтра: ' + credits(data.tomorrow) + ' Cr'") {{ formatCredits(data.tomorrow) }} Cr
+        strong.fund-amount(:title="'Накоплено на завтра: ' + credits(data.tomorrow) + ' кредиты'") #[world-credits(:value="data.tomorrow")]
         p(v-if="data.user_tomorrow !== null" title="Ваш потенциальный приз из завтрашнего фонда")
           font-awesome-icon(icon="user" aria-hidden="true")
-          |  ≈ {{ formatCredits(data.user_tomorrow) }} Cr
+          |  ≈ #[world-credits(:value="data.user_tomorrow")]
     p(v-if="!authenticated")
       router-link(:to="{ path: '/users/login', query: { redirect: '/' } }") Войдите, чтобы увидеть свою долю.
 </template>

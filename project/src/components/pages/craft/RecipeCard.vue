@@ -67,7 +67,7 @@ const haveOf = (itemId) => craft.inventoryMap.get(itemId) || 0;
         <footer class="recipe-footer">
             <div class="recipe-cost" v-if="recipe.cost_credits > 0">
                 <font-awesome-icon icon="fa fa-coins"/>
-                {{ formatCredits(recipe.cost_credits) }} Cr
+                {{ formatCredits(recipe.cost_credits) }}
             </div>
             <div v-else class="recipe-cost-empty"></div>
             <n-button

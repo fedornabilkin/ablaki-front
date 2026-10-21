@@ -60,7 +60,7 @@ section.world-housing#housing
       world-nights-panel(:node-id="state.place.plot_id" :session="session")
     section(v-if="quote" aria-live="polite")
       h3 {{ quote.action === 'lodge' ? 'Назначить ночлег здесь' : 'Прекратить ночлег здесь' }}
-      p Стоимость: 0 Cr. Изменение начнёт действовать после подтверждения.
+      p Без оплаты. Изменение начнёт действовать после подтверждения.
       p Для защищённой ночи нужно оставаться в одном исправном укрытии всю ночь. Назначение не восстанавливает здоровье за прошлые ночи.
       n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") Подтвердить
 </template>

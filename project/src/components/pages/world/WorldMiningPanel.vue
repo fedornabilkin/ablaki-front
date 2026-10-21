@@ -9,6 +9,7 @@ import { formatDuration } from '@/entities/world/duration';
 import { loadStorageList, type StorageHeader } from '@/services/api/worldStorage';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldWorkProgress from './WorldWorkProgress.vue';
+import WorldQuotaNotice from './WorldQuotaNotice.vue';
 const props = defineProps<{ nodeId: number; owner: number; session: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<MiningState | null>(null), error = ref('');
@@ -19,6 +20,13 @@ const selected = computed(() => state.value?.actions?.find(action => action.code
 const options = computed(() => state.value?.actions?.map(action => ({ value: action.code, label: action.output.map(item => `${item.name} × ${item.quantity}`).join(', ') })) ?? []);
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.${props.nodeId}.mining`), computed(() => props.session));
 const checking = ref(false);
+const unavailable = computed(() => state.value?.unavailable_reason || (!state.value?.action_code ? selected.value?.unavailable_reason : null));
+const actionLabel = computed(() => runner.pending.value && !runner.busy.value ? 'Повторить запрос'
+  : state.value?.working ? 'Приостановить добычу'
+  : state.value?.pending_quantity || selected.value?.work_seconds === 0 ? 'Получить готовую партию'
+  : state.value?.actions ? 'Работать над партией' : 'Добывать руду');
+const actionBlocked = computed(() => !props.writable || runner.busy.value || (!runner.pending.value && !state.value?.working
+  && (!!unavailable.value || (!state.value?.pending_quantity && (state.value?.quota?.remaining === 0 || (!state.value?.action_code && (selected.value?.available_at ?? 0) > (state.value?.server_time ?? 0)))))));
 const progress = computed(() => ({ worked_seconds: state.value?.actions ? state.value.worked_seconds ?? 0 : (state.value?.worked_seconds ?? 0) % Math.max(1, state.value?.seconds_per_unit ?? 1),
   required_seconds: state.value?.action_code ? state.value.required_seconds ?? selected.value?.work_seconds ?? 1 : selected.value?.work_seconds ?? state.value?.seconds_per_unit ?? 1,
   working: !!state.value?.working, server_time: state.value?.server_time ?? 0, live_work: state.value?.live_work ?? [] }));
@@ -36,6 +44,7 @@ async function loadDestinations() {
 }
 async function act(action: 'start' | 'heartbeat' | 'stop', retry = false) {
   if (runner.busy.value || (!retry && runner.pending.value)) return;
+  if (!retry && action !== 'stop' && !state.value?.working && unavailable.value) return;
   readRevision++; reading = false;
   checking.value = action === 'heartbeat' && !retry;
   const current = generation; error.value = '';
@@ -54,6 +63,7 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); if (
 </script>
 <template lang="pug">
 section.mining-panel(aria-label="Получение ресурсов")
+  world-quota-notice(v-if="state?.quota" :quota="state.quota" :server-time="state.server_time")
   .mining-heading
     h3 Получение ресурсов
     world-help-hint(label="Как учитывается добыча")
@@ -71,17 +81,16 @@ section.mining-panel(aria-label="Получение ресурсов")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
         p(v-if="!state.action_code && (selected?.available_at ?? 0) > state.server_time") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
         n-select(v-if="storageOptions.length" :value="state.output_storage_id ?? selectedStorage" :options="storageOptions" clearable placeholder="Рюкзак" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Хранилище результата" @update:value="selectedStorage = $event")
-        p(v-if="state.quota") Доступно партий сегодня: {{ state.quota.remaining }} из {{ state.quota.maximum }}.
         n-alert(v-if="state.blocked_message" type="warning") {{ state.blocked_message }}. Заработанная партия сохранена.
       template(v-else)
         p Работников: {{ state.workers }}. Добыто: {{ state.produced_quantity }} ед. руды.
       world-work-progress(v-if="progress.required_seconds > 0" :snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="act('heartbeat')")
       p(v-if="state.pending_quantity") Ожидает выдачи: {{ state.pending_quantity }}. Освободите место в хранилище.
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="!state.working" type="primary" :loading="runner.busy.value" :disabled="!writable || !!runner.pending.value || (!state.pending_quantity && (state.quota?.remaining === 0 || (!state.action_code && (selected?.available_at ?? 0) > state.server_time)))" @click="state.pending_quantity ? act('heartbeat') : act('start')") {{ state.pending_quantity || selected?.work_seconds === 0 ? 'Получить готовую партию' : state.actions ? 'Работать над партией' : 'Добывать руду' }}
-      n-button(:theme-overrides="worldActionButtonTheme" v-else :loading="runner.busy.value && !checking" :disabled="runner.busy.value || !!runner.pending.value" @click="act('stop')") Приостановить добычу
-  n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value" :loading="runner.busy.value" @click="act('heartbeat', true)") Повторить запрос
+      p.mining-unavailable(v-if="unavailable" role="status") {{ unavailable }}
+      n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="runner.busy.value && !checking" :disabled="actionBlocked" @click="runner.pending.value ? act('heartbeat', true) : act(state.working ? 'stop' : state.pending_quantity ? 'heartbeat' : 'start')") {{ actionLabel }}
 </template>
 <style scoped>
 .mining-panel { display: grid; gap: .75rem; }.mining-panel p, .mining-panel h3 { margin: 0; }
 .mining-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }
+.mining-unavailable { color: var(--error, #d03050); font-size: .85rem; }
 </style>

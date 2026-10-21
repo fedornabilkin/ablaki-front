@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed } from 'vue';
 import { NButton, NSkeleton } from 'naive-ui';
 import { usePageRequest } from '@/hooks/usePageRequest';
@@ -24,7 +25,8 @@ const rows = computed(() => recent.data.value.map(game => ({ game, winner: game.
       router-link(v-if="player.user" :to="'/wall/' + encodeURIComponent(String(player.user.username))") {{ player.user.username }}
       span.muted(v-else) —
       font-awesome-icon.winner(v-if="row.winner === player.side" icon="trophy" title="Победитель" aria-label="Победитель")
-    strong {{ formatAccountNumber(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
+    strong(v-if="kind === 'saper'") {{ formatAccountNumber(row.game.kon) }} Кг
+    world-credits(v-else :value="row.game.kon")
     small.muted(v-if="row.winner === 'draw' && kind !== 'duel'") Ничья
 </template>
 <style scoped>

@@ -3,7 +3,7 @@ import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NSpin } from 'naive-ui';
-import PageHeader from '@/components/PageHeader.vue';
+import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
 import PagePager from '@/components/PagePager.vue';
 import { useListQuery } from '@/hooks/useListQuery';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
@@ -34,9 +34,8 @@ watch([session, owner, page], () => { notice.value = ''; void load(); }, { immed
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
-page-header(pageTitle="Восстановление вещей")
 .container.recovery
-  router-link(to="/world") Вернуться в мир
+  world-workspace-hero(title="Восстановление вещей" icon="box-open" parent-to="/world" parent-label="Вернуться в мир")
   p Здесь доступны ваши вещи из разрушенных и архивных объектов. Сундуки сохраняют содержимое. Забрать вещи можно в свободные доступные ячейки; складывать новые вещи в восстановление нельзя.
   n-alert(v-if="error || commandError" type="error" role="alert") {{ error || commandError }}
   n-alert(v-if="notice" type="success" role="status") {{ notice }}

@@ -10,7 +10,7 @@ const mvp = () => ({ enabled: true, server_time: 100, feedback_path: '/forum/rea
 
 describe('closed-test server contracts', () => {
   it('keeps health revision, funded goals and exact reward credits', () => {
-    expect(parseMvp(mvp())).toMatchObject({ feedback: '/forum/read/80', health: { hp: 85, revision: 1, foods: [{ restore: 15, quantity: 2 }] }, goals: [{ credits: '50.0000', funded: true, canClaim: false }] });
+    expect(parseMvp(mvp())).toMatchObject({ feedback: '/forum', health: { hp: 85, revision: 1, foods: [{ restore: 15, quantity: 2 }] }, goals: [{ credits: '50.0000', funded: true, canClaim: false }] });
   });
   it('rejects unsafe feedback links, impossible health and malformed rewards', () => {
     for (const path of ['https://foreign.invalid/', '//foreign.invalid/', '/forum/read/0', '/forum/read/80?token=secret']) expect(() => parseMvp({ ...mvp(), feedback_path: path })).toThrow();
