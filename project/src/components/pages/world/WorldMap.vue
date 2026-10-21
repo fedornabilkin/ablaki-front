@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton, NCheckbox } from 'naive-ui';
+import { NAlert, NButton } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldMapData, WorldNode } from '@/entities/world/types';
 import { occupiesCell } from '@/entities/world/coordinates';
@@ -14,6 +14,7 @@ import { mapAreaCells, mapPurchase, requiredExplorerLevel, selectMapCells } from
 import { loadExplorer, previewProfession, previewMapCells, worldError } from '@/services/api/world';
 import WorldCultivationPanel from './WorldCultivationPanel.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import WorldObjectPreview from './WorldObjectPreview.vue';
 import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacedItemPanel from './WorldPlacedItemPanel.vue';
@@ -24,7 +25,7 @@ const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: numb
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
 const selected = ref<MapPoint[]>(props.selection ?? []), anchor = ref<MapPoint | null>(null);
-const topUp = ref(true), calculating = ref(false), error = ref(''), droppedCrop = ref<{ id: number; sequence: number } | null>(null);
+const topUp = ref(true), calculating = ref(false), error = ref(''), professionNotice = ref(''), droppedCrop = ref<{ id: number; sequence: number } | null>(null);
 const explorer = ref<Awaited<ReturnType<typeof loadExplorer>>>(null);
 const garden = ref<Awaited<ReturnType<typeof loadGarden>> | null>(null), gardenLoading = ref(false), gardenError = ref('');
 // Adapter for already purchased legacy beds; new maps always use common exploration.
@@ -78,7 +79,8 @@ const price = computed(() => {
 });
 const allClosed = computed(() => selected.value.length > 0 && selected.value.every(p => state(p) === 'closed' && !occupied(p)));
 const required = computed(() => Math.max(1, ...selected.value.map(requiredExplorerLevel)));
-const levelAllowed = computed(() => !!props.map?.exploration?.allowed && (props.map.exploration.level >= required.value));
+const explorerLevel = computed(() => Math.max(props.map?.exploration?.level ?? 0, explorer.value?.enrolled ? explorer.value.level : 0));
+const levelAllowed = computed(() => !!props.map?.exploration?.allowed && explorerLevel.value >= required.value);
 const neededElixirs = computed(() => selected.value.filter(p => requiredExplorerLevel(p) > (props.map?.exploration?.level ?? 0)).length);
 const elixirAllowed = computed(() => !!props.map?.exploration?.allowed && neededElixirs.value > 0 && props.map.exploration.elixir_quantity >= neededElixirs.value);
 const blocked = computed(() => calculating.value || gardenLoading.value || props.command.busy.value || !!props.command.pending.value || !props.writable);
@@ -196,18 +198,27 @@ watch(() => props.selection, value => { if (value && JSON.stringify(value) !== J
 async function progress() {
   if (!explorer.value || blocked.value) return;
   const action = explorer.value.enrolled ? 'level-up' : 'enroll', id = explorer.value.id;
-  const current = ++generation; calculating.value = true; error.value = '';
+  const current = ++explorerGeneration, node = props.node.id, session = props.session;
+  const valid = () => current === explorerGeneration && node === props.node.id && session === props.session;
+  calculating.value = true; error.value = ''; professionNotice.value = '';
   try {
     const quote = await previewProfession(id, action);
-    if (current === generation) {
+    if (valid()) {
       const result = await props.command.submit(`/professions/${id}/${action}`, {}, quote);
-      if (result && current === generation) explorer.value = await loadExplorer();
+      if (result && valid()) {
+        explorer.value = { ...explorer.value!, enrolled: true, level: action === 'level-up' ? explorer.value!.next!.level : explorer.value!.level };
+        professionNotice.value = action === 'enroll'
+          ? 'Профессия «Исследователь» открыта. Она позволяет исследовать дальние ячейки. Уровень повышается за опыт; если его пока недостаточно, используйте эликсир исследователя.'
+          : `Уровень исследователя повышен до ${explorer.value.level}. Можно исследовать ячейки этого уровня.`;
+        const refreshed = await loadExplorer();
+        if (valid()) explorer.value = refreshed;
+      }
     }
   }
-  catch (cause) { if (current === generation) error.value = worldError(cause); }
-  finally { if (current === generation) calculating.value = false; }
+  catch (cause) { if (valid()) error.value = worldError(cause); }
+  finally { if (valid()) calculating.value = false; }
 }
-watch([() => props.node.id, () => props.session], () => { generation++; calculating.value = false; selected.value = []; anchor.value = null; error.value = ''; }, { flush: 'sync' });
+watch([() => props.node.id, () => props.session], () => { generation++; calculating.value = false; selected.value = []; anchor.value = null; error.value = ''; professionNotice.value = ''; }, { flush: 'sync' });
 watch(() => props.writable, () => { generation++; calculating.value = false; }, { flush: 'sync' });
 onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; });
 </script>
@@ -274,7 +285,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
     template(v-else-if="selected.length")
       span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
       h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
-    template(v-else-if="node.status !== 'constructing'")
+    template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
       span.world-map-kicker Команды
       h3 Выберите цель
     section.map-opening(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
@@ -283,7 +294,9 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         world-help-hint(label="Исследование и покупка ячеек" symbol="!")
           p Выделите одну или несколько ячеек рамкой, с Shift или Ctrl. Для открытия выбирайте ячейки одинакового состояния.
           p(v-if="isGarden") Закрытые грядки уже исследованы. Покупаются именно выбранные грядки за бюджет огорода.
-          p(v-else) Неисследованные ячейки сначала исследуйте, затем купите. Нужен исследователь {{ required }}-го уровня; ваш уровень — {{ map?.exploration?.level ?? 0 }}.
+          p(v-else) Неисследованные ячейки сначала исследуйте, затем купите. Нужен исследователь {{ required }}-го уровня; ваш уровень — {{ explorerLevel }}.
+          p(v-if="!isGarden") Профессия «Исследователь» выбирается один раз и даёт доступ к дальним ячейкам. Повторно открывать её не нужно: повышайте уровень за накопленный опыт или используйте эликсир.
+          p(v-if="explorer?.enrolled") Профессия уже открыта. Опыт: {{ explorer.xp }}{{ explorer.next ? `; для уровня ${explorer.next.level} нужно ${explorer.next.required_xp}` : '; достигнут максимальный уровень' }}.
           p(v-if="!isGarden") Если уровня недостаточно, автоматически расходуется один эликсир на каждую ячейку выше вашего уровня. Требуется {{ neededElixirs }}, в рюкзаке {{ map?.exploration?.elixir_quantity ?? 0 }}. При достаточном уровне эликсир не расходуется.
           p Ближайшее кольцо ячеек стоит одинаково. Каждое следующее кольцо дороже на базовую цену. Оплата из бюджета объекта; галочка разрешает доплату с личного баланса. От трёх ячеек — скидка 5%.
           p(v-if="price && price.discount !== '0.0000'") Скидка: {{ formatCredits(price.discount) }} Cr.
@@ -293,12 +306,13 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       n-button(:theme-overrides="worldActionButtonTheme" v-if="!isGarden && selected.some(p => state(p) === 'closed')" type="primary" :loading="calculating" :disabled="blocked || !map?.can_expand || !allClosed || (!levelAllowed && !elixirAllowed)" @click="act('explore')") {{ !levelAllowed && elixirAllowed ? `Исследовать ${selected.length} · ${neededElixirs} эликс.` : `Исследовать ${selected.length}` }}
       template(v-if="isGarden || selected.some(p => state(p) === 'discovered')")
         p(v-if="price") {{ selected.length }} ячеек: {{ formatCredits(price.gross) }} Cr − {{ formatCredits(price.discount) }} Cr скидки = {{ formatCredits(price.total) }} Cr
-        n-checkbox(v-if="needsPersonalTopUp(price?.total, gardenSelection ? garden?.garden?.available_budget : availableBudget)" v-model:checked="topUp" :disabled="blocked") Добавить с баланса
+        world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
         n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}{{ creditCost(price?.total) }}
       n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
-    world-help-hint(v-else-if="!selected.length && node.status !== 'constructing'" label="Как выбрать ячейки" symbol="!")
+    world-help-hint(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
       p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
     n-alert(v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
+    n-alert(v-if="professionNotice" type="success" role="status") {{ professionNotice }}
     n-button(:theme-overrides="worldActionButtonTheme" v-if="gardenError" :disabled="blocked" @click="refreshGarden") Обновить карту
 </template>
 

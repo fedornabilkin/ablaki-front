@@ -9,6 +9,7 @@ import { worldError } from '@/services/api/world';
 import type { WorldNode } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldHelpHint from './WorldHelpHint.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 
 const props = defineProps<{ nodeId: number; children: WorldNode[]; session: number; command: WorldCommandRunner }>();
 const destination = ref<number | null>(null), amount = ref(''), purpose = ref('');
@@ -49,6 +50,7 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
     n-input(v-model:value="purpose" :maxlength="255" placeholder="На развитие объекта")
   n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
   section.grant-quote(v-if="quote" aria-live="polite")
+    world-payment-sources(mode="budget" :price="quote.input.amount")
     p Перевод: {{ formatCredits(quote.input.amount) }} Cr объекту №{{ quote.input.destination_node_id }}.
     p В источнике останется свободно {{ formatCredits(quote.sourceAvailableAfter) }} Cr; бюджет получателя станет {{ formatCredits(quote.destinationBudgetAfter) }} Cr.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="command.busy.value" :disabled="Boolean(command.pending.value)" @click="confirm") Подтвердить перевод

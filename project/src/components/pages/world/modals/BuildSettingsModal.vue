@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from '../WorldCreditInput.vue';
+import WorldPaymentSources from '../WorldPaymentSources.vue';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { NAlert, NButton, NCheckbox, NInput, NModal, NSpin } from 'naive-ui';
@@ -16,6 +17,11 @@ const blocked = computed(() => runner.busy.value || !!runner.pending.value || !!
 const valid = computed(() => !!name.value.trim() && /^(0|[1-9]\d{0,10})(\.\d{1,4})?$/.test(budget.value) && Number(budget.value) >= Number(props.project?.labor_budget ?? 0));
 const available = computed(() => props.draft?.budgetAvailable ?? props.project?.budget_available ?? null);
 const needsTopUp = computed(() => valid.value && available.value !== null && creditUnits(props.draft?.price ?? '0') + creditUnits(budget.value) - creditUnits(props.project?.labor_budget ?? '0') > creditUnits(available.value));
+const paymentPrice = computed(() => {
+  if (!valid.value) return null;
+  const units = creditUnits(props.draft?.price ?? '0') + creditUnits(budget.value) - creditUnits(props.project?.labor_budget ?? '0');
+  return `${units / 10000n}.${String(units % 10000n).padStart(4, '0')}`;
+});
 watch(() => props.show, value => { if (value) { name.value = props.name; budget.value = props.project?.labor_budget ?? '0'; topUp.value = false; } }, { immediate: true });
 async function save(retry = false) {
   if (props.draft) { if (retry || valid.value) emit('create', { name: name.value.trim(), labor_budget: budget.value, top_up: needsTopUp.value && topUp.value }, retry); return; }
@@ -44,7 +50,7 @@ n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="re
     label {{ repairing ? 'Бюджет ремонта, Cr' : 'Бюджет строительства, Cr' }}
       world-credit-input(v-model:value="budget" :disabled="blocked" :input-props="{ inputmode: 'decimal', 'aria-label': repairing ? 'Бюджет ремонта' : 'Бюджет строительства' }")
   p Свободный бюджет: {{ available === null ? 'загружается…' : `${formatCredits(available)} Cr` }}. Уже выделено строителям: {{ formatCredits(project?.labor_budget ?? '0') }} Cr.
-  n-checkbox(v-if="needsTopUp" v-model:checked="topUp" :disabled="blocked || creationPending") Добавить с баланса
+  world-payment-sources(v-model:checked="topUp" :price="paymentPrice" :available="available" :disabled="blocked || creationPending")
   n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="creationPending || runner.pending.value" :disabled="blocked" @click="save(true)") Повторить запрос
   n-button(:theme-overrides="worldActionButtonTheme" v-else type="primary" :disabled="blocked || !valid || (!project && !draft) || (needsTopUp && !topUp) || (draft && available === null)" :loading="runner.busy.value || creating" @click="save()") Сохранить

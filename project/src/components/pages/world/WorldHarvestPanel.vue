@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
 import { loadHarvest, previewHarvest, type HarvestAction } from '@/services/api/worldHarvest';
@@ -86,6 +87,7 @@ section.harvest-panel(aria-label="Продукция склада")
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || !prices[item.inventory_id]" @click="act('price')") Установить цену продажи
         n-button(:theme-overrides="worldActionButtonTheme" v-if="item.price" :disabled="locked" @click="act('price', true)") Снять с продажи
     section.harvest-action-block(v-else aria-label="Покупка урожая")
+      world-payment-sources(mode="personal" :price="total")
       label Количество
         n-input-number(v-model:value="quantity" :min="1" :max="item.quantity" :precision="0" :disabled="locked")
       n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !state?.allow_sales || !item.price || !quantity || !item.quantity" @click="act('buy')") Купить {{ quantity }}{{ creditCost(total) }}

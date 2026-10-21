@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { worldActionButtonTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInputNumber, NSelect, NSkeleton } from 'naive-ui';
 import { loadStorageContents, loadStorageList, previewTransfer, type StorageHeader, type StorageView } from '@/services/api/worldStorage';
 import { optimisticTransfer, storageTransfer, type StorageMapContext } from '@/entities/world/storageInteraction';
-import { loadWorldScreen, worldError } from '@/services/api/world';
+import { loadWorldMap, loadWorldScreen, worldError } from '@/services/api/world';
 import type { WorldNode, WorldMapData } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldChestRepair from './WorldChestRepair.vue';
@@ -32,10 +32,14 @@ const panes = computed(() => [view.value, targetView.value].filter((value): valu
 const unitOptions = computed(() => item.value?.instances.map(unit => ({ label: `Прочность ${unit.durability}/${unit.max_durability} · №${unit.id}`, value: unit.id })) ?? []);
 function link(id: number) { return { path: `/world/storage/${id}`, query: props.nodeId === null ? {} : { node_id: props.nodeId } }; }
 async function readView(id: number) {
-  const result = await loadStorageContents(id);
+  const header = headers.value.find(row => row.id === id);
+  const provided = header?.node_id === props.map?.node_id && props.node?.map ? { map: props.map!, bounds: props.node.map } : null;
+  const mapRequest = header?.kind === 'placement' && header.node_id !== null && !provided ? loadWorldMap(header.node_id) : Promise.resolve(null);
+  const [result, mapped] = await Promise.all([loadStorageContents(id), mapRequest]);
   let context: StorageMapContext | null = null;
   if (result.storage.kind === 'placement' && result.storage.node_id !== null) {
-    if (props.map?.node_id === result.storage.node_id && props.node?.map) context = { map: props.map, bounds: props.node.map };
+    if (provided) context = provided;
+    else if (mapped?.bounds) context = { map: mapped, bounds: mapped.bounds };
     else {
       const screen = await loadWorldScreen(result.storage.node_id);
       if (!screen.map || !screen.navigation?.node.map) throw new Error('missing-placement-map');
@@ -69,14 +73,15 @@ async function load(chosen?: number) {
     if (disposed || current !== generation) return;
     const id = chosen ?? props.storageId ?? (props.nodeId === null ? list.find(row => row.kind === 'backpack')?.id : list.find(row => row.kind === 'placement' && row.node_id === props.nodeId)?.id);
     headers.value = list;
+    const targets = list.filter(row => row.kind !== 'recovery' && row.id !== id);
+    const next = targets.some(option => option.id === destination.value) ? destination.value : targets.find(option => option.kind === 'backpack')?.id ?? targets[0]?.id ?? null;
+    if (next === destination.value) void loadTarget(); else destination.value = next;
     if (id) {
       const result = await readView(id);
       if (disposed || current !== generation) return;
       view.value = result.view; leftContext.value = result.context;
       if (!list.some(header => header.id === id)) headers.value = [...list, result.view.storage];
     }
-    const next = destinationOptions.value.some(option => option.id === destination.value) ? destination.value : destinationOptions.value.find(option => option.kind === 'backpack')?.id ?? destinationOptions.value[0]?.id ?? null;
-    if (next === destination.value) void loadTarget(); else destination.value = next;
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed && current === generation) loading.value = false; }
 }
@@ -178,7 +183,7 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
       h3(v-if="index === 0 && !storageId") Слоты ноды «{{ node?.label || panel.view?.location?.name || nodeId }}»
       h3(v-else) {{ panel.view?.storage.name || 'Выберите хранилище' }}
       .storage-choices(v-if="storageId || index === 1" role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
-        n-button(v-for="header in choices" :key="header.id" :theme-overrides="worldActionButtonTheme" size="small" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="index === 0 ? load(header.id) : destination = header.id") {{ header.name }}
+        n-button(v-for="header in choices" :key="header.id" :theme-overrides="header.id === panel.view?.storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" size="small" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="index === 0 ? load(header.id) : destination = header.id") {{ header.name }}
       .storage-loading(v-if="panel.loading" role="status" aria-label="Загрузка слотов хранилища")
         n-skeleton(v-for="slot in 6" :key="slot" height="100px" :sharp="false")
       template(v-else-if="panel.view")
@@ -210,7 +215,7 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
 .storage-page-link:hover { background: var(--primary-press); color: var(--text-on-acc); }
 .storage-eyebrow { color: var(--primary); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .storage-loading { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
-.storage-choices :deep(button[aria-pressed="true"]) { outline: 2px solid #a74700; outline-offset: 2px; }
+.storage-choices :deep(button:disabled) { background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--text-muted) 12%, transparent) 5px 10px); }
 .storage-pane { background: var(--bg-surface); }
 .storage-status { min-height: 1.3em; margin: 0; color: var(--text-muted); font-size: .85rem; }
 @media(max-width: 700px) { .storage-panes { grid-template-columns: 1fr; } }

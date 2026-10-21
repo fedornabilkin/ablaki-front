@@ -41,9 +41,11 @@ it('keeps online and bonus mounted through compact-header scroll changes and ope
   const online = () => findView(view.root, node => node.tag === 'button' && node.props.title === 'Пользователи онлайн')!;
   const bonus = () => findView(view.root, node => node.tag === 'button' && String(node.props.class).includes('bonus-button'));
   const firstOnline = online(), firstBonus = bonus(); expect(firstBonus).toBeDefined();
+  const menu = findView(view.root, node => String(node.props.class).includes('desktop-nav'))!;
+  expect(menu).toBeDefined();
   expect(firstOnline.props.href).toBeUndefined(); expect(viewText(firstOnline)).toContain('5');
-  const scroll = vi.mocked(window.addEventListener).mock.calls.find(call => call[0] === 'scroll')![1] as () => void;
-  for (const y of [300, 0, 400, 0]) { window.scrollY = y; scroll(); await flushView(); }
+  const scroll = () => vi.mocked(window.addEventListener).mock.calls.filter(call => call[0] === 'scroll').forEach(call => (call[1] as () => void)());
+  for (const y of [300, 0, 400, 0]) { window.scrollY = y; scroll(); await flushView(); expect(findView(view.root, node => String(node.props.class).includes('desktop-nav'))).toBe(menu); expect(menu.style.display).toBe(y ? 'none' : ''); }
   expect(online()).toBe(firstOnline); expect(bonus()).toBe(firstBonus); expect(mocks.count).toHaveBeenCalledOnce();
   firstOnline.props.onClick(); await flushView();
   expect(findView(view.root, node => node.props.role === 'dialog')).toBeDefined(); expect(mocks.users).toHaveBeenCalledOnce();

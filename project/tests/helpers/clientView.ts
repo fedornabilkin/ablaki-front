@@ -13,8 +13,8 @@ export function clientView(component: any, file: string) {
   component.render = new Function('Vue', code)(Vue);
   return component;
 }
-export interface ViewNode { tag: string; props: Record<string, any>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
-function element(tag: string): ViewNode { return { tag, props: {}, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
+export interface ViewNode { tag: string; props: Record<string, any>; style: Record<string, string>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
+function element(tag: string): ViewNode { return { tag, props: {}, style: { display: '' }, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
 const renderer = createRenderer<ViewNode, ViewNode>({
   createElement: element, createText: text => ({ ...element('#text'), text }), createComment: () => element('#comment'),
   setText: (node, text) => { node.text = text; }, setElementText: (node, text) => { node.text = text; node.children = []; },

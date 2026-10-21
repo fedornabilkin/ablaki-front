@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
@@ -77,7 +78,7 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
         p Грядки открываются по порядку. Выберите количество и нажмите «Открыть». Оплата — из бюджета огорода; если денег не хватает, разрешите пополнение с личного баланса.
         label Количество следующих грядок
           n-input-number(v-model:value="quantity" :min="1" :max="10 - state.garden.unlocked" :precision="0" :disabled="locked")
-        n-checkbox(v-if="needsTopUp" v-model:checked="topUp" :disabled="locked") Добавить с баланса
+        world-payment-sources(v-model:checked="topUp" :price="expansionPrice" :available="state.garden?.available_budget" :disabled="locked")
         n-alert(v-if="needsTopUp && !topUp" type="warning")
           p В бюджете огорода недостаточно средств. Пополните его или включите пополнение с личного баланса выше.
           router-link(:to="`/world/nodes/${nodeId}#finance`") Пополнить бюджет огорода →
@@ -101,7 +102,7 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
         router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
       template(v-if="state.can_buy")
         p Оплата из бюджета этой стоянки. Получатель — казна поселения «{{ state.settlement_name }}».
-        n-checkbox(v-if="needsPersonalTopUp(state.offer.price, state.site_budget_available)" v-model:checked="topUp" :disabled="locked") Добавить с баланса
+        world-payment-sources(v-model:checked="topUp" :price="state.offer.price" :available="state.site_budget_available" :disabled="locked")
         n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || (!topUp && state.offer.can_afford === false)" @click="preview('buy')") Купить огород{{ creditCost(state.offer.price) }}
       p(v-else) Покупка доступна на собственной стартовой стоянке после включения экономики и хранения мира.
     p(v-else) Поселение ещё не опубликовало предложение огорода.

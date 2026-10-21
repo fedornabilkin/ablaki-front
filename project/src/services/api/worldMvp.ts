@@ -22,7 +22,7 @@ export function parseMvp(value: unknown) {
     personalCredits: row.personal_credit_cr === undefined ? null : creditAmount(row.personal_credit_cr),
     targetStartCredits: row.target_start_credit_cr === undefined || row.target_start_credit_cr === null ? null : creditAmount(row.target_start_credit_cr),
     secondMilestoneDay: row.second_milestone_day === undefined || row.second_milestone_day === null ? null : integer(row.second_milestone_day, 1, 365),
-    health: { hp, maximum, revision: integer(health.revision), foods: list(health.foods).map(value => {
+    health: { hp, maximum, canEat: health.can_eat === undefined ? hp < maximum : bool(health.can_eat), revision: integer(health.revision), foods: list(health.foods).map(value => {
       const food = record(value); return { code: text(food.code), name: text(food.name), restore: integer(food.restore_hp, 1, 100), quantity: integer(food.quantity) };
     }) },
     goals: list(row.goals).map(value => {
@@ -38,7 +38,7 @@ export type MvpState = ReturnType<typeof parseMvp>;
 
 export const milestoneLabels: Record<string, string> = {
   city_joined: 'Вступить в мир', starter_site_active: 'Завершить стоянку', explore_3_owned_map_cells: 'Исследовать три ячейки',
-  shelter_built: 'Построить шалаш', hammer_crafted: 'Изготовить молоток', gather_5_logs: 'Получить пять брёвен', gather_5_stones: 'Получить пять камней',
+  shelter_built: 'Построить шалаш', hammer_crafted: 'Получить молоток', gather_5_logs: 'Получить пять брёвен', gather_5_stones: 'Получить пять камней',
   campfire_placed: 'Разместить костёр', garden_built: 'Построить огород', shovel_crafted: 'Изготовить лопату', bed_dug: 'Вскопать грядку', carrot_sown: 'Посадить морковь',
   daily_supply_claimed: 'Получить ежедневное снабжение', carrot_harvested: 'Собрать морковь', mine_built: 'Построить шахту', stone_pickaxe_crafted: 'Изготовить каменную кирку',
   stone_mined: 'Добыть камень в шахте', coal_mined: 'Добыть уголь', ore_mined: 'Добыть руду', forge_built: 'Построить кузницу',

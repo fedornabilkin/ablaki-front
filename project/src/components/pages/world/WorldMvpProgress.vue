@@ -11,6 +11,7 @@ const emit = defineEmits<{ changed: [] }>();
 const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(false), loading = ref(false);
 const show = ref(false), tab = ref('camp');
 const activeGoal = computed(() => state.value?.goals.find(goal => goal.code === (tab.value === 'resources' ? 'day-2' : 'day-1')));
+const orderedSteps = computed(() => [...(activeGoal.value?.steps ?? [])].sort((a, b) => Number(a.completed) - Number(b.completed)));
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.mvp`), computed(() => props.session));
 let generation = 0;
 async function load() {
@@ -33,7 +34,7 @@ watch(() => props.revision, () => { if (show.value) void load(); });
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-n-button(:theme-overrides="worldActionButtonTheme" secondary size="small" @click="show = true")
+n-button(:theme-overrides="worldActionButtonTheme" size="small" @click="show = true")
   template(#icon)
     font-awesome-icon(icon="list-check" aria-hidden="true")
   | Задания
@@ -59,7 +60,7 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
       n-progress(type="line" :percentage="Math.floor(activeGoal.steps.filter(step => step.completed).length * 100 / Math.max(1, activeGoal.steps.length))" :show-indicator="false")
       p.journey-note(v-if="tab === 'resources' && state.secondMilestoneDay") Первый металл — ориентир на {{ state.secondMilestoneDay }}-й день. Цели не сгорают при пропуске дня.
       ol.journey-steps
-        li.journey-step(v-for="step in activeGoal.steps" :key="step.code" :class="{ complete: step.completed }")
+        li.journey-step(v-for="step in orderedSteps" :key="step.code" :class="{ complete: step.completed }")
           .step-icon
             font-awesome-icon(:icon="step.completed ? 'check' : 'flag'" aria-hidden="true")
           .step-body
@@ -79,7 +80,7 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
         router-link.mvp-action(to="/world/workspace/inventory" @click="show = false") Инвентарь
         router-link.mvp-action(to="/world/workspace/recipes" @click="show = false") Рецепты
         router-link.mvp-action(v-if="tab === 'camp'" to="/transfer" @click="show = false") Переводы
-      p.journey-note(v-if="tab === 'camp' && state.personalCredits !== null") Личный баланс: {{ formatCredits(state.personalCredits) }} Cr. Стартовые кредиты приходят отдельным переводом.
+      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые {{ formatCredits(state.targetStartCredits) }} Cr не начисляются автоматически. Организатор тестирования готовит перевод из существующих средств и сообщает номер и код. Получите его в разделе «Переводы». Если перевод уже получен, повторять этот шаг не нужно.
     .journey-quotas(v-else-if="tab === 'quotas'")
       article.quota-card(v-for="quota in state.quotas" :key="quota.kind")
         .journey-heading
@@ -94,14 +95,16 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
         h3 Здоровье
         strong {{ state.health.hp }} / {{ state.health.maximum }}
       n-progress(type="line" :percentage="100 * state.health.hp / state.health.maximum" :show-indicator="false")
-      p.journey-note Еда восстанавливает здоровье. Ночная болезнь проходит после защищённых ночей.
+      p.journey-note Еда восстанавливает здоровье. При полном здоровье можно есть раз в сутки для поддержания сытости. После трёх суток без еды теряется 2 HP в сутки. Ночная болезнь проходит после защищённых ночей.
       .mvp-foods
         article.food-card(v-for="food in state.health.foods" :key="food.code")
           font-awesome-icon(icon="utensils" aria-hidden="true")
           strong {{ food.name }}
           span +{{ food.restore }} здоровья · в наличии {{ food.quantity }}
-          n-button(:theme-overrides="worldActionButtonTheme" secondary :disabled="busy || state.health.hp === state.health.maximum || food.quantity === 0" @click="act('economy/food', { code: food.code, health_revision: state.health.revision })") Поесть
-    router-link.journey-feedback(:to="state.feedback" @click="show = false") Сообщить о проблеме на форуме
+          n-button(:theme-overrides="worldActionButtonTheme" secondary :disabled="busy || !state.health.canEat || food.quantity === 0" @click="act('economy/food', { code: food.code, health_revision: state.health.revision })") Поесть
+    router-link.mvp-action.journey-feedback(:to="state.feedback" @click="show = false")
+      font-awesome-icon(icon="comment" aria-hidden="true")
+      | Сообщить о проблеме на форуме
 </template>
 <style scoped>
 .mvp-progress { display: grid; gap: 1rem; min-width: 0; max-height: 75vh; overflow-y: auto; padding: .15rem; }.mvp-progress h3, .mvp-progress p { margin: 0; }

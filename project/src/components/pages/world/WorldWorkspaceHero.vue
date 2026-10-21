@@ -1,5 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import WorldPageActions from './WorldPageActions.vue';
 withDefaults(defineProps<{ title: string; description?: string; icon?: string; parentTo?: string; parentLabel?: string; compact?: boolean }>(), { icon: 'hammer', parentLabel: 'Вернуться к объекту' });
+const route = useRoute();
+const contextNode = computed(() => {
+  const id = Number(/^\/world\/workspace\/\d+$/.test(route.path) ? route.params.id : route.query.node ?? route.query.node_id);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+});
 </script>
 <template lang="pug">
 header.world-workspace-hero(:class="{ compact }")
@@ -12,6 +20,7 @@ header.world-workspace-hero(:class="{ compact }")
     .workspace-hero-actions(v-if="parentTo || $slots.default")
       router-link.workspace-parent(v-if="parentTo" :to="parentTo") ← {{ parentLabel }}
       slot
+  world-page-actions(v-if="route.path.startsWith('/world')" :node-id="contextNode")
 </template>
 <style scoped>
 .world-workspace-hero { display: flex; gap: 1rem; align-items: start; padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: radial-gradient(circle at 80% 12%, var(--primary-soft), transparent 45%), var(--bg-surface); }
@@ -24,5 +33,6 @@ p { margin: 0; color: var(--text-muted); line-height: 1.5; }
 .workspace-parent { display: inline-flex; padding: .4rem .75rem; border: 1px solid var(--border); border-radius: .45rem; font-size: .85rem; }
 .workspace-parent:hover { border-color: var(--primary); background: var(--primary-soft); }
 .compact { padding: .75rem; gap: .75rem; }.compact .workspace-crest { flex-basis: 2.75rem; height: 2.75rem; font-size: 1.3rem; }.compact h1 { font-size: 1.2rem; }.compact p { font-size: .8rem; }
+@media(max-width: 900px) { .world-workspace-hero { flex-wrap: wrap; }.world-page-actions { width: 100%; } }
 @media(max-width: 600px) { .world-workspace-hero { padding: 1rem; gap: .75rem; }.workspace-crest { flex-basis: 3rem; height: 3rem; font-size: 1.5rem; } }
 </style>

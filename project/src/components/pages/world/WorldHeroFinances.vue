@@ -4,27 +4,32 @@ import type { WorldNode } from '@/entities/world/types';
 import { formatCredits } from '@/entities/world/credits';
 import { budget } from '@/services/api/simpleWorld';
 import { loadNodeEconomy } from '@/services/api/worldEconomy';
-const props = defineProps<{ node: WorldNode; session: number; revision: number }>();
+import { loadWorldHome } from '@/services/api/worldHome';
+const props = defineProps<{ node?: WorldNode; nodeId?: number; owner: number; session: number; revision: number }>();
 const available = ref<string | null>(null), reserved = ref<string | null>(null), treasury = ref<string | null>(null), failed = ref(false);
 let generation = 0;
-watch(() => [props.node.id, props.session, props.revision], async (value, oldValue) => {
+watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, props.owner], async (value, oldValue) => {
   const current = ++generation;
-  if (!oldValue || value[0] !== oldValue[0] || value[1] !== oldValue[1]) available.value = reserved.value = treasury.value = null;
+  if (!oldValue || value[0] !== oldValue[0] || value[1] !== oldValue[1] || value[3] !== oldValue[3]) available.value = reserved.value = treasury.value = null;
   failed.value = false;
-  const results = await Promise.allSettled([
-    props.node.owned_by_me ? budget(props.node.id) : Promise.resolve(null),
-    props.node.permissions.manage ? loadNodeEconomy(props.node.id, 1) : Promise.resolve(null),
-  ]);
-  if (current !== generation) return;
-  const [building, economy] = results;
-  if (building.status === 'fulfilled' && building.value) {
-    available.value = building.value.available; reserved.value = building.value.reserved;
+  let id = props.node?.id ?? props.nodeId;
+  if (!id) {
+    try { id = (await loadWorldHome(props.owner, props.session))?.id; }
+    catch { if (current === generation) failed.value = true; return; }
   }
+  if (!id || current !== generation) return;
+  const results = await Promise.allSettled([loadNodeEconomy(id, 1)]);
+  if (current !== generation) return;
+  const [economy] = results;
   if (economy.status === 'fulfilled' && economy.value?.balances) {
     treasury.value = economy.value.balances.treasury;
-    if (available.value === null) { available.value = economy.value.balances.available; reserved.value = economy.value.balances.reserved; }
+    available.value = economy.value.balances.available; reserved.value = economy.value.balances.reserved;
   }
   failed.value = results.some(result => result.status === 'rejected');
+  if (economy.status === 'fulfilled' && !economy.value?.balances && (!props.node || props.node.owned_by_me)) {
+    try { const building = await budget(id); if (current === generation) { available.value = building.available; reserved.value = building.reserved; } }
+    catch { if (current === generation) failed.value = true; }
+  }
 }, { immediate: true });
 onScopeDispose(() => { generation++; });
 </script>

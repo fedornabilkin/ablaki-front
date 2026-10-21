@@ -6,7 +6,7 @@ withDefaults(defineProps<{ label: string; symbol?: string }>(), { symbol: '?' })
 n-popover(trigger="click" placement="bottom" :style="{ maxWidth: 'min(32rem, 90vw)' }")
   template(#trigger)
     button.world-help-hint(type="button" :aria-label="label")
-      font-awesome-icon(:icon="symbol === '!' ? 'exclamation-circle' : 'question-circle'" aria-hidden="true")
+      font-awesome-icon(:icon="symbol === '!' ? 'exclamation-circle' : symbol === 'i' ? 'info-circle' : 'question-circle'" aria-hidden="true")
   slot
 </template>
 <style scoped>

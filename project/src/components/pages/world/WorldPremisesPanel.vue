@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { formatCredits, creditCost } from '@/entities/world/credits';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
@@ -73,6 +74,7 @@ section.world-premises#premises
       li(v-for="item in state.items" :key="item.id" :class="{ 'offer-unaffordable': item.can_afford === false }")
         font-awesome-icon.offer-icon(:icon="item.kind === 'canopy' ? 'tent' : item.kind === 'house' ? 'house' : item.kind === 'warehouse' ? 'box' : 'industry'" aria-hidden="true")
         h3 {{ item.name }} · {{ formatCredits(item.price) }} Cr
+        world-payment-sources(v-if="state.can_buy" mode="budget" :price="item.price")
         strong {{ !state.can_buy ? 'Покупка недоступна' : !item.requirements_status.allowed ? 'Не выполнены требования' : state.area && state.area.available < item.area ? 'Не хватает площади' : item.can_afford === false ? 'Не хватает Cr' : 'Доступно к покупке' }}
         n-alert(v-if="item.can_afford === false" type="warning")
           span Бюджета площадки не хватает.

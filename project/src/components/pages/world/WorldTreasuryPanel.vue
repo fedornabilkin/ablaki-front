@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -57,6 +58,7 @@ section.world-treasury
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
   section(v-if="collection" aria-live="polite")
+    world-payment-sources(mode="treasury" :price="collection.collected")
     p В бюджет поступит: {{ money(collection.collected) }}
     p Резерв на отчисления: {{ money(collection.reserved) }}
     p Доступно на развитие после сбора: {{ money(collection.available_after) }}
@@ -80,6 +82,7 @@ section.world-treasury
           n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canPay || busy || Boolean(pending) || calculating" @click="preview(item.id)") Рассчитать оплату
     page-pager(v-model:page="page" query-prefix="obligations" :result="state" :disabled="busy")
   section(v-if="payment" aria-live="polite")
+    world-payment-sources(mode="budget" :price="payment.amount")
     p Оплата обязательства №{{ payment.input.obligation_id }}: {{ money(payment.amount) }} в казну объекта №{{ payment.parent_node_id }}.
     p В бюджете останется {{ money(payment.budget_after) }}, из них зарезервировано {{ money(payment.reserved_after) }}.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!canPay || busy || Boolean(pending)" @click="pay") Подтвердить оплату

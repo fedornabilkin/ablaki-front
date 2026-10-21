@@ -4,6 +4,7 @@ import { clientView, findView, flushView, mountView, viewText } from './helpers/
 import WorldHarvestPanel from '../src/components/pages/world/WorldHarvestPanel.vue';
 import WorldMap from '../src/components/pages/world/WorldMap.vue';
 import WorldHelpHint from '../src/components/pages/world/WorldHelpHint.vue';
+import WorldPaymentSources from '../src/components/pages/world/WorldPaymentSources.vue';
 import WorldObjectPreview from '../src/components/pages/world/WorldObjectPreview.vue';
 import WorldStoragePanel from '../src/components/pages/world/WorldStoragePanel.vue';
 import WorldStorageGrid from '../src/components/pages/world/WorldStorageGrid.vue';
@@ -41,7 +42,7 @@ vi.mock('../src/services/api/worldGarden', () => ({ loadGarden: mocks.garden, pr
 vi.mock('../src/services/api/worldEquipmentExpansion', () => ({ loadEquipmentExpansion: mocks.equipment, previewEquipmentExpansion: mocks.equipmentPreview }));
 vi.mock('../src/services/api/worldCultivation', () => ({ loadCultivation: mocks.cultivation, loadCrops: mocks.crops, previewCultivation: mocks.cultivationPreview }));
 vi.mock('../src/services/api/worldCampsite', () => ({ loadCampsiteSupplies: mocks.supplies, previewCampsiteSupplies: mocks.suppliesPreview }));
-vi.mock('../src/services/api/world', () => ({ loadExplorer: mocks.explorer, previewProfession: vi.fn(), previewMapCells: mocks.mapPreview, worldError: () => 'Ошибка запроса' }));
+vi.mock('../src/services/api/world', () => ({ loadExplorer: mocks.explorer, previewProfession: async () => quote, previewMapCells: mocks.mapPreview, worldError: () => 'Ошибка запроса' }));
 
 clientView(WorldStorageGrid, 'components/pages/world/WorldStorageGrid.vue');
 clientView(WorldCreditInput, 'components/pages/world/WorldCreditInput.vue');
@@ -52,6 +53,7 @@ clientView(WorldMap, 'components/pages/world/WorldMap.vue');
 clientView(WorldWorkspace, 'components/pages/world/WorldWorkspace.vue');
 clientView(WorldGardenPanel, 'components/pages/world/WorldGardenPanel.vue');
 clientView(WorldHelpHint, 'components/pages/world/WorldHelpHint.vue');
+clientView(WorldPaymentSources, 'components/pages/world/WorldPaymentSources.vue');
 clientView(WorldObjectPreview, 'components/pages/world/WorldObjectPreview.vue');
 clientView(WorldEquipmentExpansionPanel, 'components/pages/world/WorldEquipmentExpansionPanel.vue');
 clientView(WorldCultivationPanel, 'components/pages/world/WorldCultivationPanel.vue');
@@ -307,8 +309,51 @@ describe('one-click crafting', () => {
     view.app.unmount(); await vi.advanceTimersByTimeAsync(1000);
     expect(mocks.preview).not.toHaveBeenCalled();
   });
+  it('updates quantities immediately, keeps the controls mounted and rejects late quotes', async () => {
+    const view = await setup(), first = deferred<any>(), latest = deferred<any>();
+    const material = findView(view.root, n => n.props.class === 'material-tiles')!;
+    const button = view.button();
+    const input = () => findView(view.root, n => n.tag === 'input' && n.props.max === 100)!;
+    mocks.preview.mockReturnValueOnce(first.promise).mockReturnValueOnce(latest.promise);
+    input().props['onUpdate:value'](3); await flushView();
+    expect(viewText(material)).toContain('10 / 6'); expect(viewText(button)).toContain('15 Cr');
+    expect(button.props.disabled).toBe(true); expect(button.props.loading).toBe(true);
+    expect(viewText(material)).not.toContain('В наличии');
+    await vi.advanceTimersByTimeAsync(600);
+    input().props['onUpdate:value'](6); await flushView();
+    expect(viewText(material)).toContain('10 / 12');
+    expect(findView(material, n => String(n.props.class).includes('missing'))).toBeDefined();
+    await vi.advanceTimersByTimeAsync(600);
+    latest.resolve({ quote, terms: { ...terms, price: '30.0000', materials: [{ ...terms.materials[0], quantity: 12, available: false }], output: { ...terms.output, quantity: 12 }, reasons: ['Не хватает бревна'] } }); await flushView();
+    first.resolve({ quote, terms: { ...terms, price: '15.0000' } }); await flushView();
+    expect(view.button()).toBe(button); expect(findView(view.root, n => n.props.class === 'material-tiles')).toBe(material);
+    expect(viewText(button)).toContain('30 Cr'); expect(button.props.loading).toBe(false); expect(button.props.disabled).toBe(true);
+    expect(viewText(view.root)).toContain('Не хватает бревна'); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('hides payment choices for a free recipe', async () => {
+    const view = await setup();
+    mocks.preview.mockResolvedValue({ quote, terms: { ...terms, price: '0.0000' } });
+    findView(view.root, n => n.tag === 'input' && n.props.max === 100)!.props['onUpdate:value'](2);
+    await vi.advanceTimersByTimeAsync(600); await flushView();
+    expect(findView(view.root, n => n.tag === 'fieldset' && String(n.props.class).includes('world-payment-sources'))).toBeUndefined();
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Изготовить')).toBeDefined();
+  });
 });
 describe('map controls', () => {
+  it('announces enrollment and hides the enrollment button even if the command clears selection', async () => {
+    const selection = ref([{ x: 2, y: 0 }]);
+    const profession = { id: 5, enrolled: false, level: 1, xp: 0, next: { level: 2, available: false, required_xp: 100 } };
+    mocks.explorer.mockResolvedValueOnce(profession).mockResolvedValue({ ...profession, enrolled: true });
+    mocks.runner.submit.mockImplementation(async () => { selection.value = []; return { changed_node_ids: [1] }; });
+    const view = mount(WorldMap, () => ({ node, session: 1, writable: true, command: mocks.runner, selection: selection.value, map: { node_id: 1, items: [], cells: [], can_expand: true, exploration: { allowed: true, level: 0, elixir_quantity: 0 } } }));
+    await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Открыть профессию'))!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledExactlyOnceWith('/professions/5/enroll', {}, quote);
+    expect(viewText(findView(view.root, n => n.props.role === 'status')!)).toContain('Профессия «Исследователь» открыта');
+    selection.value = [{ x: 2, y: 0 }]; await flushView();
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Открыть профессию'))).toBeUndefined();
+    expect(viewText(view.root)).toContain('Профессия уже открыта');
+  });
   it('ignores profession data from a previous session even on the same map', async () => {
     const session = ref(1), selection = ref([{ x: 1, y: 0 }]), old = deferred<any>();
     mocks.explorer.mockReturnValueOnce(old.promise);
@@ -436,7 +481,7 @@ describe('one-click world actions', () => {
     expect(unlock().props.disabled).toBe(true);
     expect(viewText(view.root)).toContain('В бюджете огорода недостаточно средств');
     expect(findView(view.root, n => n.tag === 'a' && n.props.to === '/world/nodes/1#finance')).toBeDefined();
-    findView(view.root, n => typeof n.props['onUpdate:checked'] === 'function')!.props['onUpdate:checked'](true); await flushView();
+    findView(view.root, n => n.tag === 'input' && viewText(n).includes('Добавить с баланса'))!.props['onUpdate:checked'](true); await flushView();
     expect(unlock().props.disabled).toBe(false);
     unlock().props.onClick(); await flushView();
     expect(mocks.gardenPreview).toHaveBeenCalledWith(1, 'expand', { top_up: true, quantity: 1 });

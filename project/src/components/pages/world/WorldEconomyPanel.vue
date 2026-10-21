@@ -14,6 +14,7 @@ import WorldBudgetGrant from './WorldBudgetGrant.vue';
 import WorldTreasuryReceipts from './WorldTreasuryReceipts.vue';
 import WorldFinanceReport from './WorldFinanceReport.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 const props = defineProps<{ nodeId: number; children: WorldNode[]; session: number; command: WorldCommandRunner }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadNodeEconomy>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewInvestment>> | null>(null);
 const amount = ref(''), purpose = ref('Развитие объекта'), error = ref(''), loading = ref(false), calculating = ref(false);
@@ -85,6 +86,7 @@ section.world-economy
             n-input(v-model:value="purpose" :maxlength="255" :disabled="busy || Boolean(pending)")
           n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="busy || Boolean(pending)" @click="preview") Рассчитать взнос
           section(v-if="quote" aria-live="polite")
+            world-payment-sources(mode="personal" :price="quote.amount")
             p В бюджет «{{ quote.name }}»: {{ money(quote.amount) }}
             p Личный баланс: {{ money(quote.wallet_before) }} → {{ money(quote.wallet_after) }}
             n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="busy" :disabled="Boolean(pending)" @click="invest") Подтвердить вложение

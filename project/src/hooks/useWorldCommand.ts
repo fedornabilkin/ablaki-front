@@ -98,6 +98,7 @@ export function useWorldCommand(session: Ref<number>, owner: Ref<number>, comple
       if (disposed || current !== epoch) return;
       if (result.request_key !== command.body.request_key) throw new Error('mismatched-command-result');
       pending.value = null; persist(null); completed(result);
+      return result;
     } catch (cause) {
       if (disposed || current !== epoch) return;
       error.value = worldError(cause);

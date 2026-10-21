@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -63,7 +64,7 @@ section.equipment-expansion
         p(v-if="!state.writable") Покупки сейчас недоступны. Помещение должно действовать, а экономика и хранение мира — быть включены.
         label Количество следующих мест
           n-input-number(v-model:value="quantity" :min="1" :max="state.expansion.limit - state.expansion.unlocked" :precision="0" :disabled="locked")
-        n-checkbox(v-if="needsPersonalTopUp(price, state.available)" v-model:checked="topUp" :disabled="locked") Добавить с баланса
+        world-payment-sources(v-model:checked="topUp" :price="price" :available="state.available" :disabled="locked")
         p(v-if="quantity && quantity >= 3") В стоимость включена скидка 5%.
         n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !price" @click="preview") Открыть {{ quantity }}{{ creditCost(price) }}
 </template>

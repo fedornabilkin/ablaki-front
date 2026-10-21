@@ -21,6 +21,13 @@ export const worldModalTheme: NonNullable<ModalProps['themeOverrides']> = {
   },
 };
 
+export const worldNeutralButtonTheme: NonNullable<ButtonProps['themeOverrides']> = {
+  ...worldActionButtonTheme,
+  color: colors['bg-surface-2'], colorHover: 'var(--bg-surface)', colorPressed: 'var(--bg-surface)', colorFocus: colors['bg-surface-2'],
+  textColor: 'var(--text)', textColorHover: 'var(--text)', textColorPressed: 'var(--text)', textColorFocus: 'var(--text)',
+  border: '1px solid var(--border)', borderHover: '1px solid var(--border)', borderPressed: '1px solid var(--border)', borderFocus: '1px solid var(--border)',
+};
+
 export const worldDangerButtonTheme: NonNullable<ButtonProps['themeOverrides']> = {
   ...worldActionButtonTheme,
   ...Object.fromEntries(['', 'Error'].flatMap(type => [

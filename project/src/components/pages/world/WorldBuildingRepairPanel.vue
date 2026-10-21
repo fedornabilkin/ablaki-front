@@ -7,6 +7,7 @@ import { RouterLink } from 'vue-router';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadBuildingRepair, previewBuildingRepair } from '@/services/api/worldBuildingRepair';
 import { worldError } from '@/services/api/world';
+import WorldPaymentSources from './WorldPaymentSources.vue';
 const props = defineProps<{ nodeId: number; session: number; writable: boolean; command: WorldCommandRunner }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadBuildingRepair>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewBuildingRepair>> | null>(null);
 const loading = ref(false), calculating = ref(false), error = ref(''), { busy, pending } = props.command;
@@ -55,6 +56,7 @@ section.world-building-repair#building-repair
     h3 Ремонт: {{ quote.name }}
     p Прочность: {{ quote.repair.condition_before }} → {{ quote.repair.condition_after }}.
     p Из бюджета здания: {{ formatCredits(quote.repair.price) }} Cr. Свободно до ремонта: {{ formatCredits(quote.budget) }} Cr. Личный баланс не списывается.
+    world-payment-sources(mode="budget" :price="quote.repair.price")
     p
       | Получатель — казна поселения:
       |  
