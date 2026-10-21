@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSkeleton } from 'naive-ui';
@@ -83,7 +84,7 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
         strong {{ item.name }}
         small {{ item.material_summary || 'Материалы не нужны' }}
         .build-costs
-          span(v-if="item.economy && creditCost(item.economy.price_cr)") {{ creditCost(item.economy.price_cr).slice(3) }}
+          world-credits(v-if="item.economy" :value="item.economy.price_cr" cost)
           span.build-duration
             font-awesome-icon(icon="clock" aria-hidden="true")
             |  {{ formatDuration(item.build_seconds) }}

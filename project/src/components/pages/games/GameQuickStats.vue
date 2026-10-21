@@ -12,7 +12,7 @@ defineProps<{ summary: GameSummary; unit: string; kind: string }>();
     strong {{ summary.today.wins }}
   span(:class="{ positive: summary.today.balance > 0, negative: summary.today.balance < 0 }" title="Изменение счёта за сегодня, включая создание и отмену игр" :aria-label="'Итог: ' + signedAmount(summary.today.balance, unit) + ' ' + unit")
     font-awesome-icon(icon="coins" aria-hidden="true")
-    strong {{ signedAmount(summary.today.balance, unit) }} {{ unit }}
+    strong {{ signedAmount(summary.today.balance, unit) }} {{ unit === 'Cr' ? '' : unit }}
   router-link(:to="'/games/' + kind + '/my'" :title="'Мои доступные игры: ' + summary.own.count + ', на сумму ' + summary.own.amount + ' ' + unit" :aria-label="'Мои доступные игры: ' + summary.own.count")
     font-awesome-icon(icon="user" aria-hidden="true")
     strong {{ summary.own.count }}

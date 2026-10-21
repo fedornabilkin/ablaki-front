@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import WorldQuotaNotice from './WorldQuotaNotice.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -43,6 +45,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-orders#settlement-orders
+  world-quota-notice(v-if="state?.quota" :quota="state.quota")
   h2 Заказы поселения
   world-help-hint(label="Как работают заказы поселения")
     p Заказ задаёт цену и предельное количество сырья. При сдаче сырьё списывается из рюкзака, а выплата поступает в казну вашей стоянки; выполнить заказ сверх остатка нельзя.
@@ -52,13 +55,13 @@ section.world-orders#settlement-orders
   list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="loading" placeholder="Найти заказ" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка заказов")
   template(v-else-if="state")
-    p(v-if="state.quota") Сегодня доступно продаж: {{ state.quota.remaining }} из {{ state.quota.maximum }}; валовой выручки: {{ formatCredits(state.quota.grossRemaining) }} Cr. Лимит одной сдачи: {{ state.max_sale_quantity }} шт. Восстановление: {{ date(state.quota.restoresAt) }}.
+    p(v-if="state.quota?.grossRemaining !== null && state.quota?.grossRemaining !== undefined") Доступная выручка: #[world-credits(:value="state.quota.grossRemaining")]. Лимит одной сдачи: {{ state.max_sale_quantity }} шт.
     p(v-if="!state.site_node_id") Начальные заказы доступны игрокам со стартовой стоянкой в этом поселении.
     router-link(v-else :to="`/world/nodes/${state.site_node_id}`") Казна и бюджет вашей стоянки
     p(v-if="!state.items.length") Заказов по выбранным условиям нет.
     ul.orders
       li(v-for="order in state.items" :key="order.id")
-        h3 {{ order.item_name }} · {{ formatCredits(order.unit_price) }} Cr за шт.
+        h3 {{ order.item_name }} · #[world-credits(:value="order.unit_price")]  за шт.
         p {{ order.purpose }}
         p Осталось {{ order.remaining_quantity }} из {{ order.quantity }} шт.; ваш оставшийся лимит — {{ order.my_remaining }} шт.
         p {{ labels[order.status] }} · срок до {{ date(order.expires_at) }}
@@ -67,7 +70,7 @@ section.world-orders#settlement-orders
     page-pager(v-model:page="page" query-prefix="orders" :result="state" :disabled="busy")
     world-order-delivery(v-if="chosen" :key="chosen.id" :node-id="nodeId" :session="session" :order="chosen" :max-quantity="state.max_sale_quantity" :writable="state.can_deliver && (!state.quota || state.quota.remaining > 0)" :command="command")
     section(v-if="cancellation" aria-live="polite")
-      p Заказ №{{ cancellation.input.order_id }} будет закрыт. Освободится {{ formatCredits(cancellation.released) }} Cr резерва бюджета.
+      p Заказ №{{ cancellation.input.order_id }} будет закрыт. Освободится #[world-credits(:value="cancellation.released")]  резерва бюджета.
       n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending)" @click="cancel") Подтвердить отмену остатка
     world-order-publish(v-if="state.can_publish" :node-id="nodeId" :session="session" :writable="state.can_publish" :command="command")
 </template>

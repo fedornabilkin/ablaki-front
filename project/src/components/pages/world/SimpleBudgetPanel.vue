@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
@@ -29,9 +30,9 @@ onScopeDispose(() => { disposed = true; epoch++; });
 </script>
 <template lang="pug">
 n-card(title="Бюджет объекта")
-  p Доступно: {{ formatCredits(available) }} Cr. Зарезервировано на стройки: {{ formatCredits(reserved) }} Cr.
+  p Доступно: #[world-credits(:value="available")] . Зарезервировано на стройки: #[world-credits(:value="reserved")] .
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
-  world-credit-input(v-model:value="amount" placeholder="Сумма взноса в Cr" :disabled="runner.busy.value || !!runner.pending.value" :input-props="{ inputmode: 'decimal' }")
+  world-credit-input(v-model:value="amount" placeholder="Сумма взноса" :disabled="runner.busy.value || !!runner.pending.value" :input-props="{ inputmode: 'decimal' }")
   n-button(:theme-overrides="worldActionButtonTheme" :loading="runner.busy.value" @click="fund") {{ runner.pending.value ? 'Повторить запрос' : 'Пополнить из личного баланса' }}
 </template>

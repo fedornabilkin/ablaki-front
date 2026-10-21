@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { NPopover } from 'naive-ui';
+defineOptions({ inheritAttrs: false });
 withDefaults(defineProps<{ label: string; symbol?: string }>(), { symbol: '?' });
+const emit = defineEmits<{ open: [] }>();
 </script>
 <template lang="pug">
-n-popover(trigger="click" placement="bottom" :style="{ maxWidth: 'min(32rem, 90vw)' }")
+n-popover(trigger="click" placement="bottom" :style="{ maxWidth: 'min(32rem, 90vw)' }" @update:show="value => { if (value) emit('open'); }")
   template(#trigger)
-    button.world-help-hint(type="button" :aria-label="label")
+    button.world-help-hint(v-bind="$attrs" type="button" :aria-label="label")
       font-awesome-icon(:icon="symbol === '!' ? 'exclamation-circle' : symbol === 'i' ? 'info-circle' : 'question-circle'" aria-hidden="true")
   slot
 </template>

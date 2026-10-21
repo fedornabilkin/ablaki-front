@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
@@ -49,7 +50,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
   .recipe-facts
     span(v-if="state.charge_credits")
       font-awesome-icon(icon="coins")
-      |  {{ formatCredits(requirements.cost) }} Cr
+      |  #[world-credits(:value="requirements.cost")]
     span(v-else) Без списания кредитов
     span
       font-awesome-icon(icon="cube")

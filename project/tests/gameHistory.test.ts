@@ -52,7 +52,7 @@ describe('shared game history', () => {
   ] as const)('renders stake, both UserAvatars, completion time and one trophy for %s', async (kind, fields, winner) => {
     const html = await render(kind, fields);
     expect(html).toContain('<table'); expect(html).toContain('<thead');
-    expect(html).toContain('Ставка</th>'); expect(html).toContain(kind === 'saper' ? '5 Кг' : '5 Cr');
+    expect(html).toContain('Ставка</th>'); expect(html).toContain(kind === 'saper' ? '5 Кг' : 'aria-label="5 кредитов"');
     expect(html).toContain('href="/wall/Alice"'); expect(html).toContain('href="/wall/Bob"');
     expect(html.match(/class="user-avatar"/g)).toHaveLength(2);
     expect(html.match(/data-icon="trophy"/g)).toHaveLength(1);

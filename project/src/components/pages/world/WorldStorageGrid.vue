@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, ref, watch } from 'vue';
 import type { StorageView } from '@/services/api/worldStorage';
 import { storageCells, type StorageMapContext } from '@/entities/world/storageInteraction';
@@ -23,7 +24,7 @@ const exposure: Record<string, string> = { outdoor: 'На улице', covered: 
         strong(v-if="cell.item") ×{{ cell.item.quantity }}
         small(v-else) {{ cell.position }}
       strong.cell-name(v-if="cell.item || !cell.available") {{ cell.item?.name || cell.object?.label || (cell.purchase ? 'К покупке' : 'Закрыто') }}
-      strong.cell-price(v-if="cell.purchase && cell.price !== null") {{ formatCredits(cell.price) }} Cr
+      strong.cell-price(v-if="cell.purchase && cell.price !== null") #[world-credits(:value="cell.price")]
       small.cell-state(v-if="cell.item || !cell.available") {{ cell.object ? 'Недоступно для размещения' : cell.purchase ? `${cell.point?.x}, ${cell.point?.y}` : !cell.available ? (cell.item ? 'Можно забрать' : 'Недоступно') : cell.exposure ? exposure[cell.exposure] : 'В наличии' }}
   router-link(v-if="context && cells.some(cell => cell.purchase)" :to="`/world/nodes/${context.map.node_id}#map`") Купить ячейки на карте
   nav.cell-pages(v-if="pages > 1" aria-label="Страницы ячеек")

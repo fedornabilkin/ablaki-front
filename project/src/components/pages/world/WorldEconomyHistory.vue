@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { onScopeDispose, ref, watch } from 'vue';
 import { NAlert } from 'naive-ui';
 import ListFilters from '@/components/ListFilters.vue';
@@ -35,7 +36,7 @@ section.economy-history(aria-label="История экономики" :aria-bus
     article(v-for="item in result.items" :key="`${item.source}:${item.id}`")
       strong {{ classes[item.classification] ?? 'Операция' }}
       span {{ economyKindLabel(item.kind) }}
-      span(v-if="item.amount !== null") {{ formatCredits(item.amount) }} Cr
+      span(v-if="item.amount !== null") #[world-credits(:value="item.amount")]
       span(v-if="item.quantity !== null") {{ item.quantity }} ед.
       time {{ date(item.createdAt) }}
       details
@@ -43,8 +44,8 @@ section.economy-history(aria-label="История экономики" :aria-bus
         p(v-if="item.operation") Номер: {{ item.operation }}
         p(v-if="item.nodeId") Объект № {{ item.nodeId }}
         p(v-if="item.profileVersion") Версия условий: {{ item.profileVersion }}
-        p(v-if="item.balanceBefore !== null") До: {{ formatCredits(item.balanceBefore) }} Cr
-        p(v-if="item.balanceAfter !== null") После: {{ formatCredits(item.balanceAfter) }} Cr
+        p(v-if="item.balanceBefore !== null") До: #[world-credits(:value="item.balanceBefore")]
+        p(v-if="item.balanceAfter !== null") После: #[world-credits(:value="item.balanceAfter")]
         p(v-if="item.transferPhase") {{ phases[item.transferPhase] }} перевода
         p(v-if="item.transferIds.length") Номера переводов: {{ item.transferIds.join(', ') }}
   p(v-if="!loading && !result.items.length") Записей нет.

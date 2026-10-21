@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -45,7 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-construction#construction
   h2 Строительство
-  p Материалы и Cr зарезервированы до завершения. Ночлег и оборудование в новой постройке станут доступны после окончания работ.
+  p Материалы и кредиты зарезервированы до завершения. Ночлег и оборудование в новой постройке станут доступны после окончания работ.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить стройки
   n-alert(v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Найти стройку" @reset="list.reset")
@@ -58,7 +59,7 @@ section.world-construction#construction
         router-link(v-else :to="`/world/nodes/${item.node_id}`") {{ item.name }}
         |  · {{ constructionStatus[item.status] }}
       template(v-if="item.status === 'constructing' || item.status === 'paused'")
-        p Зарезервировано из бюджета: {{ formatCredits(item.price) }} Cr.
+        p Зарезервировано из бюджета: #[world-credits(:value="item.price")] .
         p(v-if="item.status === 'paused'") Осталось работы: {{ Math.ceil(item.remaining_seconds / 60) }} мин. На паузе время не убывает.
         p(v-else-if="item.remaining_seconds") Ожидаемое окончание: {{ date(item.finish_at) }}.
         p(v-else) Время работ истекло. Ожидается завершение строительства.
@@ -67,17 +68,17 @@ section.world-construction#construction
         n-button(:theme-overrides="worldActionButtonTheme" v-if="item.status === 'constructing' && item.remaining_seconds > 0" :disabled="locked || calculating" @click="preview(item.node_id, 'pause')") Приостановить
         n-button(:theme-overrides="worldActionButtonTheme" v-if="item.status === 'paused'" :disabled="locked || calculating" @click="preview(item.node_id, 'resume')") Продолжить
         n-button(:theme-overrides="worldDangerButtonTheme" type="error" :disabled="locked || calculating" @click="preview(item.node_id, 'cancel')") Отменить
-      p(v-if="item.status === 'cancelled'") Резерв Cr освобождён в бюджете. Материалы возвращены в рюкзак.
+      p(v-if="item.status === 'cancelled'") Резерв кредитов освобождён в бюджете. Материалы возвращены в рюкзак.
       p(v-if="item.demolished") Постройка снесена, площадь освобождена. История строительства сохранена.
       p(v-if="item.room_id && !item.demolished")
         router-link(:to="`/world/nodes/${item.room_id}`") Открыть готовое помещение
     page-pager(v-model:page="page" query-prefix="construction" :result="state" :disabled="busy")
   section(v-if="quote" aria-live="polite")
     h3 {{ labels[quote.action] }}: {{ quote.name }}
-    p(v-if="quote.action === 'pause'") Работы остановятся. Площадь, {{ formatCredits(quote.price) }} Cr и материалы останутся зарезервированы.
+    p(v-if="quote.action === 'pause'") Работы остановятся. Площадь, #[world-credits(:value="quote.price")]  и материалы останутся зарезервированы.
     p(v-else-if="quote.action === 'resume'") Продолжится оставшееся время работ. Дополнительных списаний нет.
     template(v-else)
-      p Площадь освободится, резерв {{ formatCredits(quote.price) }} Cr вернётся в доступный бюджет площадки. Все материалы вернутся в рюкзак. Если места недостаточно, отмена не выполнится и резервы сохранятся.
+      p Площадь освободится, резерв #[world-credits(:value="quote.price")]  вернётся в доступный бюджет площадки. Все материалы вернутся в рюкзак. Если места недостаточно, отмена не выполнится и резервы сохранятся.
       ul
         li(v-for="material in quote.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
       p Уже завершённую постройку отменить нельзя.

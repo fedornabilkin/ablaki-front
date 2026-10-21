@@ -9,6 +9,7 @@ import { formatDuration } from '@/entities/world/duration';
 import { loadStorageList, type StorageHeader } from '@/services/api/worldStorage';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldWorkProgress from './WorldWorkProgress.vue';
+import WorldQuotaNotice from './WorldQuotaNotice.vue';
 const props = defineProps<{ nodeId: number; owner: number; session: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<MiningState | null>(null), error = ref('');
@@ -62,6 +63,7 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); if (
 </script>
 <template lang="pug">
 section.mining-panel(aria-label="Получение ресурсов")
+  world-quota-notice(v-if="state?.quota" :quota="state.quota" :server-time="state.server_time")
   .mining-heading
     h3 Получение ресурсов
     world-help-hint(label="Как учитывается добыча")
@@ -79,7 +81,6 @@ section.mining-panel(aria-label="Получение ресурсов")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
         p(v-if="!state.action_code && (selected?.available_at ?? 0) > state.server_time") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
         n-select(v-if="storageOptions.length" :value="state.output_storage_id ?? selectedStorage" :options="storageOptions" clearable placeholder="Рюкзак" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Хранилище результата" @update:value="selectedStorage = $event")
-        p(v-if="state.quota") Доступно партий сегодня: {{ state.quota.remaining }} из {{ state.quota.maximum }}.
         n-alert(v-if="state.blocked_message" type="warning") {{ state.blocked_message }}. Заработанная партия сохранена.
       template(v-else)
         p Работников: {{ state.workers }}. Добыто: {{ state.produced_quantity }} ед. руды.

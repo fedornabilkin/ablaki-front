@@ -33,7 +33,7 @@ section.world-demolition-history#demolitions
     p(v-if="!state.items.length") Снесённых построек по выбранным условиям нет.
     article(v-for="item in state.items" :key="item.id")
       h3 {{ item.name }}
-      p {{ date(item.created_at) }} · Освобождена площадь: {{ item.area }}. Снос без возврата Cr и материалов.
+      p {{ date(item.created_at) }} · Освобождена площадь: {{ item.area }}. Снос без возврата кредитов и материалов.
     page-pager(v-model:page="page" query-prefix="demolitions" :result="state")
 </template>
 <style scoped>

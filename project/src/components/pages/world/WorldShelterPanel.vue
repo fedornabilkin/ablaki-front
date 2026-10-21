@@ -76,7 +76,7 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
       n-button(:theme-overrides="worldActionButtonTheme" v-if="state.instance_id && state.durability !== null && state.max_durability !== null && state.durability < state.max_durability && (!state.deployment || here)" :disabled="locked || calculating" @click="preview('repair')") Рассчитать ремонт
     section(v-if="quote" aria-live="polite")
       h3 {{ labels[quote.action] }}
-      p Стоимость: 0 Cr.
+      p Без оплаты.
       p(v-if="quote.action === 'claim'") Разовое право будет использовано только после успешного получения.
       p(v-if="quote.input.direct_deploy || quote.action === 'deploy'") Шалаш появится на этой стоянке. Назначить ночлег можно следующим действием. Износ на улице — 4 единицы прочности в сутки.
       p(v-if="quote.position") Ячейка рюкзака: {{ quote.position }}.

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from '../WorldCreditInput.vue';
 import WorldPaymentSources from '../WorldPaymentSources.vue';
@@ -36,7 +37,7 @@ async function save(retry = false) {
 <template lang="pug">
 n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="repairing ? 'Параметры ремонта' : 'Параметры строительства'" :mask-closable="!blocked" :close-on-esc="!blocked" :closable="!blocked" :style="{ width: 'min(42rem, 95vw)' }" @update:show="emit('update:show', $event)")
   p При бюджете труда больше 0 другие игроки могут помочь {{ repairing ? 'в ремонте' : 'в строительстве' }} и заработать кредиты.
-  p(v-if="draft && creditUnits(draft.price) > 0n") Цена объекта: {{ formatCredits(draft.price) }} Cr. Материалы и бюджет труда учитываются отдельно.
+  p(v-if="draft && creditUnits(draft.price) > 0n") Цена объекта: #[world-credits(:value="draft.price")] . Материалы и бюджет труда учитываются отдельно.
   .build-creation-status(role="status")
     n-spin(v-if="creating" size="small")
     span(v-if="creating") {{ repairing ? 'Подготавливаем ремонт…' : 'Размещаем объект…' }}
@@ -47,9 +48,12 @@ n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="re
   .build-settings-fields
     label Название
       n-input(v-model:value="name" :maxlength="120" :disabled="blocked" :input-props="{ 'aria-label': 'Название объекта' }")
-    label {{ repairing ? 'Бюджет ремонта, Cr' : 'Бюджет строительства, Cr' }}
+    label {{ repairing ? 'Бюджет ремонта, кредиты' : 'Бюджет строительства, кредиты' }}
       world-credit-input(v-model:value="budget" :disabled="blocked" :input-props="{ inputmode: 'decimal', 'aria-label': repairing ? 'Бюджет ремонта' : 'Бюджет строительства' }")
-  p Свободный бюджет: {{ available === null ? 'загружается…' : `${formatCredits(available)} Cr` }}. Уже выделено строителям: {{ formatCredits(project?.labor_budget ?? '0') }} Cr.
+  p Свободный бюджет:
+    world-credits(v-if="available !== null" :value="available")
+    template(v-else) загружается…
+    | . Уже выделено строителям: #[world-credits(:value="project?.labor_budget ?? '0'")].
   world-payment-sources(v-model:checked="topUp" :price="paymentPrice" :available="available" :disabled="blocked || creationPending")
   n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="creationPending || runner.pending.value" :disabled="blocked" @click="save(true)") Повторить запрос

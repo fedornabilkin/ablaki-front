@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch } from 'vue';
@@ -162,10 +163,10 @@ watch(() => props.state, cancel);
       p {{ items.get(discarded.item_id)?.name }}. Удалённые предметы нельзя восстановить.
       n-input-number(:min="1" :max="Math.min(10000, discarded.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, discarded.quantity), step: 1}" v-model:value="discardQuantity" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
   n-modal(:theme-overrides="worldModalTheme" v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy, themeOverrides: worldActionButtonTheme}" :negative-button-props="{themeOverrides: worldActionButtonTheme}" @positive-click="buy")
-    p Следующий слот: {{ formatCredits(quotedPrice) }} Cr
-    p(v-if="quotedLinear && quotedBase") Каждый следующий слот дороже на {{ formatCredits(quotedBase) }} Cr.
+    p Следующий слот: #[world-credits(:value="quotedPrice")]
+    p(v-if="quotedLinear && quotedBase") Каждый следующий слот дороже на #[world-credits(:value="quotedBase")] .
     n-input-number(:min="1" :max="50 - permanent" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 50 - permanent, step: 1}" v-model:value="buyQuantity" :precision="0" :disabled="blocked" aria-label="Количество покупаемых слотов")
-    p Будет списано {{ formatCredits(Number.isFinite(quotedTotal) ? quotedTotal : '—') }} Cr. Слоты останутся активными постоянно.
+    p Будет списано #[world-credits(:value="Number.isFinite(quotedTotal) ? quotedTotal : '—'")] . Слоты останутся активными постоянно.
 </template>
 <style scoped>
 .craft-inventory { display: grid; grid-template-columns: minmax(0, 760px) minmax(240px, 380px); align-items: start; gap: 1rem; max-width: 100%; }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -35,7 +36,7 @@ section.world-finance-report#finance-report
   h3 Финансовый отчёт объекта
   world-help-hint(label="Что показывает финансовый отчёт")
     p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
-  p Личные Cr → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
+  p Личные кредиты → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
   p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить отчёт
   n-alert(v-if="error" type="error" role="alert") {{ error }}
@@ -45,20 +46,20 @@ section.world-finance-report#finance-report
     dl.flows
       template(v-for="flow in state.flows" :key="flow.key")
         dt {{ flow.label }}
-        dd {{ formatCredits(flow.amount) }} Cr
+        dd #[world-credits(:value="flow.amount")]
     h4 Остатки и сверка с журналом
     article(v-for="account in state.balances" :key="account.role")
       h5 {{ roles[account.role] }}
-      p Остаток {{ formatCredits(account.amount) }} Cr · резерв {{ formatCredits(account.reserved) }} Cr · доступно {{ formatCredits(account.available) }} Cr
+      p Остаток #[world-credits(:value="account.amount")]  · резерв #[world-credits(:value="account.reserved")]  · доступно #[world-credits(:value="account.available")]
       p(v-if="account.matches") Остаток совпадает с журналом поступлений и списаний.
-      n-alert(v-else type="warning") По журналу: {{ formatCredits(account.ledgerBalance) }} Cr. Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
+      n-alert(v-else type="warning") По журналу: #[world-credits(:value="account.ledgerBalance")] . Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
   h4 Журнал операций
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению операции" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка финансового отчёта")
   template(v-else-if="state")
     p(v-if="!state.items.length") По выбранным условиям операций нет.
     article(v-for="item in state.items" :key="item.id")
-      h5 {{ financeDirections[item.direction] }} · {{ formatCredits(item.amount) }} Cr
+      h5 {{ financeDirections[item.direction] }} · #[world-credits(:value="item.amount")]
       p {{ kindLabel(item.kind) }} · №{{ item.id }} · {{ date(item.at) }}
       p {{ item.source ? roles[item.source] : 'Внешний источник' }} → {{ item.destination ? roles[item.destination] : 'Внешний получатель' }}
       p {{ item.purpose }}

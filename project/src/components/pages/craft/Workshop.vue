@@ -166,7 +166,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
                 th Операция
                 th Предмет
                 th Количество
-                th Cr
+                th кредиты
                 th Дата и время
             tbody
               tr(v-for="event in history" :key="event.id")

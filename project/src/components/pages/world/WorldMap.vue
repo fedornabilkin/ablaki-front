@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
@@ -238,7 +239,9 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         rect(:width="width" :height="height" :fill="`url(#world-grid-${node.id})`")
         g(v-for="cell in gridCells" :key="key(cell)" :transform="`translate(${position(cell).x},${position(cell).y})`" class="map-cell")
           rect(:width="size" :height="size" :class="visibleState(cell) === 'closed' ? 'map-fog' : `map-${visibleState(cell)}`" :fill="visibleState(cell) === 'closed' ? `url(#world-fog-${node.id})` : undefined")
-          text(v-if="state(cell) === 'discovered' && !occupied(cell)" :x="size - 5" y="15" text-anchor="end" class="map-price") {{ cellPrice(cell) }} Cr
+          g(v-if="state(cell) === 'discovered' && !occupied(cell)" :transform="`translate(${size - 45}, 2)`")
+            font-awesome-icon(icon="coins" :x="0" :y="4" :width="10" :height="10" aria-hidden="true")
+            text(x="40" y="13" text-anchor="end" class="map-price") {{ cellPrice(cell) }}
           text(v-if="!occupied(cell)" :x="size / 2" y="49" text-anchor="middle" class="map-cell-status") {{ state(cell) === 'open' ? 'Свободно' : state(cell) === 'discovered' ? 'К покупке' : '' }}
           text(v-if="!occupied(cell)" x="6" :y="size - 7" class="map-coordinate") {{ cell.x }}, {{ cell.y }}
           rect.map-equipment-surface(v-if="equipment(cell)" x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
@@ -260,60 +263,61 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       slot(name="placement")
   aside.world-map-inspector(aria-live="polite")
     slot(name="information")
-    button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
-    template(v-if="selectedNode")
-      h3.world-selected-heading
-        font-awesome-icon(:icon="icons[selectedNode.type]" :title="nodeLabels[selectedNode.type]" aria-hidden="true")
-        span {{ selectedNode.label }}
-      world-object-preview(:node="selectedNode")
-      world-repair-panel(:key="selectedNode.id" :node="selectedNode" :owner="owner" :session="session ?? 0" :writable="writable" @changed="emit('changed', [selectedNode.id])")
-      dl
-        dt Координаты
-        dd {{ selectedNode.coordinates.x }}, {{ selectedNode.coordinates.y }}
-        dt Дочерние объекты
-        dd {{ selectedNode.descendant_count }}
-        dt Жители с дочерними
-        dd {{ selectedNode.population_total }}
-        template(v-if="selectedNode.details.condition !== undefined")
-          dt Прочность
-          dd {{ selectedNode.details.condition }} / {{ selectedNode.details.max_condition ?? '—' }}
-      router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
-      router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
-      router-link(v-if="selectedNode.owned_by_me && selectedNode.status === 'active'" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
-      world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation') && selectedNode.permissions.storage" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
-    world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
-    template(v-else-if="selected.length")
-      span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
-      h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
-    template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
-      span.world-map-kicker Команды
-      h3 Выберите цель
-    section.map-opening(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
-      .explore-action
-        h4 Открытие ячеек
-        world-help-hint(label="Исследование и покупка ячеек" symbol="!")
-          p Выделите одну или несколько ячеек рамкой, с Shift или Ctrl. Для открытия выбирайте ячейки одинакового состояния.
-          p(v-if="isGarden") Закрытые грядки уже исследованы. Покупаются именно выбранные грядки за бюджет огорода.
-          p(v-else) Неисследованные ячейки сначала исследуйте, затем купите. Нужен исследователь {{ required }}-го уровня; ваш уровень — {{ explorerLevel }}.
-          p(v-if="!isGarden") Профессия «Исследователь» выбирается один раз и даёт доступ к дальним ячейкам. Повторно открывать её не нужно: повышайте уровень за накопленный опыт или используйте эликсир.
-          p(v-if="explorer?.enrolled") Профессия уже открыта. Опыт: {{ explorer.xp }}{{ explorer.next ? `; для уровня ${explorer.next.level} нужно ${explorer.next.required_xp}` : '; достигнут максимальный уровень' }}.
-          p(v-if="!isGarden") Если уровня недостаточно, автоматически расходуется один эликсир на каждую ячейку выше вашего уровня. Требуется {{ neededElixirs }}, в рюкзаке {{ map?.exploration?.elixir_quantity ?? 0 }}. При достаточном уровне эликсир не расходуется.
-          p Ближайшее кольцо ячеек стоит одинаково. Каждое следующее кольцо дороже на базовую цену. Оплата из бюджета объекта; галочка разрешает доплату с личного баланса. От трёх ячеек — скидка 5%.
-          p(v-if="price && price.discount !== '0.0000'") Скидка: {{ formatCredits(price.discount) }} Cr.
-          p(v-if="!canBuy && !allClosed") {{ map?.exploration?.reason || 'Выделите закрытые либо исследованные свободные ячейки.' }}
-          p(v-if="!isGarden && !map?.exploration?.allowed") {{ map?.exploration?.reason || 'Исследование этой карты пока недоступно.' }}
-          p(v-if="!writable") Только просмотр: действия временно недоступны.
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="!isGarden && selected.some(p => state(p) === 'closed')" type="primary" :loading="calculating" :disabled="blocked || !map?.can_expand || !allClosed || (!levelAllowed && !elixirAllowed)" @click="act('explore')") {{ !levelAllowed && elixirAllowed ? `Исследовать ${selected.length} · ${neededElixirs} эликс.` : `Исследовать ${selected.length}` }}
-      template(v-if="isGarden || selected.some(p => state(p) === 'discovered')")
-        p(v-if="price") {{ selected.length }} ячеек: {{ formatCredits(price.gross) }} Cr − {{ formatCredits(price.discount) }} Cr скидки = {{ formatCredits(price.total) }} Cr
-        world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}{{ creditCost(price?.total) }}
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
-    world-help-hint(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
-      p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
-    n-alert(v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
-    n-alert(v-if="professionNotice" type="success" role="status") {{ professionNotice }}
-    n-button(:theme-overrides="worldActionButtonTheme" v-if="gardenError" :disabled="blocked" @click="refreshGarden") Обновить карту
+    section.map-cell-information
+      button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
+      template(v-if="selectedNode")
+        h3.world-selected-heading
+          font-awesome-icon(:icon="icons[selectedNode.type]" :title="nodeLabels[selectedNode.type]" aria-hidden="true")
+          span {{ selectedNode.label }}
+        world-object-preview(:node="selectedNode")
+        world-repair-panel(:key="selectedNode.id" :node="selectedNode" :owner="owner" :session="session ?? 0" :writable="writable" @changed="emit('changed', [selectedNode.id])")
+        dl
+          dt Координаты
+          dd {{ selectedNode.coordinates.x }}, {{ selectedNode.coordinates.y }}
+          dt Дочерние объекты
+          dd {{ selectedNode.descendant_count }}
+          dt Жители с дочерними
+          dd {{ selectedNode.population_total }}
+          template(v-if="selectedNode.details.condition !== undefined")
+            dt Прочность
+            dd {{ selectedNode.details.condition }} / {{ selectedNode.details.max_condition ?? '—' }}
+        router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
+        router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
+        router-link(v-if="selectedNode.owned_by_me && selectedNode.status === 'active'" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
+        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation') && selectedNode.permissions.storage" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
+      world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
+      template(v-else-if="selected.length")
+        span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
+        h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
+      template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
+        span.world-map-kicker Команды
+        h3 Выберите цель
+      section.map-opening(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
+        .explore-action
+          h4 Открытие ячеек
+          world-help-hint(label="Исследование и покупка ячеек" symbol="!")
+            p Выделите одну или несколько ячеек рамкой, с Shift или Ctrl. Для открытия выбирайте ячейки одинакового состояния.
+            p(v-if="isGarden") Закрытые грядки уже исследованы. Покупаются именно выбранные грядки за бюджет огорода.
+            p(v-else) Неисследованные ячейки сначала исследуйте, затем купите. Нужен исследователь {{ required }}-го уровня; ваш уровень — {{ explorerLevel }}.
+            p(v-if="!isGarden") Профессия «Исследователь» выбирается один раз и даёт доступ к дальним ячейкам. Повторно открывать её не нужно: повышайте уровень за накопленный опыт или используйте эликсир.
+            p(v-if="explorer?.enrolled") Профессия уже открыта. Опыт: {{ explorer.xp }}{{ explorer.next ? `; для уровня ${explorer.next.level} нужно ${explorer.next.required_xp}` : '; достигнут максимальный уровень' }}.
+            p(v-if="!isGarden") Если уровня недостаточно, автоматически расходуется один эликсир на каждую ячейку выше вашего уровня. Требуется {{ neededElixirs }}, в рюкзаке {{ map?.exploration?.elixir_quantity ?? 0 }}. При достаточном уровне эликсир не расходуется.
+            p Ближайшее кольцо ячеек стоит одинаково. Каждое следующее кольцо дороже на базовую цену. Оплата из бюджета объекта; галочка разрешает доплату с личного баланса. От трёх ячеек — скидка 5%.
+            p(v-if="price && price.discount !== '0.0000'") Скидка: #[world-credits(:value="price.discount")] .
+            p(v-if="!canBuy && !allClosed") {{ map?.exploration?.reason || 'Выделите закрытые либо исследованные свободные ячейки.' }}
+            p(v-if="!isGarden && !map?.exploration?.allowed") {{ map?.exploration?.reason || 'Исследование этой карты пока недоступно.' }}
+            p(v-if="!writable") Только просмотр: действия временно недоступны.
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="!isGarden && selected.some(p => state(p) === 'closed')" type="primary" :loading="calculating" :disabled="blocked || !map?.can_expand || !allClosed || (!levelAllowed && !elixirAllowed)" @click="act('explore')") {{ !levelAllowed && elixirAllowed ? `Исследовать ${selected.length} · ${neededElixirs} эликс.` : `Исследовать ${selected.length}` }}
+        template(v-if="isGarden || selected.some(p => state(p) === 'discovered')")
+          p(v-if="price") {{ selected.length }} ячеек: #[world-credits(:value="price.gross")]  − #[world-credits(:value="price.discount")]  скидки = #[world-credits(:value="price.total")]
+          world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
+          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}#[world-credits(:value="price?.total ?? '0'" cost)]
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
+      world-help-hint(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
+        p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
+      n-alert(v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
+      n-alert(v-if="professionNotice" type="success" role="status") {{ professionNotice }}
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="gardenError" :disabled="blocked" @click="refreshGarden") Обновить карту
 </template>
 
 <style scoped>
@@ -361,6 +365,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .map-equipment-label { fill: white; }
 .world-map-hint { margin: .55rem 0; color: var(--text-muted); font-size: .8rem; }
 .world-map-inspector { position: relative; display: grid; gap: .75rem; min-height: 13rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-surface); }
+.map-cell-information { position: relative; display: grid; gap: .75rem; min-width: 0; }.map-cell-information:not(:first-child):has(> :not(.world-inspector-close)) { border-top: 1px solid var(--border); padding-top: 1rem; }
 .world-inspector-close:hover { background: var(--primary-soft); color: var(--primary-hover); }
 .world-inspector-close { position: absolute; top: .35rem; right: .45rem; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border: 0; border-radius: .375rem; background: transparent; color: var(--primary); font-size: 1.6rem; cursor: pointer; }
 .world-map-inspector h3, .world-map-inspector p { margin: 0; }

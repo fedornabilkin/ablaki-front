@@ -21,7 +21,7 @@ const cards = computed(() => {
   return [
     { title: 'Участники', chart: stats.charts?.users, chartLabel: 'Регистрации', rows: [{ label: 'Регистрации', stats: stats.users }, { label: 'Посетили', stats: { total: null, today: stats.visitorsToday, yesterday: null } }] },
     { title: 'Завершённые игры', chart: stats.charts?.games, chartLabel: 'Орлянка и сапёр', rows: [{ label: 'Орлянка', stats: stats.games.orel }, { label: 'Сапёр', stats: stats.games.saper }] },
-    { title: 'Общение', chart: stats.charts?.forum, chartLabel: 'Темы и сообщения', rows: [{ label: 'Темы', stats: stats.forum.themes }, { label: 'Сообщения', stats: stats.forum.comments }, { label: 'Передано Cr', stats: stats.forum.credits }] },
+    { title: 'Общение', chart: stats.charts?.forum, chartLabel: 'Темы и сообщения', rows: [{ label: 'Темы', stats: stats.forum.themes }, { label: 'Сообщения', stats: stats.forum.comments }, { label: 'Передано кредитов', stats: stats.forum.credits }] },
     { title: 'Передача кредитов', chart: stats.charts?.transfers, chartLabel: 'Передачи', rows: [{ label: 'Передачи', stats: stats.transfers }] },
     { title: 'Биржа', chart: stats.charts?.exchange, chartLabel: 'Сделки', rows: [{ label: 'Сделки', stats: stats.exchange }] },
   ];

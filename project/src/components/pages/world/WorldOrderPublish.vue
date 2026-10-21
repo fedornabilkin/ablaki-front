@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
@@ -58,7 +59,7 @@ details.order-publication
     n-input-number(v-model:value="form.quantity" :min="1" :max="1000000" :precision="0" :disabled="busy || Boolean(pending)")
   label Лимит на игрока
     n-input-number(v-model:value="form.limit" :min="1" :max="form.quantity || 1000000" :precision="0" :disabled="busy || Boolean(pending)")
-  label Цена одного предмета, Cr
+  label Цена одного предмета
     world-credit-input(v-model:value="form.price" inputmode="decimal" :maxlength="20" :disabled="busy || Boolean(pending)")
   label Срок заказа, ч (1–720)
     n-input-number(v-model:value="form.hours" :min="1" :max="720" :precision="0" :disabled="busy || Boolean(pending)")
@@ -68,7 +69,7 @@ details.order-publication
   n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!writable || busy || Boolean(pending)" @click="preview") Рассчитать резерв
   section(v-if="quote" aria-live="polite")
     world-payment-sources(mode="budget" :price="quote.cost")
-    p {{ quote.item_name }}: {{ quote.input.quantity }} шт. по {{ formatCredits(quote.input.unit_price) }} Cr. В бюджете будет зарезервировано {{ formatCredits(quote.cost) }} Cr.
+    p {{ quote.item_name }}: {{ quote.input.quantity }} шт. по #[world-credits(:value="quote.input.unit_price")] . В бюджете будет зарезервировано #[world-credits(:value="quote.cost")] .
     p На игрока — до {{ quote.input.per_user_limit }} шт. Срок — {{ quote.input.lifetime_hours }} ч.
     p Начальные условия: отчисления {{ quote.policy.rate_bps / 100 }}%, оплата в течение {{ quote.policy.due_seconds / 3600 }} ч после сбора; защита поступления {{ quote.policy.protected_seconds / 3600 }} ч, затем потери {{ quote.policy.loss_rate_bps / 100 }}% каждые {{ quote.policy.loss_period_seconds / 3600 }} ч.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!writable || busy || Boolean(pending)" @click="publish") Зарезервировать бюджет и опубликовать

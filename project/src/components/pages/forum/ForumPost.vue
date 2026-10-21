@@ -54,11 +54,11 @@ async function save() {
   .post-actions
     gift-users(:comment-id="item.id" :count="Number(item.gift_count) || 0")
     .gift-tags(v-if="canGive")
-      n-button(v-for="amount in [1, 2, 3]" :key="amount" size="tiny" round secondary :disabled="giving" :aria-label="'Передать автору ' + amount + ' Cr со своего счёта'" @click="emit('give', amount)") +{{ amount }}
+      n-button(v-for="amount in [1, 2, 3]" :key="amount" size="tiny" round secondary :disabled="giving" :aria-label="'Передать автору ' + amount + ' кредиты со своего счёта'" @click="emit('give', amount)") +{{ amount }}
       n-tooltip
         template(#trigger)
-          n-button(text aria-label="О передаче кредитов" title="Выбранная сумма Cr спишется с вашего счёта и поступит автору. Передать можно один раз.") ⓘ
-        | Выбранная сумма Cr спишется с вашего счёта и поступит автору. Передать можно один раз.
+          n-button(text aria-label="О передаче кредитов" title="Выбранная сумма кредиты спишется с вашего счёта и поступит автору. Передать можно один раз.") ⓘ
+        | Выбранная сумма кредиты спишется с вашего счёта и поступит автору. Передать можно один раз.
     n-button(v-if="editable && !editing" text size="small" aria-label="Редактировать сообщение" title="Редактировать сообщение" @click="edit")
       font-awesome-icon(icon="pencil-alt" aria-hidden="true")
 </template>

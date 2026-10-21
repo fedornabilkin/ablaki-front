@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -49,7 +50,7 @@ section.world-repair-contracts#repair-contracts
   template(v-else-if="state")
     template(v-if="state.contract")
       p {{ state.contract.source === 'purchase' ? 'Договор включён в покупку' : 'Дополнительный договор принят' }}: {{ date(state.contract.accepted_at) }}.
-      p Полный ремонт: {{ formatCredits(state.contract.repair.full_price) }} Cr из бюджета здания. Цена и сырьё уменьшаются пропорционально повреждению с округлением вверх.
+      p Полный ремонт: #[world-credits(:value="state.contract.repair.full_price")]  из бюджета здания. Цена и сырьё уменьшаются пропорционально повреждению с округлением вверх.
       ul
         li(v-for="item in state.contract.repair.materials" :key="item.item_id") {{ item.name }}: {{ item.quantity }} при полном повреждении
     ul(v-if="state.reasons.length")
@@ -60,7 +61,7 @@ section.world-repair-contracts#repair-contracts
       p(v-if="!state.items.length") Подходящих предложений по выбранным условиям нет. Поселение может опубликовать их в каталоге построек.
       article(v-for="item in state.items" :key="item.offer_id")
         h3 {{ item.name }}
-        p Полный ремонт: {{ formatCredits(item.repair.full_price) }} Cr. Площадь: {{ item.area }}.
+        p Полный ремонт: #[world-credits(:value="item.repair.full_price")] . Площадь: {{ item.area }}.
         ul
           li(v-for="material in item.repair.materials" :key="material.item_id") {{ material.name }}: {{ material.quantity }}
         ul(v-if="item.reasons.length")
@@ -69,7 +70,7 @@ section.world-repair-contracts#repair-contracts
       page-pager(v-model:page="page" query-prefix="repairContracts" :result="state" :disabled="busy")
   n-alert(v-if="quote" type="info" aria-live="polite")
     h3 Принять договор для «{{ quote.buildingName }}»
-    p Принятие: 0 Cr. Стоимость полного ремонта: {{ formatCredits(quote.offer.repair.full_price) }} Cr из бюджета здания.
+    p Принятие бесплатное. Стоимость полного ремонта: #[world-credits(:value="quote.offer.repair.full_price")]  из бюджета здания.
     p
       | Подрядчик и получатель оплаты:
       |  

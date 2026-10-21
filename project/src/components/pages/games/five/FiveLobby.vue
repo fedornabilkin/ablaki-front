@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -98,7 +99,7 @@ game-page-layout(kind="five" :version="overviewVersion" :snapshot="snapshot")
         .game-row(v-for="game in games.data.value.items" :key="game.id")
           span №{{ game.id }}
           user-avatar(v-if="historyPlayer(game, 'creator')" :user="historyPlayer(game, 'creator')!")
-          span {{ formatCredits(game.kon) }} Cr
+          span #[world-credits(:value="game.kon")]
           span {{ game.status === 'free' ? 'Ждём соперника' : 'Идёт игра' }}
           n-button(type="primary" secondary :disabled="play.busy.value" @click="play.open(fiveGame(game))") {{ mine ? 'Открыть' : 'Участвовать' }}
           n-popconfirm(v-if="mine && game.status === 'free' && Number(game.user_id) === userId" @positive-click="remove(game.id)")
@@ -108,12 +109,12 @@ game-page-layout(kind="five" :version="overviewVersion" :snapshot="snapshot")
       page-pager(v-if="mine && !games.error.value" v-model:page="page" :result="games.data.value" :disabled="games.loading.value")
 n-modal(:show="showCreate" preset="card" title="Новая игра «5 яблок»" style="width: min(500px, 95vw)" :mask-closable="!play.busy.value" :closable="!play.busy.value" @update:show="value => { if (!play.busy.value) showCreate = value; }")
   .stack
-    label Ставка (Cr)
+    label Ставка (кредиты)
       n-input-number(:min="1" :max="Math.min(1000000000, Number.isFinite(credit) ? credit : 0)" :step="1" :precision="0" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(1000000000, Number.isFinite(credit) ? credit : 0), step: 1}" v-model:value="stake" :disabled="play.busy.value")
     p.muted(v-if="stake !== null && (!Number.isSafeInteger(stake) || stake < 1)") Ставка должна быть положительным целым числом.
     label Количество игр
       n-input-number(:min="1" :max="100" :step="1" :precision="0" :input-props="{ type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1 }" v-model:value="count" :disabled="play.busy.value")
-    p Доступно: {{ formatCredits(available) }} Cr. Ставка резервируется при создании.
+    p Доступно: #[world-credits(:value="available")] . Ставка резервируется при создании.
     p {{ count === 1 ? 'Ваш первый скрытый ход:' : 'Первый скрытый ход каждой игры будет случайным.' }}
     .toolbar(v-if="count === 1" role="group" aria-label="Первый ход")
       n-button(v-for="ball in [1, 2, 3, 4, 5]" :key="ball" :type="firstBall === ball ? 'primary' : 'default'" :aria-pressed="firstBall === ball" :disabled="play.busy.value" @click="firstBall = ball") {{ ball }}

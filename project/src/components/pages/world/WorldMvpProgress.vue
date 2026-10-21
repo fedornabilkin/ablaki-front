@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NModal, NProgress, NSpin, NTabs, NTabPane } from 'naive-ui';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
@@ -6,6 +7,8 @@ import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { loadMvp, milestoneLabels, type MvpState } from '@/services/api/worldMvp';
 import { isClosedTestError, worldError } from '@/services/api/world';
 import { formatCredits } from '@/entities/world/credits';
+import WorldCountdown from './WorldCountdown.vue';
+import WorldQuotaNotice from './WorldQuotaNotice.vue';
 const props = defineProps<{ owner: number; session: number; revision: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(false), loading = ref(false);
@@ -41,7 +44,7 @@ n-button(:theme-overrides="worldActionButtonTheme" size="small" @click="show = t
 n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
  .mvp-progress(:aria-busy="loading")
   n-alert(v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
-  router-link.mvp-action(v-if="closedTest && !state" to="/forum/read/80" @click="show = false") Сообщить на форуме о желании участвовать в тестировании
+  router-link.mvp-action(v-if="closedTest && !state" to="/forum" @click="show = false") Сообщить на форуме о желании участвовать в тестировании
   n-button(v-if="error" :loading="loading" :disabled="loading" @click="load") Повторить загрузку
   n-spin(v-if="loading && !state" size="small")
   n-button(v-if="runner.pending.value" :loading="runner.busy.value" @click="act()") Проверить результат запроса
@@ -71,37 +74,37 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
             font-awesome-icon(icon="arrow-right" aria-hidden="true")
       .journey-reward
         div
-          strong Награда · {{ formatCredits(activeGoal.credits) }} Cr
+          strong Награда · #[world-credits(:value="activeGoal.credits")]
           p В казну стоянки; после сбора действуют отчисления.
-        n-button(v-if="!activeGoal.claimed" :theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || !activeGoal.canClaim" :loading="runner.busy.value" @click="act('economy/goals/claim', { code: activeGoal.code })") Получить
+        n-button(v-if="!activeGoal.claimed" :theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || !activeGoal.canClaim" :loading="runner.busy.value" @click="act('economy/goals/claim', { code: activeGoal.code })") {{ !activeGoal.funded && activeGoal.steps.every(step => step.completed) ? 'Ожидает резерва' : 'Получить' }}
         font-awesome-icon(v-else icon="check" title="Награда получена")
-      p.journey-note(v-if="!activeGoal.funded && !activeGoal.claimed") Награда ожидает резервирования бюджета поселения.
+      n-alert(v-if="!activeGoal.funded && !activeGoal.claimed" type="info") {{ activeGoal.blockedReason || 'Организатору нужно зарезервировать награду из бюджета поселения. После этого кнопка получения станет активной.' }}
+      n-button(v-if="state.canFundGoals && activeGoal.fundingSettlement && !activeGoal.funded && !activeGoal.claimed" :theme-overrides="worldActionButtonTheme" :disabled="busy" :loading="runner.busy.value" @click="act('economy/goals/fund', { code: activeGoal.code, settlement_id: activeGoal.fundingSettlement, participants: 1 })") Выделить из бюджета поселения #[world-credits(:value="activeGoal.credits")]
       .mvp-links
         router-link.mvp-action(to="/world/workspace/inventory" @click="show = false") Инвентарь
         router-link.mvp-action(to="/world/workspace/recipes" @click="show = false") Рецепты
         router-link.mvp-action(v-if="tab === 'camp'" to="/transfer" @click="show = false") Переводы
-      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые {{ formatCredits(state.targetStartCredits) }} Cr не начисляются автоматически. Организатор тестирования готовит перевод из существующих средств и сообщает номер и код. Получите его в разделе «Переводы». Если перевод уже получен, повторять этот шаг не нужно.
+      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые #[world-credits(:value="state.targetStartCredits")]  не начисляются автоматически. Организатор тестирования готовит перевод из существующих средств и сообщает номер и код. Получите его в разделе «Переводы». Если перевод уже получен, повторять этот шаг не нужно.
     .journey-quotas(v-else-if="tab === 'quotas'")
       article.quota-card(v-for="quota in state.quotas" :key="quota.kind")
-        .journey-heading
-          h3 {{ quotaLabels[quota.kind] ?? 'Действия' }}
-          strong {{ quota.remaining }} / {{ quota.maximum }}
-        n-progress(type="line" :percentage="100 * quota.remaining / Math.max(1, quota.maximum)" :show-indicator="false")
-        p.journey-note Восстановление: {{ new Date(quota.restoresAt * 1000).toLocaleString('ru-RU') }}
-        p(v-if="quota.grossRemaining !== null") Остаток выручки: {{ formatCredits(quota.grossRemaining) }} Cr
+        world-quota-notice(:quota="quota" :server-time="state.serverTime")
+        p(v-if="quota.grossRemaining !== null") Остаток выручки: #[world-credits(:value="quota.grossRemaining")]
       router-link.mvp-action(to="/world/workspace/history" @click="show = false") История экономики
     template(v-else-if="tab === 'health'")
       .journey-heading
         h3 Здоровье
         strong {{ state.health.hp }} / {{ state.health.maximum }}
       n-progress(type="line" :percentage="100 * state.health.hp / state.health.maximum" :show-indicator="false")
-      p.journey-note Еда восстанавливает здоровье. При полном здоровье можно есть раз в сутки для поддержания сытости. После трёх суток без еды теряется 2 HP в сутки. Ночная болезнь проходит после защищённых ночей.
+      p.journey-note Из рюкзака можно есть в любом месте, до 8 HP за порцию. У каждого блюда свой лимит повторов и время восстановления. Лишняя порция вызывает пищевое расстройство (−4 HP), поэтому чередуйте блюда. В полевой кухне еда полезнее: завтрак 06–10, обед 12–16, ужин 18–22, время Москвы. После трёх суток без еды теряется 2 HP в сутки. Ночная болезнь проходит после защищённых ночей.
+      n-alert(v-if="state.health.disorderUntil" type="warning") Пищевое расстройство. Восстановление через #[world-countdown(:until="state.health.disorderUntil" :server-time="state.serverTime")]. Пока можно поесть в полевой кухне.
       .mvp-foods
         article.food-card(v-for="food in state.health.foods" :key="food.code")
           font-awesome-icon(icon="utensils" aria-hidden="true")
           strong {{ food.name }}
           span +{{ food.restore }} здоровья · в наличии {{ food.quantity }}
-          n-button(:theme-overrides="worldActionButtonTheme" secondary :disabled="busy || !state.health.canEat || food.quantity === 0" @click="act('economy/food', { code: food.code, health_revision: state.health.revision })") Поесть
+          span(v-if="food.repeatLimit !== null") Повторов осталось {{ food.repeatRemaining }} / {{ food.repeatLimit }} за {{ (food.repeatSeconds ?? 0) / 3600 }} ч
+          span(v-if="food.restoresAt") Новая порция через #[world-countdown(:until="food.restoresAt" :server-time="state.serverTime")]
+          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || !food.canEat || food.quantity === 0" @click="act('economy/food', { code: food.code, health_revision: state.health.revision })") {{ food.repeatRemaining === 0 ? 'Чередуйте блюда' : 'Поесть' }}
     router-link.mvp-action.journey-feedback(:to="state.feedback" @click="show = false")
       font-awesome-icon(icon="comment" aria-hidden="true")
       | Сообщить о проблеме на форуме

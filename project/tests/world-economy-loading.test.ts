@@ -24,6 +24,20 @@ beforeEach(() => {
 afterEach(() => { app?.unmount(); app = undefined; });
 
 describe('economy panel load recovery', () => {
+  it('explains an unfunded completed goal, links to the forum list and enables available food', async () => {
+    mocks.mvp.mockResolvedValue({ enabled: true, feedback: '/forum', goals: [{ code: 'day-1', claimed: false, funded: false, canClaim: false, credits: '50.0000', blockedReason: 'Организатору нужно обеспечить резерв', steps: [{ code: 'camp', completed: true, quantity: 1, required: 1 }] }], quotas: [],
+      health: { hp: 100, maximum: 100, canEat: true, revision: 4, foods: [{ code: 'carrot', name: 'Морковь', restore: 4, quantity: 2, canEat: true, repeatLimit: 2, repeatRemaining: 1, repeatSeconds: 21600 }] } });
+    const view = mountView(WorldMvpProgress, () => ({ owner: 1, session: 1, writable: true })); app = view.app;
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Задания')!.props.onClick(); await flushView();
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Ожидает резерва')!.props.disabled).toBe(true);
+    expect(viewText(view.root)).toContain('Организатору нужно обеспечить резерв');
+    expect(findView(view.root, n => n.tag === 'a' && viewText(n).includes('Сообщить'))!.props.to).toBe('/forum');
+    findView(view.root, n => n.props.type === 'segment')!.props['onUpdate:value']('health'); await flushView();
+    const eat = findView(view.root, n => n.tag === 'button' && viewText(n) === 'Поесть')!;
+    expect(eat.props.disabled).toBe(false); expect(eat.props.type).toBe('primary');
+    eat.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('economy/food', { code: 'carrot', health_revision: 4 });
+  });
   it('switches four journey tabs and closes the modal when following a task action', async () => {
     const goal = (code: string) => ({ code, claimed: false, funded: true, canClaim: false, credits: '50.0000', steps: [{ code: 'camp', completed: false, quantity: 0, required: 1, href: '/world/nodes/5' }] });
     mocks.mvp.mockResolvedValue({ enabled: true, feedback: '/forum/read/80', personalCredits: '250.0000', goals: [goal('day-1'), goal('day-2')], quotas: [{ kind: 'extraction_daily', maximum: 20, remaining: 12, restoresAt: 100, grossRemaining: null }], health: { hp: 85, maximum: 100, revision: 2, foods: [{ code: 'carrot', name: 'Морковь', restore: 15, quantity: 2 }] } });

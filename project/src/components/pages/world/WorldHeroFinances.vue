@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { onScopeDispose, ref, watch } from 'vue';
 import type { WorldNode } from '@/entities/world/types';
 import { formatCredits } from '@/entities/world/credits';
@@ -37,11 +38,15 @@ onScopeDispose(() => { generation++; });
 .hero-finances(:title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-live="polite")
   div
     span Бюджет
-    strong {{ available === null ? '—' : `${formatCredits(available)} Cr` }}
-    small(v-if="reserved !== null") Резерв: {{ formatCredits(reserved) }} Cr
+    strong
+      world-credits(v-if="available !== null" :value="available")
+      template(v-else) —
+    small(v-if="reserved !== null") Резерв: #[world-credits(:value="reserved")]
   div
     span Казна
-    strong {{ treasury === null ? '—' : `${formatCredits(treasury)} Cr` }}
+    strong
+      world-credits(v-if="treasury !== null" :value="treasury")
+      template(v-else) —
 </template>
 <style scoped>
 .hero-finances { display: flex; flex-wrap: wrap; gap: 1.5rem; }.hero-finances > div { display: grid; align-content: start; gap: .2rem; min-width: 5rem; }.hero-finances span, .hero-finances small { color: var(--text-muted); font-size: .8rem; }.hero-finances strong { font-variant-numeric: tabular-nums; }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldHelpHint from './WorldHelpHint.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { NAlert, NButton, NModal, NProgress, NTooltip } from 'naive-ui';
+import { NAlert, NButton, NModal, NProgress, NSpin, NTooltip } from 'naive-ui';
 import BuildSettingsModal from './modals/BuildSettingsModal.vue';
 import { projectedBuildSeconds } from '@/entities/world/buildProgress';
 import * as api from '@/services/api/simpleWorld';
@@ -14,6 +15,7 @@ const props = defineProps<{ node: api.SimpleNode; owner: number; session: number
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
 const error = ref(''), working = ref(false);
+const loading = ref(true);
 const settingsOpen = ref(false), elapsed = ref(0), displayedSeconds = ref(0);
 const cancelOpen = ref(false);
 let receivedAt = performance.now();
@@ -41,13 +43,14 @@ const animation = setInterval(() => {
 const sync = setInterval(() => { if (!working.value && !busy.value && !uncertain.value && !polling.value && project.value?.status === 'building') void refresh(); }, 10_000);
 function halt() { working.value = false; if (timer) clearInterval(timer); timer = undefined; }
 async function load() {
-  const token = ++epoch; halt(); error.value = ''; if (project.value?.node_id !== props.node.id) project.value = null;
+  const token = ++epoch; halt(); loading.value = true; error.value = ''; if (project.value?.node_id !== props.node.id) project.value = null;
   try {
     const [active, projects] = await Promise.all([api.activeBuild(), api.builds({ node_id: props.node.id, status: 'building' })]);
     if (disposed || token !== epoch) return;
     if (projects.items[0]) accept(projects.items[0]); else project.value = null;
     if (active && active.id === project.value?.id && !runner.pending.value) resume(active.id);
   } catch (cause) { if (!disposed && token === epoch) error.value = worldError(cause); }
+  finally { if (!disposed && token === epoch) loading.value = false; }
 }
 async function refresh() {
   const token = epoch; polling.value = true;
@@ -114,13 +117,14 @@ section.build-information(aria-label="Строительство")
   .build-heading
     h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
     world-help-hint(label="Условия строительных работ")
-      p Бюджет помощников: {{ formatCredits(project?.labor_budget ?? '0') }} Cr. Владелец работает бесплатно.
+      p Бюджет помощников: #[world-credits(:value="project?.labor_budget ?? '0'")] . Владелец работает бесплатно.
       p Время учитывается, пока эта страница открыта и есть связь с сервером.
       p После обрыва связи учитывается не больше 60 дополнительных секунд.
   n-alert(v-if="error" type="error") {{ error }}
   n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
-  template(v-if="project && project.status === 'building'")
+  n-spin(v-if="loading && !project" size="small" aria-label="Загрузка строительства")
+  template(v-else-if="project && project.status === 'building'")
     .build-progress-row
       .build-progress
         p Прочность {{ strength }} / {{ maximum }}
@@ -145,7 +149,7 @@ section.build-information(aria-label="Строительство")
         template(#icon)
           font-awesome-icon(icon="times")
         | {{ repairing ? 'Завершить ремонт досрочно' : 'Отменить' }}
-  p(v-else-if="!project || project.status !== 'building'") Здесь сейчас нет доступной стройки.
+  p(v-else-if="!error && (!project || project.status !== 'building')") Здесь сейчас нет доступной стройки.
   build-settings-modal(v-model:show="settingsOpen" :project="project" :name="node.name" :owner="owner" :session="session" @saved="refresh(); emit('changed')")
   n-modal(v-model:show="cancelOpen" :theme-overrides="worldModalTheme" preset="card" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
     p Объект будет удалён с карты. 30% ресурсов не будут возвращены, даже если строительство ещё не начиналось.

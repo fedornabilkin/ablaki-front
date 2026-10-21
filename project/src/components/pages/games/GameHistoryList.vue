@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed } from 'vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import { formatAccountNumber } from '@/services/api/header';
@@ -28,7 +29,8 @@ const rows = computed(() => props.games.map(game => ({
       tr(v-for="row in rows" :key="row.game.id")
         td {{ row.game.id }}
         td
-          strong {{ formatAccountNumber(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
+          strong(v-if="kind === 'saper'") {{ formatAccountNumber(row.game.kon) }} Кг
+          world-credits(v-else :value="row.game.kon")
           small.result.muted(v-if="row.winner === 'draw'") Ничья
           small.result.muted(v-else-if="row.winner === null") Результат недоступен
         td(v-for="participant in row.participants" :key="participant.side")

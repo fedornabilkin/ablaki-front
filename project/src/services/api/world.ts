@@ -143,7 +143,9 @@ export function parseWorldCommandResult(value: unknown): WorldCommandResult {
   } else if (row.building_id !== undefined || row.room_id !== undefined) {
     premises.building_id = integer(row.building_id, 1, 2147483647); premises.room_id = integer(row.room_id, 1, 2147483647);
   }
-  return { ...money, ...premises, ...(row.return_node_id === undefined ? {} : { return_node_id: integer(row.return_node_id, 1, 2147483647) }), contract_version: 1, operation_id: hexId(row.operation_id), request_key: row.request_key, server_time: integer(row.server_time),
+  const crafted = row.craft_result === undefined ? null : record(row.craft_result), craftedOutput = crafted ? record(crafted.output) : null;
+  return { ...money, ...premises, ...(crafted && craftedOutput ? { craft_result: { output: { name: text(craftedOutput.name, 120), quantity: integer(craftedOutput.quantity, 1, 100000) },
+    materials: list(crafted.materials, value => { const material = record(value); return { name: text(material.name, 120), quantity: integer(material.quantity, 1, 100000) }; }), price: creditAmount(crafted.price_cr), experience: integer(crafted.experience) } } : {}), ...(row.return_node_id === undefined ? {} : { return_node_id: integer(row.return_node_id, 1, 2147483647) }), contract_version: 1, operation_id: hexId(row.operation_id), request_key: row.request_key, server_time: integer(row.server_time),
     changed_node_ids: list(row.changed_node_ids, value => integer(value, 1), 10000), ...(row.changed_storage_ids === undefined ? {} : { changed_storage_ids: list(row.changed_storage_ids, value => integer(value, 1), 10000) }), ...(row.node === undefined ? {} : { node: parseWorldNode(row.node) }) };
 }
 const url = (path: string) => config.makeApiUrl(`v1/world${path}`);

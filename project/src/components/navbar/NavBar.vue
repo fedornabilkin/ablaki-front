@@ -41,7 +41,7 @@ header.site-header(ref="header" :class="{ compact }")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
-  .container.header-nav
+  .container.header-nav(v-show="!compact")
     online-users
     daily-rewards(v-if="user")
     nav.desktop-nav(v-show="!compact" aria-label="Основная навигация")

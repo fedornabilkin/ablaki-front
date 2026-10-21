@@ -19,7 +19,7 @@
         n-tooltip(trigger="manual" :show='creditsTooltipAnimation' placement='bottom')
           template(#trigger)
             div
-              span Cr
+              font-awesome-icon(icon="coins" aria-hidden="true")
               span {{ roundCredits(user.person.credit) }}
           | {{ creditsTooltipContent }}
     n-divider(vertical)
@@ -62,7 +62,7 @@ export default {
             let diff = roundCredits(value - oldValue);
             let displayedDiff = `${diff < 0 ? '-' : '+'}${Math.abs(diff)}`;
 
-            creditsTooltipContent.value = `${displayedDiff} Cr`
+            creditsTooltipContent.value = `${displayedDiff} кредитов`
             creditsTooltipAnimation.value = true;
 
             clearTimeout(creditsTooltipAnimationTimeout.value);
@@ -75,7 +75,7 @@ export default {
             let diff = roundBalance(value - oldValue);
             let displayedDiff = `${diff < 0 ? '-' : '+'}${Math.abs(diff)}`;
 
-            balanceTooltipContent.value = `${displayedDiff} Cr`
+            balanceTooltipContent.value = `${displayedDiff} кредитов`
             balanceTooltipAnimation.value = true;
 
             clearTimeout(balanceTooltipAnimationTimeout.value);

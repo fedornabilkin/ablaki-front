@@ -21,11 +21,11 @@ import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacementPalette from './WorldPlacementPalette.vue';
 import WorldPageActions from './WorldPageActions.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
+import WorldCharacterProgress from './WorldCharacterProgress.vue';
 import WorldBuildPalette from './WorldBuildPalette.vue';
 import { activeBuild, type Build } from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
-import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 
 const route = useRoute(), router = useRouter(), auth = useStore(), world = useWorldStore();
 const nodeId = computed(() => route.params.id === undefined ? null : Number(route.params.id));
@@ -33,6 +33,8 @@ const invalidId = computed(() => nodeId.value !== null && (!Number.isSafeInteger
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const mapSelection = ref<{ x: number; y: number }[]>([]);
+const nodeInfoOpened = ref(false);
+watch([nodeId, session], () => { nodeInfoOpened.value = false; });
 const purchasedRoom = ref<number | null>(null);
 const activeWork = ref<Build | null>(null), workError = ref('');
 const pauseRunner = useSimpleWorldCommand(computed(() => `${owner.value}.pause-build`), session);
@@ -96,7 +98,6 @@ onScopeDispose(() => clearInterval(updates));
 function changed(ids: number[]) { world.invalidate(ids, true); void load(true); void refreshActiveWork(); void auth.dispatch('auth/fetchData'); }
 
 const features = computed(() => world.node ? nodeFeatures(world.node, world.capabilities) : null);
-const craftHref = useCampsiteCraft(session, computed(() => world.node));
 const tabs = computed<NodeTab[]>(() => world.node && features.value ? tabsForNode(world.node, features.value) : ['map']);
 const activeTab = computed(() => tabForHash(route.hash, tabs.value));
 const visitedTabs = ref<NodeTab[]>(['map']);
@@ -135,13 +136,13 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
     p {{ world.error }}
     template(v-if="world.closedTest")
       p Можно сообщить на форуме о желании принять участие в тестировании.
-      router-link(to="/forum/read/80") Участие в тестировании →
+      router-link(to="/forum") Участие в тестировании →
     router-link(to="/world") Вернуться к карте мира
   n-spin(v-else-if="world.loading && !world.node" size="large" aria-label="Загрузка мира")
   n-alert(v-else-if="!world.capabilities?.world_read" type="info")
     p Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
     p Можно сообщить на форуме о желании принять участие в тестировании.
-    router-link(to="/forum/read/80") Участие в тестировании →
+    router-link(to="/forum") Участие в тестировании →
   n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
     n-alert(v-if="world.error" type="error" role="alert") {{ world.error }}
@@ -172,7 +173,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           h2 {{ childTitle }}
         .world-map-tools
           span.world-counter {{ world.map?.items.length ?? 0 }} объектов
-          world-help-hint(label="Параметры объекта" symbol="i")
+          world-help-hint(label="Параметры объекта" symbol="i" @open="nodeInfoOpened = true")
             dl.world-facts
               dt Объект
               dd {{ world.node.label }} · №{{ world.node.id }}
@@ -185,6 +186,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
               template(v-for="fact in facts" :key="fact.key")
                 dt {{ fact.label }}
                 dd {{ fact.value }}
+            world-character-progress(v-if="nodeInfoOpened" :key="session")
       .world-children
         world-map(v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
           template(#information)
@@ -207,9 +209,11 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         span.world-eyebrow Мастерская и размещение
         h2 Вещи и крафт
       .world-inline-links.world-content-card
-        router-link(v-if="features?.storage && world.node.status === 'active'" :to="craftHref") Изготовление в объекте
+        router-link.world-manufacturing-action(v-if="features?.storage && world.node.status === 'active'" :to="`/world/workspace/${world.node.id}`")
+          font-awesome-icon(icon="hammer" aria-hidden="true")
+          | Изготовление в этом объекте
         p(v-else) Изготовление доступно владельцу действующего объекта.
-        world-workspace-nav(:node-id="world.node.owned_by_me && world.node.status === 'active' ? world.node.id : undefined")
+        world-workspace-nav(:node-id="world.node.owned_by_me && world.node.status === 'active' ? world.node.id : undefined" :show-manufacturing="false")
       .world-content-grid.world-content-grid--workshop
         world-storage-panel.world-content-card.world-storage-card(v-if="features.storage" :node="world.node" :map="world.map" :node-id="world.node.id" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
         world-node-extensions(slot="equipment" v-bind="extensionProps" @changed="changed([world.node.id])")
@@ -219,8 +223,8 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         span.world-eyebrow Экономика территории
         h2 Бюджет и казна
       world-economy-panel(v-if="world.node.permissions.manage" :node-id="world.node.id" :children="world.map?.items ?? []" :session="session" :command="command")
+        world-finance-policy.world-finance-card(v-if="world.node.permissions.administer" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
       p(v-else) Финансовые данные доступны владельцу объекта.
-      world-finance-policy.world-content-card(v-if="world.node.permissions.administer" :node-id="world.node.id" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command")
 
     section.world-tab-panel(v-if="visitedTabs.includes('statistics')" v-show="activeTab === 'statistics'" aria-label="Статистика объекта")
       .world-section-title
@@ -238,16 +242,12 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           strong {{ fact.value }}
       world-node-statistics.world-content-card(:node="world.node" :session="session")
 
-    section.world-tab-panel(v-if="visitedTabs.includes('manage') && world.node.permissions.administer" v-show="activeTab === 'manage'" aria-label="Управление объектом")
-      .world-section-title
-        span.world-eyebrow Параметры владения
-        h2 Управление
-      p Параметры объекта доступны под значком информации на карте. Финансовые настройки — во вкладке «Казна».
 </template>
 
 <style scoped>
 .world-parent { display: inline-flex; margin: .35rem 0 .6rem; padding: .35rem .7rem; width: fit-content; border: 1px solid var(--border); border-radius: .45rem; font-size: .85rem; }
 .world-map-tools { display: flex; align-items: center; gap: .75rem; }
+.world-inline-links .world-manufacturing-action { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem .9rem; border-radius: .5rem; background: var(--primary); color: var(--primary-contrast, #171717); font-weight: 650; }
 .world-page { display: grid; gap: 1rem; padding-block: 1.5rem 3rem; max-width: 1320px; }
 .world-toolbar, .world-inline-links, .world-siblings { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .world-toolbar { justify-content: flex-end; font-size: .9rem; }

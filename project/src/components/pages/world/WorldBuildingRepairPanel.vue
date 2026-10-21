@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -43,9 +44,9 @@ section.world-building-repair#building-repair
   n-spin(v-if="loading" aria-label="Загрузка условий ремонта")
   template(v-else-if="state")
     p(v-if="state.supported && !state.writable") Платные действия мира сейчас недоступны.
-    p Свободный бюджет постройки: {{ formatCredits(state.budget) }} Cr. Пополнить его можно в разделе бюджета этого здания.
+    p Свободный бюджет постройки: #[world-credits(:value="state.budget")] . Пополнить его можно в разделе бюджета этого здания.
     template(v-if="state.repair")
-      p Прочность: {{ state.repair.condition_before }} / {{ state.repair.condition_after }}. Ремонт: {{ formatCredits(state.repair.price) }} Cr.
+      p Прочность: {{ state.repair.condition_before }} / {{ state.repair.condition_after }}. Ремонт: #[world-credits(:value="state.repair.price")] .
       p Материалы из доступных ячеек рюкзака:
       ul
         li(v-for="item in state.repair.materials" :key="item.item_id" :class="{ missing: !item.available }") {{ item.name }}: нужно {{ item.quantity }}, есть {{ item.have }}{{ item.available ? '' : ' — недостаточно' }}
@@ -55,7 +56,7 @@ section.world-building-repair#building-repair
   n-alert(v-if="quote" type="info" aria-live="polite")
     h3 Ремонт: {{ quote.name }}
     p Прочность: {{ quote.repair.condition_before }} → {{ quote.repair.condition_after }}.
-    p Из бюджета здания: {{ formatCredits(quote.repair.price) }} Cr. Свободно до ремонта: {{ formatCredits(quote.budget) }} Cr. Личный баланс не списывается.
+    p Из бюджета здания: #[world-credits(:value="quote.repair.price")] . Свободно до ремонта: #[world-credits(:value="quote.budget")] . Личный баланс не списывается.
     world-payment-sources(mode="budget" :price="quote.repair.price")
     p
       | Получатель — казна поселения:

@@ -54,7 +54,7 @@ section.world-building-operation#building-operation
       p(v-if="quote.lodgingCount") Текущее назначение ночлега будет отменено. Выберите другое укрытие до следующей ночи, чтобы избежать болезни.
       p Пауза не меняет защиту оборудования от погоды, не восстанавливает прочность и не отменяет финансовые обязательства.
     p(v-else) Работа станций и размещение вещей станут доступны. Для ночлега потребуется снова выбрать спальное место в комнате дома.
-    p Стоимость действия: 0 Cr.
+    p Действие бесплатное.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked" @click="confirm") Подтвердить
     n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="clear") Отмена
 </template>

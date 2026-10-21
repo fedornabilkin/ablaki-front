@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
@@ -67,7 +68,9 @@ section.harvest-panel(aria-label="Продукция склада")
       template(v-if="cell.item")
         font-awesome-icon(:icon="cell.item.icon || 'seedling'" aria-hidden="true")
         strong {{ cell.item.name }}
-        span {{ cell.item.quantity }} шт. · {{ cell.item.price ? `${formatCredits(cell.item.price)} Cr / шт.` : 'Не продаётся' }}
+        span {{ cell.item.quantity }} шт. ·
+          template(v-if="cell.item.price") #[world-credits(:value="cell.item.price")] / шт.
+          template(v-else) Не продаётся
         small(v-if="cell.item.fresh_until < 2147483647") {{ cell.item.spoiled ? 'Потеря при хранении учтена' : `Свежий до ${date(cell.item.fresh_until)}` }}
   .harvest-actions(v-if="item")
     h3 {{ item.name }}
@@ -81,8 +84,9 @@ section.harvest-panel(aria-label="Продукция склада")
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || !quantity || !item.quantity" @click="act('withdraw')") Переместить
       section.harvest-action-block(v-if="state.allow_sales" aria-label="Продажа урожая")
         h4 Продажа урожая
-        p {{ item.price ? `В продаже за ${formatCredits(item.price)} Cr / шт.` : 'Не продаётся' }}
-        label Цена за штуку, Cr
+        p(v-if="item.price") В продаже за #[world-credits(:value="item.price")] / шт.
+        p(v-else) Не продаётся
+        label Цена за штуку
           world-credit-input(v-model:value="prices[item.inventory_id]" inputmode="decimal" :disabled="locked")
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || !prices[item.inventory_id]" @click="act('price')") Установить цену продажи
         n-button(:theme-overrides="worldActionButtonTheme" v-if="item.price" :disabled="locked" @click="act('price', true)") Снять с продажи
@@ -90,7 +94,7 @@ section.harvest-panel(aria-label="Продукция склада")
       world-payment-sources(mode="personal" :price="total")
       label Количество
         n-input-number(v-model:value="quantity" :min="1" :max="item.quantity" :precision="0" :disabled="locked")
-      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !state?.allow_sales || !item.price || !quantity || !item.quantity" @click="act('buy')") Купить {{ quantity }}{{ creditCost(total) }}
+      n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !state?.allow_sales || !item.price || !quantity || !item.quantity" @click="act('buy')") Купить {{ quantity }}#[world-credits(:value="total ?? '0'" cost)]
 </template>
 <style scoped>
 .harvest-panel { display: grid; gap: .75rem; }.harvest-panel p, .harvest-cell small { color: var(--text-muted); }

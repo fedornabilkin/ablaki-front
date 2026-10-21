@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
@@ -44,15 +45,15 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
     n-button(:theme-overrides="worldActionButtonTheme" v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
   label ID получателя
     n-input-number(v-model:value="destination" :min="1" :max="2147483647" :precision="0" placeholder="Дочерний объект или свой огород")
-  label Сумма, Cr
+  label Сумма
     world-credit-input(v-model:value="amount" inputmode="decimal" placeholder="10" :maxlength="20")
   label Назначение
     n-input(v-model:value="purpose" :maxlength="255" placeholder="На развитие объекта")
   n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
   section.grant-quote(v-if="quote" aria-live="polite")
     world-payment-sources(mode="budget" :price="quote.input.amount")
-    p Перевод: {{ formatCredits(quote.input.amount) }} Cr объекту №{{ quote.input.destination_node_id }}.
-    p В источнике останется свободно {{ formatCredits(quote.sourceAvailableAfter) }} Cr; бюджет получателя станет {{ formatCredits(quote.destinationBudgetAfter) }} Cr.
+    p Перевод: #[world-credits(:value="quote.input.amount")]  объекту №{{ quote.input.destination_node_id }}.
+    p В источнике останется свободно #[world-credits(:value="quote.sourceAvailableAfter")] ; бюджет получателя станет #[world-credits(:value="quote.destinationBudgetAfter")] .
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="command.busy.value" :disabled="Boolean(command.pending.value)" @click="confirm") Подтвердить перевод
 </template>
 <style scoped>
