@@ -26,9 +26,15 @@ export function parseEconomyHistory(value: unknown) {
     if (!Array.isArray(transferIds) || transferIds.length > 100) throw new Error('invalid-world-response');
     const phase = item.transfer_phase === undefined || item.transfer_phase === null ? null : text(item.transfer_phase);
     if (phase !== null && !['create', 'claim', 'cancel'].includes(phase)) throw new Error('invalid-world-response');
+    const details = item.items ?? [];
+    if (!Array.isArray(details) || details.length > 100) throw new Error('invalid-world-response');
+    const items = details.map(value => { const detail = record(value); const direction = text(detail.direction);
+      if (!['received', 'spent', 'moved', 'created', 'collected', 'sold', 'bought'].includes(direction)) throw new Error('invalid-world-response');
+      return { id: integer(detail.item_id, 1), code: text(detail.code), name: text(detail.name), quantity: integer(detail.quantity, 1), direction };
+    });
     return { id, kind: text(item.kind), source: text(item.source), classification: text(item.classification), createdAt: integer(item.created_at), amount: amount(item.amount_cr), quantity,
       balanceBefore: amount(item.balance_before_cr ?? null), balanceAfter: amount(item.balance_after_cr ?? null), nodeId: optionalId(item.node_id),
-      profileVersion: optionalId(item.profile_version), transferIds: transferIds.map(value => integer(value, 1)), transferPhase: phase,
+      profileVersion: optionalId(item.profile_version), transferIds: transferIds.map(value => integer(value, 1)), transferPhase: phase, items,
       operation: item.operation_id === null ? null : text(item.operation_id) };
   });
   if (items.length > total || new Set(items.map(item => `${item.source}:${item.id}`)).size !== items.length) throw new Error('invalid-world-response');

@@ -23,7 +23,10 @@ async function gather() {
   error.value = ''; const current = props.session, id = props.nodeId;
   const result = runner.pending.value ? await runner.retry() : await runner.submit(`objects/${id}/gather`);
   if (!result || disposed || current !== props.session || id !== props.nodeId) return;
-  if (typeof result.gather_available === 'boolean') state.value = { gather_available: result.gather_available, gather_available_at: Number(result.gather_available_at), server_time: Number(result.server_time) };
+  if (typeof result.gather_available === 'boolean') state.value = { gather_available: result.gather_available, gather_available_at: Number(result.gather_available_at), server_time: Number(result.server_time),
+    ...(typeof result.gather_remaining === 'number' ? {gather_remaining: result.gather_remaining} : {}),
+    ...(typeof result.gather_limit === 'number' ? {gather_limit: result.gather_limit} : {}),
+    ...(typeof result.gather_exhausted === 'boolean' ? {gather_exhausted: result.gather_exhausted} : {}) };
   emit('changed'); void load();
 }
 watch([() => props.nodeId, () => props.session], () => { state.value = null; error.value = ''; }, { flush: 'sync' });
@@ -32,7 +35,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 .world-hero-gather
-  craft-gather-button.world-action(:available="state?.gather_available ?? true" :disabled="!state || !writable || runner.busy.value || !!runner.pending.value" :countdown="countdown" @gather="gather")
+  craft-gather-button.world-action(:available="state?.gather_available ?? true" :remaining="state?.gather_remaining" :limit="state?.gather_limit" :exhausted="state?.gather_exhausted" :disabled="!state || !writable || runner.busy.value || !!runner.pending.value" :countdown="countdown" @gather="gather")
   span.gather-feedback
     n-popover(v-if="error || runner.error.value || runner.pending.value" trigger="click" placement="bottom")
       template(#trigger)

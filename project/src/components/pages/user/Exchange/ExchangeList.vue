@@ -37,7 +37,7 @@ const actionError = ref('');
 const notice = ref('');
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
-const canCancel = (order: ExchangeOrder) => order.user_id === userId.value && order.user_client === 0;
+const canCancel = (order: ExchangeOrder) => order.type !== 'unknown' && order.user_id === userId.value && order.user_client === 0;
 const canProceed = (order: ExchangeOrder) => affordableOrder(order, userId.value, account.value);
 const label = (order: ExchangeOrder) => {
   const direction = exchangeDirection(order, userId.value);
@@ -83,7 +83,7 @@ async function act(order: ExchangeOrder) {
           .order-info
             .toolbar
               strong №{{ order.id }} · {{ label(order) }}
-              n-tag(size="small") {{ order.type === 'buy' ? 'Автор продаёт' : 'Автор покупает' }}
+              n-tag(size="small") {{ order.type === 'unknown' ? 'Старая заявка' : order.type === 'buy' ? 'Автор продаёт' : 'Автор покупает' }}
             .order-amounts #[world-credits(:value="order.credit")]  ↔ {{ field(order.amount) }} Кг
             small.muted(v-if="typeof order.price === 'number' || typeof order.price === 'string'") {{ field(order.price) }} Кг за 1000 кредиты
             .muted
@@ -96,7 +96,8 @@ async function act(order: ExchangeOrder) {
                 span(v-else) №{{ order.user_client }}
             small.muted {{ date(mode === 'history' ? order.updated_at : order.created_at) }}
           .order-action(v-if="mode !== 'history'")
-            n-popconfirm(v-if="mode === 'my'" :disabled="busy !== null || !canCancel(order)" @positive-click="act(order)")
+            small.muted(v-if="order.type === 'unknown'") Тип старой заявки не определён. Сделка недоступна; обратитесь к администратору.
+            n-popconfirm(v-else-if="mode === 'my'" :disabled="busy !== null || !canCancel(order)" @positive-click="act(order)")
               template(#trigger)
                 n-button(:loading="busy === order.id" :disabled="busy !== null || !canCancel(order)") Отменить
               | Отменить заявку №{{ order.id }} и вернуть {{ order.type === 'buy' ? formatCredits(order.credit) + ' кредиты' : order.amount + ' Кг' }}?
