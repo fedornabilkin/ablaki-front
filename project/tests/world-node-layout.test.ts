@@ -89,9 +89,9 @@ it('uses the same navigation for every world node and adds campsite gameplay tab
 
 it('shows the same common sections for parent nodes, rooms and shelters', () => {
   const world = node('WORLD', {}, false);
-  expect(tabsForNode(world, nodeFeatures(world, capabilities))).toEqual(['map', 'workshop', 'finance', 'statistics']);
+  expect(tabsForNode(world, nodeFeatures(world, capabilities))).toEqual(['map', 'statistics']);
   const settlement = node('SETTLEMENT', {}, false);
-  expect(tabsForNode(settlement, nodeFeatures(settlement, capabilities))).toEqual(['map', 'workshop', 'finance', 'statistics']);
+  expect(tabsForNode(settlement, nodeFeatures(settlement, capabilities))).toEqual(['map', 'statistics']);
   const room = node('ROOM');
   expect(tabsForNode(room, nodeFeatures(room, capabilities))).toEqual(['map', 'workshop', 'finance', 'statistics']);
   const shelter = node('BUILDING', { shelter_instance_id: 4 });
@@ -114,9 +114,9 @@ it('uses identical base tabs and rights for all kinds, including legacy special 
   for (const type of nodeTypes) for (const status of ['active', 'constructing']) for (const owned of [true, false]) {
     const current = { ...node(type, { plot_kind: 'campsite', building_kind: 'warehouse', shelter_instance_id: 4, unlocked: 1 }, owned), status, owned_by_me: owned };
     const features = nodeFeatures(current, capabilities);
-    expect(tabsForNode(current, features)).toEqual(['map', 'workshop', 'finance', 'statistics']);
+    expect(tabsForNode(current, features)).toEqual(owned ? ['map', 'workshop', 'finance', 'statistics'] : ['map', 'statistics']);
     expect(features.storage).toBe(owned);
-    expect(features.finance).toBe(true);
+    expect(features.finance).toBe(owned);
     expect(features.housing || features.nights || features.cultivation).toBe(false);
   }
 });

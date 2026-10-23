@@ -47,7 +47,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.equipment-expansion
   h2 Места оборудования
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить места
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка расширений")
   template(v-else-if="state")
     p(v-if="!state.supported") Условия покупки этого помещения не предусматривают дополнительные места.

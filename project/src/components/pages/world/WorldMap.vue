@@ -49,7 +49,7 @@ watch([() => props.map?.exploration?.allowed, () => props.node.id, () => props.s
   catch { /* The map still provides authoritative exploration requirements. */ }
 }, { immediate: true });
 const size = 88, key = (p: MapPoint) => `${p.x}:${p.y}`;
-const icons = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
+const icons = { WORLD: 'globe', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
 const statuses: Record<string, string> = { active: 'Доступен', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'На паузе', damaged: 'Повреждён', destroyed: 'Разрушен' };
 const drag = ref<{ start: MapPoint; end: MapPoint; x: number; y: number; moved: boolean; additive: boolean } | null>(null);
 let suppressClick = false;
@@ -252,6 +252,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)")
         g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}. ${lockedBed(child) ? 'Закрыта' : statuses[child.status] || child.status}`" @click.stop="selectNode(child, $event)" @keydown.enter.stop="selectNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
           rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
+          font-awesome-icon(v-if="child.details.is_lodging" icon="bed" x="65" y="7" width="14" height="14" aria-label="Ваш ночлег")
           font-awesome-icon(:icon="lockedBed(child) ? 'lock' : icons[child.type]" x="32" y="13" width="24" height="24" aria-hidden="true")
           font-awesome-icon(v-if="child.status === 'constructing'" icon="hammer" x="64" y="8" width="16" height="16" aria-hidden="true")
           text(:x="size / 2" y="55" text-anchor="middle" class="map-object-label") {{ child.label.length > 12 ? child.label.slice(0, 11) + '…' : child.label }}
@@ -284,14 +285,13 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
         router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
         router-link(v-if="selectedNode.owned_by_me && selectedNode.status === 'active'" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
-        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation') && selectedNode.permissions.storage" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
+        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")
         span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
         h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
       template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
-        span.world-map-kicker Команды
-        h3 Выберите цель
+        h3 Выберите ячейку
       section.map-opening(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
         .explore-action
           h4 Открытие ячеек
@@ -313,14 +313,15 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
           n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}#[world-credits(:value="price?.total ?? '0'" cost)]
         n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
-      world-help-hint(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
+      world-help-hint.map-selection-help(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
         p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
-      n-alert(v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
-      n-alert(v-if="professionNotice" type="success" role="status") {{ professionNotice }}
+      n-alert(closable v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
+      n-alert(closable v-if="professionNotice" type="success" role="status") {{ professionNotice }}
       n-button(:theme-overrides="worldActionButtonTheme" v-if="gardenError" :disabled="blocked" @click="refreshGarden") Обновить карту
 </template>
 
 <style scoped>
+.map-cell-information :deep(.map-selection-help) { position: absolute; right: 0; top: 0; }.map-cell-information:has(.map-selection-help) { padding-right: 1.8rem; }
 .world-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem); gap: 1rem; align-items: start; }
 .map-opening { display: grid; gap: .75rem; }
 .map-opening h4 { margin: 0; }
@@ -365,7 +366,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .map-equipment-label { fill: white; }
 .world-map-hint { margin: .55rem 0; color: var(--text-muted); font-size: .8rem; }
 .world-map-inspector { position: relative; display: grid; gap: .75rem; min-height: 13rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-surface); }
-.map-cell-information { position: relative; display: grid; gap: .75rem; min-width: 0; }.map-cell-information:not(:first-child):has(> :not(.world-inspector-close)) { border-top: 1px solid var(--border); padding-top: 1rem; }
+.map-cell-information { position: relative; display: grid; gap: .75rem; min-width: 0; }
 .world-inspector-close:hover { background: var(--primary-soft); color: var(--primary-hover); }
 .world-inspector-close { position: absolute; top: .35rem; right: .45rem; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border: 0; border-radius: .375rem; background: transparent; color: var(--primary); font-size: 1.6rem; cursor: pointer; }
 .world-map-inspector h3, .world-map-inspector p { margin: 0; }

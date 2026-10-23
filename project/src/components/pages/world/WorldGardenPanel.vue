@@ -67,7 +67,7 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
   h2 Открытие грядок
   p В огороде десять грядок: первая включена в покупку. Открывайте остальные и выращивайте урожай. При открытии трёх и более грядок — скидка 5%.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить огород
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка огорода")
   template(v-else-if="state")
     template(v-if="state.garden")
@@ -80,7 +80,7 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
         label Количество следующих грядок
           n-input-number(v-model:value="quantity" :min="1" :max="10 - state.garden.unlocked" :precision="0" :disabled="locked")
         world-payment-sources(v-model:checked="topUp" :price="expansionPrice" :available="state.garden?.available_budget" :disabled="locked")
-        n-alert(v-if="needsTopUp && !topUp" type="warning")
+        n-alert(closable v-if="needsTopUp && !topUp" type="warning")
           p В бюджете огорода недостаточно средств. Пополните его или включите пополнение с личного баланса выше.
           router-link(:to="`/world/nodes/${nodeId}#finance`") Пополнить бюджет огорода →
         n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || calculating || !expansionPrice || (needsTopUp && !topUp)" @click="preview('expand')") Открыть {{ quantity }}#[world-credits(:value="expansionPrice ?? '0'" cost)]
@@ -98,7 +98,7 @@ section.world-garden#garden(v-if="!existingOnly || state?.garden || loading || e
       h3 {{ state.offer.name }}
       p Цена огорода: #[world-credits(:value="state.offer.price")] . Цена первой дополнительной грядки — #[world-credits(:value="state.offer.base_price")] , затем стоимость каждой следующей растёт на 20%.
       p(v-if="state.can_buy") В бюджете усадьбы доступно: #[world-credits(:value="state.site_budget_available ?? '0.0000'")] .
-      n-alert(v-if="state.can_buy && state.offer.can_afford === false" type="warning")
+      n-alert(closable v-if="state.can_buy && state.offer.can_afford === false" type="warning")
         span Пополните бюджет усадьбы перед покупкой.
         router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
       template(v-if="state.can_buy")

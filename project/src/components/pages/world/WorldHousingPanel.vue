@@ -41,7 +41,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-housing#housing
   h2 Ночлег
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить ночлег
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка жилья")
   template(v-else-if="state")
     p(v-if="!state.supported") Создайте кровать на стоянке и разместите её в открытой ячейке шалаша или помещения, чтобы оборудовать ночлег.
@@ -49,7 +49,7 @@ section.world-housing#housing
       p Для ночлега нужна установленная кровать. При её перемещении назначение ночлега прекращается.
       p Ночлег назначается отдельно и сохраняется до отмены. Плата за назначение не взимается.
       p(v-if="!state.nightsEnabled") Календарь ночей ещё не открыт. Назначение сохранится для дальнейшего расчёта.
-      n-alert(v-if="!state.active" type="warning") Место сейчас недоступно для нового ночлега.
+      n-alert(closable v-if="!state.active" type="warning") Место сейчас недоступно для нового ночлега.
       template(v-if="state.lodging")
         p Ночлег назначен с {{ date(state.lodging.assigned_at) }}. {{ state.lodging.protects_now ? 'Укрытие защищает от непогоды.' : 'Укрытие сейчас не обеспечивает защиту.' }}
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" @click="preview('leave')") Отменить ночлег

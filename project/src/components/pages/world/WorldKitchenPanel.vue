@@ -37,7 +37,7 @@ section.kitchen-panel(aria-label="Полевая кухня")
     world-help-hint(label="Расписание питания")
       p Завтрак 06:00–10:00 · обед 12:00–16:00 · ужин 18:00–22:00, время Москвы.
       p Один приём пищи в каждом окне на всех кухнях мира. Выберите готовую порцию из рюкзака; здесь она восстанавливает больше здоровья. Ограничение повторов еды из рюкзака не применяется, пищевое расстройство и ночная болезнь сохраняются до выздоровления.
-  n-alert(v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
+  n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-button(v-if="error" :disabled="loading" @click="load") Повторить загрузку кухни
   n-spin(v-if="loading && !state" size="small")
   template(v-if="state")

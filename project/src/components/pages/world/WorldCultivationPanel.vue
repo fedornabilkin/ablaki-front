@@ -13,6 +13,7 @@ import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ bedId: number; session: number; command: WorldCommandRunner; droppedCrop?: { id: number; sequence: number } | null }>();
 const personalContribution = ref(false);
+const digReceipt = ref<string | null>(null);
 const payerNode = ref<number | null>(null);
 const { available: availableBudget, refresh: refreshBudget } = useWorldBudget(payerNode, computed(() => props.session));
 const state = shallowRef<Awaited<ReturnType<typeof loadCultivation>> | null>(null), crops = shallowRef<Awaited<ReturnType<typeof loadCrops>>['items']>([]);
@@ -64,12 +65,13 @@ async function execute() {
     if (disposed || current !== previewGeneration) return;
     quote.value = { ...shown, value: fresh };
     if (JSON.stringify(fresh.terms) !== JSON.stringify(shown.value.terms)) { error.value = 'Условия изменились. Проверьте обновлённый расход ресурсов.'; return; }
-    await props.command.submit(`/beds/${props.bedId}/${shown.action}`, shown.input, fresh);
+    const result = await props.command.submit(`/beds/${props.bedId}/${shown.action}`, shown.input, fresh);
+    if (result && shown.action === 'dig' && typeof fresh.terms.worker_reward_cr === 'string') digReceipt.value = fresh.terms.worker_reward_cr;
     if (!disposed && !props.command.pending.value && !props.command.error.value) await load();
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([() => props.bedId, () => props.session, page], () => { state.value = null; payerNode.value = null; personalContribution.value = false; void load(); }, { immediate: true });
+watch([() => props.bedId, () => props.session, page], () => { state.value = null; digReceipt.value = null; payerNode.value = null; personalContribution.value = false; void load(); }, { immediate: true });
 watch(selected, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
 watch(personalContribution, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
 watch([primaryAction, selected, personalContribution, loading, props.command.busy, props.command.pending], () => { if (primaryAction.value && !locked.value && !quote.value) void preview(primaryAction.value); }, { flush: 'post' });
@@ -103,8 +105,13 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
     div
       h2 Выращивание
       p Вскопайте землю, посадите семена и следите за сроками полива и сбора.
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="digReceipt !== null" type="success" @close="digReceipt = null")
+    | Грядка вскопана.
+    template(v-if="Number(digReceipt) > 0")  Зачислено: #[world-credits(:value="digReceipt")].
   template(v-if="state")
+    p(v-if="!state.owner") Помогите владельцу вскопать грядку: оплата поступит из бюджета огорода на ваш баланс. Лопата нужна своя.
+    p(v-if="typeof quote?.value.terms.worker_reward_cr === 'string' && Number(quote.value.terms.worker_reward_cr) > 0") Оплата: #[world-credits(:value="quote.value.terms.worker_reward_cr")].
     template(v-if="!cycle")
       .cultivation-card
         h3 {{ state.dug ? 'Грядка готова к посадке' : 'Подготовка земли' }}
@@ -112,7 +119,7 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
           n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Вскопать
           world-help-hint(label="Расход прочности лопаты" symbol="!")
             p {{ tool ? `Расходуется ${tool.wear} ед. прочности лопаты. ${tool.available ? 'Лопата доступна.' : 'Нужна исправная лопата в рюкзаке.'}` : 'Для перекопки нужна исправная лопата в рюкзаке.' }}
-        template(v-else)
+        template(v-else-if="state.owner")
           .crop-tiles(aria-label="Культуры для посадки")
             button.crop-tile(v-for="entry in crops" :key="entry.id" type="button" :class="{ selected: selected === entry.id }" :aria-pressed="selected === entry.id" :disabled="locked" :draggable="!locked" @dragstart="dragSeed($event, entry.id)" @click="selected = entry.id")
               font-awesome-icon(icon="seedling" aria-hidden="true")
@@ -131,9 +138,9 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
       p Семена, вода и лопата — из рюкзака. Урожай попадёт в мини-склад, а при его отсутствии — в рюкзак.
     template(v-else)
       h3 {{ cycle.name }}
-      n-alert(v-if="cycle.state === 'expired'" type="error") Урожай погиб: срок сбора истёк. Уберите остатки, чтобы подготовить новый посев.
-      n-alert(v-else-if="cycle.water_missed" type="warning") Полив пропущен. Урожай уменьшен вдвое; рост продолжается.
-      n-alert(v-if="cycle.event_loss_bps" type="warning") Погодные события уменьшили урожай на {{ cycle.event_loss_bps / 100 }}%. Защита теплицы уже учтена.
+      n-alert(closable v-if="cycle.state === 'expired'" type="error") Урожай погиб: срок сбора истёк. Уберите остатки, чтобы подготовить новый посев.
+      n-alert(closable v-else-if="cycle.water_missed" type="warning") Полив пропущен. Урожай уменьшен вдвое; рост продолжается.
+      n-alert(closable v-if="cycle.event_loss_bps" type="warning") Погодные события уменьшили урожай на {{ cycle.event_loss_bps / 100 }}%. Защита теплицы уже учтена.
       .cultivation-metrics
         .cultivation-card
           span {{ now < cycle.ready_at ? 'До созревания' : 'Урожай созрел' }}

@@ -46,7 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 details.finance-policy
   summary Правила казны и отчислений
   p Новая ставка применяется к последующим сборам. Суммы и получатели существующих обязательств сохраняются. Защита и потери меняются только для новых поступлений.
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   label Отчисления от собранного дохода, % (для корня мира — 0)
     n-input(v-model:value="form.rate" inputmode="decimal" :maxlength="6" :disabled="!writable || busy || Boolean(pending)")
   label Срок оплаты отчислений, ч (1–8760)

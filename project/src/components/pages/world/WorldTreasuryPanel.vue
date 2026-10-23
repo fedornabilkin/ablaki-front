@@ -55,7 +55,7 @@ section.world-treasury
     summary(aria-label="Как работает сбор дохода") ?
     p Собранные поступления переводятся из казны в бюджет объекта, доступный для расходов и развития.
   p При сборе казна пополняет бюджет объекта. Отчисления резервируются в бюджете и оплачиваются отдельным действием.
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
   section(v-if="collection" aria-live="polite")
     world-payment-sources(mode="treasury" :price="collection.collected")
@@ -63,7 +63,7 @@ section.world-treasury
     p Резерв на отчисления: #[world-credits(:value="collection.reserved")]
     p Доступно на развитие после сбора: #[world-credits(:value="collection.available_after")]
     p В казне останется: #[world-credits(:value="collection.treasury_after")]
-    n-alert(v-if="collection.more_pending" type="info") Поступлений много. После подтверждения можно собрать следующую партию.
+    n-alert(closable v-if="collection.more_pending" type="info") Поступлений много. После подтверждения можно собрать следующую партию.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending) || !canCollect" @click="collect") Подтвердить сбор
   h3 Отчисления родительскому объекту
   details.help-hint

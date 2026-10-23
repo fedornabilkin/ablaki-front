@@ -39,7 +39,7 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
   world-help-hint(label="Как работает перевод в дочерний бюджет")
     p Кредиты переходят из свободной части бюджета этого объекта в бюджет выбранной дочерней ноды. Казна и личный баланс не затрагиваются; обратный перевод автоматически не выполняется.
   p Перевод поступит прямо в бюджет принадлежащего вам объекта или огорода. Казна и личный баланс не меняются.
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   .grant-options(v-if="options.length")
     span Быстрый выбор:
     n-button(:theme-overrides="worldActionButtonTheme" v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}

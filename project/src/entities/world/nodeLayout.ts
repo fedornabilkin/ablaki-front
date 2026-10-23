@@ -23,15 +23,16 @@ export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | 
     storage,
     nights: active && storage && extensions.has('nights'),
     housing: active && storage && extensions.has('housing'),
-    finance: true,
-    cultivation: active && storage && extensions.has('cultivation'),
+    finance: Boolean(node.permissions.manage || node.permissions.administer),
+    cultivation: active && Boolean(capabilities?.storage_v2) && extensions.has('cultivation'),
   };
 }
 
 export function tabsForNode(node: WorldNode, features: NodeFeatureSet): NodeTab[] {
   const tabs: NodeTab[] = ['map'];
   if (features.cultivation) tabs.push('cultivation');
-  tabs.push('workshop', 'finance');
+  if (features.storage) tabs.push('workshop');
+  if (features.finance) tabs.push('finance');
   tabs.push('statistics');
   return tabs;
 }

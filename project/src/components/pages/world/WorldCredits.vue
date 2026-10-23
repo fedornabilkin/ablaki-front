@@ -10,5 +10,5 @@ span.world-credits(v-if="visible" :class="{ 'world-credit-cost': cost }" :aria-l
   | {{ formatCredits(value) }}
 </template>
 <style scoped>
-.world-credits { display: inline-flex; align-items: baseline; gap: .3em; white-space: nowrap; font-variant-numeric: tabular-nums; }.world-credits > svg { color: var(--primary); font-size: .85em; }.world-credit-cost { margin-left: .5em; }
+.world-credits { display: inline-flex; align-items: baseline; gap: .25em; color: inherit; white-space: nowrap; font-variant-numeric: tabular-nums; }.world-credits > svg { color: currentColor; margin: 0; flex: none; font-size: .85em; }.world-credit-cost { margin-left: .5em; }
 </style>

@@ -52,7 +52,7 @@ onScopeDispose(() => { disposed = true; generation++; clearTimeout(selectionTime
 <template lang="pug">
 section.placement-palette(v-if="loading || tiles.length || error" aria-label="Доступно для размещения")
   h3 Можно разместить здесь
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
   .placement-tiles(v-if="loading && !tiles.length" role="status" aria-label="Загрузка плиток")
     n-skeleton(v-for="index in 6" :key="index" height="120px" :sharp="false")
   .placement-tiles(v-else)

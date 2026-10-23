@@ -39,12 +39,12 @@ section.world-receipts#treasury-receipts
     p Здесь показаны несобранные поступления, сумма уже собранная в бюджет и потери по сроку хранения. Просмотр и фильтры ничего не списывают; сбор выполняется отдельно в блоке «Собрать доход».
   p У каждого поступления свой срок защиты и сохранённая ставка потерь. Сбор переводит остаток в бюджет этого объекта.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить поступления
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению поступления" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка поступлений казны")
   template(v-else-if="state")
     p Данные на {{ date(state.now) }}. Чтобы увидеть изменения, обновите поступления.
-    n-alert(v-if="state.catchingUp" type="warning") В казне есть поступления с необработанными периодами потерь. Сбор станет доступен после фонового расчёта. Поиск и фильтры могут скрывать такие поступления.
+    n-alert(closable v-if="state.catchingUp" type="warning") В казне есть поступления с необработанными периодами потерь. Сбор станет доступен после фонового расчёта. Поиск и фильтры могут скрывать такие поступления.
     p(v-if="!state.items.length") По выбранным условиям поступлений нет.
     article(v-for="item in state.items" :key="item.id")
       h4 Поступление №{{ item.id }} · {{ receiptStates[item.state] }}
@@ -67,7 +67,7 @@ section.world-receipts#treasury-receipts
         p(v-if="item.next !== null") {{ item.pending ? 'Первый необработанный период' : 'Следующее списание' }}: {{ date(item.next) }}.
         p(v-if="item.pending") Сумма первого ожидающего списания: #[world-credits(:value="item.nextAmount")] . Учтён дробный остаток предыдущих расчётов.
         p(v-else) Прогноз на этот период: #[world-credits(:value="item.nextAmount")] , если не собрать поступление раньше. Учтён дробный остаток предыдущих расчётов.
-        n-alert(v-if="item.pending" type="info") Ожидают расчёта периодов: {{ item.pending }}. Показана сумма только первого из них; итоговые потери могут быть больше.
+        n-alert(closable v-if="item.pending" type="info") Ожидают расчёта периодов: {{ item.pending }}. Показана сумма только первого из них; итоговые потери могут быть больше.
         p(v-else-if="item.nextAmount === '0.0000'") Сейчас списания нет. Дробный остаток сохраняется для последующих периодов.
       p Обработано периодов потерь: {{ item.processed }}.
     page-pager(v-model:page="page" query-prefix="receipts" :result="state")

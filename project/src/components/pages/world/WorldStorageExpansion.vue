@@ -37,7 +37,7 @@ onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
 section.storage-expansion(v-if="state?.options.length || error" aria-label="Расширение хранилища" :aria-busy="loadingState")
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
   n-button(v-if="error" :loading="loadingState" :disabled="loadingState" @click="load") Повторить загрузку
   p(v-if="state") Постоянная вместимость: {{ state.capacity }}. Пакет оплачивается с личного баланса.
   .storage-expansion-options(v-if="state")

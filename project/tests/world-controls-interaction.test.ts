@@ -17,13 +17,17 @@ import WorldCultivationPanel from '../src/components/pages/world/WorldCultivatio
 import WorldCampsiteSupplies from '../src/components/pages/world/WorldCampsiteSupplies.vue';
 import SimpleBudgetPanel from '../src/components/pages/world/SimpleBudgetPanel.vue';
 import SimpleBuildPanel from '../src/components/pages/world/SimpleBuildPanel.vue';
+import WorldMiningPanel from '../src/components/pages/world/WorldMiningPanel.vue';
+import WorldHeroGather from '../src/components/pages/world/WorldHeroGather.vue';
+import CraftGatherButton from '../src/components/pages/craft/CraftGatherButton.vue';
+import WorldWorkProgress from '../src/components/pages/world/WorldWorkProgress.vue';
 import WorldStartPanel from '../src/components/pages/world/WorldStartPanel.vue';
 import WorldBuildPalette from '../src/components/pages/world/WorldBuildPalette.vue';
 import BuildSettingsModal from '../src/components/pages/world/modals/BuildSettingsModal.vue';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const popover = { setup: (_: unknown, { slots }: any) => () => h('div', [slots.trigger?.(), slots.default?.()]) };
@@ -34,7 +38,8 @@ vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ 
 vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 1 } }, dispatch: vi.fn() }) }));
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: (_session: unknown, _owner: unknown, completed: unknown) => { mocks.runner.completed = completed; return mocks.runner; } }));
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
-vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: async () => null, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, node: (value: unknown) => value, build: (value: unknown) => value }));
+vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: async () => null, gatherState: mocks.gather, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, startOverview: async () => ({node: await mocks.startState(), funding: null, starter_funding: null}), node: (value: unknown) => value, build: (value: unknown) => value }));
+vi.mock('../src/services/api/worldMining', () => ({ loadMining: mocks.mining, parseMining: (value: unknown) => value }));
 vi.mock('../src/services/api/worldStorage', () => ({ loadStorageList: mocks.storageList, loadStorageContents: mocks.storage, previewTransfer: mocks.transfer }));
 vi.mock('../src/services/api/worldWorkspace', () => ({ loadWorkspace: mocks.workspace, previewWorkspace: mocks.preview }));
 vi.mock('../src/services/api/worldHarvest', () => ({ loadHarvest: mocks.harvest, previewHarvest: mocks.harvestPreview }));
@@ -44,6 +49,10 @@ vi.mock('../src/services/api/worldCultivation', () => ({ loadCultivation: mocks.
 vi.mock('../src/services/api/worldCampsite', () => ({ loadCampsiteSupplies: mocks.supplies, previewCampsiteSupplies: mocks.suppliesPreview }));
 vi.mock('../src/services/api/world', () => ({ loadExplorer: mocks.explorer, previewProfession: async () => quote, previewMapCells: mocks.mapPreview, worldError: () => 'Ошибка запроса' }));
 
+clientView(WorldMiningPanel, 'components/pages/world/WorldMiningPanel.vue');
+clientView(WorldHeroGather, 'components/pages/world/WorldHeroGather.vue');
+clientView(CraftGatherButton, 'components/pages/craft/CraftGatherButton.vue');
+clientView(WorldWorkProgress, 'components/pages/world/WorldWorkProgress.vue');
 clientView(WorldStorageGrid, 'components/pages/world/WorldStorageGrid.vue');
 clientView(WorldCreditInput, 'components/pages/world/WorldCreditInput.vue');
 clientView(WorldPlacedItemPanel, 'components/pages/world/WorldPlacedItemPanel.vue');
@@ -198,14 +207,15 @@ describe('restored world core panels', () => {
     expect(viewText(view.root)).toContain('6.8');
     expect(viewText(view.root)).not.toContain('6.7800');
   });
-  it('starts through the current API and opens the new construction in its tab', async () => {
+  it('places the campsite reactively and keeps the current map open', async () => {
     mocks.startState.mockResolvedValue(null);
     mocks.runner.submit.mockResolvedValue({ node: { id: 23 } });
     const view = mount(WorldStartPanel, () => ({ node: { ...node, type: 'SETTLEMENT' }, owner: 1, session: 1, writable: true }));
     await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Начать здесь'))!.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('start', { city_id: 1 });
-    expect(mocks.push).toHaveBeenCalledWith({ path: '/world/nodes/23', hash: '#map' });
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Стоянка размещена. Карта обновлена.');
   });
 });
 function storage(id: number): StorageView {
@@ -540,7 +550,7 @@ describe('one-click world actions', () => {
     expect(mocks.equipmentPreview).toHaveBeenCalledTimes(1); expect(mocks.runner.submit).toHaveBeenCalledTimes(1);
   });
   it('prepares cultivation costs automatically and digs in one click', async () => {
-    mocks.cultivation.mockResolvedValue({ bed_id: 1, dug: false, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: false, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
     mocks.crops.mockResolvedValue({ items: [], pageCount: 0 }); mocks.cultivationPreview.mockResolvedValue(quote);
     const view = mount(WorldCultivationPanel, props); await flushView();
     expect(mocks.cultivationPreview).toHaveBeenCalledWith(1, 'dig', {});
@@ -561,7 +571,7 @@ describe('one-click world actions', () => {
   });
   it('waits for the shared command to finish before enabling sowing', async () => {
     mocks.runner.busy.value = true;
-    mocks.cultivation.mockResolvedValue({ bed_id: 1, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
     mocks.crops.mockResolvedValue({ items: [{ id: 7, name: 'Морковь', seed_quantity: 1, yield_quantity: 4, grow_seconds: 300 }], pageCount: 1 });
     mocks.cultivationPreview.mockResolvedValue(quote);
     const view = mount(WorldCultivationPanel, props); await flushView();
@@ -573,7 +583,7 @@ describe('one-click world actions', () => {
   });
   it('plants a dropped crop after loading a newly selected bed and handles repeated drops', async () => {
     const crop = ref({ id: 7, sequence: 1 });
-    mocks.cultivation.mockResolvedValue({ bed_id: 1, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
     mocks.crops.mockResolvedValue({ items: [{ id: 7, name: 'Морковь', seed_quantity: 1, yield_quantity: 4, grow_seconds: 300 }], pageCount: 1 });
     mocks.cultivationPreview.mockResolvedValue(quote);
     mount(WorldCultivationPanel, () => ({ ...props(), droppedCrop: crop.value })); await flushView();
@@ -633,5 +643,42 @@ describe('garden harvest purchase controls', () => {
     view.buy().props.onClick(); await flushView();
     expect(mocks.runner.submit).not.toHaveBeenCalled();
     expect(viewText(view.root)).toContain('Цена изменилась');
+  });
+});
+
+describe('topic 82 world controls', () => {
+  it('does not offer owner sowing controls after hired digging is complete', async () => {
+    mocks.cultivation.mockResolvedValue({bed_id: 1, owner: false, dug: true, writable: false, cycle: null, server_time: 100});
+    mocks.crops.mockResolvedValue({items: [], pageCount: 1});
+    const view = mount(WorldCultivationPanel, () => ({bedId: 1, session: 1, command: mocks.runner})); await flushView();
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Посадить'))).toBeUndefined();
+    expect(mocks.cultivationPreview).not.toHaveBeenCalled();
+  });
+  it('opens the gathering modal before sending a command and shows the accepted receipt', async () => {
+    mocks.gather.mockResolvedValue({gather_available: true, gather_can_claim: true, gather_available_at: 0, server_time: 100, gather_remaining: 5, gather_limit: 5, gather_items: [{name: 'Бревно', quantity: 14}]});
+    mocks.runner.submit.mockResolvedValue({gather_available: false, gather_available_at: 86500, server_time: 100, gather_remaining: 4, gather_limit: 5, gathered_items: [{name: 'Бревно', quantity: 14}]});
+    const view = mount(WorldHeroGather, () => ({nodeId: 1, owner: 1, session: 1, revision: 1, writable: true}));
+    await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Собрать сырьё')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Бревно'); expect(viewText(view.root)).toContain('×14');
+    mocks.gather.mockResolvedValue({gather_available: false, gather_can_claim: false, gather_available_at: 86500, server_time: 100, gather_remaining: 4, gather_limit: 5, gather_items: []});
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Собрать в рюкзак')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/gather');
+    expect(viewText(view.root)).toContain('Получено: Бревно ×14');
+  });
+  it('keeps employer form edits while polling and saves the hiring terms explicitly', async () => {
+    vi.useFakeTimers();
+    try {
+      const snapshot = {node_id: 1, ready: true, working: false, workers: 0, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180, server_time: 100, actions: [{code: 'mine-stone', work_seconds: 180, output: [{name: 'Камень', quantity: 3}], tools: [], cooldown_seconds: 0}], employment: {owner: true, enabled: true, reward_cr: '2.0000', storage_id: 7, storages: [{id: 7, name: 'Склад', capacity: 5}]}};
+      mocks.mining.mockResolvedValue(snapshot); mocks.storageList.mockResolvedValue([]);
+      const view = mount(WorldMiningPanel, () => ({nodeId: 1, owner: 1, session: 1, writable: true})); await flushView();
+      const input = findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!;
+      input.props['onUpdate:value']('1.7'); await flushView(); await vi.advanceTimersByTimeAsync(10000); await flushView();
+      expect(findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!.props.value).toBe('1.7');
+      mocks.runner.submit.mockResolvedValue({employment: {}});
+      findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить условия')!.props.onClick(); await flushView();
+      expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7', storage_id: 7});
+    } finally {vi.useRealTimers();}
   });
 });

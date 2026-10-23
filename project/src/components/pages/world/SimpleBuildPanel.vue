@@ -120,8 +120,8 @@ section.build-information(aria-label="Строительство")
       p Бюджет помощников: #[world-credits(:value="project?.labor_budget ?? '0'")] . Владелец работает бесплатно.
       p Время учитывается, пока эта страница открыта и есть связь с сервером.
       p После обрыва связи учитывается не больше 60 дополнительных секунд.
-  n-alert(v-if="error" type="error") {{ error }}
-  n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
+  n-alert(closable v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
   n-spin(v-if="loading && !project" size="small" aria-label="Загрузка строительства")
   template(v-else-if="project && project.status === 'building'")
@@ -154,7 +154,7 @@ section.build-information(aria-label="Строительство")
   n-modal(v-model:show="cancelOpen" :theme-overrides="worldModalTheme" preset="card" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
     p Объект будет удалён с карты. 30% ресурсов не будут возвращены, даже если строительство ещё не начиналось.
     p Вернётся 70% каждого материала с округлением вниз до целого количества.
-    n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
+    n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
     .build-actions
       n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="cancelOpen = false") Продолжить строительство
       n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос

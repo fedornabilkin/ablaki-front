@@ -104,8 +104,9 @@ const visitedTabs = ref<NodeTab[]>(['map']);
 watch([nodeId, session], () => { visitedTabs.value = ['map']; }, { flush: 'sync' });
 watch(activeTab, tab => { if (!visitedTabs.value.includes(tab)) visitedTabs.value = [...visitedTabs.value, tab]; }, { immediate: true });
 const statuses: Record<string, string> = { active: 'Действует', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'Приостановлен', damaged: 'Повреждён', destroyed: 'Разрушен' };
-const icons: Record<NodeType, string> = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
-const nodeIcon = computed(() => world.node ? icons[world.node.type] : 'sun');
+const statusIcons: Record<string, string> = { active: 'check-circle', archived: 'box', planned: 'clock', constructing: 'hammer', paused: 'pause', damaged: 'exclamation-circle', destroyed: 'times-circle' };
+const icons: Record<NodeType, string> = { WORLD: 'globe', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
+const nodeIcon = computed(() => world.node ? icons[world.node.type] : 'globe');
 const nodeKind = computed(() => world.node ? nodeLabels[world.node.type] : 'Мир');
 const parentName = computed(() => world.breadcrumbs.find(node => node.id === world.node?.parent_id)?.label ?? 'Родительский объект');
 const detail = computed(() => world.node?.details ?? {});
@@ -120,50 +121,52 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 
 <template lang="pug">
 .container.world-page
-  n-alert(v-if="workError" type="warning" role="alert")
+  n-alert(closable v-if="workError" type="warning" role="alert")
     p {{ workError || 'Вы работаете на стройке. Перед переходом на другую карту приостановите работу.' }}
     n-button(:theme-overrides="worldActionButtonTheme" v-if="activeWork" :disabled="pauseRunner.busy.value" :loading="pauseRunner.busy.value" @click="pauseWork(!!pauseRunner.pending.value)") Приостановить строительство
     p(v-if="pauseRunner.error.value") {{ pauseRunner.error.value }}
-  n-alert(v-if="commandError" type="error" role="alert") {{ commandError }}
-  n-alert(v-if="pendingCommand && !commandBusy" type="info")
+  n-alert(closable v-if="commandError" type="error" role="alert") {{ commandError }}
+  n-alert(closable v-if="pendingCommand && !commandBusy" type="info")
     p Ответ на прошлое действие ещё не получен. Можно повторить тот же запрос.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="commandBusy" @click="command.retry") Повторить запрос
-  n-alert(v-if="purchasedRoom" type="success")
+  n-alert(closable v-if="purchasedRoom" type="success")
     p Помещение оплачено. Откройте его, чтобы разместить вещи и назначить ночлег, если в покупке есть койка.
     router-link(:to="`/world/nodes/${purchasedRoom}`") Открыть купленное помещение
-  n-alert(v-if="invalidId" type="error") Некорректный адрес объекта.
-  n-alert(v-else-if="world.error && !world.node" type="error" role="alert")
+  n-alert(closable v-if="invalidId" type="error") Некорректный адрес объекта.
+  n-alert(closable v-else-if="world.error && !world.node" type="error" role="alert")
     p {{ world.error }}
     template(v-if="world.closedTest")
       p Можно сообщить на форуме о желании принять участие в тестировании.
       router-link(to="/forum") Участие в тестировании →
     router-link(to="/world") Вернуться к карте мира
   n-spin(v-else-if="world.loading && !world.node" size="large" aria-label="Загрузка мира")
-  n-alert(v-else-if="!world.capabilities?.world_read" type="info")
+  n-alert(closable v-else-if="!world.capabilities?.world_read" type="info")
     p Мир пока закрыт. Ваши вещи и кредиты доступны в мастерской и профиле.
     p Можно сообщить на форуме о желании принять участие в тестировании.
     router-link(to="/forum") Участие в тестировании →
-  n-alert(v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
+  n-alert(closable v-else-if="!world.node" type="info") В этом мире пока нет опубликованных объектов.
   template(v-else)
-    n-alert(v-if="world.error" type="error" role="alert") {{ world.error }}
+    n-alert(closable v-if="world.error" type="error" role="alert") {{ world.error }}
     section.world-hero(:aria-label="nodeKind + ': ' + world.node.label")
       .world-crest(aria-hidden="true")
         font-awesome-icon(:icon="nodeIcon")
       .world-identity
         h1 {{ world.node.label }}
-        p.world-description {{ nodeKind }} · №{{ world.node.id }} · {{ statuses[world.node.status] || world.node.status }} · {{ world.node.visibility === 'private' ? 'Личная территория' : 'Открытая территория' }}
+        p.world-description
+          span {{ nodeKind }} · №{{ world.node.id }}
+          font-awesome-icon(:icon="statusIcons[world.node.status] || 'question-circle'" :title="statuses[world.node.status] || world.node.status" :aria-label="statuses[world.node.status] || world.node.status")
+          font-awesome-icon(:icon="world.node.visibility === 'private' ? 'lock' : 'globe'" :title="world.node.visibility === 'private' ? 'Личная территория' : 'Открытая территория'")
+          font-awesome-icon(v-if="world.node.details.is_lodging" icon="bed" title="Ваш ночлег" aria-label="Ваш ночлег")
         router-link.world-parent(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`")
           font-awesome-icon(icon="arrow-left" aria-hidden="true")
           |  {{ parentName }}
       .world-hero-metrics
         div
-          span Объекты
-          strong {{ world.node.child_count }}
-        div
           span {{ summaryLabel }}
           strong {{ summaryValue }}
         world-page-actions(:node="world.node")
         world-node-extensions(slot="header" v-bind="extensionProps" @changed="changed([world.node.id])")
+    world-start-panel.world-content-card(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :owner="owner" :session="session" :revision="world.dataRevision" @changed="changed([world.node.id])")
     nav.world-tabs(role="tablist" aria-label="Разделы объекта")
       router-link.world-tab(v-for="tab in tabs" :key="tab" :to="tabLink(tab)" :class="{ active: activeTab === tab }" role="tab" :aria-selected="activeTab === tab" :aria-current="activeTab === tab ? 'page' : undefined") {{ tabLabels[tab] }}
     section.world-panel.world-map-panel(v-if="tabs.includes('map')" v-show="activeTab === 'map'" aria-label="Карта и объекты")
@@ -172,7 +175,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           span.world-eyebrow Территория и расположение
           h2 {{ childTitle }}
         .world-map-tools
-          span.world-counter {{ world.map?.items.length ?? 0 }} объектов
           world-help-hint(label="Параметры объекта" symbol="i" @open="nodeInfoOpened = true")
             dl.world-facts
               dt Объект
@@ -194,10 +196,9 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
             world-node-extensions(slot="map" v-bind="extensionProps" @changed="changed([world.node.id])")
           template(#placement)
-            world-build-palette(:node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
-            world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
+            world-build-palette(v-if="world.node.owned_by_me" :node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
+            world-placement-palette(v-if="world.node.owned_by_me" :writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
-    world-start-panel.world-content-card(v-show="activeTab === 'map'" :node="world.node" :writable="Boolean(world.capabilities?.world_write)" :owner="owner" :session="session" @changed="changed([world.node.id])")
     world-node-extensions(v-show="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
 
@@ -245,6 +246,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 </template>
 
 <style scoped>
+.world-description { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .world-parent { display: inline-flex; margin: .35rem 0 .6rem; padding: .35rem .7rem; width: fit-content; border: 1px solid var(--border); border-radius: .45rem; font-size: .85rem; }
 .world-map-tools { display: flex; align-items: center; gap: .75rem; }
 .world-inline-links .world-manufacturing-action { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem .9rem; border-radius: .5rem; background: var(--primary); color: var(--primary-contrast, #171717); font-weight: 650; }

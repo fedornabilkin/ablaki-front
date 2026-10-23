@@ -2,9 +2,10 @@ import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { record } from './world';
 export interface SourceAction { code: string; work_seconds: number; cooldown_seconds: number; available_at?: number; experience?: number; unavailable_reason?: string | null; output: { code: string; name: string; quantity: number }[]; tools: string[]; tool_names?: string[]; daily_limit: number | null }
+export interface MineEmployment { enabled: boolean; reward_cr: string; storage_id: number | null; owner: boolean; available: boolean; reason: string | null; accepted_reward_cr: string | null; storages: { id: number; name: string; capacity: number }[] }
 export interface MiningState { node_id: number; ready: boolean; working: boolean; workers: number; produced_quantity: number; pending_quantity: number; seconds_per_unit: number; server_time: number;
   work_id?: number | null; required_seconds?: number; live_work?: { accounted_at: number; last_seen_at: number }[];
-  unavailable_reason?: string | null;
+  employment?: MineEmployment; unavailable_reason?: string | null;
   actions?: SourceAction[]; worked_seconds?: number; action_code?: string | null; output_storage_id?: number | null; blocked_message?: string | null; quota?: { maximum: number; remaining: number; restores_at: number } }
 export function parseMining(value: unknown): MiningState {
   const row = record(value);
@@ -26,8 +27,16 @@ export function parseMining(value: unknown): MiningState {
         tools: action.tools.map(string), ...(action.tool_names === undefined ? {} : { tool_names: (() => { if (!Array.isArray(action.tool_names) || action.tool_names.length !== action.tools.length) throw new Error('invalid-world-response'); return action.tool_names.map(string); })() }), daily_limit: action.daily_limit === null ? null : uint(action.daily_limit) };
     });
   }
+  let employment: MineEmployment | undefined;
+  if (row.employment != null) {
+    const p = record(row.employment);
+    const boolean = (value: unknown): boolean => { if (typeof value !== 'boolean') throw new Error('invalid-world-response'); return value; };
+    const money = (value: unknown): string => { const result = string(value); if (!/^\d+(\.\d{1,4})?$/.test(result)) throw new Error('invalid-world-response'); return result; };
+    if (!Array.isArray(p.storages) || p.storages.length > 1000) throw new Error('invalid-world-response');
+    employment = { enabled: boolean(p.enabled), reward_cr: money(p.reward_cr), storage_id: p.storage_id == null ? null : uint(p.storage_id), owner: boolean(p.owner), available: boolean(p.available), reason: p.reason == null ? null : string(p.reason), accepted_reward_cr: p.accepted_reward_cr == null ? null : money(p.accepted_reward_cr), storages: p.storages.map(value => { const s = record(value); return {id: uint(s.id), name: string(s.name), capacity: uint(s.capacity)}; }) };
+  }
   const quota = row.quota === undefined || row.quota === null ? undefined : record(row.quota);
-  return { node_id: integer('node_id'), ready: row.ready, working: row.working, workers: integer('workers'), produced_quantity: integer('produced_quantity'), pending_quantity: integer('pending_quantity'), seconds_per_unit: integer('seconds_per_unit'), server_time: integer('server_time'),
+  return { ...(employment ? {employment} : {}), node_id: integer('node_id'), ready: row.ready, working: row.working, workers: integer('workers'), produced_quantity: integer('produced_quantity'), pending_quantity: integer('pending_quantity'), seconds_per_unit: integer('seconds_per_unit'), server_time: integer('server_time'),
     ...(row.unavailable_reason === undefined ? {} : { unavailable_reason: row.unavailable_reason === null ? null : string(row.unavailable_reason) }),
     ...(row.worked_seconds === undefined ? {} : { worked_seconds: uint(row.worked_seconds) }),
     ...(row.work_id === undefined ? {} : { work_id: row.work_id === null ? null : uint(row.work_id) }),

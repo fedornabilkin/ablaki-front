@@ -32,7 +32,7 @@ section.economy-history(aria-label="История экономики" :aria-bus
   h2 История экономики
   p Выручка, награды и переводы показаны отдельно. Внутренний перевод не увеличивает заработок.
   list-filters(v-model:search="search" v-model:values="filters" :filters="[{ key: 'source', label: 'Раздел', options: historySources }]" :loading="loading" placeholder="Поиск по виду операции" @reset="reset")
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
   .economy-history-entries
     article(v-for="item in result.items" :key="`${item.source}:${item.id}`")
       strong {{ classes[item.classification] ?? 'Операция' }}

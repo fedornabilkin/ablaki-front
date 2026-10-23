@@ -56,7 +56,7 @@ section.placed-item
       font-awesome-icon(icon="bag-shopping")
     | Забрать в рюкзак
   world-housing-panel(v-if="item.lodging && item.inventory_id" :key="`${nodeId}:${item.inventory_id}`" :node-id="nodeId" :session="session" :command="command" :writable="writable")
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
 </template>
 <style scoped>
 .placed-item { display: grid; gap: .75rem; overflow-wrap: anywhere; }

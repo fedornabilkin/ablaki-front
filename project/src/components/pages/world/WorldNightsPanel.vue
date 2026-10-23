@@ -36,7 +36,7 @@ onScopeDispose(() => { disposed = true; generation++; });
   n-modal(:theme-overrides="worldModalTheme" v-model:show="show" preset="card" title="Ночи и здоровье · последние 30 ночей" class="world-nights-modal" :style="{ width: 'min(42rem, calc(100vw - 2rem))' }")
     .night-scroll(tabindex="0" aria-label="Хронология последних 30 ночей")
       n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="loading" @click="load") Обновить расчёт
-      n-alert(v-if="error" type="error" role="alert") {{ error }}
+      n-alert(closable v-if="error" type="error" role="alert") {{ error }}
       n-spin(v-if="loading && !state" aria-label="Загрузка ночей и здоровья")
       template(v-if="state")
         p(v-if="!state.enabled") Ночной календарь ещё не открыт. Болезнь за отсутствие укрытия пока не начисляется.
@@ -44,9 +44,9 @@ onScopeDispose(() => { disposed = true; generation++; });
           p Игровой день: {{ hours(state.policy.day_seconds) }} ч. Ночь: {{ hours(state.policy.night_seconds) }} ч.
           p(v-if="state.grace_until !== null") Льготный период — до {{ date(state.grace_until) }}. Первая учитываемая ночь — {{ date(state.first_eligible_night.started_at) }}.
           p {{ state.current_or_next_night.started_at <= state.server_time ? 'Текущая ночь' : 'Ближайшая ночь' }}: {{ date(state.current_or_next_night.started_at) }} — {{ date(state.current_or_next_night.ended_at) }}.
-          n-alert(:type="state.protection_forecast ? 'success' : 'warning'") {{ state.protection_forecast ? 'Текущее назначение обеспечивает защиту на эту ночь.' : 'Текущее назначение не обеспечивает защиты на всю ночь.' }}
-          n-alert(v-if="!state.processing_available" type="warning") Обработка приостановлена. Завершённые ночи будут рассчитаны после возобновления.
-          n-alert(v-else-if="state.catching_up || state.enrollment_pending" type="info") Фоновый расчёт ещё не завершён. Показаны уже обработанные результаты.
+          n-alert(closable :type="state.protection_forecast ? 'success' : 'warning'") {{ state.protection_forecast ? 'Текущее назначение обеспечивает защиту на эту ночь.' : 'Текущее назначение не обеспечивает защиты на всю ночь.' }}
+          n-alert(closable v-if="!state.processing_available" type="warning") Обработка приостановлена. Завершённые ночи будут рассчитаны после возобновления.
+          n-alert(closable v-else-if="state.catching_up || state.enrollment_pending" type="info") Фоновый расчёт ещё не завершён. Показаны уже обработанные результаты.
           template(v-if="state.health")
             p(v-if="state.health.severity === 0") Персонаж здоров.
             p(v-else) Болезнь: тяжесть {{ state.health.severity }} из {{ state.policy.max_severity }}. Защищённых ночей до снижения тяжести: {{ state.health.recovery_progress }} из {{ state.policy.recovery_nights }}.

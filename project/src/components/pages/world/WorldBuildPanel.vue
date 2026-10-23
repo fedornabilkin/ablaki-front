@@ -16,7 +16,7 @@ watch(() => [props.nodeId, props.revision, props.session], async () => {
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-n-alert(v-if="error" type="error" role="alert") {{ error }}
+n-alert(closable v-if="error" type="error" role="alert") {{ error }}
 simple-build-panel(v-else-if="node" :node="node" :owner="owner" :session="session" :template-id="templateId" @changed="emit('changed')")
 n-spin(v-else aria-label="Загрузка строительства")
 </template>

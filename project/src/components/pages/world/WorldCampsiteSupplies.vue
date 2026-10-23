@@ -39,7 +39,7 @@ section.world-supplies#supplies(aria-label="Материалы стоянки")
   h2 Сбор материалов
   p Стартовый набор доступен один раз. Конечное снабжение убывает с каждым сбором; постройка добычи исключает соответствующий ресурс.
   n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" :disabled="loading || command.busy.value || Boolean(command.pending.value)" @click="load") Обновить
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка материалов")
   template(v-else-if="state")
     .supply-actions

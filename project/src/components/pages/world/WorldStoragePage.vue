@@ -26,11 +26,11 @@ const { error, pending, busy } = command;
       p Переносите предметы между хранилищами и слотами мира.
       router-link.storage-parent(:to="nodeId ? `/world/nodes/${nodeId}#workshop` : '/world'") ← Вернуться в мир
     world-page-actions(:node-id="nodeId ?? undefined")
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
-  n-alert(v-if="pending" type="info")
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="pending" type="info")
     p Ответ на прошлое действие ещё не получен.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="busy" @click="command.retry") Повторить запрос
-  n-alert(v-if="!valid" type="error") Некорректный адрес хранилища.
+  n-alert(closable v-if="!valid" type="error") Некорректный адрес хранилища.
   world-storage-panel(v-else :revision="revision" :node-id="nodeId" :storage-id="storageId" :session="session" :writable="true" :command="command")
 </template>
 <style scoped>

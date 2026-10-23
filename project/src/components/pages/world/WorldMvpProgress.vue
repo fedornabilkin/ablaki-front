@@ -37,13 +37,12 @@ watch(() => props.revision, () => { if (show.value) void load(); });
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-n-button(:theme-overrides="worldActionButtonTheme" size="small" @click="show = true")
+n-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
   template(#icon)
     font-awesome-icon(icon="list-check" aria-hidden="true")
-  | Задания
 n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
  .mvp-progress(:aria-busy="loading")
-  n-alert(v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
+  n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   router-link.mvp-action(v-if="closedTest && !state" to="/forum" @click="show = false") Сообщить на форуме о желании участвовать в тестировании
   n-button(v-if="error" :loading="loading" :disabled="loading" @click="load") Повторить загрузку
   n-spin(v-if="loading && !state" size="small")
@@ -78,13 +77,11 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
           p В казну стоянки; после сбора действуют отчисления.
         n-button(v-if="!activeGoal.claimed" :theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || !activeGoal.canClaim" :loading="runner.busy.value" @click="act('economy/goals/claim', { code: activeGoal.code })") {{ !activeGoal.funded && activeGoal.steps.every(step => step.completed) ? 'Ожидает резерва' : 'Получить' }}
         font-awesome-icon(v-else icon="check" title="Награда получена")
-      n-alert(v-if="!activeGoal.funded && !activeGoal.claimed" type="info") {{ activeGoal.blockedReason || 'Организатору нужно зарезервировать награду из бюджета поселения. После этого кнопка получения станет активной.' }}
-      n-button(v-if="state.canFundGoals && activeGoal.fundingSettlement && !activeGoal.funded && !activeGoal.claimed" :theme-overrides="worldActionButtonTheme" :disabled="busy" :loading="runner.busy.value" @click="act('economy/goals/fund', { code: activeGoal.code, settlement_id: activeGoal.fundingSettlement, participants: 1 })") Выделить из бюджета поселения #[world-credits(:value="activeGoal.credits")]
+      n-alert(closable v-if="!activeGoal.funded && !activeGoal.claimed" type="info") Награда ожидает резерва из бюджета родительского поселения. Средства на неё выделяет владелец бюджета.
       .mvp-links
         router-link.mvp-action(to="/world/workspace/inventory" @click="show = false") Инвентарь
         router-link.mvp-action(to="/world/workspace/recipes" @click="show = false") Рецепты
-        router-link.mvp-action(v-if="tab === 'camp'" to="/transfer" @click="show = false") Переводы
-      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые #[world-credits(:value="state.targetStartCredits")]  не начисляются автоматически. Организатор тестирования готовит перевод из существующих средств и сообщает номер и код. Получите его в разделе «Переводы». Если перевод уже получен, повторять этот шаг не нужно.
+      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые #[world-credits(:value="state.targetStartCredits")] переводятся из бюджета поселения в бюджет первой стоянки. Если средств не хватает, обязательство ждёт пополнения в очереди. Получать отдельный перевод или повторно вступать не нужно.
     .journey-quotas(v-else-if="tab === 'quotas'")
       article.quota-card(v-for="quota in state.quotas" :key="quota.kind")
         world-quota-notice(:quota="quota" :server-time="state.serverTime")
@@ -96,7 +93,7 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
         strong {{ state.health.hp }} / {{ state.health.maximum }}
       n-progress(type="line" :percentage="100 * state.health.hp / state.health.maximum" :show-indicator="false")
       p.journey-note Из рюкзака можно есть в любом месте, до 8 HP за порцию. У каждого блюда свой лимит повторов и время восстановления. Лишняя порция вызывает пищевое расстройство (−4 HP), поэтому чередуйте блюда. В полевой кухне еда полезнее: завтрак 06–10, обед 12–16, ужин 18–22, время Москвы. После трёх суток без еды теряется 2 HP в сутки. Ночная болезнь проходит после защищённых ночей.
-      n-alert(v-if="state.health.disorderUntil" type="warning") Пищевое расстройство. Восстановление через #[world-countdown(:until="state.health.disorderUntil" :server-time="state.serverTime")]. Пока можно поесть в полевой кухне.
+      n-alert(closable v-if="state.health.disorderUntil" type="warning") Пищевое расстройство. Восстановление через #[world-countdown(:until="state.health.disorderUntil" :server-time="state.serverTime")]. Пока можно поесть в полевой кухне.
       .mvp-foods
         article.food-card(v-for="food in state.health.foods" :key="food.code")
           font-awesome-icon(icon="utensils" aria-hidden="true")

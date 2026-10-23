@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../src/services/httpClient';
 import { loadStorageContents } from '../src/services/api/worldStorage';
 import { parseWorkspace } from '../src/services/api/worldWorkspace';
+import { parseMining } from '../src/services/api/worldMining';
+import { gatherState, startOverview } from '../src/services/api/simpleWorld';
 
 const header = { id: 1, kind: 'backpack', name: 'Рюкзак', node_id: null, container_inventory_id: null, capacity: 100, revision: 3 };
 function page(number: number, revision = 3) {
@@ -13,6 +15,22 @@ function page(number: number, revision = 3) {
     slots: [], container: null, location: null, writable: true, server_time: 1, _meta: { totalCount: 2, perPage: 1, currentPage: number, pageCount: 2 } };
 }
 afterEach(() => vi.restoreAllMocks());
+it('validates employer wages and keeps the accepted batch price separate from new terms', () => {
+  const row = { node_id: 1, ready: true, working: true, workers: 1, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180, server_time: 100,
+    employment: { enabled: false, reward_cr: '5.0000', storage_id: 7, owner: false, available: true, reason: null, accepted_reward_cr: '2.0000', storages: [] } };
+  expect(parseMining(row).employment).toMatchObject({reward_cr: '5.0000', accepted_reward_cr: '2.0000', owner: false});
+  expect(() => parseMining({...row, employment: {...row.employment, reward_cr: 5}})).toThrow();
+  expect(() => parseMining({...row, employment: {...row.employment, owner: 'true'}})).toThrow();
+});
+it('loads starter budget availability before joining a settlement', async () => {
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({data: {node: null, funding: {amount_cr: '250.0000', available: false, message: 'Выберите другое поселение'}, starter_funding: null}});
+  expect(await startOverview(4)).toMatchObject({node: null, funding: {available: false, amount_cr: '250.0000'}});
+  expect(get.mock.calls[0][1]?.params).toEqual({city_id: 4});
+});
+it('explains a blocked gathering action and exposes actual quantities for its modal', async () => {
+  vi.spyOn(apiClient, 'get').mockResolvedValue({data: {gather_available: true, gather_available_at: 0, server_time: 100, gather_remaining: 4, gather_limit: 5, gather_exhausted: false, gather_can_claim: false, gather_reason: 'Освободите место в рюкзаке.', gather_items: [{name: 'Бревно', quantity: 12}]}});
+  expect(await gatherState(2)).toMatchObject({gather_can_claim: false, gather_remaining: 4, gather_items: [{name: 'Бревно', quantity: 12}]});
+});
 it('offers testing access help only for the explicit closed-test denial', () => {
   expect(isClosedTestError({ isAxiosError: true, response: { status: 403, data: { code: 'CLOSED_TEST_ACCESS_REQUIRED' } } })).toBe(true);
   expect(isClosedTestError({ isAxiosError: true, response: { status: 403, data: { code: 'STORAGE_FORBIDDEN' } } })).toBe(false);

@@ -39,7 +39,7 @@ section.world-finance-report#finance-report
   p Личные кредиты → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
   p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить отчёт
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   template(v-if="state")
     p Снимок на {{ date(state.now) }}. Поиск и фильтры ниже меняют только журнал операций.
     h4 Движение средств за всё время
@@ -52,7 +52,7 @@ section.world-finance-report#finance-report
       h5 {{ roles[account.role] }}
       p Остаток #[world-credits(:value="account.amount")]  · резерв #[world-credits(:value="account.reserved")]  · доступно #[world-credits(:value="account.available")]
       p(v-if="account.matches") Остаток совпадает с журналом поступлений и списаний.
-      n-alert(v-else type="warning") По журналу: #[world-credits(:value="account.ledgerBalance")] . Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
+      n-alert(closable v-else type="warning") По журналу: #[world-credits(:value="account.ledgerBalance")] . Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
   h4 Журнал операций
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению операции" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка финансового отчёта")

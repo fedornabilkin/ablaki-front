@@ -28,7 +28,7 @@ function join() { if (quote.value) void runner.submit('/onboarding/join', { sett
 </script>
 <template lang="pug">
 section.world-onboarding(v-if="!state?.joined" aria-label="Начало жизни в мире")
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   template(v-if="state && node.type === 'SETTLEMENT'")
     p Здесь можно начать жизнь в мире и получить место для усадьбы.
     n-button(:theme-overrides="worldActionButtonTheme" v-if="!quote" :disabled="!writable || !state.join_available || Boolean(pending)" :loading="loading" @click="preview") Выбрать поселение

@@ -62,7 +62,7 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 section.harvest-panel(aria-label="Продукция склада")
   h2 Продукция склада
   p Хранение, перемещение и продажа продукции. Покупки поступают в рюкзак, оплата — в казну этого склада. Урожай после 14 суток хранения однократно теряет 30% количества.
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
   .harvest-grid
     button.harvest-cell(v-for="cell in cells" :key="cell.position" type="button" :class="{ selected: cell.item?.inventory_id === selected }" @click="selected = cell.item?.inventory_id ?? null; quantity = 1")
       template(v-if="cell.item")

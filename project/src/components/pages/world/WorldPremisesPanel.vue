@@ -61,13 +61,13 @@ section.world-premises#premises
   h2 Помещения и жильё
   p Помещение можно купить готовым или построить по опубликованным условиям. Оплата — из бюджета площадки. Станции и сундуки переносятся в готовую комнату отдельно.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить предложения
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти помещение" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка помещений")
   template(v-else-if="state")
     p(v-if="state.area") Площадь площадки: занято {{ state.area.used }} из {{ state.area.total }}, доступно {{ state.area.available }}.
     p(v-if="state.can_buy") Доступно в бюджете площадки: #[world-credits(:value="state.budget_available ?? '0.0000'")] .
-    n-alert(v-if="state.area?.unaccounted_building" type="warning") На площадке есть постройка без учтённой площади. Покупка временно недоступна.
+    n-alert(closable v-if="state.area?.unaccounted_building" type="warning") На площадке есть постройка без учтённой площади. Покупка временно недоступна.
     p(v-if="state.area && !state.can_buy") Покупка станет доступна после включения хранения и экономики мира.
     p(v-if="!state.area") Для покупки откройте свою стартовую площадку.
     p(v-if="!state.items.length") Предложений по выбранным условиям нет.
@@ -77,10 +77,10 @@ section.world-premises#premises
         h3 {{ item.name }} · #[world-credits(:value="item.price")]
         world-payment-sources(v-if="state.can_buy" mode="budget" :price="item.price")
         strong {{ !state.can_buy ? 'Покупка недоступна' : !item.requirements_status.allowed ? 'Не выполнены требования' : state.area && state.area.available < item.area ? 'Не хватает площади' : item.can_afford === false ? 'Не хватает кредитов' : 'Доступно к покупке' }}
-        n-alert(v-if="item.can_afford === false" type="warning")
+        n-alert(closable v-if="item.can_afford === false" type="warning")
           span Бюджета площадки не хватает.
           router-link(:to="{ path: `/world/nodes/${nodeId}`, hash: '#finance' }") Пополнить бюджет
-        n-alert(v-if="!item.requirements_status.allowed" type="info")
+        n-alert(closable v-if="!item.requirements_status.allowed" type="info")
           p Требования пока не выполнены:
           ul
             li(v-for="(reason, index) in item.requirements_status.reasons" :key="`${reason.code}-${index}`") {{ reason.message }}

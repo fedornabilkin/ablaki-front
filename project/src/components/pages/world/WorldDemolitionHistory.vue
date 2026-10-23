@@ -26,7 +26,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 section.world-demolition-history#demolitions
   h2 История сноса
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить историю
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти снесённую постройку" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка истории сноса")
   template(v-else-if="state")

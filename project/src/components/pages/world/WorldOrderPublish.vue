@@ -51,7 +51,7 @@ details.order-publication
   world-help-hint(label="Условия публикации заказа")
     p Весь бюджет на заказ резервируется при публикации. Сдачи списывают сырьё из рюкзака и платят в казну стоянки; неиспользованный резерв освобождается после отмены или окончания срока.
   p Вся стоимость резервируется в бюджете поселения. Неиспользованный резерв освобождается после отмены или окончания срока.
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="[]" :loading="loading" placeholder="Найти сырьё в каталоге" @reset="list.reset")
   n-select(v-model:value="form.item" :options="options" :loading="loading" :disabled="busy || Boolean(pending)" placeholder="Сырьё из текущего каталога" aria-label="Предмет заказа")
   page-pager(v-if="catalog" v-model:page="page" query-prefix="ordercatalog" :result="catalog" :disabled="busy")

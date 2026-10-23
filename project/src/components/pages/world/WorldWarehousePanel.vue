@@ -46,11 +46,11 @@ onScopeDispose(() => { disposed = true; generation++; });
 <template lang="pug">
 section.warehouse-panel
   h2 Вместимость склада
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
   template(v-if="state")
     p Занято {{ state.used }} из {{ state.capacity }} ячеек. Максимум после расширения: {{ state.limit }}.
     n-progress(type="line" :percentage="Math.min(100, Math.round(state.used / state.capacity * 100))" :status="state.used >= state.capacity ? 'warning' : 'success'")
-    n-alert(v-if="state.used >= state.capacity" type="warning") Склад заполнен. Заберите предметы или расширьте его перед производством.
+    n-alert(closable v-if="state.used >= state.capacity" type="warning") Склад заполнен. Заберите предметы или расширьте его перед производством.
     router-link(:to="`/world/nodes/${state.finance_node_id}#finance`") Бюджет для оплаты
     template(v-if="state.next_price")
       p Следующая ячейка: #[world-credits(:value="state.next_price")] . Каждая последующая стоит дороже.
