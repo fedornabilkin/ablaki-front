@@ -28,6 +28,8 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
 #content { scroll-margin-top: 13rem; }
 </style>
 <style>
+.n-modal { align-self: flex-start !important; margin: 3.5rem auto 1.5rem !important; max-height: calc(100dvh - 5rem); transform-origin: center top !important; }
+.n-modal.n-card { overflow-y: auto; }
 .n-message { position: relative; overflow: hidden; padding-bottom: 12px; }
 .n-message, .n-notification {
   border: 1px solid var(--primary);

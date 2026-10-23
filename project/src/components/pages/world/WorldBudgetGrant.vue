@@ -16,9 +16,10 @@ const props = defineProps<{ nodeId: number; children: WorldNode[]; session: numb
 const destination = ref<number | null>(null), amount = ref(''), purpose = ref('');
 const quote = shallowRef<Awaited<ReturnType<typeof previewBudgetGrant>> | null>(null);
 const calculating = ref(false), error = ref('');
+const receipt = ref<{amount: string; destination: number} | null>(null);
 const options = computed(() => props.children.filter(child => child.permissions.storage && child.status === 'active' && child.has_finances !== false && !['ROOM', 'BED'].includes(child.type) && child.details.building_kind !== 'warehouse'));
 let generation = 0;
-watch([() => props.nodeId, () => props.session, destination, amount, purpose], () => { generation++; quote.value = null; error.value = ''; });
+watch([() => props.nodeId, () => props.session, destination, amount, purpose], () => { generation++; quote.value = null; receipt.value = null; error.value = ''; });
 onScopeDispose(() => { generation++; });
 async function preview() {
   if (!destination.value || calculating.value || props.command.pending.value) return;
@@ -29,8 +30,11 @@ async function preview() {
   } catch (cause) { if (current === generation) error.value = worldError(cause); }
   finally { if (current === generation) calculating.value = false; }
 }
-function confirm() {
-  if (quote.value) void props.command.submit(`/nodes/${props.nodeId}/budget-grant`, quote.value.input, quote.value.quote);
+async function confirm() {
+  if (!quote.value || props.command.busy.value || props.command.pending.value) return;
+  const accepted = quote.value, current = generation;
+  const result = await props.command.submit(`/nodes/${props.nodeId}/budget-grant`, accepted.input, accepted.quote);
+  if (result && current === generation) { quote.value = null; receipt.value = {amount: accepted.input.amount, destination: accepted.input.destination_node_id}; }
 }
 </script>
 <template lang="pug">
@@ -40,16 +44,18 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
     p Кредиты переходят из свободной части бюджета этого объекта в бюджет выбранной дочерней ноды. Казна и личный баланс не затрагиваются; обратный перевод автоматически не выполняется.
   p Перевод поступит прямо в бюджет принадлежащего вам объекта или огорода. Казна и личный баланс не меняются.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
-  .grant-options(v-if="options.length")
+  n-alert(v-if="receipt" type="success" closable @close="receipt = null") Переведено #[world-credits(:value="receipt.amount")] в бюджет объекта №{{ receipt.destination }}.
+  n-button(v-if="receipt" @click="receipt = null") Новый перевод
+  .grant-options(v-if="!receipt && options.length")
     span Быстрый выбор:
     n-button(:theme-overrides="worldActionButtonTheme" v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
-  label ID получателя
+  label(v-if="!receipt") ID получателя
     n-input-number(v-model:value="destination" :min="1" :max="2147483647" :precision="0" placeholder="Дочерний объект или свой огород")
-  label Сумма
+  label(v-if="!receipt") Сумма
     world-credit-input(v-model:value="amount" inputmode="decimal" placeholder="10" :maxlength="20")
-  label Назначение
+  label(v-if="!receipt") Назначение
     n-input(v-model:value="purpose" :maxlength="255" placeholder="На развитие объекта")
-  n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
+  n-button(v-if="!receipt" :theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="!destination || !amount || !purpose.trim() || Boolean(command.pending.value)" @click="preview") Рассчитать перевод
   section.grant-quote(v-if="quote" aria-live="polite")
     world-payment-sources(mode="budget" :price="quote.input.amount")
     p Перевод: #[world-credits(:value="quote.input.amount")]  объекту №{{ quote.input.destination_node_id }}.

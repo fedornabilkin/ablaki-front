@@ -46,6 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; });
           font-awesome-icon(:icon="runner.busy.value ? 'spinner' : 'exclamation-circle'" :spin="runner.busy.value")
       | {{ error || runner.error.value || 'Ответ ещё не получен. Нажмите, чтобы повторить тот же запрос.' }}
   n-modal(v-model:show="open" :theme-overrides="worldModalTheme" preset="card" title="Ежедневный сбор сырья" :style="{ width: 'min(32rem, 94vw)' }")
+    n-alert.gather-receipt(v-if="receipt" type="success" closable @close="receipt = ''") Получено: {{ receipt }}
     p Собирайте сырьё до постройки добычи: соответствующий ресурс после неё исчезает из снабжения. Каждая выдача меньше предыдущей. Исчерпанный ресурс не возобновляется; новый предмет каталога получает собственный запас.
     p Осталось сборов: {{ state?.gather_remaining ?? 0 }} / {{ state?.gather_limit ?? 0 }}
     n-progress(type="line" :percentage="progress" :show-indicator="false")
@@ -53,11 +54,11 @@ onScopeDispose(() => { disposed = true; generation++; });
       li(v-for="item in state?.gather_items ?? []" :key="item.name")
         span {{ item.name }}
         strong ×{{ item.quantity }}
-    n-alert(v-if="receipt" type="success" closable @close="receipt = ''") Получено: {{ receipt }}
     n-alert(v-if="state?.gather_reason || runner.error.value" type="warning" closable) {{ state?.gather_reason || runner.error.value }}
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="runner.busy.value" :disabled="!writable || runner.busy.value || (!runner.pending.value && (!state?.gather_available || state?.gather_can_claim === false))" @click="gather") {{ runner.pending.value ? 'Повторить запрос' : 'Собрать в рюкзак' }}
 </template>
 <style scoped>
+.gather-receipt { margin-bottom: 1rem; }
 .gather-items { padding: 0; list-style: none; display: grid; gap: .4rem; }.gather-items li { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem .6rem; background: var(--bg-surface); border-radius: .4rem; }
 .world-hero-gather { display: flex; align-items: flex-start; gap: .4rem; }.gather-feedback { flex: 0 0 1.2rem; width: 1.2rem; }.gather-error { border: 0; background: transparent; color: #e66a68; cursor: pointer; padding: 0; }
 </style>

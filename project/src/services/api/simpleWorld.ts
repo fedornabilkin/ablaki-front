@@ -3,7 +3,7 @@ import config from '@/config/config';
 import { record } from './world';
 
 export interface SimpleNode { id: number; parent_id: number | null; name: string; hierarchy_level: number; node_type: string; building_kind: string | null; owner_user_id: number | null; status: string; revision: number }
-export interface Build { id: number; node_id: number; owner_user_id: number; status: string; required_seconds: number; worked_seconds: number; labor_budget: string; minimum_labor_budget?: string; builder_limit?: number | null; job_kind?: string; initial_condition?: number; max_condition?: number; condition?: number; funding_node_id?: number; budget_available?: string; world_time_rate?: number; server_time?: number; live_work?: { accounted_at: number; last_seen_at: number }[] }
+export interface Build { id: number; node_id: number; owner_user_id: number; status: string; required_seconds: number; worked_seconds: number; labor_budget: string; parent_id?: number; can_reduce_budget?: boolean; minimum_labor_budget?: string; builder_limit?: number | null; job_kind?: string; initial_condition?: number; max_condition?: number; condition?: number; funding_node_id?: number; budget_available?: string; world_time_rate?: number; server_time?: number; live_work?: { accounted_at: number; last_seen_at: number }[] }
 export interface Template { id: number; name: string; description?: string; build_seconds: number; minimum_labor_budget?: string; material_summary: string; kind?: string; available?: boolean; unavailable_reason?: string; world_build_seconds?: number; world_time_rate?: number; economy?: { profile_version: number; price_cr: string; terms_digest: string } }
 const number = (value: unknown): number => {
   const result = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
@@ -18,7 +18,8 @@ export function node(value: unknown): SimpleNode {
 }
 export function build(value: unknown): Build {
   const row = record(value);
-  return { id: number(row.id), node_id: number(row.node_id), owner_user_id: number(row.owner_user_id), status: text(row.status),
+  if (row.can_reduce_budget !== undefined && typeof row.can_reduce_budget !== 'boolean') throw new Error('invalid-world-response');
+  return { ...(row.parent_id == null ? {} : {parent_id: number(row.parent_id)}), ...(row.can_reduce_budget === undefined ? {} : {can_reduce_budget: row.can_reduce_budget}), id: number(row.id), node_id: number(row.node_id), owner_user_id: number(row.owner_user_id), status: text(row.status),
     required_seconds: number(row.required_seconds), worked_seconds: number(row.worked_seconds), labor_budget: money(row.labor_budget),
     ...(row.minimum_labor_budget === undefined ? {} : { minimum_labor_budget: money(row.minimum_labor_budget), builder_limit: row.builder_limit === null ? null : number(row.builder_limit) }),
     ...(row.job_kind === undefined ? {} : { job_kind: text(row.job_kind), initial_condition: number(row.initial_condition) }),
@@ -72,15 +73,15 @@ export async function startState() {
   const row = record((await apiClient.get(url('start'))).data);
   return row.node === null ? null : node(row.node);
 }
-export interface StarterFunding { amount_cr: string; status?: string; available?: boolean; message?: string; source_node_id?: number; destination_node_id?: number }
+export interface StarterFunding { amount_cr: string | null; available_places?: number; reserve_cr?: string; settlements?: {node_id: number; name: string; amount_cr: string; available_places: number}[]; status?: string; available?: boolean; message?: string; source_node_id?: number; destination_node_id?: number }
 function funding(value: unknown): StarterFunding | null {
   if (value == null) return null;
   const row = record(value);
   if (row.available !== undefined && typeof row.available !== 'boolean') throw new Error('invalid-world-response');
-  return { amount_cr: money(row.amount_cr ?? row.amount), ...(row.status === undefined ? {} : {status: text(row.status)}), ...(row.available === undefined ? {} : {available: row.available}), ...(row.message === undefined ? {} : {message: text(row.message)}), ...(row.source_node_id === undefined ? {} : {source_node_id: number(row.source_node_id)}), ...(row.destination_node_id === undefined ? {} : {destination_node_id: number(row.destination_node_id)}) };
+  return { amount_cr: row.amount_cr === null ? null : money(row.amount_cr ?? row.amount), ...(row.available_places === undefined ? {} : {available_places: number(row.available_places)}), ...(row.reserve_cr === undefined ? {} : {reserve_cr: money(row.reserve_cr)}), ...(row.settlements === undefined ? {} : {settlements: (() => { if (!Array.isArray(row.settlements) || row.settlements.length > 1000) throw new Error('invalid-world-response'); return row.settlements.map(value => { const city = record(value); return {node_id: number(city.node_id), name: text(city.name), amount_cr: money(city.amount_cr), available_places: number(city.available_places)}; }); })()}), ...(row.status === undefined ? {} : {status: text(row.status)}), ...(row.available === undefined ? {} : {available: row.available}), ...(row.message === undefined ? {} : {message: text(row.message)}), ...(row.source_node_id === undefined ? {} : {source_node_id: number(row.source_node_id)}), ...(row.destination_node_id === undefined ? {} : {destination_node_id: number(row.destination_node_id)}) };
 }
-export async function startOverview(cityId?: number) {
-  const row = record((await apiClient.get(url('start'), {params: cityId ? {city_id: cityId} : {}})).data);
+export async function startOverview(nodeId?: number) {
+  const row = record((await apiClient.get(url('start'), {params: nodeId ? {node_id: nodeId} : {}})).data);
   return {node: row.node === null ? null : node(row.node), funding: funding(row.funding), starter_funding: funding(row.starter_funding)};
 }
 export async function activeBuild() {

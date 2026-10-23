@@ -15,6 +15,7 @@ const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(fals
 const show = ref(false), tab = ref('camp');
 const activeGoal = computed(() => state.value?.goals.find(goal => goal.code === (tab.value === 'resources' ? 'day-2' : 'day-1')));
 const orderedSteps = computed(() => [...(activeGoal.value?.steps ?? [])].sort((a, b) => Number(a.completed) - Number(b.completed)));
+const remainingTasks = computed(() => state.value?.goals.reduce((total, goal) => total + (goal.claimed ? 0 : goal.steps.filter(step => !step.completed).length), 0) ?? null);
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.mvp`), computed(() => props.session));
 let generation = 0;
 async function load() {
@@ -31,15 +32,16 @@ async function act(path?: string, body: Record<string, unknown> = {}) {
 const busy = computed(() => !props.writable || runner.busy.value || !!runner.pending.value);
 const titles: Record<string, string> = { 'day-1': 'Первый лагерь', 'day-2': 'Ресурсы и первый металл' };
 const quotaLabels: Record<string, string> = { crafting_hourly: 'Изготовление за час', extraction_daily: 'Добыча сегодня', sales_daily: 'Продажи сегодня' };
-watch(() => [props.owner, props.session], () => { generation++; state.value = null; error.value = ''; show.value = false; });
-watch(show, value => { if (value) void load(); });
-watch(() => props.revision, () => { if (show.value) void load(); });
+watch(() => [props.owner, props.session], () => { generation++; state.value = null; error.value = ''; show.value = false; if (props.owner) void load(); }, {immediate: true});
+watch(show, value => { if (value && !state.value && !error.value && !loading.value) void load(); });
+watch(() => props.revision, () => { if (props.owner) void load(); });
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-n-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
+n-button.mvp-tasks-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
   template(#icon)
     font-awesome-icon(icon="list-check" aria-hidden="true")
+  span.tasks-badge(v-if="remainingTasks !== null && remainingTasks > 0" :aria-label="`Осталось заданий: ${remainingTasks}`") {{ remainingTasks }}
 n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
  .mvp-progress(:aria-busy="loading")
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
@@ -81,7 +83,7 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
       .mvp-links
         router-link.mvp-action(to="/world/workspace/inventory" @click="show = false") Инвентарь
         router-link.mvp-action(to="/world/workspace/recipes" @click="show = false") Рецепты
-      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые #[world-credits(:value="state.targetStartCredits")] переводятся из бюджета поселения в бюджет первой стоянки. Если средств не хватает, обязательство ждёт пополнения в очереди. Получать отдельный перевод или повторно вступать не нужно.
+      p.journey-note(v-if="tab === 'camp' && state.targetStartCredits") Стартовые #[world-credits(:value="state.targetStartCredits")] переводятся из стартового резерва поселения в бюджет первой стоянки. Если средств не хватает, обязательство ждёт пополнения резерва в очереди. Получать отдельный перевод или повторно вступать не нужно.
     .journey-quotas(v-else-if="tab === 'quotas'")
       article.quota-card(v-for="quota in state.quotas" :key="quota.kind")
         world-quota-notice(:quota="quota" :server-time="state.serverTime")
@@ -107,6 +109,7 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
       | Сообщить о проблеме на форуме
 </template>
 <style scoped>
+.tasks-badge { position: absolute; right: -.35rem; top: -.4rem; display: inline-grid; place-items: center; min-width: 1.15rem; height: 1.15rem; border-radius: 1rem; padding-inline: .2rem; background: var(--bg-base); color: var(--primary); border: 1px solid var(--primary); font-size: .7rem; font-weight: 750; }
 .mvp-progress { display: grid; gap: 1rem; min-width: 0; max-height: 75vh; overflow-y: auto; padding: .15rem; }.mvp-progress h3, .mvp-progress p { margin: 0; }
 .journey-heading, .journey-reward { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }.journey-heading h3 { font-size: 1.1rem; }.journey-heading > strong { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary); }.journey-eyebrow { color: var(--text-muted); font-size: .75rem; }
 .journey-steps { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }.journey-step { display: flex; align-items: center; gap: .75rem; padding: .85rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); }.step-icon { flex: 0 0 2rem; display: grid; place-items: center; height: 2rem; border-radius: 50%; color: var(--primary); background: var(--primary-soft); }.complete .step-icon { color: var(--success, #36ad6a); }.step-body { display: grid; gap: .25rem; flex: 1; min-width: 0; }.step-body span, .journey-note, .journey-reward p { color: var(--text-muted); font-size: .8rem; line-height: 1.5; }

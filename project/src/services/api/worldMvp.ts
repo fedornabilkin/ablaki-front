@@ -24,6 +24,7 @@ export function parseHealth(value: unknown) {
 }
 export function parseMvp(value: unknown) {
   const row = record(value);
+  const startAmount = row.starter_funding === undefined ? row.target_start_credit_cr : row.starter_funding === null ? null : record(row.starter_funding).amount_cr;
   const feedback = text(row.feedback_path);
   if (!/^\/forum(?:\/read\/[1-9]\d*)?$/.test(feedback)) throw new Error('invalid-world-response');
   const href = (value: unknown): string | null => {
@@ -34,7 +35,7 @@ export function parseMvp(value: unknown) {
   return { enabled: bool(row.enabled), feedback: '/forum', serverTime: integer(row.server_time),
     canFundGoals: row.can_fund_goals === undefined ? false : bool(row.can_fund_goals),
     personalCredits: row.personal_credit_cr === undefined ? null : creditAmount(row.personal_credit_cr),
-    targetStartCredits: row.target_start_credit_cr === undefined || row.target_start_credit_cr === null ? null : creditAmount(row.target_start_credit_cr),
+    targetStartCredits: startAmount == null ? null : creditAmount(startAmount),
     secondMilestoneDay: row.second_milestone_day === undefined || row.second_milestone_day === null ? null : integer(row.second_milestone_day, 1, 365),
     health: parseHealth(row.health),
     goals: list(row.goals).map(value => {

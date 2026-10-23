@@ -50,7 +50,7 @@ async function checkWork(to: RouteLocationNormalized) {
     const active = await activeBuild();
     if (current !== session.value) return true;
     activeWork.value = active;
-    if (active && to.path !== `/world/nodes/${active.node_id}`) { workError.value = 'Сначала приостановите строительство, чтобы перейти на другую карту.'; return false; }
+    if (active && to.path !== `/world/nodes/${active.node_id}` && to.path !== `/world/nodes/${active.parent_id}`) { workError.value = 'Сначала приостановите строительство, чтобы перейти на другую карту.'; return false; }
     return true;
   } catch (cause) { workError.value = worldError(cause); return !activeWork.value && world.node?.status !== 'constructing'; }
 }
@@ -190,7 +190,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
                 dd {{ fact.value }}
             world-character-progress(v-if="nodeInfoOpened" :key="session")
       .world-children
-        world-map(v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
+        world-map(:working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
           template(#information)
             world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active) && world.capabilities?.world_write" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
             world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")

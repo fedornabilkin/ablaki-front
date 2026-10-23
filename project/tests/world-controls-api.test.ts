@@ -25,11 +25,18 @@ it('validates employer wages and keeps the accepted batch price separate from ne
 it('loads starter budget availability before joining a settlement', async () => {
   const get = vi.spyOn(apiClient, 'get').mockResolvedValue({data: {node: null, funding: {amount_cr: '250.0000', available: false, message: 'Выберите другое поселение'}, starter_funding: null}});
   expect(await startOverview(4)).toMatchObject({node: null, funding: {available: false, amount_cr: '250.0000'}});
-  expect(get.mock.calls[0][1]?.params).toEqual({city_id: 4});
+  expect(get.mock.calls[0][1]?.params).toEqual({node_id: 4});
 });
 it('explains a blocked gathering action and exposes actual quantities for its modal', async () => {
   vi.spyOn(apiClient, 'get').mockResolvedValue({data: {gather_available: true, gather_available_at: 0, server_time: 100, gather_remaining: 4, gather_limit: 5, gather_exhausted: false, gather_can_claim: false, gather_reason: 'Освободите место в рюкзаке.', gather_items: [{name: 'Бревно', quantity: 12}]}});
   expect(await gatherState(2)).toMatchObject({gather_can_claim: false, gather_remaining: 4, gather_items: [{name: 'Бревно', quantity: 12}]});
+});
+it('accepts region places with different city rates and rejects an invalid place count', async () => {
+  const funding = {amount_cr: null, available: true, available_places: 3, message: 'Есть места', settlements: [{node_id: 4, name: 'Город', amount_cr: '100.0000', available_places: 2}, {node_id: 5, name: 'Деревня', amount_cr: '80.0000', available_places: 1}]};
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({data: {node: null, funding, starter_funding: null}});
+  expect((await startOverview(2)).funding).toMatchObject(funding);
+  get.mockResolvedValue({data: {node: null, funding: {...funding, available_places: -1}, starter_funding: null}});
+  await expect(startOverview(2)).rejects.toThrow();
 });
 it('offers testing access help only for the explicit closed-test denial', () => {
   expect(isClosedTestError({ isAxiosError: true, response: { status: 403, data: { code: 'CLOSED_TEST_ACCESS_REQUIRED' } } })).toBe(true);

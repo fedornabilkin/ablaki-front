@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldCredits from './WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
@@ -17,7 +18,7 @@ let generation = 0;
 watch(() => [props.node.id, props.session], () => { generation++; ready.value = false; home.value = null; open.value = false; error.value = ''; message.value = ''; funding.value = null; obligation.value = null; }, {flush: 'sync'});
 watch(() => [props.node.id, props.session, props.revision], async () => {
   const current = ++generation;
-  try { const result = await startOverview(props.node.type === 'SETTLEMENT' ? props.node.id : undefined); if (current === generation) { home.value = result.node; funding.value = result.funding; obligation.value = result.starter_funding; ready.value = true; } }
+  try { const result = await startOverview(props.node.id); if (current === generation) { home.value = result.node; funding.value = result.funding; obligation.value = result.starter_funding; ready.value = true; } }
   catch (cause) { if (current === generation) error.value = worldError(cause); }
 }, { immediate: true });
 async function act(kind: 'start' | 'retry') {
@@ -39,25 +40,32 @@ section.world-start(v-if="error || runner.error.value || runner.pending.value ||
     p {{ message }}
     router-link(v-if="home" :to="`/world/nodes/${home.id}#map`") Перейти к стоянке →
   n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value && !runner.busy.value" @click="act('retry')") Повторить запрос
-  n-alert(closable v-if="obligation?.status === 'pending'" type="warning") Стартовый бюджет стоянки ожидает финансирования из поселения. Перевод будет выполнен автоматически в порядке очереди, когда родительский бюджет пополнят.
+  n-alert(closable v-if="obligation?.status === 'pending'" type="warning") Стартовый бюджет стоянки ожидает финансирования из поселения. Перевод будет выполнен автоматически в порядке очереди, когда пополнят стартовый резерв поселения.
   template(v-if="ready && !home")
     h2 Начало игры
+    section.start-availability(v-if="funding" aria-label="Доступность заселения")
+      strong Доступно мест со стартовыми средствами: {{ funding.available_places ?? (funding.available ? 1 : 0) }}
+      p(v-if="funding.amount_cr") Новому поселенцу: #[world-credits(:value="funding.amount_cr")].
+      n-alert(:type="funding.available ? 'success' : 'warning'") {{ funding.message }}
+      .start-cities(v-if="node.type !== 'SETTLEMENT'")
+        router-link(v-for="city in funding.settlements ?? []" :key="city.node_id" :to="`/world/nodes/${city.node_id}`")
+          strong {{ city.name }}
+          span {{ city.available_places }} мест · #[world-credits(:value="city.amount_cr")]
     ol.start-steps
-      li Выберите поселение и проверьте, хватает ли в его бюджете средств на старт.
+      li Выберите поселение и проверьте доступные места со стартовыми средствами.
       li Разместите стоянку и завершите её строительство.
       li Соберите ежедневное сырьё до постройки добычи — после неё соответствующий ресурс исключается из сбора.
       li Обустройте ночлег и разместите костёр. Следите за здоровьем и едой.
       li Исследуйте ячейки, изготовьте инструменты, постройте огород и шахту.
       li Выполняйте задания через кнопку со списком рядом с казной и получайте награды.
     template(v-if="node.type === 'SETTLEMENT'")
-      n-alert(closable v-if="funding" :type="funding.available ? 'info' : 'warning'") {{ funding.message }}
       router-link(v-if="funding?.available === false && node.parent_id" :to="`/world/nodes/${node.parent_id}`") Выбрать другое поселение →
-      n-button.start-button(:theme-overrides="worldActionButtonTheme" size="small" type="primary" :disabled="!writable || !!runner.pending.value" :loading="runner.busy.value" @click="act('start')") Начать здесь
+      n-button.start-button(:theme-overrides="worldActionButtonTheme" size="small" type="primary" :disabled="!writable || !!runner.pending.value" :loading="runner.busy.value" @click="act('start')") {{ funding?.available === false ? 'Заселиться в очередь' : 'Начать здесь' }}
     p(v-else) Выберите город или деревню, в которых хотите начать.
   build-settings-modal(v-model:show="open" :project="project" :name="projectName" :owner="owner" :session="session" :creating="runner.busy.value" :creation-error="runner.error.value" @saved="emit('changed')")
 </template>
 <style scoped>
 .world-start { display: grid; gap: .75rem; }
-.start-button { justify-self: start; }
+.start-availability { display: grid; gap: .6rem; }.start-availability p { margin: 0; }.start-cities { display: grid; gap: .5rem; }.start-cities a { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; padding: .6rem; border: 1px solid var(--border); border-radius: .5rem; }.start-button { justify-self: start; }
 .start-steps { margin: 0; padding-left: 1.4rem; display: grid; gap: .35rem; color: var(--text-muted); }.world-start h2 { margin: 0; }
 </style>

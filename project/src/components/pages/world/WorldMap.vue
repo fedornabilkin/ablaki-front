@@ -13,6 +13,7 @@ import { useWorldBudget } from '@/hooks/useWorldBudget';
 import { loadGarden, previewGarden } from '@/services/api/worldGarden';
 import { mapAreaCells, mapPurchase, requiredExplorerLevel, selectMapCells } from '@/entities/world/mapSelection';
 import { loadExplorer, previewProfession, previewMapCells, worldError } from '@/services/api/world';
+import WorldBuildPanel from './WorldBuildPanel.vue';
 import WorldCultivationPanel from './WorldCultivationPanel.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
@@ -21,7 +22,7 @@ import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacedItemPanel from './WorldPlacedItemPanel.vue';
 import { useStore } from 'vuex';
 
-const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number }>();
+const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null }>();
 const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: number[]] }>();
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
@@ -57,6 +58,7 @@ const bounds = computed(() => props.map?.bounds ?? props.node.map ?? { x: -2, y:
 const width = computed(() => bounds.value.width * size), height = computed(() => bounds.value.height * size);
 const nodes = computed(() => (props.map?.items ?? []).filter(node => node.status !== 'archived'));
 const selectedNode = computed(() => selected.value.length === 1 ? nodes.value.find(n => occupiesCell(n, selected.value[0])) : undefined);
+const constructionNode = computed(() => nodes.value.find(n => n.id === props.workingNodeId && n.status === 'constructing') ?? (selectedNode.value?.owned_by_me && selectedNode.value.status === 'constructing' ? selectedNode.value : undefined));
 const known = computed(() => new Map((props.map?.cells ?? []).map(c => [key(c), c.state])));
 const state = (p: MapPoint) => known.value.get(key(p)) ?? 'closed';
 const point = computed(() => selected.value.length === 1 ? selected.value[0] : null);
@@ -84,6 +86,7 @@ const explorerLevel = computed(() => Math.max(props.map?.exploration?.level ?? 0
 const levelAllowed = computed(() => !!props.map?.exploration?.allowed && explorerLevel.value >= required.value);
 const neededElixirs = computed(() => selected.value.filter(p => requiredExplorerLevel(p) > (props.map?.exploration?.level ?? 0)).length);
 const elixirAllowed = computed(() => !!props.map?.exploration?.allowed && neededElixirs.value > 0 && props.map.exploration.elixir_quantity >= neededElixirs.value);
+const canExploreCell = (p: MapPoint) => props.writable && !isGarden.value && !!props.map?.can_expand && !!props.map.exploration?.allowed && state(p) === 'closed' && !occupied(p) && (explorerLevel.value >= requiredExplorerLevel(p) || (props.map.exploration?.elixir_quantity ?? 0) > 0);
 const blocked = computed(() => calculating.value || gardenLoading.value || props.command.busy.value || !!props.command.pending.value || !props.writable);
 const canBuy = computed(() => !!price.value && (gardenSelection.value ? !!garden.value?.can_expand : !!props.map?.can_expand));
 const position = (p: MapPoint) => ({ x: (p.x - bounds.value.x) * size, y: (bounds.value.y + bounds.value.height - 1 - p.y) * size });
@@ -242,6 +245,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           g(v-if="state(cell) === 'discovered' && !occupied(cell)" :transform="`translate(${size - 45}, 2)`")
             font-awesome-icon(icon="coins" :x="0" :y="4" :width="10" :height="10" aria-hidden="true")
             text(x="40" y="13" text-anchor="end" class="map-price") {{ cellPrice(cell) }}
+          font-awesome-icon(v-if="canExploreCell(cell)" icon="compass" :x="size / 2 - 10" y="12" width="20" height="20" aria-label="Можно исследовать")
           text(v-if="!occupied(cell)" :x="size / 2" y="49" text-anchor="middle" class="map-cell-status") {{ state(cell) === 'open' ? 'Свободно' : state(cell) === 'discovered' ? 'К покупке' : '' }}
           text(v-if="!occupied(cell)" x="6" :y="size - 7" class="map-coordinate") {{ cell.x }}, {{ cell.y }}
           rect.map-equipment-surface(v-if="equipment(cell)" x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
@@ -264,6 +268,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       slot(name="placement")
   aside.world-map-inspector(aria-live="polite")
     slot(name="information")
+    world-build-panel(v-if="constructionNode && writable" :key="constructionNode.id" :node-id="constructionNode.id" :revision="constructionNode.revision" :owner="owner" :session="session ?? 0" embedded @changed="emit('changed', [node.id, constructionNode.id])")
     section.map-cell-information
       button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
       template(v-if="selectedNode")

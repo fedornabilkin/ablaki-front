@@ -11,7 +11,7 @@ import * as api from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { formatCredits } from '@/entities/world/credits';
-const props = defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number }>();
+const props = defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
 const error = ref(''), working = ref(false);
@@ -72,10 +72,10 @@ async function send(path: string, body: Record<string, unknown> = {}, retry = fa
       if (result.work.ended_at === null && project.value?.status === 'building' && !working.value) resume(project.value.id);
       else if (result.work.ended_at !== null) halt();
     }
-    if (typeof result.return_node_id === 'number' && result.return_node_id > 0) {
+    if (!props.embedded && typeof result.return_node_id === 'number' && result.return_node_id > 0) {
       cancelOpen.value = false;
       await router.push(`/world/nodes/${result.return_node_id}#map`);
-    } else if (result.node) { const node = api.node(result.node); await router.push(`/world/nodes/${node.id}`); }
+    } else if (!props.embedded && result.node) { const node = api.node(result.node); await router.push(`/world/nodes/${node.id}`); }
     if (result.node || project.value?.status !== 'building' || wasWorking !== working.value) emit('changed');
     return result;
   } else {

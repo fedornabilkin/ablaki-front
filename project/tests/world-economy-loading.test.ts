@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, ref } from 'vue';
+import { h, reactive, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldMvpProgress from '../src/components/pages/world/WorldMvpProgress.vue';
 import WorldStorageExpansion from '../src/components/pages/world/WorldStorageExpansion.vue';
@@ -24,6 +24,17 @@ beforeEach(() => {
 afterEach(() => { app?.unmount(); app = undefined; });
 
 describe('economy panel load recovery', () => {
+  it('loads the remaining-step badge before opening the modal and updates it after a revision', async () => {
+    const goal = (code: string, claimed: boolean, completed: boolean[]) => ({code, claimed, steps: completed.map((completed, i) => ({code: String(i), completed}))});
+    mocks.mvp.mockResolvedValue({goals: [goal('day-1', false, [true, false]), goal('day-2', false, [false, false]), goal('old', true, [false])]});
+    const props = reactive({owner: 1, session: 1, revision: 1, writable: true});
+    const view = mountView(WorldMvpProgress, () => props); app = view.app; await flushView();
+    expect(findView(view.root, n => n.props['aria-label'] === 'Осталось заданий: 3')).toBeDefined();
+    expect(findView(view.root, n => n.props.role === 'dialog')).toBeUndefined();
+    mocks.mvp.mockResolvedValue({goals: [goal('day-1', true, [true, true]), goal('day-2', false, [true, false])]});
+    props.revision++; await flushView();
+    expect(findView(view.root, n => n.props['aria-label'] === 'Осталось заданий: 1')).toBeDefined();
+  });
   it('explains an unfunded completed goal, links to the forum list and enables available food', async () => {
     mocks.mvp.mockResolvedValue({ enabled: true, feedback: '/forum', goals: [{ code: 'day-1', claimed: false, funded: false, canClaim: false, credits: '50.0000', blockedReason: 'Организатору нужно обеспечить резерв', steps: [{ code: 'camp', completed: true, quantity: 1, required: 1 }] }], quotas: [],
       health: { hp: 100, maximum: 100, canEat: true, revision: 4, foods: [{ code: 'carrot', name: 'Морковь', restore: 4, quantity: 2, canEat: true, repeatLimit: 2, repeatRemaining: 1, repeatSeconds: 21600 }] } });
@@ -58,7 +69,7 @@ describe('economy panel load recovery', () => {
     mocks.mvp.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ enabled: true, feedback: '/forum/read/80', goals: [], quotas: [], health: { hp: 100, maximum: 100, foods: [] } });
     const view = mountView(WorldMvpProgress, () => ({ owner: 1, session: 1, revision: 1, writable: true })); app = view.app;
     await flushView();
-    expect(mocks.mvp).not.toHaveBeenCalled();
+    expect(mocks.mvp).toHaveBeenCalledOnce();
     findView(view.root, node => node.tag === 'button' && node.props['aria-label'] === 'Задания')!.props.onClick(); await flushView();
     expect(viewText(view.root)).toContain('Ошибка запроса');
     const retry = findView(view.root, node => node.tag === 'button' && viewText(node).includes('Повторить загрузку'))!;
