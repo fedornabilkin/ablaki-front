@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldHelpHint from './WorldHelpHint.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
@@ -50,11 +51,10 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-treasury
-  h3 Собрать доход
-  details.help-hint
-    summary(aria-label="Как работает сбор дохода") ?
-    p Собранные поступления переводятся из казны в бюджет объекта, доступный для расходов и развития.
-  p При сборе казна пополняет бюджет объекта. Отчисления резервируются в бюджете и оплачиваются отдельным действием.
+  .treasury-heading
+    h3 Собрать доход
+    world-help-hint(label="Как работает сбор дохода")
+      p Собранные поступления переводятся из казны в бюджет объекта, доступный для расходов и развития. Отчисления резервируются в бюджете и оплачиваются отдельным действием.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
   section(v-if="collection" aria-live="polite")
@@ -65,10 +65,10 @@ section.world-treasury
     p В казне останется: #[world-credits(:value="collection.treasury_after")]
     n-alert(closable v-if="collection.more_pending" type="info") Поступлений много. После подтверждения можно собрать следующую партию.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending) || !canCollect" @click="collect") Подтвердить сбор
-  h3 Отчисления родительскому объекту
-  details.help-hint
-    summary(aria-label="Как работают отчисления родительскому объекту") ?
-    p Выполненные выплаты переводят часть бюджета в казну родительского объекта по опубликованным правилам.
+  .treasury-heading
+    h3 Отчисления родительскому объекту
+    world-help-hint(label="Как работают отчисления родительскому объекту")
+      p Выполненные выплаты переводят часть бюджета в казну родительского объекта по опубликованным правилам.
   n-spin(v-if="loading" aria-label="Загрузка обязательств")
   template(v-else-if="state")
     p(v-if="!state.items.length") Обязательств пока нет.
@@ -89,6 +89,7 @@ section.world-treasury
 </template>
 <style scoped>
 .world-treasury { display: grid; gap: .75rem; }
+.treasury-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.treasury-heading h3 { margin: 0; }
 .obligations { list-style: none; padding: 0; display: grid; gap: .75rem; }
 .obligations li { border: 1px solid var(--border); border-radius: .4rem; padding: .75rem; }
 .overdue { color: var(--color-danger, #c0392b); }

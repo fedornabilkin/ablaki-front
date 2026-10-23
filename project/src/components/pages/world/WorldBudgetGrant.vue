@@ -39,10 +39,10 @@ async function confirm() {
 </script>
 <template lang="pug">
 section.world-budget-grant#budget-grant(aria-label="Перевод в бюджет дочернего объекта")
-  h3 Направить бюджет дочернему объекту
-  world-help-hint(label="Как работает перевод в дочерний бюджет")
-    p Кредиты переходят из свободной части бюджета этого объекта в бюджет выбранной дочерней ноды. Казна и личный баланс не затрагиваются; обратный перевод автоматически не выполняется.
-  p Перевод поступит прямо в бюджет принадлежащего вам объекта или огорода. Казна и личный баланс не меняются.
+  .grant-heading
+    h3 Направить бюджет дочернему объекту
+    world-help-hint(label="Как работает перевод в дочерний бюджет")
+      p Кредиты переходят из свободной части бюджета этого объекта в бюджет выбранной дочерней ноды. Казна и личный баланс не затрагиваются; обратный перевод автоматически не выполняется.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-alert(v-if="receipt" type="success" closable @close="receipt = null") Переведено #[world-credits(:value="receipt.amount")] в бюджет объекта №{{ receipt.destination }}.
   n-button(v-if="receipt" @click="receipt = null") Новый перевод
@@ -63,6 +63,7 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="command.busy.value" :disabled="Boolean(command.pending.value)" @click="confirm") Подтвердить перевод
 </template>
 <style scoped>
+.grant-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.grant-heading h3 { margin: 0; }
 .world-budget-grant { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; }
 .world-budget-grant label { display: grid; gap: .3rem; max-width: 34rem; }
 .grant-options { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldHelpHint from './WorldHelpHint.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInput } from 'naive-ui';
@@ -44,8 +45,10 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.finance-policy
-  h3 Правила казны и отчислений
-  p Новая ставка применяется к последующим сборам. Суммы и получатели существующих обязательств сохраняются. Защита и потери меняются только для новых поступлений.
+  .policy-heading
+    h3 Правила казны и отчислений
+    world-help-hint(label="Как применяются правила казны")
+      p Новая ставка применяется к последующим сборам. Суммы и получатели существующих обязательств сохраняются. Защита и потери меняются только для новых поступлений.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   label Отчисления от собранного дохода, % (для корня мира — 0)
     n-input(v-model:value="form.rate" inputmode="decimal" :maxlength="6" :disabled="!writable || busy || Boolean(pending)")
@@ -67,6 +70,7 @@ section.finance-policy
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="!writable || busy || Boolean(pending)" @click="publish") Опубликовать правило
 </template>
 <style scoped>
+.policy-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.policy-heading h3 { margin: 0; }
 .finance-policy { border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; }
 label { display: grid; gap: .3rem; margin-block: .75rem; max-width: 36rem; }
 summary { cursor: pointer; }

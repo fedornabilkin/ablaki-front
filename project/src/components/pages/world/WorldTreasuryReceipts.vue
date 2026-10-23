@@ -34,10 +34,11 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.world-receipts#treasury-receipts
-  h3 Поступления казны
-  world-help-hint(label="Как читать поступления казны")
-    p Здесь показаны несобранные поступления, сумма уже собранная в бюджет и потери по сроку хранения. Просмотр и фильтры ничего не списывают; сбор выполняется отдельно в блоке «Собрать доход».
-  p У каждого поступления свой срок защиты и сохранённая ставка потерь. Сбор переводит остаток в бюджет этого объекта.
+  .receipts-heading
+    h3 Поступления казны
+    world-help-hint(label="Как читать поступления казны")
+      p Здесь показаны несобранные поступления, сумма уже собранная в бюджет и потери по сроку хранения. Просмотр и фильтры ничего не списывают; сбор выполняется отдельно в блоке «Собрать доход».
+      p У каждого поступления свой срок защиты и сохранённая ставка потерь. Сбор переводит остаток в бюджет этого объекта.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить поступления
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению поступления" @reset="list.reset")
@@ -74,6 +75,7 @@ section.world-receipts#treasury-receipts
 </template>
 <style scoped>
 .world-receipts { display: grid; gap: .75rem; min-width: 0; }
+.receipts-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.receipts-heading h3 { margin: 0; }
 article { border: 1px solid var(--border); border-radius: .4rem; padding: .75rem; overflow-wrap: anywhere; }
 dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem .75rem; }
 dd { margin: 0; }

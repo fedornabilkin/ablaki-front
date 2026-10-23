@@ -33,11 +33,12 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.world-finance-report#finance-report
-  h3 Финансовый отчёт объекта
-  world-help-hint(label="Что показывает финансовый отчёт")
-    p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
-  p Личные кредиты → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
-  p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
+  .report-heading
+    h3 Финансовый отчёт объекта
+    world-help-hint(label="Что показывает финансовый отчёт")
+      p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
+      p Личные кредиты → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
+      p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить отчёт
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   template(v-if="state")
@@ -66,6 +67,7 @@ section.world-finance-report#finance-report
     page-pager(v-model:page="page" query-prefix="finance" :result="state")
 </template>
 <style scoped>
+.report-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.report-heading h3 { margin: 0; }
 .world-finance-report { display: grid; gap: .75rem; min-width: 0; }
 .flows { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; }
 dd { margin: 0; overflow-wrap: anywhere; }

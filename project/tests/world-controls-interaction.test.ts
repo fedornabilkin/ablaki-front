@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, reactive, ref } from 'vue';
+import { h, markRaw, reactive, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldHarvestPanel from '../src/components/pages/world/WorldHarvestPanel.vue';
 import WorldMap from '../src/components/pages/world/WorldMap.vue';
@@ -24,12 +24,13 @@ import WorldWorkProgress from '../src/components/pages/world/WorldWorkProgress.v
 import WorldStartPanel from '../src/components/pages/world/WorldStartPanel.vue';
 import WorldBuildPalette from '../src/components/pages/world/WorldBuildPalette.vue';
 import WorldBuildPanel from '../src/components/pages/world/WorldBuildPanel.vue';
+import WorldHousingPanel from '../src/components/pages/world/WorldHousingPanel.vue';
 import WorldBudgetGrant from '../src/components/pages/world/WorldBudgetGrant.vue';
 import BuildSettingsModal from '../src/components/pages/world/modals/BuildSettingsModal.vue';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ housing: vi.fn(), housingPreview: vi.fn(), budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const popover = { setup: (_: unknown, { slots }: any) => () => h('div', [slots.trigger?.(), slots.default?.()]) };
@@ -41,6 +42,7 @@ vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, ge
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: (_session: unknown, _owner: unknown, completed: unknown) => { mocks.runner.completed = completed; return mocks.runner; } }));
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: async () => null, object: mocks.object, gatherState: mocks.gather, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, startOverview: async () => ({node: await mocks.startState(), funding: null, starter_funding: null}), node: (value: unknown) => value, build: (value: unknown) => value }));
+vi.mock('../src/services/api/worldHousing', () => ({loadHousing: mocks.housing, previewHousing: mocks.housingPreview}));
 vi.mock('../src/services/api/worldEconomy', () => ({previewBudgetGrant: mocks.budgetGrant}));
 vi.mock('../src/services/api/worldMining', () => ({ loadMining: mocks.mining, parseMining: (value: unknown) => value }));
 vi.mock('../src/services/api/worldStorage', () => ({ loadStorageList: mocks.storageList, loadStorageContents: mocks.storage, previewTransfer: mocks.transfer }));
@@ -76,6 +78,7 @@ clientView(WorldStartPanel, 'components/pages/world/WorldStartPanel.vue');
 clientView(WorldBuildPalette, 'components/pages/world/WorldBuildPalette.vue');
 clientView(WorldBudgetGrant, 'components/pages/world/WorldBudgetGrant.vue');
 clientView(WorldBuildPanel, 'components/pages/world/WorldBuildPanel.vue');
+clientView(WorldHousingPanel, 'components/pages/world/WorldHousingPanel.vue');
 clientView(BuildSettingsModal, 'components/pages/world/modals/BuildSettingsModal.vue');
 const quote = { quote_id: 'a'.repeat(32), expected_revisions: {}, server_time: 1, expires_at: 99999999, terms: {} };
 const node: WorldNode = { id: 1, type: 'PLOT', label: 'Усадьба', name: 'Усадьба', code: '', root_id: 1, parent_id: null, status: 'active', visibility: 'private', revision: 1, portable: false, coordinates: { x: 0, y: 0 }, child_count: 0, descendant_count: 0, population_total: 0, owned_by_me: true, footprint: null, details: {}, permissions: { administer: false, manage: true, storage: true }, actions: [] };
@@ -83,9 +86,10 @@ let apps: { unmount: () => void }[] = [];
 function mount(component: any, props?: () => Record<string, unknown>) { const result = mountView(component, props); apps.push(result.app); return result; }
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.housing.mockResolvedValue({supported: false, active: false, writable: false, place: null, lodging: null, current: null, nightsEnabled: true});
   mocks.budget.mockResolvedValue({ available: '0.0000', reserved: '0.0000' });
   mocks.explorer.mockResolvedValue(null);
-  mocks.runner = { busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn().mockResolvedValue(undefined), retry: vi.fn() };
+  mocks.runner = markRaw({ busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn().mockResolvedValue(undefined), retry: vi.fn() });
   mocks.route = reactive({ path: '/world/workspace/1', params: { id: '1' }, query: {} });
 });
 afterEach(() => { apps.forEach(app => app.unmount()); apps = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -689,6 +693,23 @@ describe('topic 82 world controls', () => {
 });
 
 describe('settlement reserve follow-up controls', () => {
+  it('assigns the selected bed with one click, awaits its quote and displays the saved result', async () => {
+    const initial = {supported: true, active: true, writable: true, place: {id: 1, plot_id: 1, created_at: 1}, lodging: null, current: {kind: 'house', node_id: 8}, nightsEnabled: true};
+    mocks.housing.mockResolvedValue(initial); const preview = deferred<any>(); mocks.housingPreview.mockReturnValue(preview.promise); mocks.runner.submit.mockResolvedValue({changed_node_ids: [2]});
+    const view = mount(WorldHousingPanel, () => ({nodeId: 2, session: 1, writable: true, command: mocks.runner})); await flushView();
+    const button = () => findView(view.root, n => n.tag === 'button' && viewText(n) === 'Назначить ночлег')!;
+    button().props.onClick(); await flushView(); expect(button().props.disabled).toBe(true); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    mocks.housing.mockResolvedValue({...initial, lodging: {assigned_at: 100, protects_now: true}}); preview.resolve({action: 'lodge', quote, input: {replace_current: true}}); await flushView();
+    expect(mocks.housingPreview).toHaveBeenCalledWith(2, 'lodge', true); expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/2/housing-lodge', {replace_current: true}, quote);
+    expect(viewText(view.root)).toContain('Ночлег назначен.'); expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Подтвердить')).toBeUndefined();
+  });
+  it('discards a bed preview after changing the session', async () => {
+    mocks.housing.mockResolvedValue({supported: true, active: true, writable: true, place: {id: 1, plot_id: 1, created_at: 1}, lodging: null, current: null, nightsEnabled: true});
+    const preview = deferred<any>(); mocks.housingPreview.mockReturnValue(preview.promise);
+    const props = reactive({nodeId: 2, session: 1, writable: true, command: mocks.runner}); const view = mount(WorldHousingPanel, () => props); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Назначить ночлег')!.props.onClick(); await flushView(); props.session++; await flushView();
+    preview.resolve({action: 'lodge', quote, input: {replace_current: true}}); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
   it('runs a selected child build from the parent map and retains it when another cell is selected', async () => {
     const child = {...node, id: 2, parent_id: 1, type: 'BUILDING', status: 'constructing', coordinates: {x: 0, y: 0}};
     const project = {id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'building', required_seconds: 300, worked_seconds: 0, labor_budget: '0.0000'};
@@ -702,6 +723,20 @@ describe('settlement reserve follow-up controls', () => {
     props.workingNodeId = 2;
     findView(view.root, n => n.tag === 'svg' && n.props.role === 'group')!.props.onKeydown({key: 'ArrowRight', preventDefault() {}}); await flushView();
     expect(findView(view.root, n => n.props['aria-label'] === 'Строительство')).toBeDefined();
+    expect(findView(view.root, n => n.props.class === 'map-construction-session')!.style.display).toBe('none');
+    findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!.props.onClick({stopPropagation() {}}); await flushView();
+    expect(findView(view.root, n => n.props.class === 'map-construction-session')!.style.display).not.toBe('none');
+  });
+  it('opens an object on a double click while a single click only selects it', async () => {
+    const child = {...node, id: 2, parent_id: 1, type: 'BUILDING', status: 'active', coordinates: {x: 0, y: 0}};
+    const view = mount(WorldMap, () => ({node, map: {node_id: 1, items: [child], cells: [], can_expand: false}, writable: true, session: 1, command: mocks.runner})); await flushView();
+    const object = () => findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!;
+    const capture = vi.fn(), svg = findView(view.root, n => n.tag === 'svg' && n.props.role === 'group')!;
+    const screen = {setPointerCapture: capture, getScreenCTM: () => ({inverse: () => ({})}), createSVGPoint: () => ({x: 0, y: 0, matrixTransform() {return {x: this.x, y: this.y};}})};
+    svg.props.onPointerdown({button: 0, pointerId: 1, clientX: 1, clientY: 1, currentTarget: screen, target: {closest: () => ({})}}); svg.props.onPointerup();
+    expect(capture).not.toHaveBeenCalled();
+    object().props.onClick({stopPropagation() {}}); await flushView(); expect(mocks.push).not.toHaveBeenCalled();
+    object().props.onDblclick({stopPropagation() {}}); await flushView(); expect(mocks.push).toHaveBeenCalledWith('/world/nodes/2');
   });
   it('marks researchable cells and removes those marks when write access is absent', async () => {
     const props = reactive({node, map: {node_id: 1, bounds: {x: 0, y: 0, width: 2, height: 1}, items: [], cells: [], can_expand: true, exploration: {allowed: true, level: 1, elixir_quantity: 0}}, writable: true, command: mocks.runner});

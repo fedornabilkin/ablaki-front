@@ -14,7 +14,7 @@ import { formatCredits } from '@/entities/world/credits';
 const props = defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
-const error = ref(''), working = ref(false);
+const error = ref(''), working = ref(false), otherWork = ref<number | null>(null);
 const loading = ref(true);
 const settingsOpen = ref(false), elapsed = ref(0), displayedSeconds = ref(0);
 const cancelOpen = ref(false);
@@ -48,6 +48,7 @@ async function load() {
     const [active, projects] = await Promise.all([api.activeBuild(), api.builds({ node_id: props.node.id, status: 'building' })]);
     if (disposed || token !== epoch) return;
     if (projects.items[0]) accept(projects.items[0]); else project.value = null;
+    otherWork.value = active && active.id !== project.value?.id ? active.node_id : null;
     if (active && active.id === project.value?.id && !runner.pending.value) resume(active.id);
   } catch (cause) { if (!disposed && token === epoch) error.value = worldError(cause); }
   finally { if (!disposed && token === epoch) loading.value = false; }
@@ -125,20 +126,21 @@ section.build-information(aria-label="Строительство")
   n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
   n-spin(v-if="loading && !project" size="small" aria-label="Загрузка строительства")
   template(v-else-if="project && project.status === 'building'")
+    n-alert(v-if="otherWork" type="info") Сначала остановите работу на стройке объекта №{{ otherWork }}.
     .build-progress-row
       .build-progress
         p Прочность {{ strength }} / {{ maximum }}
         n-progress(type="line" :percentage="Math.min(100, 100 * seconds / Math.max(1, project.required_seconds))" :show-indicator="false")
       font-awesome-icon.build-sync(icon="spinner" :spin="busy || polling" :class="{ active: busy || polling }" :title="busy || polling ? 'Сверяем прогресс' : 'Прогресс синхронизирован'" aria-label="Синхронизация прогресса")
     .build-actions
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="!working" type="primary" :disabled="busy || uncertain" @click="start")
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="!working" type="primary" :disabled="busy || uncertain || !!otherWork" @click="start")
         template(#icon)
           font-awesome-icon(icon="hammer")
         | {{ repairing ? 'Ремонтировать' : 'Строить' }}
       n-button(:theme-overrides="worldActionButtonTheme" v-else :disabled="busy || uncertain" @click="stop")
         template(#icon)
           font-awesome-icon(icon="pause")
-        | Приостановить
+        | Остановить
       n-tooltip(v-if="owner === project.owner_user_id")
         template(#trigger)
           n-button(:theme-overrides="worldActionButtonTheme" circle aria-label="Название и бюджет" :disabled="busy || uncertain" @click="settingsOpen = true")

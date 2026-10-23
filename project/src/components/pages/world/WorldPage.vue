@@ -34,6 +34,8 @@ const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const mapSelection = ref<{ x: number; y: number }[]>([]);
 const nodeInfoOpened = ref(false);
+const placementTab = ref<'objects' | 'items'>('objects'), itemsVisited = ref(false);
+watch([nodeId, session], () => { placementTab.value = 'objects'; itemsVisited.value = false; });
 watch([nodeId, session], () => { nodeInfoOpened.value = false; });
 const purchasedRoom = ref<number | null>(null);
 const activeWork = ref<Build | null>(null), workError = ref('');
@@ -123,7 +125,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 .container.world-page
   n-alert(closable v-if="workError" type="warning" role="alert")
     p {{ workError || 'Вы работаете на стройке. Перед переходом на другую карту приостановите работу.' }}
-    n-button(:theme-overrides="worldActionButtonTheme" v-if="activeWork" :disabled="pauseRunner.busy.value" :loading="pauseRunner.busy.value" @click="pauseWork(!!pauseRunner.pending.value)") Приостановить строительство
+    n-button(:theme-overrides="worldActionButtonTheme" v-if="activeWork" :disabled="pauseRunner.busy.value" :loading="pauseRunner.busy.value" @click="pauseWork(!!pauseRunner.pending.value)") Остановить строительство
     p(v-if="pauseRunner.error.value") {{ pauseRunner.error.value }}
   n-alert(closable v-if="commandError" type="error" role="alert") {{ commandError }}
   n-alert(closable v-if="pendingCommand && !commandBusy" type="info")
@@ -196,8 +198,14 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
             world-node-extensions(slot="map" v-bind="extensionProps" @changed="changed([world.node.id])")
           template(#placement)
-            world-build-palette(v-if="world.node.owned_by_me" :node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
-            world-placement-palette(v-if="world.node.owned_by_me" :writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
+            .world-placement-tabs(v-if="world.node.owned_by_me")
+              .placement-tab-buttons(role="tablist" aria-label="Размещение на карте")
+                button#placement-objects-tab(type="button" role="tab" :aria-selected="placementTab === 'objects'" aria-controls="placement-objects" @click="placementTab = 'objects'") Объекты
+                button#placement-items-tab(type="button" role="tab" :aria-selected="placementTab === 'items'" aria-controls="placement-items" @click="placementTab = 'items'; itemsVisited = true") Предметы
+              #placement-objects(v-show="placementTab === 'objects'" role="tabpanel" aria-labelledby="placement-objects-tab")
+                world-build-palette(:node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
+              #placement-items(v-if="itemsVisited" v-show="placementTab === 'items'" role="tabpanel" aria-labelledby="placement-items-tab")
+                world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
     world-node-extensions(v-show="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
@@ -246,6 +254,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 </template>
 
 <style scoped>
+.world-placement-tabs { margin-top: 1rem; }.placement-tab-buttons { display: flex; gap: .4rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }.placement-tab-buttons button { border: 1px solid var(--border); border-radius: .5rem; padding: .55rem 1rem; background: var(--bg-surface); color: var(--text-muted); cursor: pointer; }.placement-tab-buttons button[aria-selected="true"] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }.placement-tab-buttons button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .world-description { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .world-parent { display: inline-flex; margin: .35rem 0 .6rem; padding: .35rem .7rem; width: fit-content; border: 1px solid var(--border); border-radius: .45rem; font-size: .85rem; }
 .world-map-tools { display: flex; align-items: center; gap: .75rem; }

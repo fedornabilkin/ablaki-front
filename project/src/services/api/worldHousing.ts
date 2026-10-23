@@ -25,12 +25,15 @@ export async function loadHousing(node: number) {
   if (current?.kind === 'house' && current.node_id === node && !lodging) invalid();
   return { supported, active, writable, place, lodging, current, nightsEnabled: bool(r.night_resolution_enabled), serverTime };
 }
-export async function previewHousing(node: number, action: HousingAction) {
+export async function previewHousing(node: number, action: HousingAction, replaceCurrent = false) {
   if (action !== 'lodge' && action !== 'leave') invalid();
-  const quote = parseWorldQuote((await apiClient.post(url(node, `housing-${action}-preview`), {})).data), t = quote.terms;
+  const input = action === 'lodge' && replaceCurrent ? {replace_current: true} : {};
+  const quote = parseWorldQuote((await apiClient.post(url(node, `housing-${action}-preview`), input)).data), t = quote.terms;
   if (id(t.node_id) !== node || t.price !== '0.0000') invalid();
+  if (replaceCurrent && action === 'lodge' && t.replace_current !== true) invalid();
   id(t.place_id); id(t.plot_id); id(t.actor_id);
   if (action === 'lodge') { if (t.lodging_id !== null) invalid(); }
   else id(t.lodging_id);
-  return { action, quote };
+  if ('previous_assignment' in t) parseLodgingAssignment(t.previous_assignment);
+  return { action, quote, input };
 }

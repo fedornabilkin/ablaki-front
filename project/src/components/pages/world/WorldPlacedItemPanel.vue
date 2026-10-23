@@ -8,6 +8,7 @@ import { loadStorageContents, loadStorageList, previewTransfer } from '@/service
 import { storageTransfer } from '@/entities/world/storageInteraction';
 import { worldError } from '@/services/api/world';
 import WorldHousingPanel from './WorldHousingPanel.vue';
+import WorldHelpHint from './WorldHelpHint.vue';
 const props = defineProps<{ item: PlacedWorldItem; nodeId: number; session: number; writable: boolean; command: WorldCommandRunner }>();
 const emit = defineEmits<{ changed: [ids: number[]] }>();
 const loading = ref(false), error = ref('');
@@ -39,10 +40,12 @@ async function take() {
 </script>
 <template lang="pug">
 section.placed-item
-  h3.world-selected-heading
-    font-awesome-icon(:icon="item.icon || 'cube'" aria-hidden="true")
-    span {{ item.name || 'Предмет' }}
-  p(v-if="item.description") {{ item.description }}
+  .placed-item-heading
+    h3.world-selected-heading
+      font-awesome-icon(:icon="item.icon || 'cube'" aria-hidden="true")
+      span {{ item.name || 'Предмет' }}
+    world-help-hint(v-if="item.description" label="Описание предмета")
+      p {{ item.description }}
   dl
     dt Количество
     dd {{ item.quantity ?? 1 }}
@@ -60,6 +63,7 @@ section.placed-item
 </template>
 <style scoped>
 .placed-item { display: grid; gap: .75rem; overflow-wrap: anywhere; }
+.placed-item-heading { display: flex; justify-content: space-between; align-items: start; gap: .5rem; }
 h3, p, dl { margin: 0; }.world-selected-heading { display: flex; gap: .5rem; align-items: center; }
 dl { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }dt { color: var(--text-muted); }dd { margin: 0; text-align: right; }
 </style>

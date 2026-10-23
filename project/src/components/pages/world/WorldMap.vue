@@ -21,10 +21,12 @@ import WorldObjectPreview from './WorldObjectPreview.vue';
 import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacedItemPanel from './WorldPlacedItemPanel.vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
 
 const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null }>();
 const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: number[]] }>();
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
+const router = useRouter();
 const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
 const selected = ref<MapPoint[]>(props.selection ?? []), anchor = ref<MapPoint | null>(null);
 const topUp = ref(true), calculating = ref(false), error = ref(''), professionNotice = ref(''), droppedCrop = ref<{ id: number; sequence: number } | null>(null);
@@ -58,7 +60,7 @@ const bounds = computed(() => props.map?.bounds ?? props.node.map ?? { x: -2, y:
 const width = computed(() => bounds.value.width * size), height = computed(() => bounds.value.height * size);
 const nodes = computed(() => (props.map?.items ?? []).filter(node => node.status !== 'archived'));
 const selectedNode = computed(() => selected.value.length === 1 ? nodes.value.find(n => occupiesCell(n, selected.value[0])) : undefined);
-const constructionNode = computed(() => nodes.value.find(n => n.id === props.workingNodeId && n.status === 'constructing') ?? (selectedNode.value?.owned_by_me && selectedNode.value.status === 'constructing' ? selectedNode.value : undefined));
+const constructionNodes = computed(() => nodes.value.filter(n => n.status === 'constructing' && (n.id === props.workingNodeId || (n.id === selectedNode.value?.id && n.owned_by_me))));
 const known = computed(() => new Map((props.map?.cells ?? []).map(c => [key(c), c.state])));
 const state = (p: MapPoint) => known.value.get(key(p)) ?? 'closed';
 const point = computed(() => selected.value.length === 1 ? selected.value[0] : null);
@@ -127,7 +129,8 @@ function startArea(event: PointerEvent) {
   if (event.button !== 0) return;
   const cell = pointerCell(event); if (!cell) return;
   drag.value = { start: cell, end: cell, x: event.clientX, y: event.clientY, moved: false, additive: event.ctrlKey || event.metaKey || event.shiftKey };
-  (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+  // Keep native click/double-click targets on objects; capture only a map-area drag.
+  if (!(event.target as Element | null)?.closest?.('.map-object, .map-footprint')) (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
 }
 function moveArea(event: PointerEvent) {
   if (!drag.value) return;
@@ -165,6 +168,7 @@ function moveSelection(event: KeyboardEvent) {
   choose(next, event);
 }
 function selectNode(node: WorldNode, event?: MouseEvent) { if (suppressClick) { suppressClick = false; return; } choose(node.coordinates, event); }
+async function openNode(node: WorldNode) { if (lockedBed(node)) return; try { await router.push(`/world/nodes/${node.id}`); } catch (cause) { error.value = worldError(cause); } }
 function clearSelection() { selected.value = []; anchor.value = null; droppedCrop.value = null; }
 function dropSeed(event: DragEvent, node: WorldNode) {
   if (node.type !== 'BED' || !node.details.unlocked || !node.permissions.storage) return;
@@ -231,7 +235,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-map-layout
   .world-map-main
     .world-map-window
-      svg.world-map-board(:viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="xMidYMid meet" role="group" tabindex="0" :aria-label="`Карта ${node.label}. Выделите ячейки рамкой. Стрелки — выбор ячейки, Shift или Ctrl — несколько ячеек, Escape — снять выделение.`" @pointerdown="startArea" @pointermove="moveArea" @pointerup="finishArea" @pointercancel="drag = null" @lostpointercapture="drag = null" @click="clickMap" @keydown="moveSelection")
+      svg.world-map-board(:viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="xMidYMid meet" role="group" tabindex="0" :aria-label="`Карта ${node.label}. Выделите ячейки рамкой. Стрелки — выбор ячейки, Shift или Ctrl — несколько ячеек, Escape — снять выделение.`" @pointerdown="startArea" @pointermove="moveArea" @pointerup="finishArea" @pointerleave="drag = null" @pointercancel="drag = null" @lostpointercapture="drag = null" @click="clickMap" @keydown="moveSelection")
         defs
           pattern(:id="`world-fog-${node.id}`" width="10" height="10" patternUnits="userSpaceOnUse")
             rect(width="10" height="10" class="map-closed")
@@ -253,8 +257,8 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           text(v-if="equipment(cell)" :x="size / 2" y="57" text-anchor="middle" class="map-object-label map-equipment-label") {{ (equipment(cell)?.name || 'Предмет').slice(0, 12) }}
           title Ячейка {{ cell.x }}, {{ cell.y }}
         rect(v-for="cell in selected" :key="`selected-${key(cell)}`" :x="position(cell).x + 2" :y="position(cell).y + 2" :width="size - 4" :height="size - 4" class="map-selected")
-        polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)")
-        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}. ${lockedBed(child) ? 'Закрыта' : statuses[child.status] || child.status}`" @click.stop="selectNode(child, $event)" @keydown.enter.stop="selectNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
+        polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)")
+        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}. ${lockedBed(child) ? 'Закрыта' : statuses[child.status] || child.status}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
           rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
           font-awesome-icon(v-if="child.details.is_lodging" icon="bed" x="65" y="7" width="14" height="14" aria-label="Ваш ночлег")
           font-awesome-icon(:icon="lockedBed(child) ? 'lock' : icons[child.type]" x="32" y="13" width="24" height="24" aria-hidden="true")
@@ -268,7 +272,9 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       slot(name="placement")
   aside.world-map-inspector(aria-live="polite")
     slot(name="information")
-    world-build-panel(v-if="constructionNode && writable" :key="constructionNode.id" :node-id="constructionNode.id" :revision="constructionNode.revision" :owner="owner" :session="session ?? 0" embedded @changed="emit('changed', [node.id, constructionNode.id])")
+    template(v-if="writable")
+      .map-construction-session(v-for="child in constructionNodes" :key="child.id" v-show="selectedNode?.id === child.id")
+        world-build-panel(:node-id="child.id" :revision="child.revision" :owner="owner" :session="session ?? 0" embedded @changed="emit('changed', [node.id, child.id])")
     section.map-cell-information
       button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
       template(v-if="selectedNode")
