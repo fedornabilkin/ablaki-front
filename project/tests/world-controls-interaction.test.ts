@@ -95,6 +95,13 @@ beforeEach(() => {
 afterEach(() => { apps.forEach(app => app.unmount()); apps = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 describe('credit input precision', () => {
+  it('keeps an exact fractional wage after editing and blur', async () => {
+    const value = ref('0.0001'), change = (next: string) => { value.value = next; };
+    const view = mount(WorldCreditInput, () => ({value: value.value, exact: true, 'onUpdate:value': change})); await flushView();
+    const input = () => findView(view.root, n => n.tag === 'input')!;
+    expect(input().props.value).toBe('0.0001'); input().props.onFocus(); input().props['onUpdate:value']('1.25'); input().props.onBlur(); await flushView();
+    expect(value.value).toBe('1.25'); expect(input().props.value).toBe('1.25');
+  });
   it('formats values and placeholders while leaving an untouched exact amount unchanged', async () => {
     const value = ref('12.3499'), change = vi.fn((next: string) => { value.value = next; });
     const view = mount(WorldCreditInput, () => ({ value: value.value, placeholder: '10.0000', 'onUpdate:value': change }));
@@ -683,11 +690,15 @@ describe('topic 82 world controls', () => {
       mocks.mining.mockResolvedValue(snapshot); mocks.storageList.mockResolvedValue([]);
       const view = mount(WorldMiningPanel, () => ({nodeId: 1, owner: 1, session: 1, writable: true})); await flushView();
       const input = findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!;
+      const save = () => findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить условия')!;
+      expect(save().props.disabled).toBe(false);
+      for (const value of ['0', '-1', 'abc', '1.00001', '']) { input.props['onUpdate:value'](value); await flushView(); expect(save().props.disabled).toBe(true); save().props.onClick(); expect(mocks.runner.submit).not.toHaveBeenCalled(); }
+      for (const value of ['1', '1.25', '1,25']) { input.props['onUpdate:value'](value); await flushView(); expect(save().props.disabled).toBe(false); }
       input.props['onUpdate:value']('1.7'); mocks.mining.mockResolvedValue({...snapshot, employment: {...snapshot.employment, storage_id: 8}}); await flushView(); await vi.advanceTimersByTimeAsync(10000); await flushView();
       expect(findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!.props.value).toBe('1.7');
       mocks.runner.submit.mockResolvedValue({employment: {}});
       findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить условия')!.props.onClick(); await flushView();
-      expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7'});
+      expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7000'});
       expect(findView(view.root, n => n.props['aria-label'] === 'Склад работодателя')).toBeUndefined();
     } finally {vi.useRealTimers();}
   });

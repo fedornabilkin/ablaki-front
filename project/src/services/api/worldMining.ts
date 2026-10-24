@@ -7,6 +7,7 @@ export interface MiningState { node_id: number; ready: boolean; working: boolean
   work_id?: number | null; required_seconds?: number; live_work?: { accounted_at: number; last_seen_at: number }[];
   employment?: MineEmployment; unavailable_reason?: string | null;
   output_storages?: { id: number; name: string; kind: 'backpack' | 'stockpile'; capacity: number }[];
+  output_destination?: 'backpack' | 'mini_storage' | null;
   actions?: SourceAction[]; worked_seconds?: number; action_code?: string | null; output_storage_id?: number | null; blocked_message?: string | null; quota?: { maximum: number; remaining: number; restores_at: number } }
 export function parseMining(value: unknown): MiningState {
   const row = record(value);
@@ -43,6 +44,7 @@ export function parseMining(value: unknown): MiningState {
     if (new Set(outputStorages.map(s => s.id)).size !== outputStorages.length) throw new Error('invalid-world-response');
   }
   const quota = row.quota === undefined || row.quota === null ? undefined : record(row.quota);
+  if (row.output_destination !== undefined && row.output_destination !== null && row.output_destination !== 'backpack' && row.output_destination !== 'mini_storage') throw new Error('invalid-world-response');
   return { ...(employment ? {employment} : {}), node_id: integer('node_id'), ready: row.ready, working: row.working, workers: integer('workers'), produced_quantity: integer('produced_quantity'), pending_quantity: integer('pending_quantity'), seconds_per_unit: integer('seconds_per_unit'), server_time: integer('server_time'),
     ...(row.unavailable_reason === undefined ? {} : { unavailable_reason: row.unavailable_reason === null ? null : string(row.unavailable_reason) }),
     ...(row.worked_seconds === undefined ? {} : { worked_seconds: uint(row.worked_seconds) }),
@@ -52,6 +54,7 @@ export function parseMining(value: unknown): MiningState {
     ...(actions ? { actions, worked_seconds: uint(row.worked_seconds), action_code: row.action_code === null ? null : string(row.action_code), blocked_message: row.blocked_message === null ? null : string(row.blocked_message) } : {}),
     ...(row.output_storage_id === undefined ? {} : { output_storage_id: row.output_storage_id === null ? null : uint(row.output_storage_id) }),
     ...(outputStorages ? { output_storages: outputStorages } : {}),
+    ...(row.output_destination === undefined ? {} : { output_destination: row.output_destination as MiningState['output_destination'] }),
     ...(quota ? { quota: { maximum: uint(quota.maximum), remaining: uint(quota.remaining), restores_at: uint(quota.restores_at) } } : {}) };
 }
 export async function loadMining(id: number) { return parseMining((await apiClient.get(config.makeApiUrl(`v1/world/objects/${id}/mining`))).data); }

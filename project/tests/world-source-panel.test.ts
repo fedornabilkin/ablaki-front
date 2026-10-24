@@ -82,15 +82,18 @@ describe('source batch destination', () => {
   });
   it('submits the selected output storage and refreshes inventory when a batch arrives', async () => {
     const changed = vi.fn();
+    mocks.load.mockResolvedValue({...state(), output_storages: [...state().output_storages, {id: 10, name: 'Второй мини-склад', kind: 'stockpile', capacity: 5}]});
     const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true, onChanged: changed })); app = view.app;
     await flushView();
     expect(viewText(view.root)).toContain('Молоток');
     expect(findView(view.root, node => node.tag === 'button' && viewText(node) === 'Рюкзак')!.props['aria-pressed']).toBe(true);
+    const group = findView(view.root, node => node.props['aria-label'] === 'Куда поступит добыча')!;
+    expect(group.children.filter(node => node.tag === 'button' && viewText(node) === 'Мини-склад')).toHaveLength(1);
     findView(view.root, node => node.tag === 'button' && viewText(node) === 'Мини-склад')!.props.onClick();
     mocks.runner.submit.mockResolvedValue({ ...state(), produced_quantity: 1 });
     findView(view.root, node => node.tag === 'button' && viewText(node).includes('Работать над партией'))!.props.onClick();
     await flushView();
-    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', { action_code: 'gather-log', output_storage_id: 9 });
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', { action_code: 'gather-log', output_destination: 'mini_storage' });
     expect(changed).toHaveBeenCalledOnce();
   });
   it('returns an idle owner to backpack when the selected local mini-storage becomes unavailable', async () => {
