@@ -4,9 +4,9 @@ import { integer, record, parseWorldQuote } from './world';
 import { creditAmount } from '@/entities/world/credits';
 export function parseEconomyStorage(value: unknown) {
   const row = record(value);
-  if (!Array.isArray(row.options) || row.options.length > 20 || typeof row.writable !== 'boolean') throw new Error('invalid-world-response');
+  if (!Array.isArray(row.options) || row.options.length > 50 || typeof row.writable !== 'boolean' || (row.kind !== undefined && !['backpack', 'chest', 'stockpile', 'placement', 'harvest'].includes(String(row.kind)))) throw new Error('invalid-world-response');
   const capacity = integer(row.capacity, 1, 10000);
-  return { id: integer(row.storage_id, 1), capacity, writable: row.writable, options: row.options.map(value => {
+  return { id: integer(row.storage_id, 1), capacity, kind: row.kind as string | undefined, writable: row.writable, options: row.options.map(value => {
     const pack = record(value);
     if (typeof pack.code !== 'string' || !/^[a-z][a-z0-9-]{0,79}$/.test(pack.code)) throw new Error('invalid-world-response');
     const slots = integer(pack.slots, 1, 100), after = integer(pack.capacity_after, 1, 10000);

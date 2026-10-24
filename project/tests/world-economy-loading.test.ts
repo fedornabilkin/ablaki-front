@@ -4,15 +4,15 @@ import { clientView, findView, flushView, mountView, viewText } from './helpers/
 import WorldMvpProgress from '../src/components/pages/world/WorldMvpProgress.vue';
 import WorldStorageExpansion from '../src/components/pages/world/WorldStorageExpansion.vue';
 
-const mocks = vi.hoisted(() => ({ mvp: vi.fn(), storage: vi.fn(), runner: null as any }));
+const mocks = vi.hoisted(() => ({ mvp: vi.fn(), storage: vi.fn(), storagePreview: vi.fn(), runner: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const modal = { props: { show: Boolean }, setup: (props: any, { slots }: any) => () => props.show ? h('section', { role: 'dialog' }, slots.default?.()) : null };
-  return { NModal: modal, NSpin: block('span'), NTabs: block('div'), NTabPane: block('div'), NAlert: block('aside'), NButton: block('button'), NProgress: block('progress') };
+  return { NModal: modal, NSpin: block('span'), NTabs: block('div'), NTabPane: block('div'), NAlert: block('aside'), NButton: block('button'), NProgress: block('progress'), NInputNumber: block('input'), NCheckbox: block('input') };
 });
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/worldMvp', () => ({ loadMvp: mocks.mvp, milestoneLabels: {} }));
-vi.mock('../src/services/api/worldEconomyStorage', () => ({ loadEconomyStorage: mocks.storage, previewEconomyStorage: vi.fn() }));
+vi.mock('../src/services/api/worldEconomyStorage', () => ({ loadEconomyStorage: mocks.storage, previewEconomyStorage: mocks.storagePreview }));
 vi.mock('../src/services/api/world', () => ({ isClosedTestError: () => false, worldError: () => 'Ошибка запроса' }));
 clientView(WorldMvpProgress, 'components/pages/world/WorldMvpProgress.vue');
 clientView(WorldStorageExpansion, 'components/pages/world/WorldStorageExpansion.vue');
@@ -80,6 +80,19 @@ describe('economy panel load recovery', () => {
     expect(mocks.runner.submit).not.toHaveBeenCalled();
   });
 
+  it('selects a progressive backpack total locally and confirms it through the shared storage endpoint', async () => {
+    mocks.storage.mockResolvedValue({id: 5, kind: 'backpack', capacity: 20, writable: true, options: Array.from({length: 30}, (_, i) => ({code: `backpack-${i + 1}`, slots: i + 1, after: i + 21, price: `${5 * (i + 1) * (i + 2)}.0000`}))});
+    const quote = {quote_id: 'a'.repeat(32), expected_revisions: {}, terms: {capacity_after: 30, slots: 10, price_cr: '550.0000'}, server_time: 1, expires_at: 100};
+    mocks.storagePreview.mockResolvedValue(quote); mocks.runner.submit.mockResolvedValue({capacity_after: 30});
+    const view = mountView(WorldStorageExpansion, () => ({storage: 5, session: 1, revision: 1, writable: true, command: mocks.runner})); app = view.app; await flushView();
+    const input = findView(view.root, n => n.tag === 'input' && n.props['aria-label'] === 'Количество покупаемых слотов')!;
+    input.props['onUpdate:value'](10); await flushView(); expect(mocks.storagePreview).not.toHaveBeenCalled();
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Рассчитать покупку'))!.props.onClick(); await flushView();
+    expect(mocks.storagePreview).toHaveBeenCalledWith(5, 'backpack-10');
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Оплатить расширение'))!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('/economy/storage/5/expand', {code: 'backpack-10'}, quote);
+    expect(viewText(view.root)).toContain('Добавлено постоянных мест: 10.');
+  });
   it('shows a failed storage request, then offers expansion only after retry succeeds', async () => {
     mocks.storage.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ id: 5, capacity: 20, writable: true, options: [{ code: 'small', slots: 5, after: 25, price: '10.0000' }] });
     const view = mountView(WorldStorageExpansion, () => ({ storage: 5, session: 1, revision: 1, writable: true, command: mocks.runner })); app = view.app;

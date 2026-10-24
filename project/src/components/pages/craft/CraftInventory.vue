@@ -7,7 +7,9 @@ import { NButton, NInputNumber, NModal } from 'naive-ui';
 import type { CraftState, CraftSlot, CraftInput } from '@/services/api/classicCraft';
 import { insideTrash, INVENTORY_CELLS, slotPurchaseCost } from '@/entities/craft/inventory';
 import CraftSlotGrid from './CraftSlotGrid.vue';
-const props = defineProps<{state: CraftState; blocked: boolean}>();
+import WorldStorageExpansion from '../world/WorldStorageExpansion.vue';
+import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
+const props = defineProps<{state: CraftState; blocked: boolean; slotCommand?: WorldCommandRunner; session?: number; slotRevision?: number; slotWritable?: boolean}>();
 const emit = defineEmits<{command: [action: 'use' | 'discard' | 'merge', id: number, quantity: number, slotId: number, targetSlotId?: number]; submit: [input: CraftInput]}>();
 const items = computed(() => new Map(props.state.items.map(i => [i.id, i])));
 const active = computed(() => props.state.active_slots ?? 20);
@@ -162,7 +164,9 @@ watch(() => props.state, cancel);
     template(v-if="discarded")
       p {{ items.get(discarded.item_id)?.name }}. Удалённые предметы нельзя восстановить.
       n-input-number(:min="1" :max="Math.min(10000, discarded.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, discarded.quantity), step: 1}" v-model:value="discardQuantity" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
-  n-modal(:theme-overrides="worldModalTheme" v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy, themeOverrides: worldActionButtonTheme}" :negative-button-props="{themeOverrides: worldActionButtonTheme}" @positive-click="buy")
+  n-modal(v-if="state.backpack_storage_id && slotCommand" :theme-overrides="worldModalTheme" v-model:show="showBuy" preset="card" title="Открыть постоянные слоты" :style="{width: 'min(32rem, 94vw)'}")
+    world-storage-expansion(:storage="state.backpack_storage_id" :session="session ?? 0" :revision="slotRevision ?? 0" :writable="slotWritable !== false" :command="slotCommand")
+  n-modal(v-else :theme-overrides="worldModalTheme" v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy, themeOverrides: worldActionButtonTheme}" :negative-button-props="{themeOverrides: worldActionButtonTheme}" @positive-click="buy")
     p Следующий слот: #[world-credits(:value="quotedPrice")]
     p(v-if="quotedLinear && quotedBase") Каждый следующий слот дороже на #[world-credits(:value="quotedBase")] .
     n-input-number(:min="1" :max="50 - permanent" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: 50 - permanent, step: 1}" v-model:value="buyQuantity" :precision="0" :disabled="blocked" aria-label="Количество покупаемых слотов")

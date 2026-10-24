@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { worldActionButtonTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSelect, NCheckbox } from 'naive-ui';
 import { loadMining, parseMining, type MiningState } from '@/services/api/worldMining';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { worldError } from '@/services/api/world';
 import { formatDuration } from '@/entities/world/duration';
-import { loadStorageList, type StorageHeader } from '@/services/api/worldStorage';
 import WorldCreditInput from './WorldCreditInput.vue';
 import WorldCredits from './WorldCredits.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
@@ -15,10 +14,10 @@ import WorldQuotaNotice from './WorldQuotaNotice.vue';
 const props = defineProps<{ nodeId: number; owner: number; session: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<MiningState | null>(null), error = ref('');
-const storages = ref<StorageHeader[]>([]), selectedStorage = ref<number | null>(null);
-const storageOptions = computed(() => storages.value.map(storage => ({ value: storage.id, label: `${storage.name} · ${storage.capacity} мест` })));
-const hireEnabled = ref(false), hireReward = ref('1'), hireStorage = ref<number | null>(null), saved = ref('');
-const hireStorageOptions = computed(() => state.value?.employment?.storages.map(s => ({value: s.id, label: `${s.name} · ${s.capacity} мест`})) ?? []);
+const selectedStorage = ref<number | null>(null);
+const storageOptions = computed(() => state.value?.output_storages ?? []);
+const effectiveStorage = computed(() => state.value?.output_storage_id ?? selectedStorage.value ?? storageOptions.value.find(s => s.kind === 'backpack')?.id ?? null);
+const hireEnabled = ref(false), hireReward = ref('1'), saved = ref('');
 const selectedAction = ref<string | null>(null);
 const selected = computed(() => state.value?.actions?.find(action => action.code === (state.value?.action_code ?? selectedAction.value)) ?? state.value?.actions?.[0]);
 const options = computed(() => state.value?.actions?.map(action => ({ value: action.code, label: action.output.map(item => `${item.name} × ${item.quantity}`).join(', ') })) ?? []);
@@ -43,19 +42,14 @@ async function load() {
     if (!disposed && current === generation && read === readRevision) {
       const previous = state.value?.employment;
       state.value = result; error.value = '';
-      if (result.employment?.owner && (!previous || previous.enabled !== result.employment.enabled || previous.reward_cr !== result.employment.reward_cr || previous.storage_id !== result.employment.storage_id)) {
-        hireEnabled.value = result.employment.enabled; hireReward.value = result.employment.reward_cr; hireStorage.value = result.employment.storage_id;
+      if (selectedStorage.value !== null && !result.action_code && !result.output_storages?.some(storage => storage.id === selectedStorage.value)) selectedStorage.value = null;
+      if (result.employment?.owner && (!previous || previous.enabled !== result.employment.enabled || previous.reward_cr !== result.employment.reward_cr)) {
+        hireEnabled.value = result.employment.enabled; hireReward.value = result.employment.reward_cr;
       }
-      if (result.employment?.owner !== false && !storages.value.length) void loadDestinations();
     }
   }
   catch (cause) { if (!disposed && current === generation && read === readRevision) error.value = worldError(cause); }
   finally { if (current === generation && read === readRevision) reading = false; }
-}
-async function loadDestinations() {
-  const current = generation;
-  try { const result = await loadStorageList(null); if (!disposed && current === generation) storages.value = result.filter(storage => ['backpack', 'stockpile', 'chest'].includes(storage.kind)); }
-  catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
 }
 async function act(action: 'start' | 'heartbeat' | 'stop', retry = false) {
   if (runner.busy.value || (retry && pendingSettings.value) || (!retry && runner.pending.value)) return;
@@ -70,10 +64,10 @@ async function act(action: 'start' | 'heartbeat' | 'stop', retry = false) {
 async function saveEmployment(retry = false) {
   if (runner.busy.value || (retry && !pendingSettings.value) || (!retry && runner.pending.value)) return;
   const current = generation; saved.value = '';
-  const result = retry ? await runner.retry() : await runner.submit(`objects/${props.nodeId}/mining/settings`, {enabled: hireEnabled.value, reward_cr: hireReward.value, storage_id: hireStorage.value});
+  const result = retry ? await runner.retry() : await runner.submit(`objects/${props.nodeId}/mining/settings`, {enabled: hireEnabled.value, reward_cr: hireReward.value});
   if (result && !disposed && current === generation) { saved.value = 'Условия оплачиваемой работы сохранены.'; await load(); emit('changed'); }
 }
-watch(() => [props.nodeId, props.session], () => { generation++; reading = false; state.value = null; storages.value = []; selectedStorage.value = null; selectedAction.value = null; error.value = ''; saved.value = ''; void load(); }, { immediate: true });
+watch(() => [props.nodeId, props.session], () => { generation++; reading = false; state.value = null; selectedStorage.value = null; selectedAction.value = null; error.value = ''; saved.value = ''; void load(); }, { immediate: true });
 const timer = setInterval(() => {
   if (runner.busy.value || runner.pending.value || reading) return;
   if (state.value?.working) void act('heartbeat'); else void load();
@@ -92,7 +86,7 @@ section.mining-panel(aria-label="Получение ресурсов")
       p(v-if="selected?.cooldown_seconds") Восстановление источника после получения: {{ formatDuration(selected.cooldown_seconds) }}.
       p(v-if="selected?.tool_names?.length") Нужен исправный инструмент: {{ selected.tool_names.join(', ') }}.
       p(v-if="selected?.experience") Опыт за партию: +{{ selected.experience }}.
-      p Результат поступает в выбранное хранилище, по умолчанию — в рюкзак. Для прежних шахт используется склад шахты или рюкзак владельца.
+      p Добыча владельца по умолчанию поступает в рюкзак. Можно выбрать действующий мини-склад внутри этого объекта. Добыча наёмных работников всегда поступает в мини-склад объекта.
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-alert(v-if="saved" type="success" closable @close="saved = ''") {{ saved }}
   section.mine-employment(v-if="state?.employment?.owner")
@@ -103,8 +97,8 @@ section.mining-panel(aria-label="Получение ресурсов")
     n-checkbox(v-model:checked="hireEnabled" :disabled="runner.busy.value || !!runner.pending.value") Разрешить оплачиваемую добычу
     label Оплата партии
       world-credit-input(v-model:value="hireReward" :disabled="runner.busy.value || !!runner.pending.value")
-    n-select(v-model:value="hireStorage" :options="hireStorageOptions" clearable placeholder="Первый собственный склад" aria-label="Склад работодателя" :disabled="runner.busy.value || !!runner.pending.value")
-    p(v-if="!hireStorageOptions.length") Постройте мини-склад в шахте, чтобы принимать добытые ресурсы.
+    p(v-if="!state.employment.storages.length") Постройте мини-склад в шахте, чтобы принимать добытые ресурсы.
+    p(v-else) Добыча работников поступает в мини-склад шахты автоматически.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="runner.busy.value" :disabled="!writable || (!!runner.pending.value && !pendingSettings) || (!runner.pending.value && (!/^\d+(\.\d{1,4})?$/.test(hireReward) || Number(hireReward) <= 0))" @click="saveEmployment(pendingSettings)") {{ pendingSettings ? 'Повторить сохранение' : 'Сохранить условия' }}
   n-alert(closable v-if="state?.employment && !state.employment.owner" type="info")
     p Оплата партии: #[world-credits(:value="state.employment.accepted_reward_cr ?? state.employment.reward_cr")]. Добыча поступит на склад владельца шахты, оплата — на ваш личный баланс.
@@ -115,7 +109,9 @@ section.mining-panel(aria-label="Получение ресурсов")
         n-select(:value="selected?.code" :options="options" :disabled="state.working || !!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Ресурс для добычи" @update:value="selectedAction = $event")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
         p(v-if="!state.action_code && (selected?.available_at ?? 0) > state.server_time") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
-        n-select(v-if="storageOptions.length && state.employment?.owner !== false" :value="state.output_storage_id ?? selectedStorage" :options="storageOptions" clearable placeholder="Рюкзак" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Хранилище результата" @update:value="selectedStorage = $event")
+        .mining-destinations(v-if="storageOptions.length" role="group" aria-label="Куда поступит добыча")
+          n-button(v-for="storage in storageOptions" :key="storage.id" size="small" :theme-overrides="effectiveStorage === storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" :aria-pressed="effectiveStorage === storage.id" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" @click="selectedStorage = storage.id") {{ storage.kind === 'backpack' ? 'Рюкзак' : 'Мини-склад' }}
+        p(v-if="storageOptions.length === 1 && storageOptions[0].kind === 'backpack'") Для хранения добычи здесь постройте мини-склад внутри объекта.
         n-alert(closable v-if="state.blocked_message" type="warning") {{ state.blocked_message }}. Заработанная партия сохранена.
       template(v-else)
         p Работников: {{ state.workers }}. Добыто: {{ state.produced_quantity }} ед. руды.
@@ -125,6 +121,7 @@ section.mining-panel(aria-label="Получение ресурсов")
       n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="runner.busy.value && !checking" :disabled="actionBlocked" @click="runner.pending.value ? act('heartbeat', true) : act(state.working ? 'stop' : state.pending_quantity ? 'heartbeat' : 'start')") {{ actionLabel }}
 </template>
 <style scoped>
+.mining-destinations { display: flex; flex-wrap: wrap; gap: .4rem; }
 .mine-employment { display: grid; gap: .65rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; }.mine-employment h4 { margin: 0; }.mine-employment label { display: grid; grid-template-columns: 1fr minmax(5rem, 9rem); align-items: center; gap: .5rem; }
 .mining-panel { display: grid; gap: .75rem; }.mining-panel p, .mining-panel h3 { margin: 0; }
 .mining-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }

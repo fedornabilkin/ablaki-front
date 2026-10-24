@@ -10,6 +10,7 @@ import CraftRecipeDetail from './CraftRecipeDetail.vue';
 import CraftInventory from './CraftInventory.vue';
 import { useCraftToasts } from '@/hooks/useCraftToasts';
 import { useClassicCraft } from '@/hooks/useClassicCraft';
+import { useWorldCommand } from '@/hooks/useWorldCommand';
 import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { loadCraftHistory, craftError, type CraftEvent } from '@/services/api/classicCraft';
 import { craftRequirements } from '@/entities/craft/classic';
@@ -23,6 +24,8 @@ const session = computed(() => store.state.auth.revision);
 const homeCraftHref = useCampsiteCraft(session);
 const craft = useClassicCraft(session, () => store.dispatch('auth/fetchData'), computed(() => Number(store.getters['auth/user']?.id)));
 const {state, busy, loading, error, notice, pending} = craft;
+const slotRevision = ref(0);
+const slotCommand = useWorldCommand(session, computed(() => Number(store.getters['auth/user']?.id)), () => { slotRevision.value++; void craft.refresh(); void store.dispatch('auth/fetchData').catch(() => undefined); });
 const route = useRoute(), router = useRouter();
 const nodeId = computed(() => workspaceNode(route.query.node));
 const craftHref = computed(() => nodeId.value ? `/world/workspace/${nodeId.value}` : homeCraftHref.value);
@@ -37,7 +40,8 @@ const showControls = ref(true), showRecipe = ref(true);
 const root = ref<HTMLElement>(), controls = ref<HTMLElement>(), roadmap = ref<InstanceType<typeof CraftRoadmap>>();
 const mapHeight = ref(720), controlsHeight = ref(180), narrow = ref(false);
 const mapMode = computed(() => tab.value === 'map');
-const blocked = computed(() => busy.value || loading.value || !!pending.value);
+const slotWritable = computed(() => !busy.value && !loading.value && !pending.value);
+const blocked = computed(() => !slotWritable.value || slotCommand.busy.value || !!slotCommand.pending.value);
 const items = computed(() => new Map(state.value?.items.map(i => [i.id, i]) ?? []));
 const linkedItem = computed(() => items.value.get(Number(route.query.item)));
 const rawItem = computed(() => linkedItem.value && !state.value?.recipes.some(r => r.item_id === linkedItem.value?.id) ? linkedItem.value : null);
@@ -140,6 +144,10 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
         n-button(:theme-overrides="worldActionButtonTheme" :loading="busy" @click="retry") Проверить результат
       p(v-if="loading && !state" role="status") Загружаем мастерскую…
     template(v-if="state")
+      n-alert(v-if="slotCommand.error.value" type="error" role="alert") {{ slotCommand.error.value }}
+      n-alert(v-if="slotCommand.pending.value && !slotCommand.busy.value" type="warning")
+        p Результат действия ожидает подтверждения.
+        n-button(:loading="slotCommand.busy.value" @click="slotCommand.retry") Проверить результат
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
         n-input(v-model:value="search" placeholder="Название предмета" aria-label="Поиск рецепта")
         .item-grid
@@ -154,7 +162,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
             small Выход: {{ r.output_quantity }} шт.
             router-link(:to="{ path: craftHref, query: { recipe_id: r.id } }") Изготовить →
         p(v-if="!filtered.length") Рецептов по этому фильтру нет.
-      craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command" @submit="craft.submit")
+      craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" :slot-command="slotCommand" :session="session" :slot-revision="slotRevision" :slot-writable="slotWritable" @command="command" @submit="craft.submit")
       section.workshop-content(v-if="tab === 'history'" aria-label="История крафта")
         world-economy-history(:session="session")
         n-alert(v-if="historyError" type="error") {{ historyError }}

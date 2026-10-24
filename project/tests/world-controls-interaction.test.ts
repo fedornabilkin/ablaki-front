@@ -683,11 +683,12 @@ describe('topic 82 world controls', () => {
       mocks.mining.mockResolvedValue(snapshot); mocks.storageList.mockResolvedValue([]);
       const view = mount(WorldMiningPanel, () => ({nodeId: 1, owner: 1, session: 1, writable: true})); await flushView();
       const input = findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!;
-      input.props['onUpdate:value']('1.7'); await flushView(); await vi.advanceTimersByTimeAsync(10000); await flushView();
+      input.props['onUpdate:value']('1.7'); mocks.mining.mockResolvedValue({...snapshot, employment: {...snapshot.employment, storage_id: 8}}); await flushView(); await vi.advanceTimersByTimeAsync(10000); await flushView();
       expect(findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!.props.value).toBe('1.7');
       mocks.runner.submit.mockResolvedValue({employment: {}});
       findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить условия')!.props.onClick(); await flushView();
-      expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7', storage_id: 7});
+      expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7'});
+      expect(findView(view.root, n => n.props['aria-label'] === 'Склад работодателя')).toBeUndefined();
     } finally {vi.useRealTimers();}
   });
 });
@@ -737,6 +738,18 @@ describe('settlement reserve follow-up controls', () => {
     expect(capture).not.toHaveBeenCalled();
     object().props.onClick({stopPropagation() {}}); await flushView(); expect(mocks.push).not.toHaveBeenCalled();
     object().props.onDblclick({stopPropagation() {}}); await flushView(); expect(mocks.push).toHaveBeenCalledWith('/world/nodes/2');
+  });
+  it('shows a pending double-click transition without moving content and prevents duplicate navigation', async () => {
+    const navigation = deferred<any>(); mocks.push.mockReturnValue(navigation.promise);
+    const child = {...node, id: 2, parent_id: 1, type: 'BUILDING', coordinates: {x: 0, y: 0}};
+    const view = mount(WorldMap, () => ({node, map: {node_id: 1, items: [child], cells: [], can_expand: false}, writable: true, session: 1, command: mocks.runner})); await flushView();
+    const object = findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!;
+    object.props.onDblclick({stopPropagation() {}}); await flushView();
+    expect(viewText(view.root)).toContain('Открываем объект…');
+    expect(findView(view.root, n => n.props['aria-busy'] === 'true')).toBeDefined();
+    object.props.onDblclick({stopPropagation() {}}); await flushView(); expect(mocks.push).toHaveBeenCalledOnce();
+    object.props.onClick({stopPropagation() {}}); await flushView();
+    navigation.resolve(false); await flushView(); expect(viewText(view.root)).not.toContain('Открываем объект…');
   });
   it('marks researchable cells and removes those marks when write access is absent', async () => {
     const props = reactive({node, map: {node_id: 1, bounds: {x: 0, y: 0, width: 2, height: 1}, items: [], cells: [], can_expand: true, exploration: {allowed: true, level: 1, elixir_quantity: 0}}, writable: true, command: mocks.runner});
