@@ -100,3 +100,20 @@ test('workflow SSH validation accepts test HTTP and rejects production HTTP', { 
     assert.equal(result.status, status, result.stderr);
   }
 });
+
+test('artifact bootstrap rejects wrong target, paths, revision and missing HTTPS URL before writing', { skip: unavailable }, () => {
+  const fetchScript = fileURLToPath(new URL('./frontend-fetch.sh', import.meta.url));
+  const valid = ['test', '/opt/ablaki-frontend-test', '/var/code/ablaki-front', 'a'.repeat(40), 'http://94.250.251.94:3181'];
+  const cases = [
+    ['unknown', ...valid.slice(1)],
+    ['test', '/opt/ablaki-frontend', ...valid.slice(2)],
+    ['test', valid[1], '/var/www/ablakin.ru', ...valid.slice(3)],
+    [...valid.slice(0, 3), '../invalid', valid[4]],
+    valid,
+  ];
+  for (const args of cases) {
+    const result = spawnSync(bash, [fetchScript, ...args], { encoding: 'utf8', env: { ...process.env, ARTIFACT_URL: '' } });
+    assert.equal(result.status, 1, result.stderr);
+    assert.doesNotMatch(result.stdout, /downloading|Publishing/);
+  }
+});
