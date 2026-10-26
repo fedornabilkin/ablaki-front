@@ -117,7 +117,7 @@ test('incremental stage rejects wrong target, paths and revision before writing'
   }
 });
 
-test('incremental release matches the CI archive and rejects corrupted staging while preserving the previous release', { skip: unavailable }, () => {
+test('incremental release verifies all CI file hashes and rejects corrupted staging while preserving the previous release', { skip: unavailable }, () => {
   const tempRoot = realpathSync.native(tmpdir());
   const fixture = mkdtempSync(join(tempRoot, 'ablaki-incremental-'));
   const posix = path => path.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
@@ -152,11 +152,11 @@ test('incremental release matches the CI archive and rejects corrupted staging w
     assert.equal(readFileSync(join(incoming, 'dist', 'assets', 'same.js'), 'utf8'), 'unchanged asset');
     // These are the changed files rsync delivers; the unchanged asset is reused.
     for (const name of ['index.html', 'deploy-version.txt']) writeFileSync(join(incoming, 'dist', name), readFileSync(join(dist, name)));
-    for (const name of [`frontend-${sha}.tar.gz.sha256`, 'frontend-deploy.sh']) writeFileSync(join(incoming, name), readFileSync(join(fixture, 'release', name)));
+    for (const name of [`frontend-${sha}.tar.gz.files.sha256`, 'frontend-deploy.sh']) writeFileSync(join(incoming, name), readFileSync(join(fixture, 'release', name)));
     const activated = run('activate');
     assert.equal(activated.status, 0, activated.stderr);
     assert.match(activated.stdout, /activated/);
-    assert.deepEqual(readFileSync(join(incoming, `frontend-${sha}.tar.gz`)), readFileSync(join(fixture, 'release', `frontend-${sha}.tar.gz`)));
+    assert.deepEqual(readFileSync(join(incoming, 'received.files.sha256')), readFileSync(join(fixture, 'release', `frontend-${sha}.tar.gz.files.sha256`)));
     writeFileSync(join(incoming, 'dist', 'index.html'), 'corrupted');
     assert.notEqual(run('activate').status, 0);
     assert.equal(readFileSync(join(old, 'index.html'), 'utf8'), 'previous index');

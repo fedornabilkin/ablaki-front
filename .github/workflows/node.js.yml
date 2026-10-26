@@ -176,7 +176,11 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           archive="frontend-$SOURCE_SHA.tar.gz"
           printf '%s\n' "$SOURCE_SHA" > release/dist/deploy-version.txt
-          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner --format=gnu --mode='u=rwX,go=rX' -C release/dist -czf "release/$archive" .
+          tar -C release/dist -czf "release/$archive" .
+          (
+            cd release/dist
+            find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "../$archive.files.sha256"
+          )
           (
             cd release
             sha256sum "$archive" > "$archive.sha256"
@@ -229,7 +233,7 @@ jobs:
               -e "ssh -i $HOME/.ssh/deploy_key -p $DEPLOY_PORT -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
               release/dist/ "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/dist/"
             cp deploy/frontend-stage.sh release/
-            tar -C release -cf - "$archive.sha256" frontend-deploy.sh frontend-stage.sh | \
+            tar -C release -cf - "$archive.files.sha256" frontend-deploy.sh frontend-stage.sh | \
               ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
                 "tar -xf - -C '$remote_dir' && bash '$remote_dir/frontend-stage.sh' activate '$DEPLOY_TARGET' '$DEPLOY_ROOT' '$WEB_ROOT' '$SOURCE_SHA' '$HEALTHCHECK_URL'"
           else
