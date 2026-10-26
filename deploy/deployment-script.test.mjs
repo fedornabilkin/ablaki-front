@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -101,19 +101,67 @@ test('workflow SSH validation accepts test HTTP and rejects production HTTP', { 
   }
 });
 
-test('artifact bootstrap rejects wrong target, paths, revision and missing HTTPS URL before writing', { skip: unavailable }, () => {
-  const fetchScript = fileURLToPath(new URL('./frontend-fetch.sh', import.meta.url));
+test('incremental stage rejects wrong target, paths and revision before writing', { skip: unavailable }, () => {
+  const fetchScript = fileURLToPath(new URL('./frontend-stage.sh', import.meta.url));
   const valid = ['test', '/opt/ablaki-frontend-test', '/var/code/ablaki-front', 'a'.repeat(40), 'http://94.250.251.94:3181'];
   const cases = [
     ['unknown', ...valid.slice(1)],
     ['test', '/opt/ablaki-frontend', ...valid.slice(2)],
     ['test', valid[1], '/var/www/ablakin.ru', ...valid.slice(3)],
     [...valid.slice(0, 3), '../invalid', valid[4]],
-    valid,
   ];
   for (const args of cases) {
-    const result = spawnSync(bash, [fetchScript, ...args], { encoding: 'utf8', env: { ...process.env, ARTIFACT_URL: '' } });
+    const result = spawnSync(bash, [fetchScript, 'prepare', ...args], { encoding: 'utf8', env: { ...process.env, ARTIFACT_URL: '' } });
     assert.equal(result.status, 1, result.stderr);
     assert.doesNotMatch(result.stdout, /downloading|Publishing/);
+  }
+});
+
+test('incremental release matches the CI archive and rejects corrupted staging while preserving the previous release', { skip: unavailable }, () => {
+  const tempRoot = realpathSync.native(tmpdir());
+  const fixture = mkdtempSync(join(tempRoot, 'ablaki-incremental-'));
+  const posix = path => path.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
+  const sha = 'b'.repeat(40), previous = 'a'.repeat(40);
+  try {
+    const deploy = join(fixture, 'deploy'), web = join(fixture, 'web');
+    const old = join(deploy, 'releases', previous);
+    const dist = join(fixture, 'release', 'dist');
+    mkdirSync(join(old, 'assets'), { recursive: true });
+    mkdirSync(join(dist, 'assets'), { recursive: true });
+    mkdirSync(web);
+    writeFileSync(join(deploy, 'releases', '.current'), previous);
+    writeFileSync(`${old}.ready`, previous);
+    writeFileSync(join(old, 'index.html'), 'previous index');
+    writeFileSync(join(old, 'assets', 'same.js'), 'unchanged asset');
+    utimesSync(join(old, 'assets', 'same.js'), 1000, 1000);
+    writeFileSync(join(dist, 'assets', 'same.js'), 'unchanged asset');
+    utimesSync(join(dist, 'assets', 'same.js'), 2000, 2000);
+    writeFileSync(join(dist, 'index.html'), 'new index');
+    writeFileSync(join(deploy, 'frontend-deploy.sh'), `#!/bin/bash\nset -e\ncd "$(dirname "$0")"\nsha256sum -c frontend-${sha}.tar.gz.sha256\necho activated\n`);
+    const workflow = readFileSync(new URL('../.github/workflows/node.js.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    const step = workflow.split('      - name: Package frontend release\n')[1].split('\n      - name:')[0];
+    const packageCode = step.split('        run: |\n')[1].split('\n').map(line => line.replace(/^          /, '')).join('\n');
+    const packaged = spawnSync(bash, ['-e', '-s'], { cwd: fixture, input: packageCode, encoding: 'utf8', env: { ...process.env, SOURCE_SHA: sha } });
+    assert.equal(packaged.status, 0, packaged.stderr);
+    const stage = join(fixture, 'stage.sh');
+    writeFileSync(stage, readFileSync(new URL('./frontend-stage.sh', import.meta.url), 'utf8')
+      .replaceAll('/opt/ablaki-frontend-test', posix(deploy)).replaceAll('/var/code/ablaki-front', posix(web)));
+    const run = phase => spawnSync(bash, [stage, phase, 'test', posix(deploy), posix(web), sha, 'http://test.invalid'], { encoding: 'utf8' });
+    assert.equal(run('prepare').status, 0);
+    const incoming = join(deploy, 'incoming', sha);
+    assert.equal(readFileSync(join(incoming, 'dist', 'assets', 'same.js'), 'utf8'), 'unchanged asset');
+    // These are the changed files rsync delivers; the unchanged asset is reused.
+    for (const name of ['index.html', 'deploy-version.txt']) writeFileSync(join(incoming, 'dist', name), readFileSync(join(dist, name)));
+    for (const name of [`frontend-${sha}.tar.gz.sha256`, 'frontend-deploy.sh']) writeFileSync(join(incoming, name), readFileSync(join(fixture, 'release', name)));
+    const activated = run('activate');
+    assert.equal(activated.status, 0, activated.stderr);
+    assert.match(activated.stdout, /activated/);
+    assert.deepEqual(readFileSync(join(incoming, `frontend-${sha}.tar.gz`)), readFileSync(join(fixture, 'release', `frontend-${sha}.tar.gz`)));
+    writeFileSync(join(incoming, 'dist', 'index.html'), 'corrupted');
+    assert.notEqual(run('activate').status, 0);
+    assert.equal(readFileSync(join(old, 'index.html'), 'utf8'), 'previous index');
+  } finally {
+    assert.equal(resolve(fixture).startsWith(`${resolve(tempRoot)}${process.platform === 'win32' ? '\\' : '/'}ablaki-incremental-`), true);
+    rmSync(fixture, { recursive: true, force: true });
   }
 });
