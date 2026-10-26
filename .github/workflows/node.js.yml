@@ -53,7 +53,7 @@ jobs:
           INPUT_BRANCH: ${{ inputs.branch }}
 
   frontend:
-    name: Frontend checks
+    name: Minimum checks and build
     needs: configuration
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -103,8 +103,14 @@ jobs:
         id: build-config
         run: node ../automation/deploy/deployment-target.mjs validate-build
 
-      - name: Run unit tests
-        run: npm run test:unit
+      - name: Run mandatory unit tests (full suite before production)
+        shell: bash
+        run: |
+          if [[ "$DEPLOY_TARGET" = test ]]; then
+            npm run test:unit -- tests/auth.test.ts tests/httpClient.test.ts
+          else
+            npm run test:unit
+          fi
 
       - name: Build frontend
         run: npm run build
@@ -209,28 +215,45 @@ jobs:
         run: |
           archive="frontend-$SOURCE_SHA.tar.gz"
           remote_dir="$DEPLOY_ROOT/incoming/$SOURCE_SHA"
-          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
-            -o BatchMode=yes -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$remote_dir'"
-          scp -i "$HOME/.ssh/deploy_key" -P "$DEPLOY_PORT" \
-            -o BatchMode=yes -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "release/$archive" \
-            "release/$archive.sha256" \
-            "release/frontend-deploy.sh" \
-            "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/"
-          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
-            -o BatchMode=yes -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash '$remote_dir/frontend-deploy.sh' \
-              --target '$DEPLOY_TARGET' \
-              --deploy-root '$DEPLOY_ROOT' \
-              --web-root '$WEB_ROOT' \
-              --sha '$SOURCE_SHA' \
-              --archive '$remote_dir/$archive' \
-              --healthcheck-url '$HEALTHCHECK_URL'"
+          started=$SECONDS
+          # One authenticated stream replaces mkdir + scp + activation connections.
+          tar -C release -cf - "$archive" "$archive.sha256" frontend-deploy.sh | \
+            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+              -o BatchMode=yes -o ConnectTimeout=15 \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              "$DEPLOY_USER@$DEPLOY_HOST" \
+              "mkdir -p '$remote_dir' && tar -xf - -C '$remote_dir' && \
+               bash '$remote_dir/frontend-deploy.sh' \
+                 --target '$DEPLOY_TARGET' \
+                 --deploy-root '$DEPLOY_ROOT' \
+                 --web-root '$WEB_ROOT' \
+                 --sha '$SOURCE_SHA' \
+                 --archive '$remote_dir/$archive' \
+                 --healthcheck-url '$HEALTHCHECK_URL'"
+          printf '### Frontend ready: `%s`\n\nPublished and HTTP checked in %s seconds. Extended tests continue separately.\n' "$SOURCE_SHA" "$((SECONDS-started))" >> "$GITHUB_STEP_SUMMARY"
+
+  extended:
+    name: Extended frontend checks after test deployment
+    needs: [configuration, frontend, deploy]
+    if: needs.configuration.outputs.target == 'test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: frontend-extended-test
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.frontend.outputs.source_sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+      - name: Install dependencies
+        working-directory: project
+        run: npm ci
+      - name: Run full unit test suite
+        working-directory: project
+        run: npm run test:unit
