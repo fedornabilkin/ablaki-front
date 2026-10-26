@@ -43,7 +43,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.order-delivery
   h3 Сдать: {{ order.item_name }}
   p Поселение использует переданное сырьё для указанной в заказе цели. Оплата поступит в казну вашей стоянки, откуда её можно собрать в бюджет.
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка предметов")
   template(v-else-if="stock")
     p(v-if="!stock.items.length") В доступных ячейках рюкзака нет этого сырья. Соберите его в мастерской или перенесите из сундука.

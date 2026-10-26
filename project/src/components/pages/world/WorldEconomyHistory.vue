@@ -22,6 +22,7 @@ async function load() {
 }
 const classes: Record<string, string> = { internal: 'Внутренний перевод', internal_transfer: 'Перевод кредитов', expense: 'Расход', earned: 'Выручка', reward: 'Награда', incoming: 'Поступление', item_movement: 'Движение вещей', health: 'Здоровье', action: 'Действие' };
 const phases: Record<string, string> = { create: 'Создание', claim: 'Получение', cancel: 'Отмена' };
+const itemActions: Record<string, string> = { received: 'Получено', spent: 'Израсходовано', moved: 'Перемещено', created: 'Создано', collected: 'Собрано', sold: 'Продано', bought: 'Куплено' };
 watch(() => props.session, () => { result.value = { items: [], total: 0, pageSize: 20, currentPage: 1, pageCount: 0 }; void load(); }, { immediate: true });
 watch([params, page], () => { void load(); });
 onScopeDispose(() => { generation++; });
@@ -31,13 +32,17 @@ section.economy-history(aria-label="История экономики" :aria-bus
   h2 История экономики
   p Выручка, награды и переводы показаны отдельно. Внутренний перевод не увеличивает заработок.
   list-filters(v-model:search="search" v-model:values="filters" :filters="[{ key: 'source', label: 'Раздел', options: historySources }]" :loading="loading" placeholder="Поиск по виду операции" @reset="reset")
-  n-alert(v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="error" type="error") {{ error }}
   .economy-history-entries
     article(v-for="item in result.items" :key="`${item.source}:${item.id}`")
       strong {{ classes[item.classification] ?? 'Операция' }}
       span {{ economyKindLabel(item.kind) }}
       span(v-if="item.amount !== null") #[world-credits(:value="item.amount")]
       span(v-if="item.quantity !== null") {{ item.quantity }} ед.
+      ul.economy-item-details(v-if="item.items.length")
+        li(v-for="detail in item.items" :key="`${detail.id}:${detail.direction}`")
+          span {{ itemActions[detail.direction] }}: {{ detail.name }}
+          strong × {{ detail.quantity }}
       time {{ date(item.createdAt) }}
       details
         summary Подробности операции
@@ -54,4 +59,5 @@ section.economy-history(aria-label="История экономики" :aria-bus
 <style scoped>
 .economy-history { display: grid; gap: .75rem; min-width: 0; }.economy-history p, .economy-history h2 { margin: 0; }
 .economy-history-entries { display: grid; gap: .5rem; }.economy-history-entries article { display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; overflow-wrap: anywhere; }.economy-history time { color: var(--text-muted); }
+.economy-item-details { flex-basis: 100%; display: grid; gap: .25rem; margin: 0; padding-left: 1.25rem; }.economy-item-details li strong { margin-left: .5rem; }
 </style>

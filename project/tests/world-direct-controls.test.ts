@@ -10,6 +10,11 @@ function storage(id: number, kind: StorageView['storage']['kind'] = 'backpack'):
   return { storage: { id, kind, name: `Storage ${id}`, node_id: 1, container_inventory_id: null, capacity: 5, revision: 1 }, items: [], slots: [], container: null, location: null, total: 0, currentPage: 1, pageCount: 0, pageSize: 100, server_time: 1, writable: true };
 }
 describe('world area selection and displayed prices', () => {
+  it('keeps adjacent cells cheap and applies the distant-ring multiplier before a bulk discount', () => {
+    const pricing = {paid_cells: 0, base_price: '0.5000', next_price: '0.5000', curve: 'rings' as const, outer_ring_multiplier: 10, bulk_minimum: 3, discount_bps: 500, max_quantity: 100, currency: 'Cr' as const};
+    expect(mapPurchase(pricing, [{x: 1, y: 0}, {x: 2, y: 0}])).toMatchObject({total: '10.5000', unitPrices: ['0.5000', '10.0000']});
+    expect(mapPurchase(pricing, [{x: 1, y: 0}, {x: 2, y: 0}, {x: 0, y: 2}]).total).toBe('19.4750');
+  });
   const cells = [{ x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 0 }];
   it('selects a reversed rectangle without fog, occupied cells or cells outside its bounds', () => {
     expect(mapAreaCells({ x: 1, y: 1 }, { x: -1, y: 0 }, cells, [{ x: 0, y: 1 }])).toEqual([{ x: 0, y: 0 }, { x: -1, y: 1 }, { x: 1, y: 1 }]);

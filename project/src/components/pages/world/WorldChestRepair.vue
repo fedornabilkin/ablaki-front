@@ -26,7 +26,7 @@ onScopeDispose(() => { generation++; });
 <template lang="pug">
 section.chest-repair(v-if="storage.kind === 'chest'")
   h3 Починка сундука
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending) || !writable" @click="preview") Рассчитать ремонт
   template(v-if="calculation")
     p Восстановление прочности: {{ calculation.repair.restore }}

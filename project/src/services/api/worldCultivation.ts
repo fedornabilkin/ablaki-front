@@ -10,7 +10,7 @@ const time = (value: unknown) => value === null ? null : integer(value);
 export function parseCultivation(value: unknown) {
   const row = record(value), c = row.cycle === null ? null : record(row.cycle);
   if (c && !['growing', 'needs_water', 'ripe', 'expired'].includes(String(c.state))) invalid();
-  return { bed_id: integer(row.bed_id, 1), dug: bool(row.dug), writable: bool(row.writable), server_time: integer(row.server_time),
+  return { bed_id: integer(row.bed_id, 1), owner: row.owner === undefined ? true : bool(row.owner), dug: bool(row.dug), writable: bool(row.writable), server_time: integer(row.server_time),
     cycle: c ? { id: integer(c.id, 1), crop_revision_id: integer(c.crop_revision_id, 1), name: text(c.name), state: String(c.state),
       ready_at: integer(c.ready_at), water_due_at: time(c.water_due_at), water_deadline_at: time(c.water_deadline_at), expires_at: integer(c.expires_at),
       water_missed: bool(c.water_missed), can_water: bool(c.can_water), yield_factor_bps: integer(c.yield_factor_bps, 0, 10000), event_loss_bps: c.event_loss_bps === undefined ? 0 : integer(c.event_loss_bps, 0, 10000) } : null };

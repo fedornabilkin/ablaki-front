@@ -8,7 +8,7 @@ const emit = defineEmits<{ open: [] }>();
 n-popover(trigger="click" placement="bottom" :style="{ maxWidth: 'min(32rem, 90vw)' }" @update:show="value => { if (value) emit('open'); }")
   template(#trigger)
     button.world-help-hint(v-bind="$attrs" type="button" :aria-label="label")
-      font-awesome-icon(:icon="symbol === '!' ? 'exclamation-circle' : symbol === 'i' ? 'info-circle' : 'question-circle'" aria-hidden="true")
+      font-awesome-icon(icon="question-circle" aria-hidden="true")
   slot
 </template>
 <style scoped>

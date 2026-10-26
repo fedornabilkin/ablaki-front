@@ -45,7 +45,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-repair-contracts#repair-contracts
   h2 Договор ремонта
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить договоры
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка договоров ремонта")
   template(v-else-if="state")
     template(v-if="state.contract")
@@ -68,7 +68,7 @@ section.world-repair-contracts#repair-contracts
           li(v-for="reason in item.reasons" :key="reason") {{ reason }}
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating || !item.available" @click="preview(item.offer_id)") Рассмотреть договор…
       page-pager(v-model:page="page" query-prefix="repairContracts" :result="state" :disabled="busy")
-  n-alert(v-if="quote" type="info" aria-live="polite")
+  n-alert(closable v-if="quote" type="info" aria-live="polite")
     h3 Принять договор для «{{ quote.buildingName }}»
     p Принятие бесплатное. Стоимость полного ремонта: #[world-credits(:value="quote.offer.repair.full_price")]  из бюджета здания.
     p

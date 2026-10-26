@@ -9,6 +9,10 @@ const mvp = () => ({ enabled: true, server_time: 100, feedback_path: '/forum/rea
   quotas: [{ kind: 'extraction_daily', maximum: 20, remaining: 19, restores_at: 86400 }] });
 
 describe('closed-test server contracts', () => {
+  it('shows the accepted settlement payout instead of the default profile rate', () => {
+    expect(parseMvp({...mvp(), target_start_credit_cr: '250.0000', starter_funding: {amount_cr: '80.0000'}}).targetStartCredits).toBe('80.0000');
+    expect(parseMvp({...mvp(), target_start_credit_cr: '250.0000', starter_funding: null}).targetStartCredits).toBeNull();
+  });
   it('keeps health revision, funded goals and exact reward credits', () => {
     expect(parseMvp(mvp())).toMatchObject({ feedback: '/forum', health: { hp: 85, revision: 1, foods: [{ restore: 15, quantity: 2 }] }, goals: [{ credits: '50.0000', funded: true, canClaim: false }] });
   });

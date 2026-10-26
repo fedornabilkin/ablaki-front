@@ -13,7 +13,10 @@ export async function loadCampsiteSupplies(node: number) {
   const site = record(row.node), supplies = record(row.supplies);
   if (id(site.id) !== node) invalid();
   return { starterAvailable: bool(supplies.starter_available), gatherAvailable: bool(supplies.gather_available),
-    gatherAvailableAt: integer(supplies.gather_available_at) };
+    gatherAvailableAt: integer(supplies.gather_available_at),
+    gatherRemaining: supplies.gather_remaining === undefined ? null : integer(supplies.gather_remaining),
+    gatherLimit: supplies.gather_limit === undefined ? null : integer(supplies.gather_limit, 1, 30),
+    gatherExhausted: supplies.gather_exhausted === undefined ? false : bool(supplies.gather_exhausted) };
 }
 
 export async function previewCampsiteSupplies(node: number, action: SupplyAction) {

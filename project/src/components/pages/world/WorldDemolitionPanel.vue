@@ -38,14 +38,14 @@ section.world-demolition#demolition
   h2 Снос постройки
   p Перед сносом заберите имущество, отмените ночлег и завершите финансовые обязательства. Бюджеты и казны здания и комнаты должны быть пустыми.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить условия сноса
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка условий сноса")
   template(v-else-if="state")
     ul(v-if="state.reasons.length")
       li(v-for="reason in state.reasons" :key="reason.code") {{ reason.message }}
     p(v-if="state.available") Постройка свободна. После сноса освободится площадь: {{ state.area }}.
     n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" :loading="calculating" @click="preview") Рассмотреть снос…
-  n-alert(v-if="quote" type="warning" aria-live="polite")
+  n-alert(closable v-if="quote" type="warning" aria-live="polite")
     h3 Снести «{{ quote.name }}»
     p Постройка и её комната уйдут в архив. Купленные места оборудования закроются. Площадь {{ quote.area }} освободится для новой покупки или стройки.
     p Снос бесплатный. Стоимость покупки и расширений не возвращается, материалы не выдаются. Восстановить эту постройку через интерфейс нельзя.

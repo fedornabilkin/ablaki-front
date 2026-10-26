@@ -51,7 +51,7 @@ section.world-orders#settlement-orders
     p Заказ задаёт цену и предельное количество сырья. При сдаче сырьё списывается из рюкзака, а выплата поступает в казну вашей стоянки; выполнить заказ сверх остатка нельзя.
   p Сдавайте собранное сырьё и получайте оплату в казну своей стоянки. Количество и бюджет каждого заказа ограничены.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy" @click="load") Обновить заказы
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="definitions" :loading="loading" placeholder="Найти заказ" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка заказов")
   template(v-else-if="state")

@@ -37,9 +37,9 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 .container.recovery
   world-workspace-hero(title="Восстановление вещей" icon="box-open" parent-to="/world" parent-label="Вернуться в мир")
   p Здесь доступны ваши вещи из разрушенных и архивных объектов. Сундуки сохраняют содержимое. Забрать вещи можно в свободные доступные ячейки; складывать новые вещи в восстановление нельзя.
-  n-alert(v-if="error || commandError" type="error" role="alert") {{ error || commandError }}
-  n-alert(v-if="notice" type="success" role="status") {{ notice }}
-  n-alert(v-if="pending" type="info")
+  n-alert(closable v-if="error || commandError" type="error" role="alert") {{ error || commandError }}
+  n-alert(closable v-if="notice" type="success" role="status") {{ notice }}
+  n-alert(closable v-if="pending" type="info")
     p Ответ на действие ещё не получен.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="busy" @click="command.retry") Повторить запрос
   n-spin(v-if="loading" aria-label="Загрузка вещей")

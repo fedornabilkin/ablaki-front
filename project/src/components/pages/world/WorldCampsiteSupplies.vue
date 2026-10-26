@@ -37,15 +37,16 @@ const date = (value: number) => new Date(value * 1000).toLocaleString('ru-RU');
 <template lang="pug">
 section.world-supplies#supplies(aria-label="Материалы стоянки")
   h2 Сбор материалов
-  p Стартовый набор можно получить один раз. Обычные материалы собираются каждый день на своей стоянке.
+  p Стартовый набор доступен один раз. Конечное снабжение убывает с каждым сбором; постройка добычи исключает соответствующий ресурс.
   n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" :disabled="loading || command.busy.value || Boolean(command.pending.value)" @click="load") Обновить
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка материалов")
   template(v-else-if="state")
     .supply-actions
       n-button(:theme-overrides="worldActionButtonTheme" :disabled="!state.starterAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('starter')") {{ state.starterAvailable ? 'Получить набор' : 'Стартовый набор получен' }}
-      n-button(:theme-overrides="worldActionButtonTheme" :disabled="!state.gatherAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('gather')") {{ state.gatherAvailable ? 'Собрать материалы' : 'Сегодня уже собрано' }}
-    p(v-if="!state.gatherAvailable") Следующий сбор: {{ date(state.gatherAvailableAt) }}.
+      n-button(v-if="!state.gatherExhausted" :theme-overrides="worldActionButtonTheme" :disabled="!state.gatherAvailable || command.busy.value || Boolean(command.pending.value)" @click="calculate('gather')") {{ state.gatherAvailable ? 'Собрать материалы' : 'Сегодня уже собрано' }}{{ state.gatherRemaining === null ? '' : ` · ${state.gatherRemaining} / ${state.gatherLimit}` }}
+    p(v-if="!state.gatherAvailable && !state.gatherExhausted") Следующий сбор: {{ date(state.gatherAvailableAt) }}.
+    p(v-if="state.gatherExhausted") Снабжение завершено. Используйте добычу; новые выдачи появятся только для новых предметов каталога.
     section.supply-quote(v-if="preview && selected" aria-live="polite")
       h3 {{ selected === 'starter' ? 'Стартовый набор' : 'Сегодняшний сбор' }}
       p(v-if="preview.efficiency < 10000") Эффективность сбора: {{ preview.efficiency / 100 }}% с учётом здоровья.

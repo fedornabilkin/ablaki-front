@@ -40,7 +40,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-building-repair#building-repair
   h2 Ремонт постройки
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить расчёт
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка условий ремонта")
   template(v-else-if="state")
     p(v-if="state.supported && !state.writable") Платные действия мира сейчас недоступны.
@@ -53,7 +53,7 @@ section.world-building-repair#building-repair
     ul(v-if="state.reasons.length")
       li(v-for="reason in state.reasons" :key="reason") {{ reason }}
     n-button(:theme-overrides="worldActionButtonTheme" v-if="state.supported" :disabled="locked || calculating" :loading="calculating" @click="preview") Рассчитать ремонт…
-  n-alert(v-if="quote" type="info" aria-live="polite")
+  n-alert(closable v-if="quote" type="info" aria-live="polite")
     h3 Ремонт: {{ quote.name }}
     p Прочность: {{ quote.repair.condition_before }} → {{ quote.repair.condition_after }}.
     p Из бюджета здания: #[world-credits(:value="quote.repair.price")] . Свободно до ремонта: #[world-credits(:value="quote.budget")] . Личный баланс не списывается.

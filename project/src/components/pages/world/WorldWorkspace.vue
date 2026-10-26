@@ -91,13 +91,13 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
     router-link(v-if="!state && craftHref !== route.path" :to="craftHref") Изготовление на своей стоянке
   .workspace-navigation
     world-workspace-nav(:node-id="nodeId" manufacturing)
-  n-alert(v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
-  n-alert(v-if="pending && !busy" type="info")
+  n-alert(closable v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
+  n-alert(closable v-if="pending && !busy" type="info")
     p Ответ на действие ещё не получен. Повтор отправит тот же запрос.
     n-button(:theme-overrides="actionTheme" :loading="busy" @click="command.retry") Повторить запрос
   n-spin(v-if="loading && !state" aria-label="Загрузка мастерской")
   template(v-if="state")
-    n-alert(v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
+    n-alert(closable v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
     .workspace-layout
       section.recipe-catalog(aria-label="Рецепты мастерской")
         .workspace-section-heading

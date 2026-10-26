@@ -14,6 +14,7 @@ watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, prop
   if (!oldValue || value[0] !== oldValue[0] || value[1] !== oldValue[1] || value[3] !== oldValue[3]) available.value = reserved.value = treasury.value = null;
   failed.value = false;
   let id = props.node?.id ?? props.nodeId;
+  if (props.node && !props.node.owned_by_me && !props.node.permissions.manage) return;
   if (!id) {
     try { id = (await loadWorldHome(props.owner, props.session))?.id; }
     catch { if (current === generation) failed.value = true; return; }
@@ -35,7 +36,7 @@ watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, prop
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-.hero-finances(:title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-live="polite")
+.hero-finances(v-if="available !== null || treasury !== null" :title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-live="polite")
   div
     span Бюджет
     strong

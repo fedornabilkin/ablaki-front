@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
-import { worldActionButtonTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton, NInput, NSpin } from 'naive-ui';
+import { NAlert, NButton, NInput, NModal, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { worldError } from '@/services/api/world';
 import { loadNodeEconomy, previewInvestment } from '@/services/api/worldEconomy';
@@ -19,6 +19,8 @@ import WorldPaymentSources from './WorldPaymentSources.vue';
 const props = defineProps<{ nodeId: number; children: WorldNode[]; session: number; command: WorldCommandRunner }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadNodeEconomy>> | null>(null), quote = shallowRef<Awaited<ReturnType<typeof previewInvestment>> | null>(null);
 const amount = ref(''), purpose = ref('Развитие объекта'), error = ref(''), loading = ref(false), calculating = ref(false);
+const receipt = ref<{ amount: string; available: string | null } | null>(null);
+const reportOpen = ref(false);
 const { busy, pending } = props.command;
 let generation = 0, previewGeneration = 0, disposed = false;
 async function load() {
@@ -27,8 +29,8 @@ async function load() {
   catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed && current === generation) loading.value = false; }
 }
-watch([() => props.nodeId, () => props.session], load, { immediate: true, flush: 'sync' });
-watch([amount, purpose], () => { previewGeneration++; quote.value = null; calculating.value = false; }, { flush: 'sync' });
+watch([() => props.nodeId, () => props.session], () => { receipt.value = null; reportOpen.value = false; void load(); }, { immediate: true, flush: 'sync' });
+watch([amount, purpose], () => { previewGeneration++; quote.value = null; receipt.value = null; calculating.value = false; }, { flush: 'sync' });
 async function preview() {
   if (!state.value?.can_invest || busy.value || pending.value) return;
   error.value = ''; quote.value = null;
@@ -39,38 +41,45 @@ async function preview() {
   catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-function invest() { if (quote.value && state.value?.can_invest && !busy.value && !pending.value) void props.command.submit(`/nodes/${props.nodeId}/invest`, { ...quote.value.input }, quote.value.quote); }
+async function invest() {
+  if (!quote.value || !state.value?.can_invest || busy.value || pending.value) return;
+  const accepted = quote.value, current = generation, paid = amount.value;
+  const result = await props.command.submit(`/nodes/${props.nodeId}/invest`, { ...accepted.input }, accepted.quote);
+  if (!result || disposed || current !== generation) return;
+  quote.value = null; await load();
+  if (!disposed && current + 1 === generation) receipt.value = { amount: paid, available: state.value?.balances?.available ?? null };
+}
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-economy
-  .finance-toolbar
+  .finance-toolbar(v-if="state?.balances")
     h3 Счета объекта
     n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" :disabled="busy" @click="load") Обновить
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка счетов")
   template(v-else-if="state")
-    section.finance-summary.world-content-card(v-if="state.balances")
-      .finance-summary-heading
-        h4 Остатки и условия
-        world-help-hint(label="Разница между бюджетом, резервом и казной")
-          p Бюджет предназначен для расходов объекта. Зарезервированные кредиты уже нужны для обязательств, поэтому на развитие доступен остаток после резерва. Казна хранит ещё не собранные поступления; личный баланс владельца учитывается отдельно.
-      dl(v-if="state.balances")
-        dt Бюджет
-        dd #[world-credits(:value="state.balances.budget")]
-        dt Зарезервировано
-        dd #[world-credits(:value="state.balances.reserved")]
-        dt Доступно на развитие
-        dd #[world-credits(:value="state.balances.available")]
-        dt Казна · не собрано
-        dd #[world-credits(:value="state.balances.treasury")]
-      n-alert(v-if="state.catching_up" type="info") Расчёт потерь за прошедшее время ещё не завершён. Обновите данные немного позже, чтобы собрать казну.
-      p(v-if="state.rule?.status === 'published'") Отчисления: {{ (state.rule.rate_bps ?? 0) / 100 }}% собранного дохода. Правило №{{ state.rule.revision }}.
-      p(v-else) Правила отчислений и защиты казны ещё не опубликованы. Сбор дохода пока закрыт.
-      p(v-if="state.rule?.loss") Новые поступления защищены {{ state.rule.loss.protected_seconds / 3600 }} ч. Затем каждые {{ state.rule.loss.period_seconds / 3600 }} ч теряется {{ state.rule.loss.rate_bps / 100 }}% остатка. Для прежних поступлений сохраняются их условия.
-    p(v-else) Детали счетов доступны владельцу объекта.
-    n-alert(v-if="!state.wallet_ready" type="info") Денежные операции мира ещё не открыты.
     .world-finance-grid
+      section.finance-summary.world-finance-card(v-if="state.balances")
+        .finance-summary-heading
+          h4 Остатки и условия
+          world-help-hint(label="Разница между бюджетом, резервом и казной")
+            p Бюджет предназначен для расходов объекта. Зарезервированные кредиты уже нужны для обязательств, поэтому на развитие доступен остаток после резерва. Казна хранит ещё не собранные поступления; личный баланс владельца учитывается отдельно.
+        dl(v-if="state.balances")
+          dt Бюджет
+          dd #[world-credits(:value="state.balances.budget")]
+          dt Зарезервировано
+          dd #[world-credits(:value="state.balances.reserved")]
+          dt Доступно на развитие
+          dd #[world-credits(:value="state.balances.available")]
+          dt Казна · не собрано
+          dd #[world-credits(:value="state.balances.treasury")]
+        n-alert(closable v-if="state.catching_up" type="info") Расчёт потерь за прошедшее время ещё не завершён. Обновите данные немного позже, чтобы собрать казну.
+        p(v-if="state.rule?.status === 'published'") Отчисления: {{ (state.rule.rate_bps ?? 0) / 100 }}% собранного дохода. Правило №{{ state.rule.revision }}.
+        p(v-else) Правила отчислений и защиты казны ещё не опубликованы. Сбор дохода пока закрыт.
+        p(v-if="state.rule?.loss") Новые поступления защищены {{ state.rule.loss.protected_seconds / 3600 }} ч. Затем каждые {{ state.rule.loss.period_seconds / 3600 }} ч теряется {{ state.rule.loss.rate_bps / 100 }}% остатка. Для прежних поступлений сохраняются их условия.
+      p(v-else) Детали счетов доступны владельцу объекта.
+      n-alert(closable v-if="!state.wallet_ready" type="info") Денежные операции мира ещё не открыты.
       world-treasury-panel.world-finance-card(v-if="state.balances" :node-id="nodeId" :session="session" :can-collect="state.can_collect" :can-pay="state.can_pay" :command="command")
       world-treasury-receipts.world-finance-card(v-if="state.balances" :node-id="nodeId" :session="session")
       template(v-if="state.can_invest")
@@ -79,12 +88,15 @@ section.world-economy
             h4 Вложить личные кредиты
             world-help-hint(label="Как пополнить бюджет личными кредитами")
               p Подтверждённый перевод списывает указанную сумму с личного баланса и зачисляет её в бюджет объекта. Это вложение не возвращается автоматически и не попадает в казну.
-          p Взнос поступит в бюджет этого объекта. Автоматический возврат и вывод на личный счёт не предусмотрены.
-          label Сумма
+          n-alert(v-if="receipt" type="success" closable @close="receipt = null")
+            p Бюджет пополнен на #[world-credits(:value="receipt.amount")].
+            p(v-if="receipt.available !== null") Теперь доступно: #[world-credits(:value="receipt.available")].
+          n-button(v-if="receipt" @click="receipt = null") Новый взнос
+          label(v-if="!receipt") Сумма
             world-credit-input(v-model:value="amount" placeholder="10" :maxlength="20" :disabled="busy || Boolean(pending)" inputmode="decimal")
-          label Назначение
+          label(v-if="!receipt") Назначение
             n-input(v-model:value="purpose" :maxlength="255" :disabled="busy || Boolean(pending)")
-          n-button(:theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="busy || Boolean(pending)" @click="preview") Рассчитать взнос
+          n-button(v-if="!receipt" :theme-overrides="worldActionButtonTheme" :loading="calculating" :disabled="busy || Boolean(pending)" @click="preview") Рассчитать взнос
           section(v-if="quote" aria-live="polite")
             world-payment-sources(mode="personal" :price="quote.amount")
             p В бюджет «{{ quote.name }}»: #[world-credits(:value="quote.amount")]
@@ -92,7 +104,12 @@ section.world-economy
             n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="busy" :disabled="Boolean(pending)" @click="invest") Подтвердить вложение
       world-budget-grant.world-finance-card(v-if="state.can_grant" :node-id="nodeId" :children="children" :session="session" :command="command")
       slot
-      world-finance-report.world-finance-card.world-finance-card--wide(v-if="state.balances" :node-id="nodeId" :session="session")
+      section.world-finance-card.finance-report-launcher(v-if="state.balances")
+        h3 Финансовый отчёт объекта
+        p Сводка, сверка остатков и журнал операций.
+        n-button(:theme-overrides="worldActionButtonTheme" @click="reportOpen = true") Открыть отчёт
+        n-modal(v-model:show="reportOpen" :theme-overrides="worldModalTheme" preset="card" title="Операции объекта" :style="{width: 'min(60rem, 94vw)'}")
+          world-finance-report(v-if="reportOpen" :node-id="nodeId" :session="session")
 </template>
 <style scoped>
 .world-economy { display: grid; gap: 1rem; min-width: 0; }

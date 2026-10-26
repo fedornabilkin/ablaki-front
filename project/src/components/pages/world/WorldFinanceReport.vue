@@ -33,13 +33,14 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.world-finance-report#finance-report
-  h3 Финансовый отчёт объекта
-  world-help-hint(label="Что показывает финансовый отчёт")
-    p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
-  p Личные кредиты → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
-  p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
+  .report-heading
+    h3 Финансовый отчёт объекта
+    world-help-hint(label="Что показывает финансовый отчёт")
+      p Сводка охватывает историю только этого объекта. Переводы между его бюджетом и казной — внутренние движения; вложение владельца, внешние поступления и платежи показаны отдельно. Поиск и фильтры меняют журнал операций, но не итоговые суммы.
+      p Личные кредиты → бюджет. Поступления → казна → свой бюджет → казна родителя или оплата развития.
+      p Сводка охватывает всю историю только этого объекта. Платежи между объектами и сбор собственной казны не создают новые кредиты; это не общая выручка мира.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить отчёт
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   template(v-if="state")
     p Снимок на {{ date(state.now) }}. Поиск и фильтры ниже меняют только журнал операций.
     h4 Движение средств за всё время
@@ -52,7 +53,7 @@ section.world-finance-report#finance-report
       h5 {{ roles[account.role] }}
       p Остаток #[world-credits(:value="account.amount")]  · резерв #[world-credits(:value="account.reserved")]  · доступно #[world-credits(:value="account.available")]
       p(v-if="account.matches") Остаток совпадает с журналом поступлений и списаний.
-      n-alert(v-else type="warning") По журналу: #[world-credits(:value="account.ledgerBalance")] . Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
+      n-alert(closable v-else type="warning") По журналу: #[world-credits(:value="account.ledgerBalance")] . Остаток счёта отличается — требуется сверка администрацией. Отчёт не исправляет деньги автоматически.
   h4 Журнал операций
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Поиск по назначению операции" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка финансового отчёта")
@@ -66,6 +67,7 @@ section.world-finance-report#finance-report
     page-pager(v-model:page="page" query-prefix="finance" :result="state")
 </template>
 <style scoped>
+.report-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.report-heading h3 { margin: 0; }
 .world-finance-report { display: grid; gap: .75rem; min-width: 0; }
 .flows { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; }
 dd { margin: 0; overflow-wrap: anywhere; }

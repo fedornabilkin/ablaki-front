@@ -38,7 +38,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 section.world-building-operation#building-operation
   h2 Работа постройки
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить состояние
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка состояния постройки")
   template(v-else-if="state")
     p {{ buildingStatuses[state.status] }} · Прочность: {{ state.condition }} / {{ state.maxCondition }}.
@@ -47,7 +47,7 @@ section.world-building-operation#building-operation
       li(v-for="reason in state.reasons" :key="reason") {{ reason }}
     p(v-if="state.status === 'paused'") Станции недоступны для работы, размещение вещей и назначение ночлега закрыты. Вещи можно забрать. После запуска назначьте ночлег заново в комнате дома.
     n-button(:theme-overrides="worldActionButtonTheme" v-if="state.action" :disabled="locked || calculating" :loading="calculating" @click="preview(state.action)") {{ labels[state.action] }}…
-  n-alert(v-if="quote" type="warning" aria-live="polite")
+  n-alert(closable v-if="quote" type="warning" aria-live="polite")
     h3 {{ labels[quote.action] }}: {{ quote.name }}
     template(v-if="quote.action === 'pause'")
       p Станции перестанут работать, размещение вещей и новый ночлег будут недоступны во всех комнатах этой постройки. Вещи останутся на местах, их можно будет забрать.

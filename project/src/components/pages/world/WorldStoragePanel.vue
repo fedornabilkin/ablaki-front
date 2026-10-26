@@ -174,7 +174,7 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
   .storage-heading
     h2 Вещи и размещение
     router-link.storage-page-link(v-if="!storageId && view" :to="link(view.storage.id)") На страницу хранилища →
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   p.storage-status(role="status") {{ transferring ? 'Сохраняем перемещение…' : notice }}
   p.storage-hint Перетащите вещь в свободную ячейку или на такую же стопку. Можно нажать на предмет, затем на подсвеченное место. Перенос — бесплатно; помещение в сундук расходует его прочность.
   .storage-panes

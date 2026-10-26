@@ -34,17 +34,17 @@ onScopeDispose(() => { disposed = true; generation++; });
 <template lang="pug">
 .container.equipment-history
   world-workspace-hero(title="История прочности" icon="hammer" :parent-to="state?.returnNode ? `/world/nodes/${state.returnNode}` : '/world'" parent-label="Вернуться в мир")
-  n-alert(v-if="!valid" type="error") Некорректный адрес экземпляра.
+  n-alert(closable v-if="!valid" type="error") Некорректный адрес экземпляра.
   template(v-else)
     n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" @click="load") Обновить историю
-    n-alert(v-if="error" type="error" role="alert") {{ error }}
+    n-alert(closable v-if="error" type="error" role="alert") {{ error }}
     list-filters(v-model:search="search" v-model:values="filters" :filters="filterDefinitions" :loading="loading" placeholder="Найти причину изменения" @reset="list.reset")
     n-spin(v-if="loading" aria-label="Загрузка истории прочности")
     template(v-else-if="state")
       h2 {{ state.name }} · экземпляр №{{ instance }}
       p Прочность: {{ state.durability }} / {{ state.maximum }}. {{ places[state.exposure] }}. Износ от времени: {{ state.dailyWear }} в сутки.
       p Состояние на {{ date(state.serverTime) }}. История содержит сохранённые изменения; текущая прочность также учитывает время после последней записи.
-      n-alert(v-if="state.durability === 0" type="warning") Предмет изношен. Он остаётся в хранилище, но не может выполнять работу или защищать ночлег.
+      n-alert(closable v-if="state.durability === 0" type="warning") Предмет изношен. Он остаётся в хранилище, но не может выполнять работу или защищать ночлег.
       router-link(v-if="state.shelter" :to="`/world/nodes/${state.returnNode}#shelter`") Открыть шалаш и ремонт
       router-link(v-else :to="{ path: `/world/storage/${state.storageId}`, query: state.returnNode ? { node_id: state.returnNode } : {} }") Открыть текущее хранилище
       p История ведётся с подключения журнала. Прежние события не восстанавливаются задним числом.

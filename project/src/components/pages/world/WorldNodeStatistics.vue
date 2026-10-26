@@ -31,7 +31,7 @@ section.world-node-statistics(aria-label="Состав территории")
       span.eyebrow Состав территории
       h2 Объект и его потомки
     n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" @click="load") Обновить
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка статистики")
   .statistics-grid(v-else)
     .statistics-card(v-for="type in nodeTypes" :key="type")

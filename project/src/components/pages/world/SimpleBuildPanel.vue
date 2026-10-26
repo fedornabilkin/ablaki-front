@@ -11,10 +11,10 @@ import * as api from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { formatCredits } from '@/entities/world/credits';
-const props = defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number }>();
+const props = defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
-const error = ref(''), working = ref(false);
+const error = ref(''), working = ref(false), otherWork = ref<number | null>(null);
 const loading = ref(true);
 const settingsOpen = ref(false), elapsed = ref(0), displayedSeconds = ref(0);
 const cancelOpen = ref(false);
@@ -48,6 +48,7 @@ async function load() {
     const [active, projects] = await Promise.all([api.activeBuild(), api.builds({ node_id: props.node.id, status: 'building' })]);
     if (disposed || token !== epoch) return;
     if (projects.items[0]) accept(projects.items[0]); else project.value = null;
+    otherWork.value = active && active.id !== project.value?.id ? active.node_id : null;
     if (active && active.id === project.value?.id && !runner.pending.value) resume(active.id);
   } catch (cause) { if (!disposed && token === epoch) error.value = worldError(cause); }
   finally { if (!disposed && token === epoch) loading.value = false; }
@@ -72,10 +73,10 @@ async function send(path: string, body: Record<string, unknown> = {}, retry = fa
       if (result.work.ended_at === null && project.value?.status === 'building' && !working.value) resume(project.value.id);
       else if (result.work.ended_at !== null) halt();
     }
-    if (typeof result.return_node_id === 'number' && result.return_node_id > 0) {
+    if (!props.embedded && typeof result.return_node_id === 'number' && result.return_node_id > 0) {
       cancelOpen.value = false;
       await router.push(`/world/nodes/${result.return_node_id}#map`);
-    } else if (result.node) { const node = api.node(result.node); await router.push(`/world/nodes/${node.id}`); }
+    } else if (!props.embedded && result.node) { const node = api.node(result.node); await router.push(`/world/nodes/${node.id}`); }
     if (result.node || project.value?.status !== 'building' || wasWorking !== working.value) emit('changed');
     return result;
   } else {
@@ -120,25 +121,26 @@ section.build-information(aria-label="Строительство")
       p Бюджет помощников: #[world-credits(:value="project?.labor_budget ?? '0'")] . Владелец работает бесплатно.
       p Время учитывается, пока эта страница открыта и есть связь с сервером.
       p После обрыва связи учитывается не больше 60 дополнительных секунд.
-  n-alert(v-if="error" type="error") {{ error }}
-  n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
+  n-alert(closable v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
   n-spin(v-if="loading && !project" size="small" aria-label="Загрузка строительства")
   template(v-else-if="project && project.status === 'building'")
+    n-alert(v-if="otherWork" type="info") Сначала остановите работу на стройке объекта №{{ otherWork }}.
     .build-progress-row
       .build-progress
         p Прочность {{ strength }} / {{ maximum }}
         n-progress(type="line" :percentage="Math.min(100, 100 * seconds / Math.max(1, project.required_seconds))" :show-indicator="false")
       font-awesome-icon.build-sync(icon="spinner" :spin="busy || polling" :class="{ active: busy || polling }" :title="busy || polling ? 'Сверяем прогресс' : 'Прогресс синхронизирован'" aria-label="Синхронизация прогресса")
     .build-actions
-      n-button(:theme-overrides="worldActionButtonTheme" v-if="!working" type="primary" :disabled="busy || uncertain" @click="start")
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="!working" type="primary" :disabled="busy || uncertain || !!otherWork" @click="start")
         template(#icon)
           font-awesome-icon(icon="hammer")
         | {{ repairing ? 'Ремонтировать' : 'Строить' }}
       n-button(:theme-overrides="worldActionButtonTheme" v-else :disabled="busy || uncertain" @click="stop")
         template(#icon)
           font-awesome-icon(icon="pause")
-        | Приостановить
+        | Остановить
       n-tooltip(v-if="owner === project.owner_user_id")
         template(#trigger)
           n-button(:theme-overrides="worldActionButtonTheme" circle aria-label="Название и бюджет" :disabled="busy || uncertain" @click="settingsOpen = true")
@@ -154,7 +156,7 @@ section.build-information(aria-label="Строительство")
   n-modal(v-model:show="cancelOpen" :theme-overrides="worldModalTheme" preset="card" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
     p Объект будет удалён с карты. 30% ресурсов не будут возвращены, даже если строительство ещё не начиналось.
     p Вернётся 70% каждого материала с округлением вниз до целого количества.
-    n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
+    n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
     .build-actions
       n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="cancelOpen = false") Продолжить строительство
       n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос

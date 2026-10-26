@@ -10,7 +10,7 @@ export interface CraftSlot { id: number; item_id: number; quantity: number; posi
 export interface ChestRepair { materials: {item_id: number; name?: string; quantity: number; have: number; available?: boolean}[]; tools: {item_id: number; name?: string; durability: number; max_durability: number; have?: number; available?: boolean}[]; station: {id: number; item_id: number | null; name: string; durability?: number; max_durability?: number; available?: boolean} | null; reasons: string[]; restore: number }
 export interface CraftContainer { id: number; capacity: number; durability: number; max_durability: number; slots: CraftSlot[]; repair?: ChestRepair }
 export interface InventorySettings { slot_price: number; elixir_slots: number; elixir_days: number; chest_slots: number; chest_durability: number; chest_wear: number }
-export interface CraftStorageState { containers?: CraftContainer[]; permanent_slots?: number; active_slots?: number; slots_expire_at?: number | null; inventory_settings?: InventorySettings; slot_pricing?: 'linear'; server_time?: number; gather_available_at?: number }
+export interface CraftStorageState { containers?: CraftContainer[]; permanent_slots?: number; active_slots?: number; slots_expire_at?: number | null; inventory_settings?: InventorySettings; slot_pricing?: 'linear'; server_time?: number; gather_available_at?: number; backpack_storage_id?: number }
 export interface CraftState extends CraftStorageState { items: CraftItem[]; recipes: CraftRecipe[]; categories: {id: number; name: string; code: string; description: string}[]; stations: {id: number; name: string; item_id: number | null}[]; skills: {category_id: number; experience: number; level: number}[]; inventory: {item_id: number; quantity: number}[]; inventory_slots: CraftSlot[]; credit: number; charge_credits: boolean; starter_available: boolean; gather_available: boolean; slot_limit: number; slots_used: number }
 export interface CraftEvent { id: number; action: string; item_id: number | null; recipe_id: number | null; quantity: number; credit_change: number; created_at: number }
 export type CraftAction = 'craft' | 'starter' | 'gather' | 'use' | 'discard' | 'merge' | 'transfer' | 'buy_slots' | 'repair';
@@ -51,6 +51,7 @@ export function parseCraftState(value: unknown): CraftState {
   state.recipes.forEach((recipe, index) => { const equipment = object((d.recipes as unknown[])[index]).equipment; if (equipment !== undefined) recipe.equipment = parseEquipmentRequirements(equipment); });
   if (d.gather_available_at !== undefined) state.gather_available_at = num(d.gather_available_at, 1);
   if (d.slot_pricing !== undefined) { if (d.slot_pricing !== 'linear') throw Error('invalid-response'); state.slot_pricing = d.slot_pricing; }
+  if (d.backpack_storage_id !== undefined) state.backpack_storage_id = num(d.backpack_storage_id, 1);
   if (d.inventory_settings !== undefined) {
     const settings = object(d.inventory_settings);
     state.inventory_settings = Object.fromEntries(['slot_price','elixir_slots','elixir_days','chest_slots','chest_durability','chest_wear'].map(key => [key, num(settings[key])])) as unknown as InventorySettings;

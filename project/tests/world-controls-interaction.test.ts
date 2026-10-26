@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, reactive, ref } from 'vue';
+import { h, markRaw, reactive, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldHarvestPanel from '../src/components/pages/world/WorldHarvestPanel.vue';
 import WorldMap from '../src/components/pages/world/WorldMap.vue';
@@ -17,13 +17,20 @@ import WorldCultivationPanel from '../src/components/pages/world/WorldCultivatio
 import WorldCampsiteSupplies from '../src/components/pages/world/WorldCampsiteSupplies.vue';
 import SimpleBudgetPanel from '../src/components/pages/world/SimpleBudgetPanel.vue';
 import SimpleBuildPanel from '../src/components/pages/world/SimpleBuildPanel.vue';
+import WorldMiningPanel from '../src/components/pages/world/WorldMiningPanel.vue';
+import WorldHeroGather from '../src/components/pages/world/WorldHeroGather.vue';
+import CraftGatherButton from '../src/components/pages/craft/CraftGatherButton.vue';
+import WorldWorkProgress from '../src/components/pages/world/WorldWorkProgress.vue';
 import WorldStartPanel from '../src/components/pages/world/WorldStartPanel.vue';
 import WorldBuildPalette from '../src/components/pages/world/WorldBuildPalette.vue';
+import WorldBuildPanel from '../src/components/pages/world/WorldBuildPanel.vue';
+import WorldHousingPanel from '../src/components/pages/world/WorldHousingPanel.vue';
+import WorldBudgetGrant from '../src/components/pages/world/WorldBudgetGrant.vue';
 import BuildSettingsModal from '../src/components/pages/world/modals/BuildSettingsModal.vue';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ housing: vi.fn(), housingPreview: vi.fn(), budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const popover = { setup: (_: unknown, { slots }: any) => () => h('div', [slots.trigger?.(), slots.default?.()]) };
@@ -34,7 +41,10 @@ vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ 
 vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 1 } }, dispatch: vi.fn() }) }));
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: (_session: unknown, _owner: unknown, completed: unknown) => { mocks.runner.completed = completed; return mocks.runner; } }));
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
-vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: async () => null, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, node: (value: unknown) => value, build: (value: unknown) => value }));
+vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: async () => null, object: mocks.object, gatherState: mocks.gather, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, startOverview: async () => ({node: await mocks.startState(), funding: null, starter_funding: null}), node: (value: unknown) => value, build: (value: unknown) => value }));
+vi.mock('../src/services/api/worldHousing', () => ({loadHousing: mocks.housing, previewHousing: mocks.housingPreview}));
+vi.mock('../src/services/api/worldEconomy', () => ({previewBudgetGrant: mocks.budgetGrant}));
+vi.mock('../src/services/api/worldMining', () => ({ loadMining: mocks.mining, parseMining: (value: unknown) => value }));
 vi.mock('../src/services/api/worldStorage', () => ({ loadStorageList: mocks.storageList, loadStorageContents: mocks.storage, previewTransfer: mocks.transfer }));
 vi.mock('../src/services/api/worldWorkspace', () => ({ loadWorkspace: mocks.workspace, previewWorkspace: mocks.preview }));
 vi.mock('../src/services/api/worldHarvest', () => ({ loadHarvest: mocks.harvest, previewHarvest: mocks.harvestPreview }));
@@ -44,6 +54,10 @@ vi.mock('../src/services/api/worldCultivation', () => ({ loadCultivation: mocks.
 vi.mock('../src/services/api/worldCampsite', () => ({ loadCampsiteSupplies: mocks.supplies, previewCampsiteSupplies: mocks.suppliesPreview }));
 vi.mock('../src/services/api/world', () => ({ loadExplorer: mocks.explorer, previewProfession: async () => quote, previewMapCells: mocks.mapPreview, worldError: () => 'Ошибка запроса' }));
 
+clientView(WorldMiningPanel, 'components/pages/world/WorldMiningPanel.vue');
+clientView(WorldHeroGather, 'components/pages/world/WorldHeroGather.vue');
+clientView(CraftGatherButton, 'components/pages/craft/CraftGatherButton.vue');
+clientView(WorldWorkProgress, 'components/pages/world/WorldWorkProgress.vue');
 clientView(WorldStorageGrid, 'components/pages/world/WorldStorageGrid.vue');
 clientView(WorldCreditInput, 'components/pages/world/WorldCreditInput.vue');
 clientView(WorldPlacedItemPanel, 'components/pages/world/WorldPlacedItemPanel.vue');
@@ -62,6 +76,9 @@ clientView(SimpleBudgetPanel, 'components/pages/world/SimpleBudgetPanel.vue');
 clientView(SimpleBuildPanel, 'components/pages/world/SimpleBuildPanel.vue');
 clientView(WorldStartPanel, 'components/pages/world/WorldStartPanel.vue');
 clientView(WorldBuildPalette, 'components/pages/world/WorldBuildPalette.vue');
+clientView(WorldBudgetGrant, 'components/pages/world/WorldBudgetGrant.vue');
+clientView(WorldBuildPanel, 'components/pages/world/WorldBuildPanel.vue');
+clientView(WorldHousingPanel, 'components/pages/world/WorldHousingPanel.vue');
 clientView(BuildSettingsModal, 'components/pages/world/modals/BuildSettingsModal.vue');
 const quote = { quote_id: 'a'.repeat(32), expected_revisions: {}, server_time: 1, expires_at: 99999999, terms: {} };
 const node: WorldNode = { id: 1, type: 'PLOT', label: 'Усадьба', name: 'Усадьба', code: '', root_id: 1, parent_id: null, status: 'active', visibility: 'private', revision: 1, portable: false, coordinates: { x: 0, y: 0 }, child_count: 0, descendant_count: 0, population_total: 0, owned_by_me: true, footprint: null, details: {}, permissions: { administer: false, manage: true, storage: true }, actions: [] };
@@ -69,14 +86,22 @@ let apps: { unmount: () => void }[] = [];
 function mount(component: any, props?: () => Record<string, unknown>) { const result = mountView(component, props); apps.push(result.app); return result; }
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.housing.mockResolvedValue({supported: false, active: false, writable: false, place: null, lodging: null, current: null, nightsEnabled: true});
   mocks.budget.mockResolvedValue({ available: '0.0000', reserved: '0.0000' });
   mocks.explorer.mockResolvedValue(null);
-  mocks.runner = { busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn().mockResolvedValue(undefined), retry: vi.fn() };
+  mocks.runner = markRaw({ busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn().mockResolvedValue(undefined), retry: vi.fn() });
   mocks.route = reactive({ path: '/world/workspace/1', params: { id: '1' }, query: {} });
 });
 afterEach(() => { apps.forEach(app => app.unmount()); apps = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 describe('credit input precision', () => {
+  it('keeps an exact fractional wage after editing and blur', async () => {
+    const value = ref('0.0001'), change = (next: string) => { value.value = next; };
+    const view = mount(WorldCreditInput, () => ({value: value.value, exact: true, 'onUpdate:value': change})); await flushView();
+    const input = () => findView(view.root, n => n.tag === 'input')!;
+    expect(input().props.value).toBe('0.0001'); input().props.onFocus(); input().props['onUpdate:value']('1.25'); input().props.onBlur(); await flushView();
+    expect(value.value).toBe('1.25'); expect(input().props.value).toBe('1.25');
+  });
   it('formats values and placeholders while leaving an untouched exact amount unchanged', async () => {
     const value = ref('12.3499'), change = vi.fn((next: string) => { value.value = next; });
     const view = mount(WorldCreditInput, () => ({ value: value.value, placeholder: '10.0000', 'onUpdate:value': change }));
@@ -198,14 +223,15 @@ describe('restored world core panels', () => {
     expect(viewText(view.root)).toContain('6.8');
     expect(viewText(view.root)).not.toContain('6.7800');
   });
-  it('starts through the current API and opens the new construction in its tab', async () => {
+  it('places the campsite reactively and keeps the current map open', async () => {
     mocks.startState.mockResolvedValue(null);
     mocks.runner.submit.mockResolvedValue({ node: { id: 23 } });
     const view = mount(WorldStartPanel, () => ({ node: { ...node, type: 'SETTLEMENT' }, owner: 1, session: 1, writable: true }));
     await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Начать здесь'))!.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('start', { city_id: 1 });
-    expect(mocks.push).toHaveBeenCalledWith({ path: '/world/nodes/23', hash: '#map' });
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Стоянка размещена. Карта обновлена.');
   });
 });
 function storage(id: number): StorageView {
@@ -540,7 +566,7 @@ describe('one-click world actions', () => {
     expect(mocks.equipmentPreview).toHaveBeenCalledTimes(1); expect(mocks.runner.submit).toHaveBeenCalledTimes(1);
   });
   it('prepares cultivation costs automatically and digs in one click', async () => {
-    mocks.cultivation.mockResolvedValue({ bed_id: 1, dug: false, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: false, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
     mocks.crops.mockResolvedValue({ items: [], pageCount: 0 }); mocks.cultivationPreview.mockResolvedValue(quote);
     const view = mount(WorldCultivationPanel, props); await flushView();
     expect(mocks.cultivationPreview).toHaveBeenCalledWith(1, 'dig', {});
@@ -561,7 +587,7 @@ describe('one-click world actions', () => {
   });
   it('waits for the shared command to finish before enabling sowing', async () => {
     mocks.runner.busy.value = true;
-    mocks.cultivation.mockResolvedValue({ bed_id: 1, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
     mocks.crops.mockResolvedValue({ items: [{ id: 7, name: 'Морковь', seed_quantity: 1, yield_quantity: 4, grow_seconds: 300 }], pageCount: 1 });
     mocks.cultivationPreview.mockResolvedValue(quote);
     const view = mount(WorldCultivationPanel, props); await flushView();
@@ -573,7 +599,7 @@ describe('one-click world actions', () => {
   });
   it('plants a dropped crop after loading a newly selected bed and handles repeated drops', async () => {
     const crop = ref({ id: 7, sequence: 1 });
-    mocks.cultivation.mockResolvedValue({ bed_id: 1, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: true, writable: true, cycle: null, server_time: Math.floor(Date.now() / 1000) });
     mocks.crops.mockResolvedValue({ items: [{ id: 7, name: 'Морковь', seed_quantity: 1, yield_quantity: 4, grow_seconds: 300 }], pageCount: 1 });
     mocks.cultivationPreview.mockResolvedValue(quote);
     mount(WorldCultivationPanel, () => ({ ...props(), droppedCrop: crop.value })); await flushView();
@@ -633,5 +659,158 @@ describe('garden harvest purchase controls', () => {
     view.buy().props.onClick(); await flushView();
     expect(mocks.runner.submit).not.toHaveBeenCalled();
     expect(viewText(view.root)).toContain('Цена изменилась');
+  });
+});
+
+describe('topic 82 world controls', () => {
+  it('does not offer owner sowing controls after hired digging is complete', async () => {
+    mocks.cultivation.mockResolvedValue({bed_id: 1, owner: false, dug: true, writable: false, cycle: null, server_time: 100});
+    mocks.crops.mockResolvedValue({items: [], pageCount: 1});
+    const view = mount(WorldCultivationPanel, () => ({bedId: 1, session: 1, command: mocks.runner})); await flushView();
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n).includes('Посадить'))).toBeUndefined();
+    expect(mocks.cultivationPreview).not.toHaveBeenCalled();
+  });
+  it('opens the gathering modal before sending a command and shows the accepted receipt', async () => {
+    mocks.gather.mockResolvedValue({gather_available: true, gather_can_claim: true, gather_available_at: 0, server_time: 100, gather_remaining: 5, gather_limit: 5, gather_items: [{name: 'Бревно', quantity: 14}]});
+    mocks.runner.submit.mockResolvedValue({gather_available: false, gather_available_at: 86500, server_time: 100, gather_remaining: 4, gather_limit: 5, gathered_items: [{name: 'Бревно', quantity: 14}]});
+    const view = mount(WorldHeroGather, () => ({nodeId: 1, owner: 1, session: 1, revision: 1, writable: true}));
+    await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Собрать сырьё')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Бревно'); expect(viewText(view.root)).toContain('×14');
+    mocks.gather.mockResolvedValue({gather_available: false, gather_can_claim: false, gather_available_at: 86500, server_time: 100, gather_remaining: 4, gather_limit: 5, gather_items: []});
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Собрать в рюкзак')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/gather');
+    expect(viewText(view.root)).toContain('Получено: Бревно ×14');
+  });
+  it('keeps employer form edits while polling and saves the hiring terms explicitly', async () => {
+    vi.useFakeTimers();
+    try {
+      const snapshot = {node_id: 1, ready: true, working: false, workers: 0, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180, server_time: 100, actions: [{code: 'mine-stone', work_seconds: 180, output: [{name: 'Камень', quantity: 3}], tools: [], cooldown_seconds: 0}], employment: {owner: true, enabled: true, reward_cr: '2.0000', storage_id: 7, storages: [{id: 7, name: 'Склад', capacity: 5}]}};
+      mocks.mining.mockResolvedValue(snapshot); mocks.storageList.mockResolvedValue([]);
+      const view = mount(WorldMiningPanel, () => ({nodeId: 1, owner: 1, session: 1, writable: true})); await flushView();
+      const input = findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!;
+      const save = () => findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить условия')!;
+      expect(save().props.disabled).toBe(false);
+      for (const value of ['0', '-1', 'abc', '1.00001', '']) { input.props['onUpdate:value'](value); await flushView(); expect(save().props.disabled).toBe(true); save().props.onClick(); expect(mocks.runner.submit).not.toHaveBeenCalled(); }
+      for (const value of ['1', '1.25', '1,25']) { input.props['onUpdate:value'](value); await flushView(); expect(save().props.disabled).toBe(false); }
+      input.props['onUpdate:value']('1.7'); mocks.mining.mockResolvedValue({...snapshot, employment: {...snapshot.employment, storage_id: 8}}); await flushView(); await vi.advanceTimersByTimeAsync(10000); await flushView();
+      expect(findView(view.root, n => n.tag === 'input' && typeof n.props['onUpdate:value'] === 'function')!.props.value).toBe('1.7');
+      mocks.runner.submit.mockResolvedValue({employment: {}});
+      findView(view.root, n => n.tag === 'button' && viewText(n) === 'Сохранить условия')!.props.onClick(); await flushView();
+      expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7000'});
+      expect(findView(view.root, n => n.props['aria-label'] === 'Склад работодателя')).toBeUndefined();
+    } finally {vi.useRealTimers();}
+  });
+});
+
+describe('settlement reserve follow-up controls', () => {
+  it('assigns the selected bed with one click, awaits its quote and displays the saved result', async () => {
+    const initial = {supported: true, active: true, writable: true, place: {id: 1, plot_id: 1, created_at: 1}, lodging: null, current: {kind: 'house', node_id: 8}, nightsEnabled: true};
+    mocks.housing.mockResolvedValue(initial); const preview = deferred<any>(); mocks.housingPreview.mockReturnValue(preview.promise); mocks.runner.submit.mockResolvedValue({changed_node_ids: [2]});
+    const view = mount(WorldHousingPanel, () => ({nodeId: 2, session: 1, writable: true, command: mocks.runner})); await flushView();
+    const button = () => findView(view.root, n => n.tag === 'button' && viewText(n) === 'Назначить ночлег')!;
+    button().props.onClick(); await flushView(); expect(button().props.disabled).toBe(true); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    mocks.housing.mockResolvedValue({...initial, lodging: {assigned_at: 100, protects_now: true}}); preview.resolve({action: 'lodge', quote, input: {replace_current: true}}); await flushView();
+    expect(mocks.housingPreview).toHaveBeenCalledWith(2, 'lodge', true); expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/2/housing-lodge', {replace_current: true}, quote);
+    expect(viewText(view.root)).toContain('Ночлег назначен.'); expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Подтвердить')).toBeUndefined();
+  });
+  it('discards a bed preview after changing the session', async () => {
+    mocks.housing.mockResolvedValue({supported: true, active: true, writable: true, place: {id: 1, plot_id: 1, created_at: 1}, lodging: null, current: null, nightsEnabled: true});
+    const preview = deferred<any>(); mocks.housingPreview.mockReturnValue(preview.promise);
+    const props = reactive({nodeId: 2, session: 1, writable: true, command: mocks.runner}); const view = mount(WorldHousingPanel, () => props); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Назначить ночлег')!.props.onClick(); await flushView(); props.session++; await flushView();
+    preview.resolve({action: 'lodge', quote, input: {replace_current: true}}); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('runs a selected child build from the parent map and retains it when another cell is selected', async () => {
+    const child = {...node, id: 2, parent_id: 1, type: 'BUILDING', status: 'constructing', coordinates: {x: 0, y: 0}};
+    const project = {id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'building', required_seconds: 300, worked_seconds: 0, labor_budget: '0.0000'};
+    mocks.object.mockResolvedValue({...child, name: 'Шахта'}); mocks.builds.mockResolvedValue({items: [project]});
+    const props = reactive({node, map: {node_id: 1, items: [child], cells: [{x: 0, y: 0, state: 'open'}, {x: 1, y: 0, state: 'open'}], can_expand: true}, writable: true, session: 1, command: mocks.runner, workingNodeId: null as number | null});
+    const view = mount(WorldMap, () => props); await flushView();
+    findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!.props.onClick({stopPropagation() {}}); await flushView();
+    const start = () => findView(view.root, n => n.tag === 'button' && viewText(n).trim() === 'Строить');
+    expect(start()).toBeDefined(); mocks.runner.submit.mockResolvedValue({build: project, work: {ended_at: null}}); start()!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('builds/5/start', {}); expect(mocks.push).not.toHaveBeenCalled();
+    props.workingNodeId = 2;
+    findView(view.root, n => n.tag === 'svg' && n.props.role === 'group')!.props.onKeydown({key: 'ArrowRight', preventDefault() {}}); await flushView();
+    expect(findView(view.root, n => n.props['aria-label'] === 'Строительство')).toBeDefined();
+    expect(findView(view.root, n => n.props.class === 'map-construction-session')!.style.display).toBe('none');
+    findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!.props.onClick({stopPropagation() {}}); await flushView();
+    expect(findView(view.root, n => n.props.class === 'map-construction-session')!.style.display).not.toBe('none');
+  });
+  it('opens an object on a double click while a single click only selects it', async () => {
+    const child = {...node, id: 2, parent_id: 1, type: 'BUILDING', status: 'active', coordinates: {x: 0, y: 0}};
+    const view = mount(WorldMap, () => ({node, map: {node_id: 1, items: [child], cells: [], can_expand: false}, writable: true, session: 1, command: mocks.runner})); await flushView();
+    const object = () => findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!;
+    const capture = vi.fn(), svg = findView(view.root, n => n.tag === 'svg' && n.props.role === 'group')!;
+    const screen = {setPointerCapture: capture, getScreenCTM: () => ({inverse: () => ({})}), createSVGPoint: () => ({x: 0, y: 0, matrixTransform() {return {x: this.x, y: this.y};}})};
+    svg.props.onPointerdown({button: 0, pointerId: 1, clientX: 1, clientY: 1, currentTarget: screen, target: {closest: () => ({})}}); svg.props.onPointerup();
+    expect(capture).not.toHaveBeenCalled();
+    object().props.onClick({stopPropagation() {}}); await flushView(); expect(mocks.push).not.toHaveBeenCalled();
+    object().props.onDblclick({stopPropagation() {}}); await flushView(); expect(mocks.push).toHaveBeenCalledWith('/world/nodes/2');
+  });
+  it('shows a pending double-click transition without moving content and prevents duplicate navigation', async () => {
+    const navigation = deferred<any>(); mocks.push.mockReturnValue(navigation.promise);
+    const child = {...node, id: 2, parent_id: 1, type: 'BUILDING', coordinates: {x: 0, y: 0}};
+    const view = mount(WorldMap, () => ({node, map: {node_id: 1, items: [child], cells: [], can_expand: false}, writable: true, session: 1, command: mocks.runner})); await flushView();
+    const object = findView(view.root, n => n.tag === 'g' && n.props.role === 'button')!;
+    object.props.onDblclick({stopPropagation() {}}); await flushView();
+    expect(viewText(view.root)).toContain('Открываем объект…');
+    expect(findView(view.root, n => n.props['aria-busy'] === 'true')).toBeDefined();
+    object.props.onDblclick({stopPropagation() {}}); await flushView(); expect(mocks.push).toHaveBeenCalledOnce();
+    object.props.onClick({stopPropagation() {}}); await flushView();
+    navigation.resolve(false); await flushView(); expect(viewText(view.root)).not.toContain('Открываем объект…');
+  });
+  it('marks researchable cells and removes those marks when write access is absent', async () => {
+    const props = reactive({node, map: {node_id: 1, bounds: {x: 0, y: 0, width: 2, height: 1}, items: [], cells: [], can_expand: true, exploration: {allowed: true, level: 1, elixir_quantity: 0}}, writable: true, command: mocks.runner});
+    const view = mount(WorldMap, () => props); await flushView();
+    expect(findView(view.root, n => n.props['aria-label'] === 'Можно исследовать')).toBeDefined();
+    props.writable = false; await flushView(); expect(findView(view.root, n => n.props['aria-label'] === 'Можно исследовать')).toBeUndefined();
+  });
+  const input = (view: ReturnType<typeof mount>, label: string) => findView(view.root, n => n.tag === 'input' && n.props['input-props']?.['aria-label'] === label)!;
+  const save = (view: ReturnType<typeof mount>) => findView(view.root, n => n.tag === 'button' && viewText(n).trim() === 'Сохранить')!;
+  it.each([
+    {price: '20.0000', available: '20.0000', empty: true, needsTopUp: false},
+    {price: '20.0000', available: '10.0000', empty: true, needsTopUp: true},
+    {price: '0.0000', available: null, empty: true, needsTopUp: false},
+  ])('treats a cleared helper budget as zero: $price / $available', async ({price, available, needsTopUp}) => {
+    const create = vi.fn();
+    const view = mount(BuildSettingsModal, () => ({show: true, project: null, name: 'Огород', owner: 1, session: 1, draft: {price, minimumBudget: '2.0000', budgetAvailable: available}, onCreate: create})); await flushView();
+    input(view, 'Бюджет строительства').props['onUpdate:value'](''); await flushView();
+    expect(save(view).props.disabled).toBe(needsTopUp);
+    const checkbox = findView(view.root, n => n.tag === 'input' && !n.props.disabled && typeof n.props['onUpdate:checked'] === 'function');
+    if (needsTopUp) {expect(checkbox).toBeDefined(); checkbox!.props['onUpdate:checked'](true); await flushView(); expect(save(view).props.disabled).toBe(false);}
+    else expect(checkbox).toBeUndefined();
+    save(view).props.onClick(); await flushView();
+    expect(create).toHaveBeenCalledWith({name: 'Огород', labor_budget: '0', top_up: needsTopUp}, false);
+  });
+  it('allows a vacant budget decrease and protects helpers who accepted work', async () => {
+    const props = reactive({show: true, project: {id: 5, node_id: 2, owner_user_id: 1, status: 'building', required_seconds: 100, worked_seconds: 0, labor_budget: '4.0000', minimum_labor_budget: '2.0000', can_reduce_budget: true, budget_available: '4.0000'}, name: 'Шахта', owner: 1, session: 1});
+    const view = mount(BuildSettingsModal, () => props); await flushView();
+    input(view, 'Бюджет строительства').props['onUpdate:value'](''); await flushView(); expect(save(view).props.disabled).toBeFalsy();
+    props.project.can_reduce_budget = false; await flushView(); expect(save(view).props.disabled).toBe(true);
+    input(view, 'Бюджет строительства').props['onUpdate:value']('8'); await flushView(); expect(save(view).props.disabled).toBeFalsy();
+    input(view, 'Бюджет строительства').props['onUpdate:value']('9'); await flushView(); expect(save(view).props.disabled).toBe(true);
+    findView(view.root, n => n.tag === 'input' && !n.props.disabled && typeof n.props['onUpdate:checked'] === 'function')!.props['onUpdate:checked'](true); await flushView(); expect(save(view).props.disabled).toBeFalsy();
+    mocks.runner.submit.mockResolvedValue({}); save(view).props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('builds/5/settings', {name: 'Шахта', labor_budget: '9', top_up: true});
+  });
+  it('keeps an embedded child construction on its parent page after completion', async () => {
+    mocks.builds.mockResolvedValue({items: [{id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'building', required_seconds: 30, worked_seconds: 0, labor_budget: '0.0000'}]});
+    mocks.runner.submit.mockResolvedValue({build: {id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'completed', required_seconds: 30, worked_seconds: 30, labor_budget: '0.0000'}, node: {id: 2}});
+    const view = mount(SimpleBuildPanel, () => ({node: {id: 2, name: 'Огород', status: 'constructing', revision: 1}, owner: 1, session: 1, embedded: true})); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n).trim() === 'Строить')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('builds/5/start', {}); expect(mocks.push).not.toHaveBeenCalled();
+  });
+  it('shows a transfer receipt and removes the calculation after confirmation', async () => {
+    mocks.budgetGrant.mockResolvedValue({input: {source_node_id: 1, destination_node_id: 2, amount: '10.0000', purpose: 'На стройку'}, quote, sourceAvailableAfter: '0.0000', destinationBudgetAfter: '10.0000'});
+    const view = mount(WorldBudgetGrant, () => ({nodeId: 1, children: [], session: 1, command: mocks.runner})); await flushView();
+    findView(view.root, n => n.tag === 'input' && n.props.min === 1)!.props['onUpdate:value'](2);
+    const inputs: any[] = []; const collect = (n: any) => {if(n.tag === 'input' && n.props['onUpdate:value'])inputs.push(n);n.children.forEach(collect);}; collect(view.root);
+    inputs.find(n => n.props.placeholder === '10')!.props['onUpdate:value']('10'); inputs.find(n => n.props.placeholder === 'На развитие объекта')!.props['onUpdate:value']('На стройку'); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Рассчитать перевод')!.props.onClick(); await flushView();
+    mocks.runner.submit.mockResolvedValue({}); findView(view.root, n => n.tag === 'button' && viewText(n) === 'Подтвердить перевод')!.props.onClick(); await flushView();
+    expect(viewText(view.root)).toContain('Переведено'); expect(viewText(view.root)).not.toContain('Подтвердить перевод'); expect(viewText(view.root)).not.toContain('В источнике останется');
   });
 });

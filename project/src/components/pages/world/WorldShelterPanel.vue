@@ -44,11 +44,11 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
   h2 Шалаш и ночлег
   p Один бесплатный шалаш на аккаунт. Он даёт одно место ночлега, но не защищает станции и сундуки. Установка не занимает площадь капитальных построек.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить состояние
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка шалаша")
   template(v-else-if="state")
     p(v-if="!state.writable") Действия станут доступны после включения хранения мира.
-    n-alert(v-if="!state.night_resolution_enabled" type="info") Назначение ночлега сохраняется, пока вы офлайн. Расчёт болезни и выздоровления ещё не включён.
+    n-alert(closable v-if="!state.night_resolution_enabled" type="info") Назначение ночлега сохраняется, пока вы офлайн. Расчёт болезни и выздоровления ещё не включён.
     p(v-else) Ночлег действует и офлайн. Для защиты всей ночи назначьте исправный шалаш до её начала.
     .shelter-actions(v-if="!state.claimed")
       n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || calculating" @click="preview('claim')") Получить в рюкзак
@@ -56,13 +56,13 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
     template(v-else)
       p Шалаш уже получен. Повторная выдача в другом мире недоступна.
       p(v-if="state.instance_id") Прочность: {{ state.durability }} / {{ state.max_durability }}.
-      n-alert(v-else type="warning") Экземпляр недоступен. Право выдачи сохранено как использованное; требуется восстановление предмета.
+      n-alert(closable v-else type="warning") Экземпляр недоступен. Право выдачи сохранено как использованное; требуется восстановление предмета.
       router-link(v-if="state.instance_id" :to="`/world/equipment/${state.instance_id}/wear`") История прочности шалаша
       template(v-if="state.deployment")
         router-link(:to="`/world/nodes/${state.deployment.node_id}`") Открыть установленный шалаш
         router-link(v-if="!here" :to="`/world/nodes/${state.deployment.plot_id}`") Перейти на стоянку с шалашом
         p(v-if="state.durability") При текущем износе защита действует до {{ date(state.deployment.protected_until) }}.
-        n-alert(v-else type="warning") Шалаш изношен и больше не защищает ночлег.
+        n-alert(closable v-else type="warning") Шалаш изношен и больше не защищает ночлег.
         p(v-if="state.lodging") Ночлег назначен с {{ date(state.lodging.assigned_at) }}. {{ state.lodging.protects_now ? 'Укрытие действует.' : 'Защита на этой стоянке сейчас не действует.' }}
         p(v-else) Ночлег ещё не назначен.
         template(v-if="here")
@@ -89,7 +89,7 @@ section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
           li(v-for="material in quote.repair.materials" :key="material.item_id" :class="{ 'shelter-missing': !material.available }")
             span {{ material.name }}: {{ material.have }} / {{ material.quantity }}
             span(v-if="!material.available") — недостаточно
-        n-alert(v-if="!quote.repair.available" type="error" role="alert") {{ quote.repair.reasons.join(' ') }}
+        n-alert(closable v-if="!quote.repair.available" type="error" role="alert") {{ quote.repair.reasons.join(' ') }}
         p Установленный шалаш останется на месте, назначенный ночлег сохранится. Ремонт восстановит защиту с текущего момента. Прошлые незащищённые ночи останутся в истории.
       n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || Boolean(quote.repair && !quote.repair.available)" @click="confirm") Подтвердить
 </template>

@@ -20,7 +20,8 @@ clientView(WorldWorkProgress, 'components/pages/world/WorldWorkProgress.vue');
 let app: { unmount: () => void } | undefined;
 const state = (node_id = 4) => ({ node_id, ready: true, working: false, workers: 0, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 120, server_time: 100,
   actions: [{ code: 'gather-log', work_seconds: 120, cooldown_seconds: 0, output: [{ code: 'classic-log', name: 'Бревно', quantity: 1 }], tools: ['classic-hammer'], tool_names: ['Молоток'], daily_limit: null }],
-  action_code: null, worked_seconds: 0, output_storage_id: null });
+  action_code: null, worked_seconds: 0, output_storage_id: null,
+  output_storages: [{id: 8, name: 'Рюкзак', kind: 'backpack', capacity: 20}, {id: 9, name: 'Местный мини-склад', kind: 'stockpile', capacity: 5}] });
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.runner = { busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn(), retry: vi.fn() };
@@ -81,26 +82,38 @@ describe('source batch destination', () => {
   });
   it('submits the selected output storage and refreshes inventory when a batch arrives', async () => {
     const changed = vi.fn();
+    mocks.load.mockResolvedValue({...state(), output_storages: [...state().output_storages, {id: 10, name: 'Второй мини-склад', kind: 'stockpile', capacity: 5}]});
     const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true, onChanged: changed })); app = view.app;
     await flushView();
     expect(viewText(view.root)).toContain('Молоток');
-    const selector = findView(view.root, node => node.tag === 'select' && node.props['aria-label'] === 'Хранилище результата')!;
-    expect(selector.props.options).toEqual([{ value: 9, label: 'Склад · 50 мест' }]);
-    selector.props['onUpdate:value'](9);
+    expect(findView(view.root, node => node.tag === 'button' && viewText(node) === 'Рюкзак')!.props['aria-pressed']).toBe(true);
+    const group = findView(view.root, node => node.props['aria-label'] === 'Куда поступит добыча')!;
+    expect(group.children.filter(node => node.tag === 'button' && viewText(node) === 'Мини-склад')).toHaveLength(1);
+    findView(view.root, node => node.tag === 'button' && viewText(node) === 'Мини-склад')!.props.onClick();
     mocks.runner.submit.mockResolvedValue({ ...state(), produced_quantity: 1 });
     findView(view.root, node => node.tag === 'button' && viewText(node).includes('Работать над партией'))!.props.onClick();
     await flushView();
-    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', { action_code: 'gather-log', output_storage_id: 9 });
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', { action_code: 'gather-log', output_destination: 'mini_storage' });
     expect(changed).toHaveBeenCalledOnce();
   });
-  it('discards a late storage response from the previous account session', async () => {
+  it('returns an idle owner to backpack when the selected local mini-storage becomes unavailable', async () => {
+    vi.useFakeTimers();
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Мини-склад')!.props.onClick(); await flushView();
+    mocks.load.mockResolvedValue({...state(), output_storages: [state().output_storages[0]]});
+    await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Рюкзак')!.props['aria-pressed']).toBe(true);
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Работать над партией'))!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', {action_code: 'gather-log'});
+  });
+  it('discards a late mining response from the previous account session without loading a global storage list', async () => {
     let release!: (value: unknown) => void;
-    mocks.storages.mockReturnValueOnce(new Promise(resolve => { release = resolve; })).mockResolvedValueOnce([]);
+    mocks.load.mockReturnValueOnce(new Promise(resolve => { release = resolve; })).mockResolvedValueOnce({...state(), output_storages: []});
     const session = ref(1);
     const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: session.value, session: session.value, writable: true })); app = view.app;
     await flushView(); session.value = 2; await flushView();
-    release([{ id: 99, kind: 'stockpile', name: 'Чужое хранилище', capacity: 50 }]); await flushView();
-    expect(findView(view.root, node => node.tag === 'select' && node.props['aria-label'] === 'Хранилище результата')).toBeUndefined();
-    expect(mocks.storages).toHaveBeenCalledTimes(2);
+    release({...state(), output_storages: [{ id: 99, kind: 'stockpile', name: 'Чужое хранилище', capacity: 50 }]}); await flushView();
+    expect(findView(view.root, node => node.props['aria-label'] === 'Куда поступит добыча')).toBeUndefined();
+    expect(mocks.storages).not.toHaveBeenCalled();
   });
 });

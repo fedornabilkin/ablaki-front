@@ -3,7 +3,6 @@ import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSkeleton } from 'naive-ui';
-import { useRouter } from 'vue-router';
 import WorldHelpHint from './WorldHelpHint.vue';
 import { useWorldBudget } from '@/hooks/useWorldBudget';
 import BuildSettingsModal from './modals/BuildSettingsModal.vue';
@@ -20,9 +19,9 @@ const props = defineProps<{ node: WorldNode; map: WorldMapData | null; selection
 const emit = defineEmits<{ changed: [] }>();
 const choices = ref<Template[]>([]), project = ref<Build | null>(null), open = ref(false), error = ref(''), loading = ref(false), name = ref('');
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.${props.node.id}.placement`), computed(() => props.session));
-const router = useRouter(), chosen = ref<Template | null>(null), position = ref<MapPoint | null>(null);
+const placed = ref<number | null>(null), chosen = ref<Template | null>(null), position = ref<MapPoint | null>(null);
 const { available: budgetAvailable, error: budgetError, refresh: refreshBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session), computed(() => props.revision));
-const draft = computed(() => chosen.value ? { price: chosen.value.economy?.price_cr ?? '0', budgetAvailable: budgetAvailable.value } : undefined);
+const draft = computed(() => chosen.value ? { price: chosen.value.economy?.price_cr ?? '0', minimumBudget: chosen.value.minimum_labor_budget ?? '0', budgetAvailable: budgetAvailable.value } : undefined);
 const cell = computed(() => selectedFreeCell(props.selection, props.map));
 const craftHref = useCampsiteCraft(computed(() => props.session), computed(() => props.node));
 const missingResources = computed(() => choices.value.some(item => item.available === false));
@@ -34,7 +33,7 @@ watch(() => [props.node.id, props.session, props.revision], async () => {
   catch (cause) { if (current === generation) error.value = worldError(cause); }
   finally { if (current === generation) loading.value = false; }
 }, { immediate: true });
-watch([() => props.node.id, () => props.session], () => { choices.value = []; open.value = false; project.value = null; chosen.value = null; position.value = null; }, { flush: 'sync' });
+watch([() => props.node.id, () => props.session], () => { placed.value = null; choices.value = []; open.value = false; project.value = null; chosen.value = null; position.value = null; }, { flush: 'sync' });
 function icon(item: Template) { return ({ PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube', ROOM: 'house' } as Record<string, string>)[item.kind ?? ''] ?? 'house'; }
 function reason(item: Template) { return !props.node.owned_by_me ? 'Требуются права владельца.' : props.node.status !== 'active' ? 'Сначала завершите строительство.' : !cell.value ? 'Выберите одну свободную открытую ячейку.' : item.unavailable_reason || 'Ресурсы и оборудование доступны.'; }
 function accept(result: Record<string, unknown> | undefined) {
@@ -42,7 +41,7 @@ function accept(result: Record<string, unknown> | undefined) {
   project.value = build(result.build);
   open.value = false;
   emit('changed');
-  void router.push(`/world/nodes/${project.value.node_id}#map`);
+  placed.value = project.value.node_id;
 }
 function choose(item: Template) {
   if (blocked.value || !cell.value || item.available !== true) return;
@@ -68,7 +67,10 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
       p Цена списывается из бюджета текущего объекта. При нехватке кредитов можно добавить разницу с личного баланса. Материалы нужны отдельно; труд владельца бесплатный.
       p Бюджет труда позволяет оплачивать помощь других игроков. Название и бюджет можно изменить позднее.
       router-link(v-if="missingResources" :to="craftHref") Открыть крафт для недостающих ресурсов
-  n-alert(v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
+  n-alert(v-if="placed" type="success" closable @close="placed = null")
+    p Объект размещён. Карта обновлена, можно начинать строительство.
+    router-link(:to="`/world/nodes/${placed}#map`") Перейти к строительству →
+  n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value && !runner.busy.value" @click="retry") Повторить запрос
   .build-tiles(v-if="loading && !choices.length" role="status" aria-label="Загрузка плиток")
     n-skeleton(v-for="index in 6" :key="index" height="120px" :sharp="false")

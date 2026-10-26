@@ -48,7 +48,7 @@ section.world-construction#construction
   h2 Строительство
   p Материалы и кредиты зарезервированы до завершения. Ночлег и оборудование в новой постройке станут доступны после окончания работ.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить стройки
-  n-alert(v-if="error" type="error" role="alert") {{ error }}
+  n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   list-filters(v-model:search="search" v-model:values="filters" :filters="filterFields" :loading="loading" placeholder="Найти стройку" @reset="list.reset")
   n-spin(v-if="loading" aria-label="Загрузка строек")
   template(v-else-if="state")

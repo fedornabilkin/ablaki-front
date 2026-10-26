@@ -2,7 +2,7 @@
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton } from 'naive-ui';
+import { NAlert, NButton, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldMapData, WorldNode } from '@/entities/world/types';
 import { occupiesCell } from '@/entities/world/coordinates';
@@ -13,6 +13,7 @@ import { useWorldBudget } from '@/hooks/useWorldBudget';
 import { loadGarden, previewGarden } from '@/services/api/worldGarden';
 import { mapAreaCells, mapPurchase, requiredExplorerLevel, selectMapCells } from '@/entities/world/mapSelection';
 import { loadExplorer, previewProfession, previewMapCells, worldError } from '@/services/api/world';
+import WorldBuildPanel from './WorldBuildPanel.vue';
 import WorldCultivationPanel from './WorldCultivationPanel.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
@@ -20,10 +21,12 @@ import WorldObjectPreview from './WorldObjectPreview.vue';
 import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacedItemPanel from './WorldPlacedItemPanel.vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
 
-const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number }>();
+const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null }>();
 const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: number[]] }>();
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
+const router = useRouter();
 const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
 const selected = ref<MapPoint[]>(props.selection ?? []), anchor = ref<MapPoint | null>(null);
 const topUp = ref(true), calculating = ref(false), error = ref(''), professionNotice = ref(''), droppedCrop = ref<{ id: number; sequence: number } | null>(null);
@@ -49,7 +52,7 @@ watch([() => props.map?.exploration?.allowed, () => props.node.id, () => props.s
   catch { /* The map still provides authoritative exploration requirements. */ }
 }, { immediate: true });
 const size = 88, key = (p: MapPoint) => `${p.x}:${p.y}`;
-const icons = { WORLD: 'sun', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
+const icons = { WORLD: 'globe', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
 const statuses: Record<string, string> = { active: 'Доступен', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'На паузе', damaged: 'Повреждён', destroyed: 'Разрушен' };
 const drag = ref<{ start: MapPoint; end: MapPoint; x: number; y: number; moved: boolean; additive: boolean } | null>(null);
 let suppressClick = false;
@@ -57,6 +60,7 @@ const bounds = computed(() => props.map?.bounds ?? props.node.map ?? { x: -2, y:
 const width = computed(() => bounds.value.width * size), height = computed(() => bounds.value.height * size);
 const nodes = computed(() => (props.map?.items ?? []).filter(node => node.status !== 'archived'));
 const selectedNode = computed(() => selected.value.length === 1 ? nodes.value.find(n => occupiesCell(n, selected.value[0])) : undefined);
+const constructionNodes = computed(() => nodes.value.filter(n => n.status === 'constructing' && (n.id === props.workingNodeId || (n.id === selectedNode.value?.id && n.owned_by_me))));
 const known = computed(() => new Map((props.map?.cells ?? []).map(c => [key(c), c.state])));
 const state = (p: MapPoint) => known.value.get(key(p)) ?? 'closed';
 const point = computed(() => selected.value.length === 1 ? selected.value[0] : null);
@@ -84,6 +88,7 @@ const explorerLevel = computed(() => Math.max(props.map?.exploration?.level ?? 0
 const levelAllowed = computed(() => !!props.map?.exploration?.allowed && explorerLevel.value >= required.value);
 const neededElixirs = computed(() => selected.value.filter(p => requiredExplorerLevel(p) > (props.map?.exploration?.level ?? 0)).length);
 const elixirAllowed = computed(() => !!props.map?.exploration?.allowed && neededElixirs.value > 0 && props.map.exploration.elixir_quantity >= neededElixirs.value);
+const canExploreCell = (p: MapPoint) => props.writable && !isGarden.value && !!props.map?.can_expand && !!props.map.exploration?.allowed && state(p) === 'closed' && !occupied(p) && (explorerLevel.value >= requiredExplorerLevel(p) || (props.map.exploration?.elixir_quantity ?? 0) > 0);
 const blocked = computed(() => calculating.value || gardenLoading.value || props.command.busy.value || !!props.command.pending.value || !props.writable);
 const canBuy = computed(() => !!price.value && (gardenSelection.value ? !!garden.value?.can_expand : !!props.map?.can_expand));
 const position = (p: MapPoint) => ({ x: (p.x - bounds.value.x) * size, y: (bounds.value.y + bounds.value.height - 1 - p.y) * size });
@@ -124,7 +129,8 @@ function startArea(event: PointerEvent) {
   if (event.button !== 0) return;
   const cell = pointerCell(event); if (!cell) return;
   drag.value = { start: cell, end: cell, x: event.clientX, y: event.clientY, moved: false, additive: event.ctrlKey || event.metaKey || event.shiftKey };
-  (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+  // Keep native click/double-click targets on objects; capture only a map-area drag.
+  if (!(event.target as Element | null)?.closest?.('.map-object, .map-footprint')) (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
 }
 function moveArea(event: PointerEvent) {
   if (!drag.value) return;
@@ -162,6 +168,17 @@ function moveSelection(event: KeyboardEvent) {
   choose(next, event);
 }
 function selectNode(node: WorldNode, event?: MouseEvent) { if (suppressClick) { suppressClick = false; return; } choose(node.coordinates, event); }
+const openingNode = ref<number | null>(null);
+let openingGeneration = 0;
+watch([() => props.node.id, () => props.session], () => { openingGeneration++; openingNode.value = null; }, {flush: 'sync'});
+onScopeDispose(() => { openingGeneration++; });
+async function openNode(node: WorldNode) {
+  if (lockedBed(node) || openingNode.value !== null) return;
+  const current = openingGeneration; openingNode.value = node.id; error.value = '';
+  try { await router.push(`/world/nodes/${node.id}`); }
+  catch (cause) { if (current === openingGeneration) error.value = worldError(cause); }
+  finally { if (current === openingGeneration) openingNode.value = null; }
+}
 function clearSelection() { selected.value = []; anchor.value = null; droppedCrop.value = null; }
 function dropSeed(event: DragEvent, node: WorldNode) {
   if (node.type !== 'BED' || !node.details.unlocked || !node.permissions.storage) return;
@@ -228,7 +245,10 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-map-layout
   .world-map-main
     .world-map-window
-      svg.world-map-board(:viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="xMidYMid meet" role="group" tabindex="0" :aria-label="`Карта ${node.label}. Выделите ячейки рамкой. Стрелки — выбор ячейки, Shift или Ctrl — несколько ячеек, Escape — снять выделение.`" @pointerdown="startArea" @pointermove="moveArea" @pointerup="finishArea" @pointercancel="drag = null" @lostpointercapture="drag = null" @click="clickMap" @keydown="moveSelection")
+      .map-opening(v-if="openingNode !== null" role="status" aria-live="polite" aria-busy="true")
+        n-spin(size="small")
+        span Открываем объект…
+      svg.world-map-board(:viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="xMidYMid meet" role="group" tabindex="0" :aria-label="`Карта ${node.label}. Выделите ячейки рамкой. Стрелки — выбор ячейки, Shift или Ctrl — несколько ячеек, Escape — снять выделение.`" @pointerdown="startArea" @pointermove="moveArea" @pointerup="finishArea" @pointerleave="drag = null" @pointercancel="drag = null" @lostpointercapture="drag = null" @click="clickMap" @keydown="moveSelection")
         defs
           pattern(:id="`world-fog-${node.id}`" width="10" height="10" patternUnits="userSpaceOnUse")
             rect(width="10" height="10" class="map-closed")
@@ -242,6 +262,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           g(v-if="state(cell) === 'discovered' && !occupied(cell)" :transform="`translate(${size - 45}, 2)`")
             font-awesome-icon(icon="coins" :x="0" :y="4" :width="10" :height="10" aria-hidden="true")
             text(x="40" y="13" text-anchor="end" class="map-price") {{ cellPrice(cell) }}
+          font-awesome-icon(v-if="canExploreCell(cell)" icon="compass" :x="size / 2 - 10" y="12" width="20" height="20" aria-label="Можно исследовать")
           text(v-if="!occupied(cell)" :x="size / 2" y="49" text-anchor="middle" class="map-cell-status") {{ state(cell) === 'open' ? 'Свободно' : state(cell) === 'discovered' ? 'К покупке' : '' }}
           text(v-if="!occupied(cell)" x="6" :y="size - 7" class="map-coordinate") {{ cell.x }}, {{ cell.y }}
           rect.map-equipment-surface(v-if="equipment(cell)" x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
@@ -249,9 +270,10 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           text(v-if="equipment(cell)" :x="size / 2" y="57" text-anchor="middle" class="map-object-label map-equipment-label") {{ (equipment(cell)?.name || 'Предмет').slice(0, 12) }}
           title Ячейка {{ cell.x }}, {{ cell.y }}
         rect(v-for="cell in selected" :key="`selected-${key(cell)}`" :x="position(cell).x + 2" :y="position(cell).y + 2" :width="size - 4" :height="size - 4" class="map-selected")
-        polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)")
-        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}. ${lockedBed(child) ? 'Закрыта' : statuses[child.status] || child.status}`" @click.stop="selectNode(child, $event)" @keydown.enter.stop="selectNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
+        polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)")
+        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}. ${lockedBed(child) ? 'Закрыта' : statuses[child.status] || child.status}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
           rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
+          font-awesome-icon(v-if="child.details.is_lodging" icon="bed" x="65" y="7" width="14" height="14" aria-label="Ваш ночлег")
           font-awesome-icon(:icon="lockedBed(child) ? 'lock' : icons[child.type]" x="32" y="13" width="24" height="24" aria-hidden="true")
           font-awesome-icon(v-if="child.status === 'constructing'" icon="hammer" x="64" y="8" width="16" height="16" aria-hidden="true")
           text(:x="size / 2" y="55" text-anchor="middle" class="map-object-label") {{ child.label.length > 12 ? child.label.slice(0, 11) + '…' : child.label }}
@@ -263,6 +285,9 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       slot(name="placement")
   aside.world-map-inspector(aria-live="polite")
     slot(name="information")
+    template(v-if="writable")
+      .map-construction-session(v-for="child in constructionNodes" :key="child.id" v-show="selectedNode?.id === child.id")
+        world-build-panel(:node-id="child.id" :revision="child.revision" :owner="owner" :session="session ?? 0" embedded @changed="emit('changed', [node.id, child.id])")
     section.map-cell-information
       button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
       template(v-if="selectedNode")
@@ -284,14 +309,13 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
         router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
         router-link(v-if="selectedNode.owned_by_me && selectedNode.status === 'active'" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
-        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation') && selectedNode.permissions.storage" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
+        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")
         span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
         h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
       template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
-        span.world-map-kicker Команды
-        h3 Выберите цель
+        h3 Выберите ячейку
       section.map-opening(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
         .explore-action
           h4 Открытие ячеек
@@ -313,14 +337,16 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
           n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}#[world-credits(:value="price?.total ?? '0'" cost)]
         n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
-      world-help-hint(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
+      world-help-hint.map-selection-help(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
         p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
-      n-alert(v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
-      n-alert(v-if="professionNotice" type="success" role="status") {{ professionNotice }}
+      n-alert(closable v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
+      n-alert(closable v-if="professionNotice" type="success" role="status") {{ professionNotice }}
       n-button(:theme-overrides="worldActionButtonTheme" v-if="gardenError" :disabled="blocked" @click="refreshGarden") Обновить карту
 </template>
 
 <style scoped>
+.world-map-window { position: relative; }.map-opening { position: absolute; z-index: 2; top: .65rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .55rem; padding: .6rem .9rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); box-shadow: 0 4px 16px #0003; white-space: nowrap; pointer-events: none; }
+.map-cell-information :deep(.map-selection-help) { position: absolute; right: 0; top: 0; }.map-cell-information:has(.map-selection-help) { padding-right: 1.8rem; }
 .world-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem); gap: 1rem; align-items: start; }
 .map-opening { display: grid; gap: .75rem; }
 .map-opening h4 { margin: 0; }
@@ -365,7 +391,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .map-equipment-label { fill: white; }
 .world-map-hint { margin: .55rem 0; color: var(--text-muted); font-size: .8rem; }
 .world-map-inspector { position: relative; display: grid; gap: .75rem; min-height: 13rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-surface); }
-.map-cell-information { position: relative; display: grid; gap: .75rem; min-width: 0; }.map-cell-information:not(:first-child):has(> :not(.world-inspector-close)) { border-top: 1px solid var(--border); padding-top: 1rem; }
+.map-cell-information { position: relative; display: grid; gap: .75rem; min-width: 0; }
 .world-inspector-close:hover { background: var(--primary-soft); color: var(--primary-hover); }
 .world-inspector-close { position: absolute; top: .35rem; right: .45rem; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border: 0; border-radius: .375rem; background: transparent; color: var(--primary); font-size: 1.6rem; cursor: pointer; }
 .world-map-inspector h3, .world-map-inspector p { margin: 0; }

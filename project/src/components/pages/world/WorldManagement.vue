@@ -26,9 +26,9 @@ function confirm() { if (quote.value) void runner.submit(`/nodes/${props.node.id
 <template lang="pug">
 section.world-management(v-if="node.permissions.administer" aria-label="Управление объектом")
   h3 Управление объектом
-  n-alert(v-if="!node.portable" type="info") Этот объект закреплён на месте. Включите параметр «Можно перемещать» в административной карточке объекта, чтобы разрешить перенос.
-  n-alert(v-if="!writable" type="info") Изменение мира временно отключено.
-  n-alert(v-if="previewError" type="error" role="alert") {{ previewError }}
+  n-alert(closable v-if="!node.portable" type="info") Этот объект закреплён на месте. Включите параметр «Можно перемещать» в административной карточке объекта, чтобы разрешить перенос.
+  n-alert(closable v-if="!writable" type="info") Изменение мира временно отключено.
+  n-alert(closable v-if="previewError" type="error" role="alert") {{ previewError }}
   template(v-if="!pending")
     n-select(v-model:value="action" :options="[{label: 'Перенести', value: 'move'}, {label: 'Архивировать', value: 'archive'}]" :disabled="!writable || busy" aria-label="Действие")
     n-input-number(v-if="action === 'move'" v-model:value="parent" :min="1" :max="2147483647" :precision="0" :disabled="!node.portable || !writable || busy" placeholder="ID нового родительского объекта" aria-label="ID нового родительского объекта")

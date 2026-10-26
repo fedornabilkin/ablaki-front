@@ -58,11 +58,11 @@ onScopeDispose(() => { disposed = true; epoch++; });
     router-link(v-if="home" :to="`/world/nodes/${home.id}`") Моя стоянка
     router-link(to="/world/workspace/inventory") Инвентарь
     router-link(v-if="current?.status === 'active' && canOwn" to="/world") Крафт на своей стоянке
-  n-alert(v-if="error" type="error") {{ error }}
-  n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
-  n-alert(v-if="message" type="success") {{ message }}
+  n-alert(closable v-if="error" type="error") {{ error }}
+  n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
+  n-alert(closable v-if="message" type="success") {{ message }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value" :loading="runner.busy.value" @click="act('retry')") Повторить запрос
-  n-alert(v-if="command.error.value" type="error") {{ command.error.value }}
+  n-alert(closable v-if="command.error.value" type="error") {{ command.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="command.pending.value" :loading="command.busy.value" @click="command.retry") Повторить прошлое действие
   n-spin(v-if="loading && !current")
   template(v-else)

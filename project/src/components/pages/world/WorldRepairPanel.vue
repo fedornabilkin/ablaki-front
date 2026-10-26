@@ -30,7 +30,7 @@ section.world-repair(v-if="damaged && !node.details.repair_active")
         font-awesome-icon(icon="hammer")
         font-awesome-icon(icon="hammer")
     | Починить
-  n-alert(v-if="runner.error.value" type="error") {{ runner.error.value }}
+  n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value && !runner.busy.value" @click="repair(true)") Повторить запрос
 build-settings-modal(v-model:show="open" :project="project" :name="node.label" :owner="owner" :session="session" :creating="runner.busy.value" :creation-error="runner.error.value" repair navigate @saved="emit('changed')")
 </template>
