@@ -245,7 +245,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-map-layout
   .world-map-main
     .world-map-window
-      .map-opening(v-if="openingNode !== null" role="status" aria-live="polite" aria-busy="true")
+      .map-opening-indicator(v-if="openingNode !== null" role="status" aria-live="polite" aria-busy="true")
         n-spin(size="small")
         span Открываем объект…
       svg.world-map-board(:viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="xMidYMid meet" role="group" tabindex="0" :aria-label="`Карта ${node.label}. Выделите ячейки рамкой. Стрелки — выбор ячейки, Shift или Ctrl — несколько ячеек, Escape — снять выделение.`" @pointerdown="startArea" @pointermove="moveArea" @pointerup="finishArea" @pointerleave="drag = null" @pointercancel="drag = null" @lostpointercapture="drag = null" @click="clickMap" @keydown="moveSelection")
@@ -316,7 +316,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
       template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
         h3 Выберите ячейку
-      section.map-opening(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
+      section.map-cell-actions(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
         .explore-action
           h4 Открытие ячеек
           world-help-hint(label="Исследование и покупка ячеек" symbol="!")
@@ -345,11 +345,11 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 </template>
 
 <style scoped>
-.world-map-window { position: relative; }.map-opening { position: absolute; z-index: 2; top: .65rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .55rem; padding: .6rem .9rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); box-shadow: 0 4px 16px #0003; white-space: nowrap; pointer-events: none; }
+.world-map-window { position: relative; }.map-opening-indicator { position: absolute; z-index: 2; top: .65rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .55rem; padding: .6rem .9rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); box-shadow: 0 4px 16px #0003; white-space: nowrap; pointer-events: none; }
 .map-cell-information :deep(.map-selection-help) { position: absolute; right: 0; top: 0; }.map-cell-information:has(.map-selection-help) { padding-right: 1.8rem; }
 .world-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem); gap: 1rem; align-items: start; }
-.map-opening { display: grid; gap: .75rem; }
-.map-opening h4 { margin: 0; }
+.map-cell-actions { display: grid; gap: .75rem; min-width: 0; }
+.map-cell-actions h4 { margin: 0; }
 .world-map-main { min-width: 0; }
 .world-map-window { height: clamp(15rem, 54vh, 34rem); padding: .4rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); overflow: hidden; }
 .world-map-board { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; user-select: none; }

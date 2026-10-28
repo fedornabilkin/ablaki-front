@@ -1,8 +1,9 @@
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { record } from './world';
-export interface SourceAction { code: string; work_seconds: number; cooldown_seconds: number; available_at?: number; experience?: number; unavailable_reason?: string | null; output: { code: string; name: string; quantity: number }[]; tools: string[]; tool_names?: string[]; daily_limit: number | null }
-export interface MineEmployment { enabled: boolean; reward_cr: string; storage_id: number | null; owner: boolean; available: boolean; reason: string | null; accepted_reward_cr: string | null; storages: { id: number; name: string; capacity: number }[] }
+export interface DrillBonus { node_id: number; output_multiplier: number; reward_multiplier: number }
+export interface SourceAction { code: string; work_seconds: number; cooldown_seconds: number; available_at?: number; experience?: number; unavailable_reason?: string | null; output: { code: string; name: string; quantity: number }[]; tools: string[]; tool_names?: string[]; daily_limit: number | null; drilling?: DrillBonus }
+export interface MineEmployment { enabled: boolean; reward_cr: string; base_reward_cr?: string; reward_multiplier?: number; storage_id: number | null; owner: boolean; available: boolean; reason: string | null; accepted_reward_cr: string | null; storages: { id: number; name: string; capacity: number }[] }
 export interface MiningState { node_id: number; ready: boolean; working: boolean; workers: number; produced_quantity: number; pending_quantity: number; seconds_per_unit: number; server_time: number;
   work_id?: number | null; required_seconds?: number; live_work?: { accounted_at: number; last_seen_at: number }[];
   employment?: MineEmployment; unavailable_reason?: string | null;
@@ -15,13 +16,20 @@ export function parseMining(value: unknown): MiningState {
   if (typeof row.ready !== 'boolean' || typeof row.working !== 'boolean') throw new Error('invalid-world-response');
   const uint = (value: unknown): number => { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new Error('invalid-world-response'); return value; };
   const string = (value: unknown): string => { if (typeof value !== 'string' || value.length > 500) throw new Error('invalid-world-response'); return value; };
+  const multiplier = (value: unknown): number => { const result = uint(value); if (result < 1 || result > 20) throw new Error('invalid-world-response'); return result; };
   let actions: SourceAction[] | undefined;
   if (row.actions !== undefined) {
     if (!Array.isArray(row.actions) || row.actions.length > 100) throw new Error('invalid-world-response');
     actions = row.actions.map(value => {
       const action = record(value);
       if (!Array.isArray(action.output) || action.output.length > 10 || !Array.isArray(action.tools) || action.tools.length > 10) throw new Error('invalid-world-response');
+      let drilling: DrillBonus | undefined;
+      if (action.drilling !== undefined) {
+        const equipment = record(action.drilling), node = uint(equipment.node_id); if (!node) throw new Error('invalid-world-response');
+        drilling = { node_id: node, output_multiplier: multiplier(equipment.output_multiplier), reward_multiplier: multiplier(equipment.reward_multiplier) };
+      }
       return { code: string(action.code), work_seconds: uint(action.work_seconds), cooldown_seconds: uint(action.cooldown_seconds),
+        ...(drilling ? {drilling} : {}),
         ...(action.unavailable_reason === undefined ? {} : { unavailable_reason: action.unavailable_reason === null ? null : string(action.unavailable_reason) }),
         ...(action.available_at === undefined ? {} : { available_at: uint(action.available_at) }),
         ...(action.experience === undefined ? {} : { experience: uint(action.experience) }),
@@ -35,7 +43,7 @@ export function parseMining(value: unknown): MiningState {
     const boolean = (value: unknown): boolean => { if (typeof value !== 'boolean') throw new Error('invalid-world-response'); return value; };
     const money = (value: unknown): string => { const result = string(value); if (!/^\d+(\.\d{1,4})?$/.test(result)) throw new Error('invalid-world-response'); return result; };
     if (!Array.isArray(p.storages) || p.storages.length > 1000) throw new Error('invalid-world-response');
-    employment = { enabled: boolean(p.enabled), reward_cr: money(p.reward_cr), storage_id: p.storage_id == null ? null : uint(p.storage_id), owner: boolean(p.owner), available: boolean(p.available), reason: p.reason == null ? null : string(p.reason), accepted_reward_cr: p.accepted_reward_cr == null ? null : money(p.accepted_reward_cr), storages: p.storages.map(value => { const s = record(value); return {id: uint(s.id), name: string(s.name), capacity: uint(s.capacity)}; }) };
+    employment = { enabled: boolean(p.enabled), reward_cr: money(p.reward_cr), ...(p.base_reward_cr === undefined ? {} : {base_reward_cr: money(p.base_reward_cr)}), ...(p.reward_multiplier === undefined ? {} : {reward_multiplier: multiplier(p.reward_multiplier)}), storage_id: p.storage_id == null ? null : uint(p.storage_id), owner: boolean(p.owner), available: boolean(p.available), reason: p.reason == null ? null : string(p.reason), accepted_reward_cr: p.accepted_reward_cr == null ? null : money(p.accepted_reward_cr), storages: p.storages.map(value => { const s = record(value); return {id: uint(s.id), name: string(s.name), capacity: uint(s.capacity)}; }) };
   }
   let outputStorages: MiningState['output_storages'];
   if (row.output_storages !== undefined) {
