@@ -21,7 +21,7 @@ const panels = computed(() => {
     { feature: 'cultivation', slot: 'cultivation', component: WorldCultivationPanel, props: { ...common, bedId: props.node.id } },
     { feature: 'equipment_expansion', slot: 'equipment', component: WorldEquipmentExpansionPanel, props: common },
   ];
-  return registry.filter(panel => panel.slot === props.slot && props.node.extensions?.includes(panel.feature) && (props.node.permissions.storage || panel.feature === 'kitchen' || panel.feature === 'cultivation' || (panel.feature === 'mining' && props.node.details.building_kind === 'mine')));
+  return registry.filter(panel => panel.slot === props.slot && props.node.extensions?.includes(panel.feature) && (props.node.permissions.storage || panel.feature === 'kitchen' || panel.feature === 'cultivation' || panel.feature === 'harvest' || (panel.feature === 'mining' && (props.node.details.building_kind === 'mine' || props.node.extensions.includes('public_work')))));
 });
 </script>
 <template lang="pug">

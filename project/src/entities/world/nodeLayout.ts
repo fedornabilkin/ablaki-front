@@ -4,6 +4,7 @@ export type NodeTab = 'map' | 'cultivation' | 'workshop' | 'finance' | 'statisti
 
 export interface NodeFeatureSet {
   storage: boolean;
+  manufacturing: boolean;
   nights: boolean;
   housing: boolean;
   finance: boolean;
@@ -21,6 +22,7 @@ export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | 
   const storage = Boolean(capabilities?.storage_v2 && node.permissions.storage);
   return {
     storage,
+    manufacturing: active && Boolean(capabilities?.storage_v2) && (storage || extensions.has('public_workspace')),
     nights: active && storage && extensions.has('nights'),
     housing: active && storage && extensions.has('housing'),
     finance: Boolean(node.permissions.manage || node.permissions.administer),
@@ -31,7 +33,7 @@ export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | 
 export function tabsForNode(node: WorldNode, features: NodeFeatureSet): NodeTab[] {
   const tabs: NodeTab[] = ['map'];
   if (features.cultivation) tabs.push('cultivation');
-  if (features.storage) tabs.push('workshop');
+  if (features.storage || features.manufacturing) tabs.push('workshop');
   if (features.finance) tabs.push('finance');
   tabs.push('statistics');
   return tabs;

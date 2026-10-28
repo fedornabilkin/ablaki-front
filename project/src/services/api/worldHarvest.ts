@@ -24,7 +24,7 @@ export async function loadHarvest(node: number) {
   if (new Set(items.map(i => i.position)).size !== items.length) invalid();
   if (r.destinations !== undefined && (!Array.isArray(r.destinations) || r.destinations.length > 200)) invalid();
   const destinations = (r.destinations as unknown[] | undefined ?? []).map(value => { const row = record(value); if (!['backpack', 'chest', 'stockpile'].includes(String(row.kind))) invalid(); return { id: id(row.id), name: text(row.name), kind: text(row.kind) }; });
-  return { items, capacity, allow_sales: r.allow_sales === undefined ? true : bool(r.allow_sales), destinations, owned_by_me: bool(r.owned_by_me), writable: bool(r.writable), server_time: integer(r.server_time) };
+  return { items, capacity, npc_supply: r.npc_supply === undefined ? false : bool(r.npc_supply), allow_sales: r.allow_sales === undefined ? true : bool(r.allow_sales), destinations, owned_by_me: bool(r.owned_by_me), writable: bool(r.writable), server_time: integer(r.server_time) };
 }
 export async function previewHarvest(node: number, action: HarvestAction, value: unknown) {
   const input = harvestInput(action, value), quote = parseWorldQuote((await apiClient.post(url(node, `harvest-${action}-preview`), input)).data);

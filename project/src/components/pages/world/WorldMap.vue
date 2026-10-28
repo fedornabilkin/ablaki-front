@@ -308,7 +308,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
             dd {{ selectedNode.details.condition }} / {{ selectedNode.details.max_condition ?? '—' }}
         router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
         router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
-        router-link(v-if="selectedNode.owned_by_me && selectedNode.status === 'active'" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
+        router-link(v-if="selectedNode.status === 'active' && (selectedNode.owned_by_me || selectedNode.extensions?.includes('public_workspace'))" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
         world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")

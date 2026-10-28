@@ -92,11 +92,13 @@ export async function gatherState(id: number) {
   const row = record((await apiClient.get(url(`objects/${id}/gather`))).data);
   if (row.gather_can_claim !== undefined && typeof row.gather_can_claim !== 'boolean') throw new Error('invalid-world-response');
   if (typeof row.gather_available !== 'boolean') throw new Error('invalid-world-response');
-    if (row.gather_exhausted !== undefined && typeof row.gather_exhausted !== 'boolean') throw new Error('invalid-world-response');
-    return { gather_can_claim: row.gather_can_claim ?? row.gather_available, gather_reason: row.gather_reason == null ? null : text(row.gather_reason), gather_items: Array.isArray(row.gather_items) ? row.gather_items.map(value => { const item = record(value); return { name: text(item.name), quantity: number(item.quantity) }; }) : [], gather_available: row.gather_available, gather_available_at: number(row.gather_available_at), server_time: number(row.server_time),
-      ...(row.gather_remaining === undefined ? {} : { gather_remaining: number(row.gather_remaining) }),
-      ...(row.gather_limit === undefined ? {} : { gather_limit: number(row.gather_limit) }),
-      ...(row.gather_exhausted === undefined ? {} : { gather_exhausted: row.gather_exhausted }) };
+  if (row.gather_exhausted !== undefined && typeof row.gather_exhausted !== 'boolean') throw new Error('invalid-world-response');
+  if (row.gather_minimum !== undefined && typeof row.gather_minimum !== 'boolean') throw new Error('invalid-world-response');
+  return { gather_can_claim: row.gather_can_claim ?? row.gather_available, gather_reason: row.gather_reason == null ? null : text(row.gather_reason), gather_items: Array.isArray(row.gather_items) ? row.gather_items.map(value => { const item = record(value); return { name: text(item.name), quantity: number(item.quantity) }; }) : [], gather_available: row.gather_available, gather_available_at: number(row.gather_available_at), server_time: number(row.server_time),
+    ...(row.gather_remaining === undefined ? {} : { gather_remaining: number(row.gather_remaining) }),
+    ...(row.gather_limit === undefined ? {} : { gather_limit: number(row.gather_limit) }),
+    ...(row.gather_exhausted === undefined ? {} : { gather_exhausted: row.gather_exhausted }),
+    ...(row.gather_minimum === undefined ? {} : { gather_minimum: row.gather_minimum }) };
 }
 function money(value: unknown): string {
   if ((typeof value !== 'string' && typeof value !== 'number') || !/^\d+(\.\d{1,4})?$/.test(String(value))) throw new Error('invalid-world-response');

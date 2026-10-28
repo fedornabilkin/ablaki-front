@@ -218,11 +218,11 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         span.world-eyebrow Мастерская и размещение
         h2 Вещи и крафт
       .world-inline-links.world-content-card
-        router-link.world-manufacturing-action(v-if="features?.storage && world.node.status === 'active'" :to="`/world/workspace/${world.node.id}`")
+        router-link.world-manufacturing-action(v-if="features?.manufacturing" :to="`/world/workspace/${world.node.id}`")
           font-awesome-icon(icon="hammer" aria-hidden="true")
           | Изготовление в этом объекте
         p(v-else) Изготовление доступно владельцу действующего объекта.
-        world-workspace-nav(:node-id="world.node.owned_by_me && world.node.status === 'active' ? world.node.id : undefined" :show-manufacturing="false")
+        world-workspace-nav(:node-id="features?.manufacturing ? world.node.id : undefined" :show-manufacturing="false")
       .world-content-grid.world-content-grid--workshop
         world-storage-panel.world-content-card.world-storage-card(v-if="features.storage" :node="world.node" :map="world.map" :node-id="world.node.id" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" :command="command" :session="session")
         world-node-extensions(slot="equipment" v-bind="extensionProps" @changed="changed([world.node.id])")
