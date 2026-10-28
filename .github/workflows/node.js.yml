@@ -53,7 +53,7 @@ jobs:
           INPUT_BRANCH: ${{ inputs.branch }}
 
   frontend:
-    name: Frontend checks
+    name: Minimum checks and build
     needs: configuration
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -94,7 +94,9 @@ jobs:
         run: npm ci
 
       - name: Check deployment script syntax
-        run: bash -n ../automation/deploy/frontend-deploy.sh
+        run: |
+          bash -n ../automation/deploy/frontend-deploy.sh
+          bash -n ../automation/deploy/frontend-stage.sh
 
       - name: Test deployment targets and URL validation
         run: node --test ../automation/deploy/*.test.mjs
@@ -103,8 +105,14 @@ jobs:
         id: build-config
         run: node ../automation/deploy/deployment-target.mjs validate-build
 
-      - name: Run unit tests
-        run: npm run test:unit
+      - name: Run mandatory unit tests (full suite before production)
+        shell: bash
+        run: |
+          if [[ "$DEPLOY_TARGET" = test ]]; then
+            npm run test:unit -- tests/auth.test.ts tests/httpClient.test.ts
+          else
+            npm run test:unit
+          fi
 
       - name: Build frontend
         run: npm run build
@@ -170,6 +178,10 @@ jobs:
           printf '%s\n' "$SOURCE_SHA" > release/dist/deploy-version.txt
           tar -C release/dist -czf "release/$archive" .
           (
+            cd release/dist
+            find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "../$archive.files.sha256"
+          )
+          (
             cd release
             sha256sum "$archive" > "$archive.sha256"
           )
@@ -203,34 +215,55 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+          printf 'Host %s\n  ControlMaster auto\n  ControlPersist 60\n  ControlPath %s/frontend-ssh-%%C\n' "$DEPLOY_HOST" "$RUNNER_TEMP" > "$HOME/.ssh/config"
+          chmod 600 "$HOME/.ssh/config"
 
       - name: Upload and activate frontend
         shell: bash
         run: |
+          started=$SECONDS
           archive="frontend-$SOURCE_SHA.tar.gz"
           remote_dir="$DEPLOY_ROOT/incoming/$SOURCE_SHA"
-          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
-            -o BatchMode=yes -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$remote_dir'"
-          scp -i "$HOME/.ssh/deploy_key" -P "$DEPLOY_PORT" \
-            -o BatchMode=yes -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "release/$archive" \
-            "release/$archive.sha256" \
-            "release/frontend-deploy.sh" \
-            "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/"
-          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
-            -o BatchMode=yes -o ConnectTimeout=15 \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash '$remote_dir/frontend-deploy.sh' \
-              --target '$DEPLOY_TARGET' \
-              --deploy-root '$DEPLOY_ROOT' \
-              --web-root '$WEB_ROOT' \
-              --sha '$SOURCE_SHA' \
-              --archive '$remote_dir/$archive' \
-              --healthcheck-url '$HEALTHCHECK_URL'"
+          options=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
+          if [[ "$DEPLOY_TARGET" = test ]]; then
+            ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+              "bash -s -- prepare '$DEPLOY_TARGET' '$DEPLOY_ROOT' '$WEB_ROOT' '$SOURCE_SHA' '$HEALTHCHECK_URL'" < deploy/frontend-stage.sh
+            echo '[frontend-stage] Sending changed files only'
+            rsync --archive --checksum --compress --delete-after --stats \
+              -e "ssh -i $HOME/.ssh/deploy_key -p $DEPLOY_PORT -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
+              release/dist/ "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/dist/"
+            cp deploy/frontend-stage.sh release/
+            tar -C release -cf - "$archive.files.sha256" frontend-deploy.sh frontend-stage.sh | \
+              ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+                "tar -xf - -C '$remote_dir' && bash '$remote_dir/frontend-stage.sh' activate '$DEPLOY_TARGET' '$DEPLOY_ROOT' '$WEB_ROOT' '$SOURCE_SHA' '$HEALTHCHECK_URL'"
+          else
+            ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$remote_dir'"
+            scp "${options[@]}" -P "$DEPLOY_PORT" "release/$archive" "release/$archive.sha256" release/frontend-deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/"
+            ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "bash '$remote_dir/frontend-deploy.sh' --target '$DEPLOY_TARGET' --deploy-root '$DEPLOY_ROOT' --web-root '$WEB_ROOT' --sha '$SOURCE_SHA' --archive '$remote_dir/$archive' --healthcheck-url '$HEALTHCHECK_URL'"
+          fi
+          printf '### Frontend ready: `%s`\n\nPublished and HTTP checked in %s seconds. Extended tests continue separately.\n' "$SOURCE_SHA" "$((SECONDS-started))" >> "$GITHUB_STEP_SUMMARY"
+
+  extended:
+    name: Extended frontend checks after test deployment
+    needs: [configuration, frontend, deploy]
+    if: needs.configuration.outputs.target == 'test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: frontend-extended-test
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.frontend.outputs.source_sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+      - name: Install dependencies
+        working-directory: project
+        run: npm ci
+      - name: Run full unit test suite
+        working-directory: project
+        run: npm run test:unit
