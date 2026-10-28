@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, markRaw, reactive, ref } from 'vue';
+import { readFileSync } from 'node:fs';
+import { parse as parseSfc } from '@vue/compiler-sfc';
+import postcss from 'postcss';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldHarvestPanel from '../src/components/pages/world/WorldHarvestPanel.vue';
 import WorldMap from '../src/components/pages/world/WorldMap.vue';
@@ -522,6 +525,30 @@ describe('map controls', () => {
     buy.props.onClick(); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled(); expect(viewText(view.root)).toContain('Цена изменилась');
   });
 });
+describe('map control pointer events', () => {
+  it.each(['explore', 'buy'] as const)('keeps %s controls outside pointer-disabled containers and submits the action', async action => {
+    const source = readFileSync(new URL('../src/components/pages/world/WorldMap.vue', import.meta.url), 'utf8');
+    const pointerDisabled = new Set<string>();
+    for (const style of parseSfc(source).descriptor.styles) postcss.parse(style.content).walkDecls('pointer-events', declaration => {
+      if (declaration.value !== 'none' || declaration.parent?.type !== 'rule') return;
+      for (const selector of declaration.parent.selectors) { const match = /^\.([\w-]+)$/.exec(selector.trim()); if (match) pointerDisabled.add(match[1]); }
+    });
+    mocks.budget.mockResolvedValue({available: '100.0000', reserved: '0.0000'});
+    mocks.mapPreview.mockResolvedValue({...quote, terms: {price: action === 'buy' ? '10.0000' : '0.0000'}});
+    const selection = [{x: 1, y: 0}];
+    const view = mount(WorldMap, () => ({node, session: 1, writable: true, command: mocks.runner, selection,
+      map: {node_id: 1, items: [], cells: [{...selection[0], state: action === 'buy' ? 'discovered' : 'closed'}], can_expand: true,
+        pricing: {paid_cells: 0, base_price: '10.0000', next_price: '10.0000', bulk_minimum: 3, discount_bps: 500, max_quantity: 100, currency: 'Cr'},
+        exploration: {allowed: true, level: 3, elixir_quantity: 0}}}));
+    await flushView();
+    const button = findView(view.root, item => item.tag === 'button' && viewText(item).includes(action === 'buy' ? 'Купить 1' : 'Исследовать 1'))!;
+    expect(button).toBeDefined(); expect(button.props.disabled).toBe(false);
+    for (let parent = button; parent; parent = parent.parent!) for (const name of String(parent.props.class ?? '').split(/\s+/)) expect(pointerDisabled.has(name), `pointer-events:none on ${name}`).toBe(false);
+    button.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith(`/nodes/1/map-${action}`, {cells: selection, top_up: false, use_elixir: false}, expect.any(Object));
+  });
+});
+
 describe('one-click world actions', () => {
   const props = () => ({ nodeId: 1, bedId: 1, session: 1, writable: true, command: mocks.runner });
   it('keeps garden loading errors visible and allows retry even in existing-only mode', async () => {
@@ -701,6 +728,25 @@ describe('topic 82 world controls', () => {
       expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '1.7000'});
       expect(findView(view.root, n => n.props['aria-label'] === 'Склад работодателя')).toBeUndefined();
     } finally {vi.useRealTimers();}
+  });
+});
+
+describe('drilling wage controls', () => {
+  it('shows drill output and saves the base wage without multiplying it again', async () => {
+    vi.useFakeTimers();
+    const snapshot = {node_id: 1, ready: true, working: false, workers: 0, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180, server_time: 100,
+      actions: [{code: 'mine-stone', work_seconds: 180, output: [{name: 'Камень', quantity: 15}], tools: [], tool_names: [], cooldown_seconds: 0, drilling: {node_id: 7, output_multiplier: 5, reward_multiplier: 3}}],
+      employment: {owner: true, enabled: true, reward_cr: '6.0000', base_reward_cr: '2.0000', reward_multiplier: 3, storage_id: 8, storages: []}};
+    mocks.mining.mockResolvedValue(snapshot);
+    const view = mount(WorldMiningPanel, () => ({nodeId: 1, owner: 1, session: 1, writable: true})); await flushView();
+    expect(viewText(view.root)).toContain('Кирка не нужна'); expect(viewText(view.root)).toContain('Камень × 15');
+    const input = () => findView(view.root, item => item.tag === 'input' && typeof item.props['onUpdate:value'] === 'function')!;
+    expect(input().props.value).toBe('2');
+    input().props['onUpdate:value']('2.5'); await flushView();
+    mocks.mining.mockResolvedValue({...snapshot, employment: {...snapshot.employment, reward_cr: '8.0000', reward_multiplier: 4}});
+    await vi.advanceTimersByTimeAsync(10000); await flushView(); expect(input().props.value).toBe('2.5');
+    findView(view.root, item => item.tag === 'button' && viewText(item) === 'Сохранить условия')!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/settings', {enabled: true, reward_cr: '2.5000'});
   });
 });
 

@@ -54,6 +54,13 @@ describe('closed-test server contracts', () => {
     expect(() => parseMining({ ...data, actions: [{ ...data.actions[0], experience: -1 }] })).toThrow();
     expect(() => parseMining({ ...data, output_storage_id: -1 })).toThrow();
   });
+  it('preserves server drill quantities and separates base, effective and accepted wages', () => {
+    const data = {...mining(), actions: [{...mining().actions[0], tools: [], tool_names: [], output: [{code: 'classic-stone', name: 'Камень', quantity: 15}], drilling: {node_id: 7, output_multiplier: 5, reward_multiplier: 3}}],
+      employment: {enabled: true, owner: false, available: true, reason: null, storage_id: 8, storages: [], base_reward_cr: '2.0000', reward_cr: '6.0000', reward_multiplier: 3, accepted_reward_cr: '3.0000'}};
+    expect(parseMining(data)).toMatchObject({actions: [{output: [{quantity: 15}], tools: [], drilling: {output_multiplier: 5}}], employment: {base_reward_cr: '2.0000', reward_cr: '6.0000', accepted_reward_cr: '3.0000'}});
+    for (const value of [0, 21, 2.5, '3']) expect(() => parseMining({...data, employment: {...data.employment, reward_multiplier: value}})).toThrow();
+    expect(() => parseMining({...data, actions: [{...data.actions[0], drilling: {...data.actions[0].drilling, node_id: 0}}]})).toThrow();
+  });
   const history = () => ({ items: [{ id: 'a'.repeat(32), source: 'commands', kind: 'world.start', classification: 'action', operation_id: 'a'.repeat(32), created_at: 100, quantity: null, amount_cr: null }],
     _meta: { totalCount: 1, currentPage: 1, pageCount: 1, perPage: 20 } });
   it('accepts real operation IDs and legacy five-decimal transfer deltas', () => {

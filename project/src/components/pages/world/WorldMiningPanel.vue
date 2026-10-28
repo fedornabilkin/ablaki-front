@@ -47,8 +47,8 @@ async function load() {
       const previous = state.value?.employment;
       state.value = result; error.value = '';
       if (!result.action_code && !result.output_storages?.some(storage => storage.kind === 'stockpile')) selectedDestination.value = 'backpack';
-      if (result.employment?.owner && (!previous || previous.enabled !== result.employment.enabled || previous.reward_cr !== result.employment.reward_cr)) {
-        hireEnabled.value = result.employment.enabled; hireReward.value = result.employment.reward_cr;
+      if (result.employment?.owner && (!previous || previous.enabled !== result.employment.enabled || (previous.base_reward_cr ?? previous.reward_cr) !== (result.employment.base_reward_cr ?? result.employment.reward_cr))) {
+        hireEnabled.value = result.employment.enabled; hireReward.value = result.employment.base_reward_cr ?? result.employment.reward_cr;
       }
     }
   }
@@ -89,6 +89,7 @@ section.mining-panel(aria-label="Получение ресурсов")
       p Работа учитывается при открытой странице и связи с сервером; после обрыва — не более 60 секунд. Выдачу ресурсов подтверждает сервер.
       p(v-if="selected?.cooldown_seconds") Восстановление источника после получения: {{ formatDuration(selected.cooldown_seconds) }}.
       p(v-if="selected?.tool_names?.length") Нужен исправный инструмент: {{ selected.tool_names.join(', ') }}.
+      p(v-if="selected?.drilling") Работает буровая: выход ресурсов ×{{ selected.drilling.output_multiplier }}, оплата партии ×{{ selected.drilling.reward_multiplier }}. Кирка не нужна. Условия уже начатой партии сохраняются; буровая должна оставаться исправной для её завершения.
       p(v-if="selected?.experience") Опыт за партию: +{{ selected.experience }}.
       p Добыча владельца по умолчанию поступает в рюкзак. Кнопка «Мини-склад» включает автоматический выбор ближайшего мини-склада внутри объекта с местом для всей партии. Расстояние считается от центра карты. Перед выдачей место проверяется снова.
       p(v-if="!hasMiniStorage") Для хранения добычи здесь постройте мини-склад внутри объекта.
@@ -101,8 +102,9 @@ section.mining-panel(aria-label="Получение ресурсов")
         p Работнику нужно не менее 60% здоровья и собственный инструмент. Шахта должна действовать с прочностью от 50% и иметь собственный склад с местом. Оплата резервируется из бюджета шахты при принятии партии. Принятая цена сохраняется при изменении условий.
         p Добыча работников автоматически поступает в ближайший мини-склад шахты с местом для всей партии. Постройте мини-склад внутри шахты перед включением найма.
     n-checkbox(v-model:checked="hireEnabled" :disabled="runner.busy.value || !!runner.pending.value") Разрешить оплачиваемую добычу
-    label Оплата партии
+    label Базовая оплата партии
       world-credit-input(v-model:value="hireReward" exact :disabled="runner.busy.value || !!runner.pending.value")
+    p(v-if="(state.employment.reward_multiplier ?? 1) > 1") С буровой базовая ставка умножается на {{ state.employment.reward_multiplier }}. Действующая оплата: #[world-credits(:value="state.employment.reward_cr")].
     p.mining-unavailable(v-if="!normalizedHireReward" role="status") Укажите оплату больше нуля, не более четырёх знаков после запятой.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="runner.busy.value && pendingSettings" :disabled="employmentBlocked" @click="saveEmployment(pendingSettings)") {{ pendingSettings ? 'Повторить сохранение' : 'Сохранить условия' }}
   n-alert(closable v-if="state?.employment && !state.employment.owner" type="info")
@@ -111,6 +113,7 @@ section.mining-panel(aria-label="Получение ресурсов")
     p(v-if="!state.ready") Постройте буровую установку внутри шахты, чтобы начать добычу.
     template(v-else)
       template(v-if="state.actions")
+        p.mining-equipment(v-if="selected?.drilling" role="status") Буровая: ресурсы ×{{ selected.drilling.output_multiplier }}, оплата ×{{ selected.drilling.reward_multiplier }} · Кирка не нужна
         n-select(:value="selected?.code" :options="options" :disabled="state.working || !!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Ресурс для добычи" @update:value="selectedAction = $event")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
         p(v-if="!state.action_code && (selected?.available_at ?? 0) > state.server_time") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
@@ -131,4 +134,5 @@ section.mining-panel(aria-label="Получение ресурсов")
 .mining-panel { display: grid; gap: .75rem; }.mining-panel p, .mining-panel h3 { margin: 0; }
 .mining-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }
 .mining-unavailable { color: var(--error, #d03050); font-size: .85rem; }
+.mining-equipment { padding: .55rem .7rem; border-radius: .4rem; background: var(--primary-soft); color: var(--primary); font-size: .85rem; }
 </style>
