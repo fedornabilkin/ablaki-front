@@ -11,6 +11,7 @@ import type { WorldTreeNode } from '../src/entities/world/types';
 import { nodeTypes, type WorldCapabilities, type WorldNode } from '../src/entities/world/types';
 import { parseCultivation } from '../src/services/api/worldCultivation';
 import { premisesPublicationInput } from '../src/services/api/worldPremises';
+import { gatherState } from '../src/services/api/simpleWorld';
 
 const capabilities: WorldCapabilities = { contract_version: 1, schema_ready: true, world_read: true, world_write: true, storage_v2: true, economy_tick: true };
 afterEach(() => vi.restoreAllMocks());
@@ -97,6 +98,24 @@ it('shows the same common sections for parent nodes, rooms and shelters', () => 
   const shelter = node('BUILDING', { shelter_instance_id: 4 });
   expect(tabsForNode(shelter, nodeFeatures(shelter, capabilities))).toEqual(['map', 'workshop', 'finance', 'statistics']);
   expect(tabForHash('#building-repair', tabsForNode(shelter, nodeFeatures(shelter, capabilities)))).toBe('map');
+});
+
+it('opens manufacturing in a public NPC workshop without exposing its inventory', () => {
+  const workshop = { ...node('BUILDING', {}, false), extensions: ['public_workspace'] };
+  const features = nodeFeatures(workshop, capabilities);
+  expect(features.manufacturing).toBe(true); expect(features.storage).toBe(false);
+  expect(tabsForNode(workshop, features)).toEqual(['map', 'workshop', 'statistics']);
+  expect(nodeFeatures({ ...workshop, extensions: [] }, capabilities).manufacturing).toBe(false);
+  expect(nodeFeatures({ ...workshop, status: 'constructing' }, capabilities).manufacturing).toBe(false);
+});
+
+it('accepts the daily minimum after starter supplies and rejects a malformed minimum flag', async () => {
+  const response = { gather_available: true, gather_available_at: 2000, server_time: 1000, gather_remaining: 0, gather_limit: 5, gather_exhausted: false, gather_minimum: true, gather_items: [{name: 'Песок', quantity: 1}, {name: 'Глина', quantity: 1}] };
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: response });
+  const state = await gatherState(10);
+  expect(state.gather_minimum).toBe(true); expect(state.gather_available).toBe(true); expect(state.gather_items).toHaveLength(2);
+  get.mockResolvedValueOnce({ data: { ...response, gather_minimum: 'true' } });
+  await expect(gatherState(10)).rejects.toThrow('invalid-world-response');
 });
 
 it('keeps the map and statistics available throughout the world hierarchy', () => {

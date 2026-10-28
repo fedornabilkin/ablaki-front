@@ -106,7 +106,7 @@ section.mining-panel(aria-label="Получение ресурсов")
     p.mining-unavailable(v-if="!normalizedHireReward" role="status") Укажите оплату больше нуля, не более четырёх знаков после запятой.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="runner.busy.value && pendingSettings" :disabled="employmentBlocked" @click="saveEmployment(pendingSettings)") {{ pendingSettings ? 'Повторить сохранение' : 'Сохранить условия' }}
   n-alert(closable v-if="state?.employment && !state.employment.owner" type="info")
-    p Оплата партии: #[world-credits(:value="state.employment.accepted_reward_cr ?? state.employment.reward_cr")]. Добыча поступит на склад владельца шахты, оплата — на ваш личный баланс.
+    p Оплата партии: #[world-credits(:value="state.employment.accepted_reward_cr ?? state.employment.reward_cr")]. Добыча поступит в мини-склад объекта, оплата — на ваш личный баланс.
   template(v-if="state")
     p(v-if="!state.ready") Постройте буровую установку внутри шахты, чтобы начать добычу.
     template(v-else)

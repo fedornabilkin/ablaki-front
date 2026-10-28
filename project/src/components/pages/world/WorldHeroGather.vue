@@ -29,7 +29,8 @@ async function gather() {
   if (typeof result.gather_available === 'boolean') state.value = { gather_available: result.gather_available, gather_available_at: Number(result.gather_available_at), server_time: Number(result.server_time),
     ...(typeof result.gather_remaining === 'number' ? {gather_remaining: result.gather_remaining} : {}),
     ...(typeof result.gather_limit === 'number' ? {gather_limit: result.gather_limit} : {}),
-    ...(typeof result.gather_exhausted === 'boolean' ? {gather_exhausted: result.gather_exhausted} : {}) };
+    ...(typeof result.gather_exhausted === 'boolean' ? {gather_exhausted: result.gather_exhausted} : {}),
+    ...(typeof result.gather_minimum === 'boolean' ? {gather_minimum: result.gather_minimum} : {}) };
   emit('changed'); void load();
 }
 watch([() => props.nodeId, () => props.session], () => { state.value = null; error.value = ''; open.value = false; receipt.value = ''; }, { flush: 'sync' });
@@ -38,7 +39,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 .world-hero-gather
-  craft-gather-button.world-action(:available="state?.gather_available ?? true" :remaining="state?.gather_remaining" :limit="state?.gather_limit" :exhausted="state?.gather_exhausted" :disabled="!state || !writable || runner.busy.value" :countdown="countdown" @gather="open = true")
+  craft-gather-button.world-action(:available="state?.gather_available ?? true" :remaining="state?.gather_remaining" :limit="state?.gather_limit" :exhausted="state?.gather_exhausted" :minimum="state?.gather_minimum" :disabled="!state || !writable || runner.busy.value" :countdown="countdown" @gather="open = true")
   span.gather-feedback
     n-popover(v-if="error || runner.error.value || runner.pending.value" trigger="click" placement="bottom")
       template(#trigger)
@@ -47,9 +48,10 @@ onScopeDispose(() => { disposed = true; generation++; });
       | {{ error || runner.error.value || 'Ответ ещё не получен. Нажмите, чтобы повторить тот же запрос.' }}
   n-modal(v-model:show="open" :theme-overrides="worldModalTheme" preset="card" title="Ежедневный сбор сырья" :style="{ width: 'min(32rem, 94vw)' }")
     n-alert.gather-receipt(v-if="receipt" type="success" closable @close="receipt = ''") Получено: {{ receipt }}
-    p Собирайте сырьё до постройки добычи: соответствующий ресурс после неё исчезает из снабжения. Каждая выдача меньше предыдущей. Исчерпанный ресурс не возобновляется; новый предмет каталога получает собственный запас.
-    p Осталось сборов: {{ state?.gather_remaining ?? 0 }} / {{ state?.gather_limit ?? 0 }}
-    n-progress(type="line" :percentage="progress" :show-indicator="false")
+    p Стартовый запас постепенно уменьшается. Построенная добыча сокращает соответствующую выдачу вдвое. После исчерпания запаса остаётся по одной единице каждого ресурса, включая песок и глину, раз в сутки.
+    n-alert(v-if="state?.gather_minimum" type="info") Стартовый запас использован. Минимальный ежедневный сбор остаётся доступным.
+    p(v-else) Осталось стартовых сборов: {{ state?.gather_remaining ?? 0 }} / {{ state?.gather_limit ?? 0 }}
+    n-progress(v-if="!state?.gather_minimum" type="line" :percentage="progress" :show-indicator="false")
     ul.gather-items
       li(v-for="item in state?.gather_items ?? []" :key="item.name")
         span {{ item.name }}

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-defineProps<{ available: boolean; disabled?: boolean; countdown: string; remaining?: number; limit?: number; exhausted?: boolean }>();
+defineProps<{ available: boolean; disabled?: boolean; countdown: string; remaining?: number; limit?: number; exhausted?: boolean; minimum?: boolean }>();
 defineEmits<{ gather: [] }>();
 </script>
 <template lang="pug">
-button.gather-button(v-if="!exhausted" type="button" :class="{ 'gather-ready': available }" :disabled="disabled || !available" :aria-label="available ? 'Собрать сырьё' : `Сырьё собрано. Следующий сбор через ${countdown}`" @click="$emit('gather')")
+button.gather-button(v-if="!exhausted || minimum" type="button" :class="{ 'gather-ready': available }" :disabled="disabled || !available" :aria-label="available ? (minimum ? 'Собрать минимум сырья' : 'Собрать сырьё') : `Сырьё собрано. Следующий сбор через ${countdown}`" @click="$emit('gather')")
   span.gather-symbol(v-if="available" aria-hidden="true")
     font-awesome-icon(icon="hand-holding")
     font-awesome-icon.gather-resources(icon="cubes")
   font-awesome-icon(v-else icon="check" aria-hidden="true")
-  strong(v-if="available") Собрать
+  strong(v-if="available") {{ minimum ? 'Собрать минимум' : 'Собрать' }}
+  small(v-if="available && !minimum && remaining !== undefined && limit") {{ remaining }}/{{ limit }}
   span(v-else) {{ countdown }}
 </template>
 <style scoped>

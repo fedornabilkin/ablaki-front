@@ -61,7 +61,9 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 <template lang="pug">
 section.harvest-panel(aria-label="Продукция склада")
   h2 Продукция склада
-  p Хранение, перемещение и продажа продукции. Покупки поступают в рюкзак, оплата — в казну этого склада. Урожай после 14 суток хранения однократно теряет 30% количества.
+  p Покупки поступают в рюкзак, оплата — в казну этого склада.
+  p(v-if="state?.npc_supply") Здесь продаётся сырьё, добытое игроками. Выручка возвращается в бюджеты стартовых объектов NPC для оплаты работы.
+  p(v-else) Урожай после 14 суток хранения однократно теряет 30% количества.
   n-alert(closable v-if="error" type="error") {{ error }}
   .harvest-grid
     button.harvest-cell(v-for="cell in cells" :key="cell.position" type="button" :class="{ selected: cell.item?.inventory_id === selected }" @click="selected = cell.item?.inventory_id ?? null; quantity = 1")
