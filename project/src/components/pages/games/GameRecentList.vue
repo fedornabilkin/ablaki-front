@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed } from 'vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
+import { formatCredits } from '@/entities/world/credits';
 import { formatAccountNumber } from '@/services/api/header';
 import { historyWinner, historyPlayer, historyCompletedAt, historyTime, type HistoryGameKind } from '@/services/api/gameHistory';
 import type { RecordData } from '@/services/api/portal';
@@ -18,7 +20,8 @@ const rows = computed(() => props.games.map(game => ({
 .recent-games
   .recent-game(v-for="row in rows" :key="row.game.id")
     .recent-meta
-      strong.recent-stake {{ formatAccountNumber(row.game.kon) }} {{ kind === 'saper' ? 'Кг' : 'Cr' }}
+      strong.recent-stake(v-if="kind === 'saper'") {{ formatAccountNumber(row.game.kon) }} Кг
+      world-credits.recent-stake(v-else :value="row.game.kon")
       small.muted {{ historyTime(row.completedAt) }}
     .recent-players
       .recent-player.recent-player--creator

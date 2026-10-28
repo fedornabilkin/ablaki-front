@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -35,7 +37,7 @@ const actionError = ref('');
 const notice = ref('');
 let disposed = false;
 onBeforeUnmount(() => { disposed = true; });
-const canCancel = (order: ExchangeOrder) => order.user_id === userId.value && order.user_client === 0;
+const canCancel = (order: ExchangeOrder) => order.type !== 'unknown' && order.user_id === userId.value && order.user_client === 0;
 const canProceed = (order: ExchangeOrder) => affordableOrder(order, userId.value, account.value);
 const label = (order: ExchangeOrder) => {
   const direction = exchangeDirection(order, userId.value);
@@ -67,7 +69,7 @@ async function act(order: ExchangeOrder) {
 <template lang="pug">
 .stack
   .toolbar
-    strong Доступно: {{ field(account.credit) }} Cr · {{ field(account.balance) }} Кг
+    strong Доступно: #[world-credits(:value="account.credit")]  · {{ field(account.balance) }} Кг
     n-button(:loading="loading" :disabled="busy !== null" @click="refresh") Обновить
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" type="success") {{ notice }}
@@ -81,9 +83,9 @@ async function act(order: ExchangeOrder) {
           .order-info
             .toolbar
               strong №{{ order.id }} · {{ label(order) }}
-              n-tag(size="small") {{ order.type === 'buy' ? 'Автор продаёт' : 'Автор покупает' }}
-            .order-amounts {{ field(order.credit) }} Cr ↔ {{ field(order.amount) }} Кг
-            small.muted(v-if="typeof order.price === 'number' || typeof order.price === 'string'") {{ field(order.price) }} Кг за 1000 Cr
+              n-tag(size="small") {{ order.type === 'unknown' ? 'Старая заявка' : order.type === 'buy' ? 'Автор продаёт' : 'Автор покупает' }}
+            .order-amounts #[world-credits(:value="order.credit")]  ↔ {{ field(order.amount) }} Кг
+            small.muted(v-if="typeof order.price === 'number' || typeof order.price === 'string'") {{ field(order.price) }} Кг за 1000 кредиты
             .muted
               span Автор:&nbsp;
               router-link(v-if="typeof order.username === 'string' && order.username" :to="'/wall/' + encodeURIComponent(order.username)") {{ order.username }}
@@ -94,15 +96,16 @@ async function act(order: ExchangeOrder) {
                 span(v-else) №{{ order.user_client }}
             small.muted {{ date(mode === 'history' ? order.updated_at : order.created_at) }}
           .order-action(v-if="mode !== 'history'")
-            n-popconfirm(v-if="mode === 'my'" :disabled="busy !== null || !canCancel(order)" @positive-click="act(order)")
+            small.muted(v-if="order.type === 'unknown'") Тип старой заявки не определён. Сделка недоступна; обратитесь к администратору.
+            n-popconfirm(v-else-if="mode === 'my'" :disabled="busy !== null || !canCancel(order)" @positive-click="act(order)")
               template(#trigger)
                 n-button(:loading="busy === order.id" :disabled="busy !== null || !canCancel(order)") Отменить
-              | Отменить заявку №{{ order.id }} и вернуть {{ order.type === 'buy' ? order.credit + ' Cr' : order.amount + ' Кг' }}?
+              | Отменить заявку №{{ order.id }} и вернуть {{ order.type === 'buy' ? formatCredits(order.credit) + ' кредиты' : order.amount + ' Кг' }}?
             template(v-else)
               n-popconfirm(:disabled="busy !== null || !canProceed(order)" @positive-click="act(order)")
                 template(#trigger)
                   n-button(type="primary" :loading="busy === order.id" :disabled="busy !== null || !canProceed(order)") {{ order.type === 'buy' ? 'Купить' : 'Продать' }}
-                | {{ order.type === 'buy' ? 'Списать ' + order.amount + ' Кг и получить ' + order.credit + ' Cr?' : 'Списать ' + order.credit + ' Cr и получить ' + order.amount + ' Кг?' }}
+                | {{ order.type === 'buy' ? 'Списать ' + order.amount + ' Кг и получить ' + formatCredits(order.credit) + ' кредиты?' : 'Списать ' + formatCredits(order.credit) + ' кредиты и получить ' + order.amount + ' Кг?' }}
               small.muted(v-if="!canProceed(order)") Недостаточно средств или заявка недоступна.
       page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading || busy !== null")
 </template>

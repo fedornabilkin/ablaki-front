@@ -1,3 +1,4 @@
+import { formatCredits } from '@/entities/world/credits';
 import { apiClient } from '@/services/httpClient';
 import config from '@/config/config';
 import { record, type RecordData } from './portal';
@@ -56,6 +57,6 @@ export function playerOutcome(game: RecordData, user: unknown): 'Победа' |
   if (matches(game.user_id, game.username)) return game.win ? 'Поражение' : 'Победа';
   return 'Нет результата';
 }
-export function signedAmount(value: number): string {
-  return (value > 0 ? '+' : '') + value.toLocaleString('ru-RU', { maximumFractionDigits: 5 });
+export function signedAmount(value: number, unit = 'Cr'): string {
+  return (value > 0 ? '+' : '') + (unit === 'Cr' ? formatCredits(value) : value.toLocaleString('ru-RU', { maximumFractionDigits: 5 }));
 }

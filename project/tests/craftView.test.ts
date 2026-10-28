@@ -47,23 +47,24 @@ describe('craft view with server state', () => {
     expect(html).toContain('Бревно: 100 шт.');
     expect(html).not.toContain('class="empty-slot"');
   });
-  it('renders an enabled create button with no credits in free mode, and blocks paid mode', async () => {
+  it('links to campsite crafting from the recipe catalog in free and paid mode', async () => {
     const free = await detail(state), paid = await detail({...state, charge_credits: true});
     const create = (html: string) => html.match(/<button\b[^>]*>(?:(?!<\/button>)[\s\S])*?Создать(?:(?!<\/button>)[\s\S])*?<\/button>/)?.[0];
-    expect(create(free)).toBeTruthy(); expect(create(free)).not.toMatch(/\sdisabled(?:=|[ >])/);
-    expect(create(paid)).toMatch(/\sdisabled(?:=|[ >])/);
+    expect(create(free)).toBeUndefined(); expect(create(paid)).toBeUndefined();
+    expect(free).toContain('href="/world?recipe_id=1"');
+    expect(paid).toContain('Изготовить предмет');
     expect(free).toContain('Без списания кредитов');
   });
   it('marks missing ingredients with an accessible warning and blocks crafting', async () => {
     const html = await detail({...state, inventory: []});
     expect(html).toContain('aria-label="Не хватает ресурса"');
     expect(html).toContain('Не хватает ресурсов');
-    expect(html).toContain('href="/craft?item=1"');
+    expect(html).toContain('href="/world/workspace/map?item=1"');
     expect(html).toContain('type="number"');
     expect(html).toContain('min="1"');
     expect(html).toContain('max="100"');
     expect(html).toContain('step="1"');
-    expect(html).toMatch(/\sdisabled(?:=|[ >])/);
+    expect(html).toContain('Изготовить предмет');
   });
   it('renders actual recipe nodes with keyboard instructions and no scale toolbar', async () => {
     const app = createSSRApp(CraftRoadmap, {state, selected: 1, category: null, topInset: 200, rightInset: 350});

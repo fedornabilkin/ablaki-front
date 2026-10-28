@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import { formatCredits } from '@/entities/world/credits';
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NInputNumber, NPopconfirm, NPopover } from 'naive-ui';
@@ -54,7 +56,7 @@ async function act(path: string, method: 'post' | 'put' | 'delete', body?: unkno
 <template lang="pug">
 page-header(page-title="Переводы кредитов")
 .container.page.stack
-  p Доступно: {{ field(balance) }} Cr
+  p Доступно: #[world-credits(:value="balance")]
   n-alert(v-if="actionError" type="error") {{ actionError }}
   n-alert(v-if="notice" type="success") {{ notice }}
   .cards
@@ -69,7 +71,7 @@ page-header(page-title="Переводы кредитов")
           p Рейтинг начисляется отправителю при получении перевода, если его рейтинг выше рейтинга получателя минимум на 50 и он сам не получал переводы за последние 7 дней.
       n-form(@submit.prevent)
         .transfer-fields
-          n-form-item(label="Сумма, Cr" :label-props="{ for: 'transfer-amount' }")
+          n-form-item(label="Сумма" :label-props="{ for: 'transfer-amount' }")
             n-input-number(:min="1" :max="1000000000" :step="1" :input-props="{ id: 'transfer-amount' , type: 'number', inputmode: 'numeric', min: 1, max: 1000000000, step: 1}" v-model:value="amount" :precision="0" :disabled="busy" placeholder="Целое количество кредитов")
           n-form-item(label="Количество переводов" :label-props="{ for: 'transfer-count' }")
             n-input-number(:min="1" :max="100" :step="1" :input-props="{ id: 'transfer-count' , type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count" :precision="0" :disabled="busy")
@@ -78,12 +80,12 @@ page-header(page-title="Переводы кредитов")
             template(#icon)
               font-awesome-icon(icon="coins" aria-hidden="true")
             | +{{ value }}
-        p Будет создано: {{ creatable }} · Всего: {{ creatable * (amount || 0) }} Cr
+        p Будет создано: {{ creatable }} · Всего: #[world-credits(:value="creatable * (amount || 0)")]
         p.muted(v-if="creatable < (count || 0)") Количество уменьшено до доступного баланса.
         n-popconfirm(@positive-click="act('transfer', 'post', { amount, count })" :positive-button-props="{ disabled: busy || !canCreate }")
           template(#trigger)
             action-button(icon="paper-plane" :label="creatable > 1 ? 'Создать переводы' : 'Создать перевод'" type="primary" :loading="busy" :disabled="!canCreate")
-          | Создать до {{ count }} переводов по {{ amount }} Cr? Если баланс изменится, сервер создаст доступное количество.
+          | Создать до {{ count }} переводов по #[world-credits(:value="amount")] ? Если баланс изменится, сервер создаст доступное количество.
     n-card(title="Получить перевод")
       template(#header-extra)
         n-popover(trigger="click" :width="300")
@@ -108,7 +110,7 @@ page-header(page-title="Переводы кредитов")
         div
           strong Перевод №{{ entry.id }}
           .muted {{ date(entry.created_at) }}
-          p(v-if="entry.amount !== undefined") {{ field(entry.amount) }} Cr
+          p(v-if="entry.amount !== undefined") #[world-credits(:value="entry.amount")]
           p.muted(v-else) Сумма не передана сервером
           .transfer-recipient(v-if="mode === 'history'")
             span.muted Получатель

@@ -32,9 +32,9 @@ n-card(:title="title")
         user-avatar(:user="recipient(item)")
         span.referral-mark(v-if="isReferral(item)" title="Ваш реферал") Ваш реферал
         strong.bonus-amount(v-if="kind === 'bonuses'")
+          font-awesome-icon(icon="coins" aria-hidden="true")
           | +
           formatted-number(:value="item.amount")
-          |  Cr
   page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading" :query-prefix="kind")
 </template>
 <style scoped>

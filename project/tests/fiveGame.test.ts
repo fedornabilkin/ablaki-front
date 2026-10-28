@@ -25,7 +25,7 @@ describe('5 apples API contract', () => {
       return renderToString(app);
     };
     const guest = await render(2);
-    expect(guest).toContain('Победителю: 19 Cr'); expect(guest).toContain('Число яблок'); expect(guest).toContain('/wall/Creator');
+    expect(guest).toContain('Победителю:'); expect(guest).toContain('aria-label="19 кредитов"'); expect(guest).toContain('Число яблок'); expect(guest).toContain('/wall/Creator');
     expect(guest).not.toContain('Ваш скрытый ход');
     const creator = await render(1, { ...dto, last_hod: { ...dto.last_hod, user_ball: 4 } } as typeof dto);
     expect(creator).toContain('Ваш скрытый ход: 4'); expect(creator).toContain('Отменить игру'); expect(creator).not.toContain('Число яблок');

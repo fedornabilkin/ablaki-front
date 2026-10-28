@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NCard } from 'naive-ui';
@@ -46,7 +48,7 @@ page-header(page-title="Профиль")
           .metric {{ formatAccountNumber(account.balance) }} Кг
           router-link(to="/balance") История баланса →
         n-card(title="Кредиты")
-          .metric {{ formatAccountNumber(account.credit) }} Cr
+          .metric #[world-credits(:value="account.credit")]
           .toolbar
             router-link(to="/exchange") Биржа →
             router-link(to="/transfer") Переводы →

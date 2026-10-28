@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import { formatCredits } from '@/entities/world/credits';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -138,7 +140,9 @@ game-page-layout(:kind="kind" :version="overviewVersion" :snapshot="snapshot")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       .record-row(v-for="game in data.items" :key="game.id" :class="{ 'played-row': playedRows[game.id] }")
         div
-          strong Игра №{{ game.id }} · {{ field(game.kon) }} {{ unit }}
+          strong Игра №{{ game.id }} ·
+            template(v-if="saper") {{ field(game.kon) }} Кг
+            world-credits(v-else :value="game.kon")
           .muted
             router-link(v-if="typeof game.username === 'string' && game.username" :to="'/wall/' + encodeURIComponent(game.username)") {{ game.username }}
             span(v-else) Участник недоступен
@@ -151,7 +155,7 @@ game-page-layout(:kind="kind" :version="overviewVersion" :snapshot="snapshot")
           template(v-else-if="!saper")
             span.game-result(role="status" :class="playedRows[game.id]?.result" :aria-label="playedRows[game.id]?.text" :title="playedRows[game.id]?.text")
               font-awesome-icon(v-if="playedRows[game.id]" :icon="playedRows[game.id].result === 'pending' ? 'spinner' : playedRows[game.id].result === 'error' ? 'circle-exclamation' : 'circle'" :spin="playedRows[game.id].result === 'pending'" aria-hidden="true")
-            n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' Cr'" @click="quickPlay(game, side)")
+            n-button(v-for="side in [1, 2]" :key="side" :disabled="(!!playedRows[game.id] && playedRows[game.id].result !== 'error') || !canPlay(game)" :aria-label="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' кредиты'" :title="(side === 1 ? 'Орёл' : 'Решка') + ': сыграть за ' + game.kon + ' кредиты'" @click="quickPlay(game, side)")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
     page-pager(v-if="!error && mode === 'my'" v-model:page="page" :result="data" :disabled="loading || busy")
@@ -162,12 +166,14 @@ n-modal(v-model:show="showCreate" preset="card" title="Создать игру" 
       n-input-number(:min="saper ? .01 : 1" :max="Math.min(1000000000, Number(available))" :step="saper ? 0.00001 : 1" :precision="saper ? 5 : 0" :input-props="{ id: 'game-kon' , type: 'number', inputmode: saper ? 'decimal' : 'numeric', min: saper ? .01 : 1, max: Math.min(1000000000, Number(available)), step: saper ? 0.00001 : 1}" v-model:value="kon" :disabled="busy")
     n-form-item(label="Количество игр" :label-props="{ for: 'game-count' }")
       n-input-number(:min="1" :max="100" :step="1" :input-props="{ id: 'game-count' , type: 'number', inputmode: 'numeric', min: 1, max: 100, step: 1}" v-model:value="count" :precision="0" :disabled="busy")
-    p Итого: {{ kon && count ? kon * count : 0 }} {{ unit }}
+    p Итого:
+      template(v-if="saper") {{ kon && count ? kon * count : 0 }} Кг
+      world-credits(v-else :value="kon && count ? kon * count : 0")
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     n-button(type="primary" attr-type="submit" :loading="busy" :disabled="!validCreate") Создать и списать ставку
 n-modal(:show="!saper && !!selected" preset="card" title="Орёл или решка?" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && (selected = null)")
   template(v-if="selected")
-    p Игра №{{ selected.id }} · Ставка {{ field(selected.kon) }} Cr
+    p Игра №{{ selected.id }} · Ставка #[world-credits(:value="selected.kon")]
     p.muted Выбор стороны сразу отправляет ход и списывает ставку.
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     .toolbar

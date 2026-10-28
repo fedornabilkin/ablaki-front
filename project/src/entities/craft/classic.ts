@@ -9,6 +9,14 @@ export function craftRequirements(state: CraftState, recipe: CraftRecipe, quanti
   const station = state.stations.find(s => s.id === recipe.station_id);
   if (recipe.station_id && !station) reasons.push('Станция недоступна');
   if (station?.item_id) reserve.add(station.item_id);
+  if (recipe.equipment !== undefined) {
+    reserve.clear();
+    for (const unit of recipe.equipment) {
+      if (unit.in_backpack) reserve.add(unit.item_id);
+      if (!unit.available) reasons.push(`Недоступно оборудование: ${items.get(unit.item_id)?.name ?? `#${unit.item_id}`}`);
+      else if (unit.durability < unit.wear_per_batch * quantity) reasons.push('Не хватает прочности оборудования');
+    }
+  }
   reserve.forEach(id => required.set(id, (required.get(id) ?? 0) + 1));
   const resources = [...required].map(([id, needed]) => ({id, name: items.get(id)?.name ?? `#${id}`, needed, have: stock.get(id) ?? 0, retained: reserve.has(id), station: station?.item_id === id}));
   if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) reasons.push('Количество от 1 до 100');
@@ -32,7 +40,7 @@ export function maxCraftQuantity(state: CraftState, recipe: CraftRecipe): number
 export function craftEquipment(state: CraftState, recipe: CraftRecipe) {
   const items = new Map(state.items.map(item => [item.id, item]));
   const stock = new Map(state.inventory.map(item => [item.item_id, item.quantity]));
-  const available = (id: number) => Boolean(items.get(id)?.active && (stock.get(id) ?? 0) >= 1);
+  const available = (id: number) => recipe.equipment === undefined ? Boolean(items.get(id)?.active && (stock.get(id) ?? 0) >= 1) : Boolean(items.get(id)?.active && recipe.equipment.find(unit => unit.item_id === id)?.available);
   const badges = [...new Set(recipe.tools)].map(id => ({
     key: `tool-${id}`, icon: items.get(id)?.icon || 'wrench',
     label: `Инструмент: ${items.get(id)?.name ?? `#${id}`}`, available: available(id),

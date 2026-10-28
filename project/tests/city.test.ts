@@ -7,8 +7,8 @@ import { navigation } from '../src/config/navigation';
 let values: Map<string, string>;
 beforeEach(() => { values = new Map(); vi.useFakeTimers(); setActivePinia(createPinia()); vi.stubGlobal('localStorage', {getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key)}); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
-it('opens the city in navigation, isolates account saves and stops its timer', () => {
-  expect(navigation.find(link => link.to === '/city')).toMatchObject({account: true});
+it('opens the world in navigation, isolates local city saves and stops its timer', () => {
+  expect(navigation.find(link => link.to === '/world')).toMatchObject({account: true});
   const city = useCityStore(); city.load(37);
   const building = Object.values(BUILDINGS).find(item => !item.fixed)!;
   city.build(0, building.code); expect(city.balance).toBe(500 - building.cost);

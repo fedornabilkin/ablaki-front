@@ -3,6 +3,13 @@ import { affordableOrder, exchangeDirection, exchangeOrder } from '@/services/ap
 
 const base = { id: '1', user_id: '3', user_client: null, credit: '50', amount: '2.5', type: 'buy' };
 describe('exchange direction and balances', () => {
+  it('keeps historical zero-type positions visible without enabling any financial action', () => {
+    const old = exchangeOrder({ ...base, type: '0' });
+    expect(old.type).toBe('unknown');
+    expect(exchangeDirection(old, 3)).toBeNull();
+    expect(exchangeDirection(old, 4)).toBeNull();
+    expect(affordableOrder(old, 4, { balance: 999, credit: 999 })).toBe(false);
+  });
   it('uses API buy/sell from the counterparty perspective while reversing the creator label', () => {
     const sale = exchangeOrder(base);
     expect(exchangeDirection(sale, 3)).toBe('sell');

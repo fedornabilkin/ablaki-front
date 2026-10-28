@@ -4,6 +4,7 @@ export default class Item extends MainEntity {
   id = 0
   code = ''
   name = ''
+  label = ''
   description = ''
   icon = 'fa fa-cube'
   category = 'material'
@@ -15,7 +16,7 @@ export default class Item extends MainEntity {
   }
 
   getName() {
-    return this.name || this.code || `#${this.id}`
+    return this.label || this.name || this.code || `#${this.id}`
   }
 
   getIcon() {

@@ -1,44 +1,64 @@
 <script setup lang="ts">
+import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch, onMounted, onScopeDispose, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import { NAlert, NButton, NInput, NPopover, NPagination, NModal } from 'naive-ui';
-import { useGatherCountdown } from '@/hooks/useGatherCountdown';
 import CraftRoadmap from './CraftRoadmap.vue';
 import CraftRecipeDetail from './CraftRecipeDetail.vue';
 import CraftInventory from './CraftInventory.vue';
 import { useCraftToasts } from '@/hooks/useCraftToasts';
 import { useClassicCraft } from '@/hooks/useClassicCraft';
+import { useWorldCommand } from '@/hooks/useWorldCommand';
+import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { loadCraftHistory, craftError, type CraftEvent } from '@/services/api/classicCraft';
+import { craftRequirements } from '@/entities/craft/classic';
 import { date } from '@/services/api/portal';
+import WorldWorkspaceNav from '../world/WorldWorkspaceNav.vue';
+import WorldEconomyHistory from '../world/WorldEconomyHistory.vue';
+import WorldWorkspaceHero from '../world/WorldWorkspaceHero.vue';
+import { workspaceNode } from '@/entities/world/workspaceNavigation';
 const store = useStore();
 const session = computed(() => store.state.auth.revision);
+const homeCraftHref = useCampsiteCraft(session);
 const craft = useClassicCraft(session, () => store.dispatch('auth/fetchData'), computed(() => Number(store.getters['auth/user']?.id)));
 const {state, busy, loading, error, notice, pending} = craft;
-const countdown = useGatherCountdown(state, craft.refresh);
+const slotRevision = ref(0);
+const slotCommand = useWorldCommand(session, computed(() => Number(store.getters['auth/user']?.id)), () => { slotRevision.value++; void craft.refresh(); void store.dispatch('auth/fetchData').catch(() => undefined); });
 const route = useRoute(), router = useRouter();
+const nodeId = computed(() => workspaceNode(route.query.node));
+const craftHref = computed(() => nodeId.value ? `/world/workspace/${nodeId.value}` : homeCraftHref.value);
+const storageHref = computed(() => craftHref.value.startsWith('/world/workspace/') ? craftHref.value.replace('/workspace/', '/nodes/') + '#workshop' : '/world');
 useCraftToasts(notice, session);
-const tab = ref('map'), selected = ref<number | null>(null), category = ref<number | null>(null), search = ref('');
+const tab = computed(() => String(route.meta.workspaceSection ?? 'recipes'));
+const pageTitle = computed(() => ({ inventory: 'Инвентарь', recipes: 'Рецепты', map: 'Карта рецептов', history: 'История крафта' } as Record<string, string>)[tab.value]);
+const pageIcon = computed(() => ({ inventory: 'box', recipes: 'scroll', map: 'map', history: 'calendar-days' } as Record<string, string>)[tab.value]);
+const pageDescription = computed(() => ({ inventory: 'Рюкзак и переносимые контейнеры. Выбирайте предметы для использования и перемещения.', recipes: 'Рецепты и доступные материалы. Выберите предмет, чтобы изучить его или перейти к изготовлению.', map: 'Связи рецептов, материалы и оборудование для изготовления.', history: 'Изготовление, использование и перемещение ваших предметов.' } as Record<string, string>)[tab.value]);
+const selected = ref<number | null>(null), category = ref<number | null>(null), search = ref('');
 const showControls = ref(true), showRecipe = ref(true);
 const root = ref<HTMLElement>(), controls = ref<HTMLElement>(), roadmap = ref<InstanceType<typeof CraftRoadmap>>();
 const mapHeight = ref(720), controlsHeight = ref(180), narrow = ref(false);
 const mapMode = computed(() => tab.value === 'map');
-const blocked = computed(() => busy.value || loading.value || !!pending.value);
+const slotWritable = computed(() => !busy.value && !loading.value && !pending.value);
+const blocked = computed(() => !slotWritable.value || slotCommand.busy.value || !!slotCommand.pending.value);
 const items = computed(() => new Map(state.value?.items.map(i => [i.id, i]) ?? []));
 const linkedItem = computed(() => items.value.get(Number(route.query.item)));
 const rawItem = computed(() => linkedItem.value && !state.value?.recipes.some(r => r.item_id === linkedItem.value?.id) ? linkedItem.value : null);
 const showItem = computed({get: () => !!rawItem.value, set: open => { if (!open) { const {item, ...query} = route.query; void router.push({path: route.path, query}); } }});
-watch([() => route.query.item, () => !!state.value], async () => {
+watch([() => route.query.item, () => route.meta.workspaceSection, () => !!state.value], async () => {
   const target = state.value?.recipes.find(r => r.item_id === Number(route.query.item));
-  if (target) { selected.value = target.id; showRecipe.value = true; tab.value = 'map'; await nextTick(); roadmap.value?.reveal(target.id); }
+  if (target && tab.value === 'map') { selected.value = target.id; showRecipe.value = true; await nextTick(); roadmap.value?.reveal(target.id); }
 }, {immediate: true});
 const stock = computed(() => new Map(state.value?.inventory.map(i => [i.item_id, i.quantity]) ?? []));
 const recipe = computed(() => state.value?.recipes.find(r => r.id === selected.value));
+const readyRecipes = computed(() => new Set(state.value?.recipes.filter(r => !craftRequirements(state.value!, r, 1).reasons.length).map(r => r.id) ?? []));
 const filtered = computed(() => state.value?.recipes.filter(r => (!category.value || r.category_id === category.value) && items.value.get(r.item_id)?.name.toLowerCase().includes(search.value.trim().toLowerCase())) ?? []);
-const tabs = [{id: 'map', name: 'Карта рецептов'}, {id: 'recipes', name: 'Список'}, {id: 'inventory', name: 'Инвентарь'}, {id: 'history', name: 'История'}];
 const craftIcons: Record<string, string> = {'classic-wood': 'tree', 'classic-stone': 'mountain', 'classic-metal': 'hammer', 'classic-textile': 'shirt', 'classic-alchemy': 'flask'};
 async function select(id: number) {
-  selected.value = id; showRecipe.value = true; tab.value = 'map';
+  selected.value = id; showRecipe.value = true;
+  const item = state.value?.recipes.find(r => r.id === id)?.item_id;
+  await router.push({ path: '/world/workspace/map', query: { ...route.query, item: String(item) } });
   if (narrow.value) showControls.value = false;
   await nextTick(); roadmap.value?.reveal(id);
 }
@@ -49,7 +69,8 @@ function filterCategory(id: number | null) {
     if (first) { selected.value = first.id; roadmap.value?.reveal(first.id); }
   }
 }
-const history = ref<CraftEvent[]>([]), historyPage = ref(1), historyPages = ref(0), historyError = ref(''), historyLoading = ref(false);
+const history = ref<CraftEvent[]>([]), historyPages = ref(0), historyError = ref(''), historyLoading = ref(false);
+const historyPage = computed({ get: () => workspaceNode(route.query.page) ?? 1, set: page => { void router.push({ path: route.path, query: { ...route.query, page: String(page) } }); } });
 let historyRevision = 0;
 async function refreshHistory() {
   const revision = ++historyRevision, account = session.value; historyLoading.value = true; historyError.value = '';
@@ -57,7 +78,7 @@ async function refreshHistory() {
   catch(cause) { if (revision === historyRevision && session.value === account) historyError.value = craftError(cause); }
   finally { if (revision === historyRevision && session.value === account) historyLoading.value = false; }
 }
-watch([tab, historyPage], () => { if (tab.value === 'history') void refreshHistory(); });
+watch([tab, historyPage], () => { if (tab.value === 'history') void refreshHistory(); }, { immediate: true });
 watch(session, () => { historyRevision++; history.value = []; historyLoading.value = false; selected.value = null; });
 watch(state, value => { if (value && !selected.value) selected.value = value.recipes[0]?.id ?? null; if (tab.value === 'history') void refreshHistory(); });
 const actions: Record<string, string> = {craft: 'Изготовление', starter: 'Стартовый набор', gather: 'Сбор сырья', use: 'Использование', discard: 'Удаление', merge: 'Объединение стопок', transfer: 'Перемещение предметов', buy_slots: 'Покупка слотов', repair: 'Ремонт сундука'};
@@ -73,6 +94,7 @@ function measure() {
 }
 let observer: ResizeObserver | undefined;
 watch([showControls, tab], async () => { await nextTick(); measure(); });
+watch(narrow, async () => { await nextTick(); if (mapMode.value) roadmap.value?.reveal(selected.value); });
 onMounted(() => {
   void craft.refresh();
   measure();
@@ -87,23 +109,16 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
   .map-stage(v-if="state && mapMode")
     craft-roadmap(ref="roadmap" :state="state" :selected="selected" :category="category" :top-inset="narrow ? 12 : showControls ? controlsHeight + 12 : 48" :left-inset="narrow ? 12 : showControls ? 204 : 12" :right-inset="narrow ? 12 : showRecipe ? 364 : 24" @select="select")
   .workshop-controls(ref="controls" v-show="showControls || !mapMode")
-    header.workshop-intro
-      .intro-heading
-        h1 Мастерская
-        small.slot-stat(v-if="state") {{ state.slots_used }} / {{ state.slot_limit }} слотов
-        nav.workshop-tabs(aria-label="Разделы мастерской")
-          button(v-for="t in tabs" :key="t.id" type="button" :class="{active: tab === t.id}" :aria-current="tab === t.id ? 'page' : undefined" @click="tab = t.id") {{ t.name }}
-        n-button.hide-controls(v-if="mapMode" quaternary circle size="small" aria-label="Скрыть управление" title="Скрыть управление" @click="showControls = false")
-          font-awesome-icon(icon="eye-slash")
-      button.gather-button(type="button" :disabled="blocked || !state?.gather_available" @click="command('gather')")
-        font-awesome-icon(:icon="state && !state.gather_available ? 'check-circle' : 'seedling'")
-        strong {{ state && !state.gather_available ? 'Сырьё собрано' : 'Собрать сырьё' }}
-        span(v-if="state && !state.gather_available && state.gather_available_at") Через {{ countdown }}
-        span(v-else) Раз в сутки по московскому времени
-      p.intro-description Создавайте материалы, инструменты и станции. Освоенные рецепты открывают новые ветви карты.
-      .intro-actions(v-if="state?.starter_available")
-        n-button(v-if="state?.starter_available" size="small" type="primary" :disabled="blocked" @click="command('starter')") Стартовый набор
-  aside.skills(v-if="state" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
+    world-workspace-hero(:title="pageTitle" :description="pageDescription" :icon="pageIcon" :compact="mapMode" parent-to="/world" parent-label="Вернуться в мир")
+      small.slot-stat(v-if="state && tab === 'inventory'") {{ state.slots_used }} / {{ state.slot_limit }} слотов
+      router-link(v-if="tab === 'recipes' || mapMode" :to="craftHref") Перейти к изготовлению →
+      router-link(v-if="tab === 'inventory'" :to="storageHref") Размещение и хранилища объекта →
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="tab === 'inventory' && state?.starter_available" size="small" type="primary" :disabled="blocked" @click="command('starter')") Стартовый набор
+    .workspace-navigation
+      world-workspace-nav(:node-id="nodeId")
+      n-button.hide-controls(v-if="mapMode" quaternary circle size="small" aria-label="Скрыть управление" title="Скрыть управление" @click="showControls = false")
+        font-awesome-icon(icon="eye-slash")
+  aside.skills(v-if="state && (tab === 'recipes' || mapMode)" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
     .skill(v-for="c in state.categories" :key="c.id" :class="{active: category === c.id}")
       n-popover(trigger="hover")
         template(#trigger)
@@ -118,7 +133,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
           strong {{ c.name }}
           p {{ c.description || 'Создавайте предметы этого ремесла, чтобы получать опыт и открывать рецепты.' }}
   .restore-controls(v-if="mapMode && !showControls")
-    n-button(secondary @click="showControls = true")
+    n-button(:theme-overrides="worldActionButtonTheme" secondary @click="showControls = true")
       font-awesome-icon(icon="eye")
       |  Управление
   .workshop-main(v-if="!mapMode || error || pending || (loading && !state)")
@@ -126,25 +141,32 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
       n-alert(v-if="error" type="error" role="alert" closable @close="error = ''") {{ error }}
       n-alert(v-if="pending" type="warning")
         p Результат операции пока не подтверждён. Повторная проверка не создаст её заново.
-        n-button(:loading="busy" @click="retry") Проверить результат
+        n-button(:theme-overrides="worldActionButtonTheme" :loading="busy" @click="retry") Проверить результат
       p(v-if="loading && !state" role="status") Загружаем мастерскую…
     template(v-if="state")
+      n-alert(v-if="slotCommand.error.value" type="error" role="alert") {{ slotCommand.error.value }}
+      n-alert(v-if="slotCommand.pending.value && !slotCommand.busy.value" type="warning")
+        p Результат действия ожидает подтверждения.
+        n-button(:loading="slotCommand.busy.value" @click="slotCommand.retry") Проверить результат
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
         n-input(v-model:value="search" placeholder="Название предмета" aria-label="Поиск рецепта")
         .item-grid
-          button.list-recipe(v-for="r in filtered" :key="r.id" @click="select(r.id)")
-            span.stock-corner(:class="{available: (stock.get(r.item_id) || 0) > 0}" :aria-label="(stock.get(r.item_id) || 0) > 0 ? 'Есть в инвентаре' : 'Нет в инвентаре'")
-              font-awesome-icon(:icon="(stock.get(r.item_id) || 0) > 0 ? 'check' : 'exclamation-circle'")
-            .item-heading
+          article.list-recipe(v-for="r in filtered" :key="r.id" :class="{ ready: readyRecipes.has(r.id), locked: r.locked_reasons.length > 0, shortage: !readyRecipes.has(r.id) && !r.locked_reasons.length }")
+            font-awesome-icon.recipe-lock(v-if="r.locked_reasons.length" icon="lock" title="Рецепт закрыт")
+            router-link.item-heading.recipe-select(:to="{ path: '/world/workspace/map', query: { ...(nodeId ? { node: nodeId } : {}), item: r.item_id } }" :aria-label="`Открыть рецепт: ${items.get(r.item_id)?.name}`")
               font-awesome-icon(:icon="items.get(r.item_id)?.icon || 'cube'")
               strong {{ items.get(r.item_id)?.name }}
             strong В наличии: {{ stock.get(r.item_id) || 0 }}
-            span {{ r.locked_reasons.length ? 'Закрыт' : 'Открыт' }} · Ур. {{ r.min_level }}
+            span(v-if="!readyRecipes.has(r.id)") {{ r.locked_reasons.length ? 'Закрыт' : 'Не хватает ресурсов или оборудования' }}
+            small Ур. {{ r.min_level }}
+            small Выход: {{ r.output_quantity }} шт.
+            router-link(:to="{ path: craftHref, query: { recipe_id: r.id } }") Изготовить →
         p(v-if="!filtered.length") Рецептов по этому фильтру нет.
-      craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" @command="command" @submit="craft.submit")
+      craft-inventory.workshop-content(v-if="tab === 'inventory'" :key="session" :state="state" :blocked="blocked" :slot-command="slotCommand" :session="session" :slot-revision="slotRevision" :slot-writable="slotWritable" @command="command" @submit="craft.submit")
       section.workshop-content(v-if="tab === 'history'" aria-label="История крафта")
+        world-economy-history(:session="session")
         n-alert(v-if="historyError" type="error") {{ historyError }}
-        n-button(:loading="historyLoading" @click="refreshHistory") Обновить историю
+        n-button(:theme-overrides="worldActionButtonTheme" :loading="historyLoading" @click="refreshHistory") Обновить историю
         .history-table
           table
             thead
@@ -152,24 +174,24 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
                 th Операция
                 th Предмет
                 th Количество
-                th Cr
+                th кредиты
                 th Дата и время
             tbody
               tr(v-for="event in history" :key="event.id")
                 td {{ actions[event.action] || event.action }}
                 td {{ event.item_id ? items.get(event.item_id)?.name : 'Сырьё' }}
                 td {{ event.quantity }}
-                td {{ event.credit_change }}
+                td {{ formatCredits(event.credit_change) }}
                 td {{ date(event.created_at) }}
         p(v-if="!historyLoading && !history.length") Операций пока нет.
         n-pagination(v-if="historyPages > 1" v-model:page="historyPage" :page-count="historyPages" :disabled="historyLoading" simple)
   template(v-if="state && mapMode")
-    craft-recipe-detail.floating-recipe(v-if="recipe && showRecipe" :key="recipe.id" :state="state" :recipe="recipe" :busy="busy" :blocked="blocked" @craft="(id, qty) => command('craft', id, qty)" @hide="showRecipe = false")
+    craft-recipe-detail.floating-recipe(v-if="recipe && showRecipe" :key="recipe.id" :state="state" :recipe="recipe" :busy="busy" :blocked="blocked" :craft-href="craftHref" @hide="showRecipe = false")
     .restore-recipe(v-if="recipe && !showRecipe")
-      n-button(secondary @click="showRecipe = true")
+      n-button(:theme-overrides="worldActionButtonTheme" secondary @click="showRecipe = true")
         font-awesome-icon(icon="eye")
         |  {{ items.get(recipe.item_id)?.name }}
-n-modal(v-model:show="showItem" preset="card" :title="rawItem?.name" :style="{width: 'min(28rem, calc(100vw - 2rem))'}")
+n-modal(:theme-overrides="worldModalTheme" v-model:show="showItem" preset="card" :title="rawItem?.name" :style="{width: 'min(28rem, calc(100vw - 2rem))'}")
   template(v-if="rawItem")
     p {{ rawItem.description }}
     p В наличии: {{ stock.get(rawItem.id) || 0 }}
@@ -177,6 +199,22 @@ n-modal(v-model:show="showItem" preset="card" :title="rawItem?.name" :style="{wi
     p(v-else) Рецепт этого предмета пока недоступен.
 </template>
 <style scoped lang="scss">
+.workshop:not(.map-mode) { max-width: 1320px; margin-inline: auto; padding: 1.5rem 12px 3rem; gap: 1.25rem; }
+.workshop .workshop-controls { width: 100%; display: grid; gap: 1rem; }
+.workspace-navigation { display: flex; align-items: start; justify-content: space-between; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
+.workshop:not(.map-mode) .workshop-main { padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
+.workshop.map-mode { max-width: none; margin-inline: 0; }
+.workshop.map-mode .workshop-controls { width: min(960px, calc(100% - var(--recipe-width) - 36px)); }
+.workshop .skill-icon, .workshop .item-heading svg { color: var(--primary); }
+.workspace-navigation .hide-controls { position: static; flex-shrink: 0; }
+.list-recipe > a:last-child { display: inline-flex; align-self: start; margin-top: auto; padding: .45rem .65rem; border: 1px solid var(--border); border-radius: .4rem; }
+.list-recipe > a:last-child:hover { border-color: var(--primary); background: var(--primary-soft); }
+.history-table { margin-top: 1.25rem; }
+@media(max-width: 760px) { .workshop.map-mode .workshop-controls { width: 100%; }.workshop:not(.map-mode) .workshop-main { padding: 1rem; }.workshop .item-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } }
+.workshop:has(.workshop-main > .workshop-content), .workshop:has(.workshop-main > .craft-inventory) { max-width: 1320px; margin-inline: auto; }
+.workshop:not(:has(.skills)) .workshop-main { grid-column: 1 / 4; }
+.workshop-intro > a { grid-column: 1 / -1; }
+.workshop .workshop-intro { grid-template-columns: minmax(0, 1fr); border-radius: .8rem; }
 .workshop { --sidebar-width: 180px; --recipe-width: 340px; position: relative; width: 100%; padding: 0 12px 12px; box-sizing: border-box; display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--recipe-width); gap: 12px; align-items: start; }
 .workshop.map-mode { height: var(--map-height); min-height: 360px; overflow: hidden; display: block; }
 .map-stage { position: absolute; inset: 0; }
@@ -197,7 +235,11 @@ small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-w
 .workshop-main { grid-column: 2 / 4; grid-row: 2; display: grid; gap: .75rem; min-width: 0; }.workshop-messages { display: grid; gap: .5rem; }.workshop-messages.floating { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: min(440px, calc(100% - 24px)); max-height: 35%; overflow: auto; }
 .workshop-content { min-width: 0; }.item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .75rem; margin-top: 1rem; }
 .list-recipe { position: relative; padding: 1rem; border: 1px solid var(--border); background: var(--bg-surface); border-radius: .6rem; display: flex; flex-direction: column; gap: .6rem; color: var(--text); text-align: left; overflow: hidden; cursor: pointer; }.list-recipe > span { color: var(--text-muted); }.item-heading { display: flex; align-items: center; gap: .6rem; padding-right: 16px; }.item-heading svg { color: #d6b685; flex-shrink: 0; }
-.stock-corner { position: absolute; top: 0; right: 0; width: 34px; height: 34px; clip-path: polygon(0 0,100% 0,100% 100%); background: #dc2626; }.stock-corner.available { background: #26854e; }.stock-corner svg { position: absolute; right: 4px; top: 4px; font-size: 10px; color: white; }
+.list-recipe.ready { background: linear-gradient(135deg, #2496531f, var(--bg-surface) 80%); }
+.list-recipe.shortage { background: linear-gradient(135deg, #d030501a, var(--bg-surface) 80%); }
+.list-recipe.locked { background: repeating-linear-gradient(135deg, transparent 0 8px, #ffffff06 8px 16px), var(--bg-surface); }
+.recipe-lock { position: absolute; top: .65rem; right: .65rem; color: var(--text-muted); }
+.recipe-select { font: inherit; color: inherit; text-align: left; border: 0; background: transparent; padding: 0 16px 0 0; cursor: pointer; }.recipe-select:focus-visible { outline: 2px solid var(--primary); }.list-recipe > .n-button { margin-top: auto; }.list-recipe { cursor: default; }
 .history-table { overflow: auto; margin: 1rem 0; }.history-table table { width: 100%; border-collapse: collapse; }.history-table th, .history-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media(max-width: 1100px) {

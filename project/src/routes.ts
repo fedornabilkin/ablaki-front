@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
+import { legacyCraftLocation, workspaceSections } from './entities/world/workspaceNavigation';
 const gameLobby = () => import('./components/pages/games/GameLobby.vue');
 const history = () => import('./components/pages/user/History.vue');
 const unavailable = () => import('./components/pages/Unavailable.vue');
@@ -34,8 +35,17 @@ export const routes: RouteRecordRaw[] = [
     { path: 'history', component: () => import('./components/pages/user/Exchange/OrdersHistoryPage.vue') },
   ] },
   // Preserve old URLs without presenting unconnected mock economies as live features.
-  { path: '/craft', component: () => import('./components/pages/craft/Workshop.vue'), meta: { requiresAuth: true, hideBreadcrumbs: true } },
+  { path: '/craft', redirect: legacyCraftLocation, meta: { requiresAuth: true } },
   { path: '/city', component: () => import('./components/pages/city/City.vue'), meta: { requiresAuth: true } },
+  { path: '/city/demo', component: () => import('./components/pages/city/City.vue'), meta: { requiresAuth: true } },
+  { path: '/world', component: () => import('./components/pages/world/WorldPage.vue'), meta: { requiresAuth: true } },
+  { path: '/world/nodes/:id', component: () => import('./components/pages/world/WorldPage.vue'), meta: { requiresAuth: true } },
+    { path: '/world/storage/:id', component: () => import('./components/pages/world/WorldStoragePage.vue'), meta: { requiresAuth: true } },
+    { path: '/world/equipment/:id/wear', component: () => import('./components/pages/world/WorldEquipmentWearPage.vue'), meta: { requiresAuth: true } },
+    { path: '/world/workspace', redirect: to => ({ path: '/world/workspace/recipes', query: to.query, hash: to.hash }), meta: { requiresAuth: true } },
+    ...workspaceSections.map(section => ({ path: `/world/workspace/${section.id}`, component: () => import('./components/pages/craft/Workshop.vue'), meta: { requiresAuth: true, workspaceSection: section.id } })),
+    { path: '/world/workspace/:id(\\d+)', component: () => import('./components/pages/world/WorldWorkspace.vue'), meta: { requiresAuth: true } },
+    { path: '/world/recovery', component: () => import('./components/pages/world/WorldRecovery.vue'), meta: { requiresAuth: true } },
   ...['/chat/:rest(.*)*', '/exchange/shop'].map(path => ({ path, component: unavailable })),
   { path: '/balance/pay', redirect: '/balance' },
   { path: '/wiki', component: () => import('./components/pages/Wiki.vue') },

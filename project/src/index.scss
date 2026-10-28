@@ -7,6 +7,10 @@ a { color: var(--primary); text-decoration: none; }
 a:hover { color: var(--primary-hover); }
 :focus-visible { outline: .125rem solid var(--primary); outline-offset: .25rem; }
 button, input, textarea { font: inherit; }
+// Only native controls that launch world commands carry this class.
+button.world-action:not(:disabled) { background: var(--primary); color: var(--text-on-acc); border-color: var(--primary); }
+button.world-action:not(:disabled):hover { background: var(--primary-press); }
+button.world-action:not(:disabled) :is(svg, small, span) { color: inherit; }
 h1, h2, h3, p { overflow-wrap: anywhere; }
 h2 { font-size: 1.3rem; margin: 0 0 .75rem; }
 h3 { margin: 0 0 .5rem; }

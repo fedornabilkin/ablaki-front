@@ -4,7 +4,7 @@
 ## Цель и контекст
 Воспроизводимо публиковать проверенный project/dist на VPS с откатом по схеме PCM Helper.
 [Соглашение](../../agreements/deployment.md). Workflow должен находиться в frontend/.github/workflows относительно общего рабочего каталога.
-Основная ветка master, подготовительная release/2026-09-05. Текущий этап — только frontend. Web-root: `/var/www/ablakin.ru`, deploy-root: `/opt/ablaki-frontend`. [Инструкция, пункты 7 и 8](../deployment-github-vps.md) реализована в коде; у проекта отдельный backend API.
+Основная ветка master, подготовительная release/2026-09-05. Текущий этап — только frontend. Web-root: `/var/www/ablakin.ru`, deploy-root: `/opt/ablaki-frontend`. [Инструкция, пункты 7 и 8](../operations/deployment-github-vps.md) реализована в коде; у проекта отдельный backend API.
 
 ## Группа A: Готовность и параметры
 - [ ] A1. Определить domain, origin API, SSH-host/port, web-root и deploy-root.

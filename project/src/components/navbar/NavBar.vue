@@ -34,17 +34,17 @@ header.site-header(ref="header" :class="{ compact }")
   .container.navbar
     router-link.brand(to="/" aria-label="Ablakin — главная")
       img.brand-logo(src="/ablakin-fire-logo.png" alt="" width="40" height="40" decoding="async")
-      span.brand-name(v-if="!compact") ablakin
+      span.brand-name(v-show="!compact") ablakin
     .nav-account
       header-account(v-if="user" :compact="compact")
       .guest-actions(v-else-if="guest")
         router-link.nav-item(to="/users/registration") Регистрация
         router-link(:to="loginTarget" custom v-slot="{ href, navigate }")
           n-button(tag="a" :href="href" @click="navigate" type="primary" secondary) Войти
-  .container.header-nav(v-if="!compact")
-    online-users(:collapsed="compact")
+  .container.header-nav(v-show="!compact")
+    online-users
     daily-rewards(v-if="user")
-    nav.desktop-nav(aria-label="Основная навигация")
+    nav.desktop-nav(v-show="!compact" aria-label="Основная навигация")
       router-link.nav-item(v-for="link in links" :key="link.to" :to="link.to" :class="{'account-link': link.account}" :aria-label="link.title")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")
         span.nav-label {{ link.title }}

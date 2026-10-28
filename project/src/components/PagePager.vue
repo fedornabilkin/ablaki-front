@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Page } from '@/services/api/portal';
-const props = withDefaults(defineProps<{ page: number; result: Page; disabled?: boolean; queryPrefix?: string }>(), { queryPrefix: '' });
+const props = withDefaults(defineProps<{ page: number; result: Omit<Page, 'items'> & { items: readonly unknown[] }; disabled?: boolean; queryPrefix?: string }>(), { queryPrefix: '' });
 const route = useRoute();
 const emit = defineEmits<{ 'update:page': [page: number] }>();
 const pages = computed(() => props.result.total === null ? null : Math.max(1, Math.ceil(props.result.total / props.result.pageSize)));

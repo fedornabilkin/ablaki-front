@@ -1,5 +1,5 @@
 export interface Crumb { title: string; to?: string }
-const sections: Record<string, string> = { games: 'Игры', users: 'Участники', forum: 'Форум', exchange: 'Биржа кредитов', balance: 'История счёта', rating: 'Рейтинг', transfer: 'Переводы', statistic: 'Статистика', wiki: 'Вики', chat: 'Чат', craft: 'Мастерская', city: 'Город' };
+const sections: Record<string, string> = { games: 'Игры', users: 'Участники', forum: 'Форум', exchange: 'Биржа кредитов', balance: 'История счёта', rating: 'Рейтинг', transfer: 'Переводы', statistic: 'Статистика', wiki: 'Вики', chat: 'Чат', craft: 'Мастерская', city: 'Город', world: 'Мир' };
 const games: Record<string, string> = { orel: 'Орлянка', saper: 'Сапёр', duel: 'Дуэль', five: '5 яблок' };
 export function breadcrumbs(path: string, params: Record<string, unknown> = {}): Crumb[] {
   const parts = path.split('/').filter(Boolean);
@@ -8,7 +8,8 @@ export function breadcrumbs(path: string, params: Record<string, unknown> = {}):
   if (parts[0] === 'wall') result.push({ title: 'Участники', to: '/users' }, { title: String(params.login ?? 'Профиль') });
   else {
     result.push({ title: sections[parts[0]] ?? 'Страница не найдена', to: '/' + parts[0] });
-    if (parts[0] === 'games' && games[parts[1]]) {
+    if (parts[0] === 'world' && parts[1]) result.push({ title: ({ nodes: `Объект №${params.id ?? parts[2] ?? ''}`, storage: 'Хранилище', workspace: 'Мастерская', recovery: 'Восстановление вещей', equipment: 'Оборудование' } as Record<string, string>)[parts[1]] ?? 'Мир' });
+    else if (parts[0] === 'games' && games[parts[1]]) {
       result.push({ title: games[parts[1]], to: '/games/' + parts[1] });
       if (parts[2]) result.push({ title: parts[2] === 'my' ? 'Мои игры' : 'История' });
     } else if (parts[0] === 'forum' && parts[1]) result.push({ title: parts[1] === 'my' ? 'Мои темы' : 'Тема №' + String(params.theme_id ?? '') });

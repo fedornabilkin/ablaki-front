@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
+import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
 import { NAlert, NButton, NCard, NPopconfirm } from 'naive-ui';
 import UserAvatar from '@/components/user/UserAvatar.vue';
@@ -21,21 +23,20 @@ n-card(:title="'Игра №' + game.id")
     .stack
       .toolbar.five-stats
         span
-          font-awesome-icon(icon="coins" aria-hidden="true")
-          |  Ставка: {{ formatAccountNumber(game.kon) }} Cr
+          |  Ставка: #[world-credits(:value="game.kon")]
         span
           font-awesome-icon(icon="box" aria-hidden="true")
-          |  Банк: {{ formatAccountNumber(game.bank) }} Cr
+          |  Банк: #[world-credits(:value="game.bank")]
         span
           font-awesome-icon(icon="trophy" aria-hidden="true")
-          |  Победителю: {{ formatAccountNumber(game.winner_amount) }} Cr
+          |  Победителю: #[world-credits(:value="game.winner_amount")]
       .players
         .player(v-for="participant in participants" :key="participant.side")
           user-avatar(v-if="participant.user" :user="participant.user")
           span.muted(v-else) Ждём соперника
           strong {{ participant.points }} очков
           font-awesome-icon(v-if="game.status === participant.side" icon="trophy" title="Победитель" aria-label="Победитель")
-      n-alert(v-if="fiveFinished(game)" type="success" role="status") Победитель: {{ winnerName }}. Начислено {{ formatAccountNumber(game.winner_amount) }} Cr.
+      n-alert(v-if="fiveFinished(game)" type="success" role="status") Победитель: {{ winnerName }}. Начислено #[world-credits(:value="game.winner_amount")] .
       template(v-else)
         p(v-if="ownPendingBall") Ваш скрытый ход: {{ ownPendingBall }}. Ждём ответа соперника.
         template(v-if="canMoveFive(game, userId, credit)")
@@ -44,12 +45,12 @@ n-card(:title="'Игра №' + game.id")
             n-button(v-for="ball in [1, 2, 3, 4, 5]" :key="ball" :disabled="busy || blocked" type="primary" secondary @click="$emit('move', ball)")
               font-awesome-icon(icon="apple-alt")
               | &nbsp;{{ ball }}
-        p.muted(v-else-if="game.status === 'free' && role !== 'user'") Недостаточно Cr для этой ставки.
+        p.muted(v-else-if="game.status === 'free' && role !== 'user'") Недостаточно кредитов для этой ставки.
         p.muted(v-else-if="!ownPendingBall") Ход соперника. Состояние обновляется автоматически.
         n-popconfirm(v-if="game.status === 'free' && role === 'user'" @positive-click="$emit('cancel')")
           template(#trigger)
             n-button(type="error" secondary :disabled="busy || blocked") Отменить игру
-          | Отменить игру и вернуть {{ formatAccountNumber(game.kon) }} Cr?
+          | Отменить игру и вернуть #[world-credits(:value="game.kon")] ?
     aside.five-rounds(aria-label="Ходы игроков")
       strong Ходы
       .round-names
