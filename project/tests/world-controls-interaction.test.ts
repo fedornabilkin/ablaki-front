@@ -432,8 +432,8 @@ describe('map controls', () => {
     await flushView();
     const objects = findView(view.root, element => element.tag === 'g' && element.props['aria-label']?.includes('Грядка 2'))!;
     expect(objects.props.class).toContain('locked');
-    expect(viewText(view.root)).toContain('Открытие ячеек');
-    expect(findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Исследование и покупка ячеек')).toBeDefined();
+    expect(viewText(view.root)).not.toContain('Открытие ячеек');
+    expect(findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Исследование и покупка ячеек')).toBeUndefined();
   });
   it('buys only the selected nonconsecutive garden cells with one discounted command', async () => {
     const beds = Array.from({ length: 10 }, (_, i) => ({ node_id: 11 + i, ordinal: i + 1, unlocked: i === 0, price: `${i * 10}.0000` }));
@@ -546,6 +546,82 @@ describe('map control pointer events', () => {
     for (let parent = button; parent; parent = parent.parent!) for (const name of String(parent.props.class ?? '').split(/\s+/)) expect(pointerDisabled.has(name), `pointer-events:none on ${name}`).toBe(false);
     button.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith(`/nodes/1/map-${action}`, {cells: selection, top_up: false, use_elixir: false}, expect.any(Object));
+  });
+});
+
+describe('map permissions and embedded mini-storage', () => {
+  const child = (id = 2) => ({...node, id, type: 'CHEST', label: `Мини-склад ${id}`, coordinates: {x: id - 1, y: 0}, owned_by_me: false, extensions: ['harvest'], permissions: {manage: false, administer: false, storage: false}});
+  const stock = (name = 'Камень') => ({owned_by_me: false, writable: true, allow_sales: true, npc_supply: true, capacity: 5, slot_limit: 100, server_time: 100,
+    items: [{inventory_id: 21, position: 1, name, icon: 'cube', quantity: 15, price: '1.0000', harvested_at: 100, fresh_until: 2147483647, spoiled: false}]});
+  const map = () => ({node_id: 1, items: [child(), child(3)], cells: [], can_expand: false});
+
+  it.each(['closed', 'discovered'])('hides every map command on a foreign %s cell', async state => {
+    const foreign = {...node, owned_by_me: false, permissions: {manage: false, administer: false, storage: false}};
+    const view = mount(WorldMap, () => ({node: foreign, map: {node_id: 1, items: [], cells: state === 'discovered' ? [{x: 1, y: 0, state}] : [], can_expand: true, exploration: {allowed: true, level: 5, elixir_quantity: 2}}, selection: [{x: 1, y: 0}], writable: true, command: mocks.runner, session: 1}));
+    await flushView();
+    expect(findView(view.root, n => n.props.class === 'map-cell-actions')).toBeUndefined();
+    expect(findView(view.root, n => n.tag === 'button' && /Исследовать|Купить|Открыть профессию/.test(viewText(n)))).toBeUndefined();
+    expect(mocks.explorer).not.toHaveBeenCalled(); expect(mocks.mapPreview).not.toHaveBeenCalled();
+  });
+  it('discards a calculated purchase when ownership is revoked', async () => {
+    const owned = ref(true), pending = deferred<any>(); mocks.mapPreview.mockReturnValue(pending.promise);
+    const view = mount(WorldMap, () => ({node: {...node, owned_by_me: owned.value}, map: {node_id: 1, items: [], cells: [{x: 1, y: 0, state: 'discovered'}], can_expand: true,
+      pricing: {paid_cells: 0, base_price: '10.0000', next_price: '10.0000', bulk_minimum: 3, discount_bps: 500, max_quantity: 100, currency: 'Cr'}}, selection: [{x: 1, y: 0}], writable: true, command: mocks.runner}));
+    await flushView(); const buy = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Купить 1'))!;
+    buy.props.onClick(); await flushView(); owned.value = false; await flushView();
+    pending.resolve({...quote, terms: {price: '10.0000'}}); await flushView();
+    expect(mocks.runner.submit).not.toHaveBeenCalled(); expect(findView(view.root, n => n.props.class === 'map-cell-actions')).toBeUndefined();
+    buy.props.onClick(); await flushView(); expect(mocks.mapPreview).toHaveBeenCalledTimes(1);
+  });
+  it('shows five stock cells and buys from the selected mini without changing the parent route', async () => {
+    mocks.harvest.mockResolvedValue(stock());
+    const view = mount(WorldMap, () => ({node: {...node, owned_by_me: false}, map: map(), selection: [child().coordinates], writable: true, command: mocks.runner, session: 1})); await flushView();
+    expect(mocks.harvest).toHaveBeenCalledWith(2); expect(viewText(view.root)).toContain('5 ячеек · до 100 шт. в ячейке');
+    expect(findView(view.root, n => n.props.class === 'harvest-grid')!.children.filter(n => n.tag === 'button')).toHaveLength(5);
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Камень'))!.props.onClick(); await flushView();
+    const input = {inventory_id: 21, quantity: 1}, q = {...quote, terms: {node_id: 2, inventory_id: 21, total: '1.0000', fits: true}};
+    mocks.harvestPreview.mockResolvedValue({input, quote: q});
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Купить 1'))!.props.onClick(); await flushView();
+    expect(mocks.harvestPreview).toHaveBeenCalledWith(2, 'buy', input);
+    expect(mocks.runner.submit).toHaveBeenCalledExactlyOnceWith('/nodes/2/harvest-buy', input, q);
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+  it.each(['selection', 'session'])('does not buy from an old mini after a %s change during calculation', async change => {
+    const selection = ref([child().coordinates]), session = ref(1), pending = deferred<any>();
+    mocks.harvest.mockImplementation(async (id: number) => stock(id === 2 ? 'Камень' : 'Глина'));
+    const view = mount(WorldMap, () => ({node, map: map(), selection: selection.value, session: session.value, writable: true, command: mocks.runner})); await flushView();
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Камень'))!.props.onClick(); await flushView();
+    mocks.harvestPreview.mockReturnValue(pending.promise);
+    findView(view.root, n => n.tag === 'button' && viewText(n).includes('Купить 1'))!.props.onClick(); await flushView();
+    if (change === 'selection') selection.value = [child(3).coordinates]; else session.value++;
+    await flushView(); pending.resolve({input: {inventory_id: 21, quantity: 1}, quote: {...quote, terms: {total: '1.0000', fits: true}}}); await flushView();
+    expect(mocks.runner.submit).not.toHaveBeenCalled(); expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.harvest).toHaveBeenLastCalledWith(change === 'selection' ? 3 : 2);
+  });
+  it('keeps the live progress at the top and the same mining session while inspecting a mini', async () => {
+    vi.useFakeTimers({toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Date', 'performance']});
+    const selection = ref<any[]>([]);
+    const snapshot = {node_id: 1, ready: true, working: true, work_id: 7, action_code: 'mine-stone', workers: 1, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180,
+      worked_seconds: 30, required_seconds: 180, server_time: 100, live_work: [{accounted_at: 100, last_seen_at: 100}],
+      actions: [{code: 'mine-stone', work_seconds: 180, cooldown_seconds: 0, output: [{name: 'Камень', quantity: 15}], tools: []}],
+      employment: {owner: false, enabled: true, reward_cr: '3.0000', accepted_reward_cr: '3.0000', storage_id: 2, storages: []}};
+    mocks.mining.mockResolvedValue(snapshot); mocks.harvest.mockResolvedValue(stock()); mocks.runner.submit.mockResolvedValue(snapshot);
+    const page = {setup: () => () => h(WorldMap, {node, map: map() as any, selection: selection.value, writable: true, command: mocks.runner, session: 1},
+      {information: () => h(WorldMiningPanel, {nodeId: 1, owner: 1, writable: true, session: 1})})};
+    const view = mount(page); await flushView();
+    const mining = findView(view.root, n => n.props['aria-label'] === 'Получение ресурсов')!;
+    const progress = findView(mining, n => n.props.class === 'mining-progress')!;
+    expect(mining.children.indexOf(progress)).toBe(1);
+    expect(findView(mining, n => n.tag === 'aside' && n.props.type === 'info')).toBeUndefined();
+    expect(findView(mining, n => n.tag === 'button' && n.props['aria-label'] === 'Как учитывается добыча')).toBeDefined();
+    const before = findView(progress, n => n.tag === 'progress')!.props.percentage;
+    await vi.advanceTimersByTimeAsync(1000); await flushView(); expect(findView(progress, n => n.tag === 'progress')!.props.percentage).toBeGreaterThan(before);
+    selection.value = [child().coordinates]; await flushView();
+    expect(findView(view.root, n => n.props.class === 'mining-progress')).toBe(progress);
+    expect(mocks.mining).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(9000); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/1/mining/heartbeat', {});
+    expect(findView(view.root, n => n.props.class === 'mining-progress')).toBe(progress);
   });
 });
 
@@ -678,7 +754,7 @@ describe('garden harvest purchase controls', () => {
     pending.resolve({ input, quote: q }); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/10/harvest-buy', input, q);
     expect(findView(view.root, n => n.props.class === 'harvest-grid')?.children.filter(n => n.tag === 'button')).toHaveLength(5);
-    expect(viewText(view.root)).not.toContain('Свободно');
+    expect(viewText(view.root).match(/Свободно/g)).toHaveLength(4);
   });
   it('refreshes a changed price and keeps its explanation visible without paying', async () => {
     const view = await setup();

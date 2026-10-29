@@ -82,6 +82,12 @@ it('validates harvest slots and exact owner prices', async () => {
   const item = { inventory_id: 1, position: 1, name: 'Crop', icon: 'seedling', quantity: 7, price: '2.5000', harvested_at: 1, fresh_until: 1209601, spoiled: true };
   const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { node_id: 1, capacity: 5, items: [item], owned_by_me: true, writable: true, server_time: 1209601 } });
   expect((await loadHarvest(1)).items[0].quantity).toBe(7);
+  get.mockResolvedValue({ data: { node_id: 1, capacity: 5, slot_limit: 100, items: [item], owned_by_me: false, writable: true, server_time: 1 } });
+  expect(await loadHarvest(1)).toMatchObject({capacity: 5, slot_limit: 100});
+  for (const slot_limit of [0, 1.5, '100']) {
+    get.mockResolvedValue({ data: { node_id: 1, capacity: 5, slot_limit, items: [item], owned_by_me: false, writable: true, server_time: 1 } });
+    await expect(loadHarvest(1)).rejects.toThrow();
+  }
   get.mockResolvedValue({ data: { node_id: 1, capacity: 5, items: [item, { ...item, inventory_id: 2 }], owned_by_me: true, writable: true, server_time: 1 } });
   await expect(loadHarvest(1)).rejects.toThrow();
 });

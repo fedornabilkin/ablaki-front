@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ load: vi.fn(), storages: vi.fn(), runner: null
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const popover = { setup: (_: unknown, { slots }: any) => () => h('div', [slots.trigger?.(), slots.default?.()]) };
-  return { NPopover: popover, NProgress: block('progress'), NAlert: block('aside'), NButton: block('button'), NSelect: block('select') };
+  return { NPopover: popover, NSpin: block('span'), NProgress: block('progress'), NAlert: block('aside'), NButton: block('button'), NSelect: block('select') };
 });
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/worldMining', () => ({ loadMining: mocks.load, parseMining: (value: unknown) => value }));
