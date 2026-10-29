@@ -15,6 +15,8 @@ import WorldQuotaNotice from './WorldQuotaNotice.vue';
 const props = defineProps<{ nodeId: number; owner: number; session: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<MiningState | null>(null), error = ref('');
+const quota = computed(() => state.value?.quota ? {kind: 'extraction_daily', maximum: state.value.quota.maximum, remaining: state.value.quota.remaining,
+  restoresAt: state.value.quota.restores_at, serverTime: state.value.server_time, grossRemaining: null} : null);
 const selectedDestination = ref<'backpack' | 'mini_storage'>('backpack');
 const storageOptions = computed(() => state.value?.output_storages ?? []);
 const hasMiniStorage = computed(() => storageOptions.value.some(storage => storage.kind === 'stockpile'));
@@ -56,8 +58,8 @@ async function load() {
   finally { if (current === generation && read === readRevision) reading = false; }
 }
 async function act(action: 'start' | 'heartbeat' | 'stop', retry = false) {
-  if (runner.busy.value || (retry && pendingSettings.value) || (!retry && runner.pending.value)) return;
-  if (!retry && action !== 'stop' && !state.value?.working && unavailable.value) return;
+  if (!props.writable || runner.busy.value || (retry && pendingSettings.value) || (!retry && runner.pending.value)) return;
+  if (!retry && action !== 'stop' && actionBlocked.value) return;
   readRevision++; reading = false;
   checking.value = action === 'heartbeat' && !retry;
   const current = generation; error.value = '';
@@ -93,12 +95,12 @@ section.mining-panel(aria-label="Получение ресурсов")
       p Добыча владельца по умолчанию поступает в рюкзак. Кнопка «Мини-склад» включает автоматический выбор ближайшего мини-склада внутри объекта с местом для всей партии. Расстояние считается от центра карты. Перед выдачей место проверяется снова.
       p(v-if="!hasMiniStorage") Для хранения добычи здесь постройте мини-склад внутри объекта.
       p(v-if="state?.employment && !state.employment.owner") Добыча поступит в мини-склад объекта, оплата — на ваш личный баланс. Оплата принятой партии сохраняется при изменении условий работы.
-  .mining-progress
-    world-work-progress(v-if="state?.ready && progress.required_seconds > 0" :snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="act('heartbeat')")
-    .mining-progress-loading(v-else-if="!state" role="status")
+      p Одна завершённая партия расходует одну добычу из дневного лимита, независимо от количества ресурсов в партии.
+  .mining-quota(v-if="quota || !state")
+    world-quota-notice(v-if="quota" :quota="quota" label="Добыч за день осталось" :server-time="state?.server_time")
+    .mining-quota-loading(v-else role="status")
       n-spin(size="small")
-      span Загружаем прогресс…
-  world-quota-notice(v-if="state?.quota" :quota="state.quota" :server-time="state.server_time")
+      span Загружаем лимит добычи…
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-alert(v-if="saved" type="success" closable @close="saved = ''") {{ saved }}
   section.mine-employment(v-if="state?.employment?.owner")
@@ -130,6 +132,8 @@ section.mining-panel(aria-label="Получение ресурсов")
         p Работников: {{ state.workers }}. Добыто: {{ state.produced_quantity }} ед. руды.
       p(v-if="state.pending_quantity") Ожидает выдачи: {{ state.pending_quantity }}. Освободите место в хранилище.
       p.mining-unavailable(v-if="unavailable" role="status") {{ unavailable }}
+      .mining-progress(v-if="progress.required_seconds > 0")
+        world-work-progress(:snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="act('heartbeat')")
       n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="runner.busy.value && !checking" :disabled="actionBlocked" @click="runner.pending.value ? act('heartbeat', true) : act(state.working ? 'stop' : state.pending_quantity ? 'heartbeat' : 'start')") {{ actionLabel }}
 </template>
 <style scoped>
@@ -138,6 +142,6 @@ section.mining-panel(aria-label="Получение ресурсов")
 .mining-panel { display: grid; gap: .75rem; }.mining-panel p, .mining-panel h3 { margin: 0; }
 .mining-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }
 .mining-unavailable { color: var(--error, #d03050); font-size: .85rem; }
-.mining-progress { min-height: 2.75rem; }.mining-progress-loading { display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; color: var(--text-muted); font-size: .85rem; }
+.mining-progress { min-height: 2.75rem; }.mining-quota-loading { display: flex; align-items: center; gap: .5rem; min-height: 3.25rem; color: var(--text-muted); font-size: .85rem; }
 .mining-wage { font-size: .9rem; }
 </style>
