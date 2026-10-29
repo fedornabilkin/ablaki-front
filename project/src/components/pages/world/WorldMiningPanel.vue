@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton, NSelect, NCheckbox } from 'naive-ui';
+import { NAlert, NButton, NSelect, NCheckbox, NSpin } from 'naive-ui';
 import { loadMining, parseMining, type MiningState } from '@/services/api/worldMining';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { worldError } from '@/services/api/world';
@@ -82,7 +82,6 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); if (
 </script>
 <template lang="pug">
 section.mining-panel(aria-label="Получение ресурсов")
-  world-quota-notice(v-if="state?.quota" :quota="state.quota" :server-time="state.server_time")
   .mining-heading
     h3 Получение ресурсов
     world-help-hint(label="Как учитывается добыча")
@@ -93,27 +92,33 @@ section.mining-panel(aria-label="Получение ресурсов")
       p(v-if="selected?.experience") Опыт за партию: +{{ selected.experience }}.
       p Добыча владельца по умолчанию поступает в рюкзак. Кнопка «Мини-склад» включает автоматический выбор ближайшего мини-склада внутри объекта с местом для всей партии. Расстояние считается от центра карты. Перед выдачей место проверяется снова.
       p(v-if="!hasMiniStorage") Для хранения добычи здесь постройте мини-склад внутри объекта.
+      p(v-if="state?.employment && !state.employment.owner") Добыча поступит в мини-склад объекта, оплата — на ваш личный баланс. Оплата принятой партии сохраняется при изменении условий работы.
+  .mining-progress
+    world-work-progress(v-if="state?.ready && progress.required_seconds > 0" :snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="act('heartbeat')")
+    .mining-progress-loading(v-else-if="!state" role="status")
+      n-spin(size="small")
+      span Загружаем прогресс…
+  world-quota-notice(v-if="state?.quota" :quota="state.quota" :server-time="state.server_time")
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-alert(v-if="saved" type="success" closable @close="saved = ''") {{ saved }}
   section.mine-employment(v-if="state?.employment?.owner")
     .mining-heading
       h4 Работа для других игроков
       world-help-hint(label="Условия найма шахтёров")
-        p Работнику нужно не менее 60% здоровья и собственный инструмент. Шахта должна действовать с прочностью от 50% и иметь собственный склад с местом. Оплата резервируется из бюджета шахты при принятии партии. Принятая цена сохраняется при изменении условий.
+        p Работнику нужно не менее 60% здоровья и исправный инструмент либо работающая буровая. Шахта должна действовать с прочностью от 50% и иметь собственный склад с местом. Оплата резервируется из бюджета шахты при принятии партии. Принятая цена сохраняется при изменении условий.
         p Добыча работников автоматически поступает в ближайший мини-склад шахты с местом для всей партии. Постройте мини-склад внутри шахты перед включением найма.
+        p(v-if="(state.employment.reward_multiplier ?? 1) > 1") С буровой базовая ставка умножается на {{ state.employment.reward_multiplier }}. В поле указывается базовая ставка.
     n-checkbox(v-model:checked="hireEnabled" :disabled="runner.busy.value || !!runner.pending.value") Разрешить оплачиваемую добычу
     label Базовая оплата партии
       world-credit-input(v-model:value="hireReward" exact :disabled="runner.busy.value || !!runner.pending.value")
-    p(v-if="(state.employment.reward_multiplier ?? 1) > 1") С буровой базовая ставка умножается на {{ state.employment.reward_multiplier }}. Действующая оплата: #[world-credits(:value="state.employment.reward_cr")].
+    p(v-if="(state.employment.reward_multiplier ?? 1) > 1") Оплата партии: #[world-credits(:value="state.employment.reward_cr")].
     p.mining-unavailable(v-if="!normalizedHireReward" role="status") Укажите оплату больше нуля, не более четырёх знаков после запятой.
     n-button(:theme-overrides="worldActionButtonTheme" :loading="runner.busy.value && pendingSettings" :disabled="employmentBlocked" @click="saveEmployment(pendingSettings)") {{ pendingSettings ? 'Повторить сохранение' : 'Сохранить условия' }}
-  n-alert(closable v-if="state?.employment && !state.employment.owner" type="info")
-    p Оплата партии: #[world-credits(:value="state.employment.accepted_reward_cr ?? state.employment.reward_cr")]. Добыча поступит в мини-склад объекта, оплата — на ваш личный баланс.
+  p.mining-wage(v-if="state?.employment && !state.employment.owner") Оплата партии: #[world-credits(:value="state.employment.accepted_reward_cr ?? state.employment.reward_cr")].
   template(v-if="state")
     p(v-if="!state.ready") Постройте буровую установку внутри шахты, чтобы начать добычу.
     template(v-else)
       template(v-if="state.actions")
-        p.mining-equipment(v-if="selected?.drilling" role="status") Буровая: ресурсы ×{{ selected.drilling.output_multiplier }}, оплата ×{{ selected.drilling.reward_multiplier }} · Кирка не нужна
         n-select(:value="selected?.code" :options="options" :disabled="state.working || !!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Ресурс для добычи" @update:value="selectedAction = $event")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
         p(v-if="!state.action_code && (selected?.available_at ?? 0) > state.server_time") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
@@ -123,7 +128,6 @@ section.mining-panel(aria-label="Получение ресурсов")
         n-alert(closable v-if="state.blocked_message" type="warning") {{ state.blocked_message }}. Заработанная партия сохранена.
       template(v-else)
         p Работников: {{ state.workers }}. Добыто: {{ state.produced_quantity }} ед. руды.
-      world-work-progress(v-if="progress.required_seconds > 0" :snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="act('heartbeat')")
       p(v-if="state.pending_quantity") Ожидает выдачи: {{ state.pending_quantity }}. Освободите место в хранилище.
       p.mining-unavailable(v-if="unavailable" role="status") {{ unavailable }}
       n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="runner.busy.value && !checking" :disabled="actionBlocked" @click="runner.pending.value ? act('heartbeat', true) : act(state.working ? 'stop' : state.pending_quantity ? 'heartbeat' : 'start')") {{ actionLabel }}
@@ -134,5 +138,6 @@ section.mining-panel(aria-label="Получение ресурсов")
 .mining-panel { display: grid; gap: .75rem; }.mining-panel p, .mining-panel h3 { margin: 0; }
 .mining-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }
 .mining-unavailable { color: var(--error, #d03050); font-size: .85rem; }
-.mining-equipment { padding: .55rem .7rem; border-radius: .4rem; background: var(--primary-soft); color: var(--primary); font-size: .85rem; }
+.mining-progress { min-height: 2.75rem; }.mining-progress-loading { display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; color: var(--text-muted); font-size: .85rem; }
+.mining-wage { font-size: .9rem; }
 </style>

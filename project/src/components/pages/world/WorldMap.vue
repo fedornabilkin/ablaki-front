@@ -20,6 +20,7 @@ import WorldPaymentSources from './WorldPaymentSources.vue';
 import WorldObjectPreview from './WorldObjectPreview.vue';
 import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacedItemPanel from './WorldPlacedItemPanel.vue';
+import WorldHarvestPanel from './WorldHarvestPanel.vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 
@@ -46,7 +47,7 @@ async function refreshGarden() {
 watch([() => props.node.id, () => props.node.revision, () => props.session], refreshGarden, { immediate: true });
 let generation = 0, dropSequence = 0;
 watch(selected, value => { generation++; calculating.value = false; error.value = ''; emit('update:selection', value); }, { flush: 'sync' });
-watch([() => props.map?.exploration?.allowed, () => props.node.id, () => props.session], async ([allowed]) => {
+watch([() => props.map?.exploration?.allowed && props.node.owned_by_me, () => props.node.id, () => props.session], async ([allowed]) => {
   const current = ++explorerGeneration; explorer.value = null; if (!allowed) return;
   try { const result = await loadExplorer(); if (current === explorerGeneration) explorer.value = result; }
   catch { /* The map still provides authoritative exploration requirements. */ }
@@ -88,7 +89,8 @@ const explorerLevel = computed(() => Math.max(props.map?.exploration?.level ?? 0
 const levelAllowed = computed(() => !!props.map?.exploration?.allowed && explorerLevel.value >= required.value);
 const neededElixirs = computed(() => selected.value.filter(p => requiredExplorerLevel(p) > (props.map?.exploration?.level ?? 0)).length);
 const elixirAllowed = computed(() => !!props.map?.exploration?.allowed && neededElixirs.value > 0 && props.map.exploration.elixir_quantity >= neededElixirs.value);
-const canExploreCell = (p: MapPoint) => props.writable && !isGarden.value && !!props.map?.can_expand && !!props.map.exploration?.allowed && state(p) === 'closed' && !occupied(p) && (explorerLevel.value >= requiredExplorerLevel(p) || (props.map.exploration?.elixir_quantity ?? 0) > 0);
+const cellActionsAllowed = computed(() => props.writable && props.node.owned_by_me && (isGarden.value ? !!garden.value?.can_expand : !!props.map?.can_expand));
+const canExploreCell = (p: MapPoint) => cellActionsAllowed.value && !isGarden.value && !!props.map?.exploration?.allowed && state(p) === 'closed' && !occupied(p) && (explorerLevel.value >= requiredExplorerLevel(p) || (props.map.exploration?.elixir_quantity ?? 0) > 0);
 const blocked = computed(() => calculating.value || gardenLoading.value || props.command.busy.value || !!props.command.pending.value || !props.writable);
 const canBuy = computed(() => !!price.value && (gardenSelection.value ? !!garden.value?.can_expand : !!props.map?.can_expand));
 const position = (p: MapPoint) => ({ x: (p.x - bounds.value.x) * size, y: (bounds.value.y + bounds.value.height - 1 - p.y) * size });
@@ -188,7 +190,7 @@ function dropSeed(event: DragEvent, node: WorldNode) {
 }
 async function act(action: 'explore' | 'buy') {
   const elixir = action === 'explore' && !levelAllowed.value && elixirAllowed.value;
-  if (blocked.value || !selected.value.length) return;
+  if (blocked.value || !cellActionsAllowed.value || !selected.value.length) return;
   if (action === 'explore' && (!props.map?.can_expand || !allClosed.value || !(elixir ? elixirAllowed.value : levelAllowed.value))) return;
   if (action === 'buy' && !canBuy.value) return;
   const expectedPrice = action === 'buy' ? price.value!.total : '0.0000';
@@ -199,14 +201,14 @@ async function act(action: 'explore' | 'buy') {
     if (action === 'buy' && gardenSelection.value) {
       const payload = { quantity: selected.value.length, bed_ids: selectedBeds.value.map(n => n.id).sort((a, b) => a - b), top_up: personalTopUp };
       const result = await previewGarden(id, 'expand', payload);
-      if (current !== generation || !props.writable) return;
+      if (current !== generation || !cellActionsAllowed.value) return;
       if (result.payment?.total !== expectedPrice) { error.value = 'Цена изменилась. Обновите карту перед покупкой.'; return; }
       await props.command.submit(`/nodes/${id}/garden-expand`, payload, result.quote);
       if (current === generation && !props.command.pending.value && !props.command.error.value) void refreshGarden();
       return;
     }
     const quote = await previewMapCells(id, action, input);
-    if (current !== generation || !props.writable) return;
+    if (current !== generation || !cellActionsAllowed.value) return;
     if (quote.terms.price !== expectedPrice) { error.value = 'Цена изменилась. Обновите карту перед покупкой.'; return; }
     await props.command.submit(`/nodes/${id}/map-${action}`, input, quote);
   } catch (cause) { if (current === generation) error.value = worldError(cause); }
@@ -214,10 +216,10 @@ async function act(action: 'explore' | 'buy') {
 }
 watch(() => props.selection, value => { if (value && JSON.stringify(value) !== JSON.stringify(selected.value)) selected.value = value; });
 async function progress() {
-  if (!explorer.value || blocked.value) return;
+  if (!explorer.value || blocked.value || !cellActionsAllowed.value) return;
   const action = explorer.value.enrolled ? 'level-up' : 'enroll', id = explorer.value.id;
   const current = ++explorerGeneration, node = props.node.id, session = props.session;
-  const valid = () => current === explorerGeneration && node === props.node.id && session === props.session;
+  const valid = () => current === explorerGeneration && node === props.node.id && session === props.session && cellActionsAllowed.value;
   calculating.value = true; error.value = ''; professionNotice.value = '';
   try {
     const quote = await previewProfession(id, action);
@@ -238,6 +240,7 @@ async function progress() {
 }
 watch([() => props.node.id, () => props.session], () => { generation++; calculating.value = false; selected.value = []; anchor.value = null; error.value = ''; professionNotice.value = ''; }, { flush: 'sync' });
 watch(() => props.writable, () => { generation++; calculating.value = false; }, { flush: 'sync' });
+watch(cellActionsAllowed, () => { generation++; calculating.value = false; error.value = ''; }, { flush: 'sync' });
 onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; });
 </script>
 
@@ -310,13 +313,14 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
         router-link(v-if="selectedNode.status === 'active' && (selectedNode.owned_by_me || selectedNode.extensions?.includes('public_workspace'))" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
         world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
+        world-harvest-panel(v-if="selectedNode.type === 'CHEST' && selectedNode.status === 'active' && selectedNode.extensions?.includes('harvest')" :key="`stock-${selectedNode.id}`" :node-id="selectedNode.id" :session="session ?? 0" :revision="selectedNode.revision" :command="command" embedded)
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")
         span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
-        h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? 'Можно купить' : point ? 'Не исследована' : 'Выбранная область' }}
+        h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? (cellActionsAllowed ? 'Можно купить' : 'Исследованная ячейка') : point ? 'Не исследована' : 'Выбранная область' }}
       template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
         h3 Выберите ячейку
-      section.map-cell-actions(v-if="selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
+      section.map-cell-actions(v-if="cellActionsAllowed && selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
         .explore-action
           h4 Открытие ячеек
           world-help-hint(label="Исследование и покупка ячеек" symbol="!")

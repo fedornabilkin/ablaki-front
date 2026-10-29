@@ -4,12 +4,13 @@ import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
+import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
+import WorldHelpHint from './WorldHelpHint.vue';
 import { loadHarvest, previewHarvest, type HarvestAction } from '@/services/api/worldHarvest';
 import { formatCredits, creditCost } from '@/entities/world/credits';
 import { worldError } from '@/services/api/world';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
-const props = defineProps<{ nodeId: number; session: number; revision: number; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number; session: number; revision: number; command: WorldCommandRunner; embedded?: boolean }>();
 const state = shallowRef<Awaited<ReturnType<typeof loadHarvest>> | null>(null);
 const selected = ref<number | null>(null), quantity = ref<number | null>(1), prices = reactive<Record<number, string>>({});
 const destination = ref<number | null>(null);
@@ -59,13 +60,17 @@ const timer = setInterval(() => { if (!locked.value && state.value?.items.some(i
 onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 </script>
 <template lang="pug">
-section.harvest-panel(aria-label="Продукция склада")
-  h2 Продукция склада
-  p Покупки поступают в рюкзак, оплата — в казну этого склада.
-  p(v-if="state?.npc_supply") Здесь продаётся сырьё, добытое игроками. Выручка возвращается в бюджеты стартовых объектов NPC для оплаты работы.
-  p(v-else) Урожай после 14 суток хранения однократно теряет 30% количества.
+section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-label="Продукция склада" :aria-busy="loading")
+  .harvest-heading
+    component(:is="embedded ? 'h4' : 'h2'") {{ embedded ? 'Ресурсы мини-склада' : 'Продукция склада' }}
+    world-help-hint(label="Хранение и покупка ресурсов")
+      p Покупки поступают в рюкзак, оплата — в казну этого склада.
+      p(v-if="state?.npc_supply") Здесь продаётся сырьё, добытое игроками. Выручка возвращается в бюджеты стартовых объектов NPC для оплаты работы.
+      p(v-else) Урожай после 14 суток хранения однократно теряет 30% количества.
+  p.harvest-capacity(v-if="state") {{ state.capacity }} ячеек{{ state.slot_limit ? ` · до ${state.slot_limit} шт. в ячейке` : '' }}
+  n-spin(v-if="loading && !state" size="small" aria-label="Загружаем ресурсы склада")
   n-alert(closable v-if="error" type="error") {{ error }}
-  .harvest-grid
+  .harvest-grid(v-if="state")
     button.harvest-cell(v-for="cell in cells" :key="cell.position" type="button" :class="{ selected: cell.item?.inventory_id === selected }" @click="selected = cell.item?.inventory_id ?? null; quantity = 1")
       template(v-if="cell.item")
         font-awesome-icon(:icon="cell.item.icon || 'seedling'" aria-hidden="true")
@@ -74,6 +79,7 @@ section.harvest-panel(aria-label="Продукция склада")
           template(v-if="cell.item.price") #[world-credits(:value="cell.item.price")] / шт.
           template(v-else) Не продаётся
         small(v-if="cell.item.fresh_until < 2147483647") {{ cell.item.spoiled ? 'Потеря при хранении учтена' : `Свежий до ${date(cell.item.fresh_until)}` }}
+      span(v-else) Свободно
   .harvest-actions(v-if="item")
     h3 {{ item.name }}
     template(v-if="state?.owned_by_me")
@@ -106,5 +112,7 @@ section.harvest-panel(aria-label="Продукция склада")
 .harvest-actions h3 { grid-column: 1 / -1; margin: 0; }
 .harvest-action-block { display: grid; align-content: start; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .5rem; min-width: 0; }
 .harvest-action-block h4, .harvest-action-block p { margin: 0; }.harvest-actions label { max-width: none; }
+.harvest-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }.harvest-heading h2, .harvest-heading h4 { margin: 0; }.harvest-capacity { margin: 0; font-size: .8rem; }
+.harvest-panel--embedded .harvest-grid { grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); }.harvest-panel--embedded .harvest-cell { padding: .5rem; min-height: 6rem; }.harvest-panel--embedded .harvest-actions { grid-template-columns: minmax(0, 1fr); }
 @media(max-width: 650px) { .harvest-actions { grid-template-columns: minmax(0, 1fr); } }
 </style>
