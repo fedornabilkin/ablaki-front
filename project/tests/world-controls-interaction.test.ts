@@ -30,6 +30,8 @@ import WorldBuildPanel from '../src/components/pages/world/WorldBuildPanel.vue';
 import WorldHousingPanel from '../src/components/pages/world/WorldHousingPanel.vue';
 import WorldBudgetGrant from '../src/components/pages/world/WorldBudgetGrant.vue';
 import BuildSettingsModal from '../src/components/pages/world/modals/BuildSettingsModal.vue';
+import WorldChecklist from '../src/components/pages/world/WorldChecklist.vue';
+import { checklistKey, parseChecklist } from '../src/entities/world/checklist';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
@@ -83,6 +85,7 @@ clientView(WorldBudgetGrant, 'components/pages/world/WorldBudgetGrant.vue');
 clientView(WorldBuildPanel, 'components/pages/world/WorldBuildPanel.vue');
 clientView(WorldHousingPanel, 'components/pages/world/WorldHousingPanel.vue');
 clientView(BuildSettingsModal, 'components/pages/world/modals/BuildSettingsModal.vue');
+clientView(WorldChecklist, 'components/pages/world/WorldChecklist.vue');
 const quote = { quote_id: 'a'.repeat(32), expected_revisions: {}, server_time: 1, expires_at: 99999999, terms: {} };
 const node: WorldNode = { id: 1, type: 'PLOT', label: 'Усадьба', name: 'Усадьба', code: '', root_id: 1, parent_id: null, status: 'active', visibility: 'private', revision: 1, portable: false, coordinates: { x: 0, y: 0 }, child_count: 0, descendant_count: 0, population_total: 0, owned_by_me: true, footprint: null, details: {}, permissions: { administer: false, manage: true, storage: true }, actions: [] };
 let apps: { unmount: () => void }[] = [];
@@ -97,6 +100,45 @@ beforeEach(() => {
 });
 afterEach(() => { apps.forEach(app => app.unmount()); apps = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
+describe('world acceptance checklist modal', () => {
+  function setupChecklist() {
+    const values = new Map<string,string>();
+    const storage = {getItem: (key: string) => values.get(key) ?? null, setItem: (key: string,value: string) => values.set(key,value)};
+    vi.stubGlobal('window', {localStorage: storage, addEventListener: vi.fn(), removeEventListener: vi.fn()});
+    const snapshot = reactive({state: {enabled: true, worldInstance: '1:100', starterPaid: false, goals: []} as any, loading: false, error: ''});
+    const owner = ref(1), session = ref(1), refresh = vi.fn();
+    const view = mount(WorldChecklist, () => ({owner: owner.value, session: session.value, snapshot, onRefresh: refresh}));
+    const open = async () => {findView(view.root,n => n.tag === 'button' && n.props['aria-label'] === 'Чеклист проверки MVP')!.props.onClick(); await flushView();};
+    return {...view, owner, session, snapshot, values, refresh, open};
+  }
+  it('saves a manual result and comment, restores on reopening, isolates the next account and world', async () => {
+    const view = setupChecklist(); await view.open();
+    expect(findView(view.root,n => n.props.role === 'dialog')).toBeTruthy();
+    findView(view.root,n => n.tag === 'select' && n.props['aria-label'] === 'Результат: Поработать в шахте NPC с буровой')!.props['onUpdate:value']('fail');
+    findView(view.root,n => n.tag === 'input' && n.props['aria-label'] === 'Комментарий: Поработать в шахте NPC с буровой')!.props['onUpdate:value']('Не начислена оплата');
+    await flushView();
+    expect(parseChecklist(view.values.get(checklistKey(1,'1:100'))!).entries.npc).toMatchObject({result: 'fail',note: 'Не начислена оплата'});
+    view.owner.value = 2; view.session.value++; await flushView();
+    expect(findView(view.root,n => n.props.role === 'dialog')).toBeUndefined();
+    await view.open(); expect(viewText(view.root)).toContain('Ошибок: 0');
+    view.owner.value = 1; view.session.value++; await flushView(); await view.open();
+    expect(viewText(view.root)).toContain('Ошибок: 1');
+    view.snapshot.state = {...view.snapshot.state,worldInstance: '1:101'}; await flushView();
+    expect(viewText(view.root)).toContain('Ошибок: 0');
+    expect(view.values.has(checklistKey(1,'1:100'))).toBe(true);
+  });
+  it('uses shared server facts and refresh events without issuing game commands', async () => {
+    const view = setupChecklist(); await view.open();
+    view.snapshot.state = {...view.snapshot.state,starterPaid: true}; await flushView();
+    expect(viewText(view.root)).toContain('Пройдено 1 из');
+    expect(parseChecklist(view.values.get(checklistKey(1,'1:100'))!).entries.starter!.autoAt).not.toBeNull();
+    findView(view.root,n => n.tag === 'button' && viewText(n) === 'Обновить факты')!.props.onClick();
+    expect(view.refresh).toHaveBeenCalledOnce(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    findView(view.root,n => n.tag === 'button' && viewText(n) === 'Сбросить отметки')!.props.onClick(); await flushView();
+    findView(view.root,n => n.tag === 'button' && viewText(n) === 'Сбросить')!.props.onClick(); await flushView();
+    expect(viewText(view.root)).toContain('Пройдено 1 из'); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+});
 describe('credit input precision', () => {
   it('keeps an exact fractional wage after editing and blur', async () => {
     const value = ref('0.0001'), change = (next: string) => { value.value = next; };
