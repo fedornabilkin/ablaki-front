@@ -4,6 +4,8 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSelect, NCheckbox, NSpin } from 'naive-ui';
 import { loadMining, parseMining, type MiningState } from '@/services/api/worldMining';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { useServerClock } from '@/hooks/useServerClock';
 import { worldError } from '@/services/api/world';
 import { formatDuration } from '@/entities/world/duration';
 import { investmentAmount } from '@/entities/world/credits';
@@ -12,7 +14,7 @@ import WorldCredits from './WorldCredits.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldWorkProgress from './WorldWorkProgress.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
-const props = defineProps<{ nodeId: number; owner: number; session: number; writable: boolean }>();
+const props = withDefaults(defineProps<{ nodeId: number; owner: number; session: number; writable: boolean; active?: boolean; revision?: number }>(), { active: true });
 const emit = defineEmits<{ changed: [] }>();
 const state = ref<MiningState | null>(null), error = ref('');
 const quota = computed(() => state.value?.quota ? {kind: 'extraction_daily', maximum: state.value.quota.maximum, remaining: state.value.quota.remaining,
@@ -30,24 +32,34 @@ const pendingSettings = computed(() => runner.pending.value?.path.endsWith('/set
 const normalizedHireReward = computed(() => { try { return investmentAmount(hireReward.value.trim().replace(',', '.')); } catch { return null; } });
 const employmentBlocked = computed(() => !props.writable || !state.value?.employment?.owner || runner.busy.value || (!!runner.pending.value && !pendingSettings.value) || (!runner.pending.value && !normalizedHireReward.value));
 const checking = ref(false);
+const visible = usePageVisibility();
+const foreground = computed(() => visible.value && props.active !== false);
+const synchronizingWork = ref(false), reading = ref(false);
+const serverNow = useServerClock(computed(() => state.value?.server_time));
+const needsQuotaRefresh = computed(() => !state.value?.working && !state.value?.pending_quantity && state.value?.quota?.remaining === 0 && serverNow.value >= state.value.quota.restores_at);
+let nextHeartbeatAt = 0;
 const unavailable = computed(() => state.value?.unavailable_reason || state.value?.employment?.reason || (!state.value?.action_code ? selected.value?.unavailable_reason : null));
 const actionLabel = computed(() => runner.pending.value && !runner.busy.value ? 'Повторить запрос'
+  : needsQuotaRefresh.value ? 'Обновить лимит'
   : state.value?.working ? 'Приостановить добычу'
   : state.value?.pending_quantity || selected.value?.work_seconds === 0 ? 'Получить готовую партию'
   : state.value?.actions ? 'Работать над партией' : 'Добывать руду');
-const actionBlocked = computed(() => !props.writable || runner.busy.value || pendingSettings.value || (!runner.pending.value && !state.value?.working
-  && (!!unavailable.value || (!state.value?.pending_quantity && (state.value?.quota?.remaining === 0 || (!state.value?.action_code && (selected.value?.available_at ?? 0) > (state.value?.server_time ?? 0)))))));
+const actionBlocked = computed(() => !props.writable || runner.busy.value || pendingSettings.value || (needsQuotaRefresh.value && reading.value) || (!runner.pending.value && !state.value?.working && !needsQuotaRefresh.value
+  && (!!unavailable.value || (!state.value?.pending_quantity && (state.value?.quota?.remaining === 0 || (!state.value?.action_code && (selected.value?.available_at ?? 0) > serverNow.value))))));
 const progress = computed(() => ({ worked_seconds: state.value?.actions ? state.value.worked_seconds ?? 0 : (state.value?.worked_seconds ?? 0) % Math.max(1, state.value?.seconds_per_unit ?? 1),
   required_seconds: state.value?.action_code ? state.value.required_seconds ?? selected.value?.work_seconds ?? 1 : selected.value?.work_seconds ?? state.value?.seconds_per_unit ?? 1,
   working: !!state.value?.working, server_time: state.value?.server_time ?? 0, live_work: state.value?.live_work ?? [] }));
-let generation = 0, readRevision = 0, disposed = false, reading = false;
+let generation = 0, readRevision = 0, disposed = false;
+let localChange = false;
+function changed() { localChange = true; emit('changed'); queueMicrotask(() => { localChange = false; }); }
 async function load() {
-  const current = generation, read = ++readRevision; reading = true;
+  const current = generation, read = ++readRevision; reading.value = true;
   try {
     const result = await loadMining(props.nodeId);
     if (!disposed && current === generation && read === readRevision) {
       const previous = state.value?.employment;
       state.value = result; error.value = '';
+      synchronizingWork.value = result.working; nextHeartbeatAt = 0;
       if (!result.action_code && !result.output_storages?.some(storage => storage.kind === 'stockpile')) selectedDestination.value = 'backpack';
       if (result.employment?.owner && (!previous || previous.enabled !== result.employment.enabled || (previous.base_reward_cr ?? previous.reward_cr) !== (result.employment.base_reward_cr ?? result.employment.reward_cr))) {
         hireEnabled.value = result.employment.enabled; hireReward.value = result.employment.base_reward_cr ?? result.employment.reward_cr;
@@ -55,32 +67,40 @@ async function load() {
     }
   }
   catch (cause) { if (!disposed && current === generation && read === readRevision) error.value = worldError(cause); }
-  finally { if (current === generation && read === readRevision) reading = false; }
+  finally { if (current === generation && read === readRevision) reading.value = false; }
 }
 async function act(action: 'start' | 'heartbeat' | 'stop', retry = false) {
   if (!props.writable || runner.busy.value || (retry && pendingSettings.value) || (!retry && runner.pending.value)) return;
   if (!retry && action !== 'stop' && actionBlocked.value) return;
-  readRevision++; reading = false;
+  if (!retry && action === 'heartbeat' && !state.value?.working && !state.value?.pending_quantity) return;
+  readRevision++; reading.value = false; nextHeartbeatAt = performance.now() + 10000;
   checking.value = action === 'heartbeat' && !retry;
   const current = generation; error.value = '';
   const result = retry ? await runner.retry() : await runner.submit(`objects/${props.nodeId}/mining/${action}`, action === 'start' && selected.value ? { action_code: selected.value.code, ...(selectedDestination.value === 'mini_storage' ? { output_destination: 'mini_storage' } : {}) } : {});
-  if (result && !disposed && current === generation) { try { const next = parseMining(result); const delivered = next.produced_quantity !== state.value?.produced_quantity; state.value = next; if (delivered) emit('changed'); } catch (cause) { error.value = worldError(cause); } }
+  if (result && !disposed && current === generation) { try { const next = parseMining(result); const delivered = next.produced_quantity !== state.value?.produced_quantity; state.value = next; synchronizingWork.value = next.working; if (action === 'start') nextHeartbeatAt = 0; if (delivered) changed(); } catch (cause) { synchronizingWork.value = false; error.value = worldError(cause); } }
+  else if (!disposed && current === generation) synchronizingWork.value = false;
   if (current === generation) checking.value = false;
 }
 async function saveEmployment(retry = false) {
   if (employmentBlocked.value || (retry && !pendingSettings.value) || (!retry && runner.pending.value)) return;
   const current = generation; saved.value = '';
   const result = retry ? await runner.retry() : await runner.submit(`objects/${props.nodeId}/mining/settings`, {enabled: hireEnabled.value, reward_cr: normalizedHireReward.value});
-  if (result && !disposed && current === generation) { saved.value = 'Условия оплачиваемой работы сохранены.'; await load(); emit('changed'); }
+  if (result && !disposed && current === generation) { saved.value = 'Условия оплачиваемой работы сохранены.'; await load(); changed(); }
 }
-watch(() => [props.nodeId, props.session], () => { generation++; reading = false; state.value = null; selectedDestination.value = 'backpack'; selectedAction.value = null; error.value = ''; saved.value = ''; void load(); }, { immediate: true });
-const timer = setInterval(() => {
-  if (runner.busy.value || runner.pending.value || reading) return;
-  if (state.value?.working) void act('heartbeat'); else void load();
-}, 10_000);
-function refreshVisible() { if (!document.hidden && !runner.busy.value && !runner.pending.value && !reading) void load(); }
-if (typeof document !== 'undefined') document.addEventListener('visibilitychange', refreshVisible);
-onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', refreshVisible); });
+watch(() => [props.nodeId, props.session, props.owner], () => { generation++; reading.value = false; synchronizingWork.value = false; state.value = null; selectedDestination.value = 'backpack'; selectedAction.value = null; error.value = ''; saved.value = ''; if (foreground.value) void load(); }, { immediate: true });
+watch(() => props.revision, () => { if (!localChange && foreground.value && (!state.value?.working || !synchronizingWork.value) && !reading.value && !runner.busy.value && !runner.pending.value) void load(); });
+function checkProgress() {
+  if (!foreground.value || !props.writable || !synchronizingWork.value || !state.value?.working || runner.busy.value || runner.pending.value || reading.value || performance.now() < nextHeartbeatAt) return;
+  void act('heartbeat');
+}
+function submitAction() {
+  if (runner.pending.value) void act('heartbeat', true);
+  else if (needsQuotaRefresh.value) { if (!reading.value && !actionBlocked.value) void load(); }
+  else void act(state.value?.working ? 'stop' : state.value?.pending_quantity ? 'heartbeat' : 'start');
+}
+const timer = setInterval(checkProgress, 10_000);
+watch(foreground, active => { if (!active) return; if (!state.value && !reading.value) void load(); else if (synchronizingWork.value && state.value?.working) { nextHeartbeatAt = 0; checkProgress(); } });
+onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 </script>
 <template lang="pug">
 section.mining-panel(aria-label="Получение ресурсов")
@@ -102,6 +122,7 @@ section.mining-panel(aria-label="Получение ресурсов")
       n-spin(size="small")
       span Загружаем лимит добычи…
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
+  n-button(v-if="error" size="small" :loading="reading" :disabled="reading || runner.busy.value || !!runner.pending.value" @click="load") Обновить состояние
   n-alert(v-if="saved" type="success" closable @close="saved = ''") {{ saved }}
   section.mine-employment(v-if="state?.employment?.owner")
     .mining-heading
@@ -123,7 +144,7 @@ section.mining-panel(aria-label="Получение ресурсов")
       template(v-if="state.actions")
         n-select(:value="selected?.code" :options="options" :disabled="state.working || !!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Ресурс для добычи" @update:value="selectedAction = $event")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
-        p(v-if="!state.action_code && (selected?.available_at ?? 0) > state.server_time") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
+        p(v-if="!state.action_code && (selected?.available_at ?? 0) > serverNow") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
         .mining-destinations(v-if="storageOptions.length" role="group" aria-label="Куда поступит добыча")
           n-button(v-if="storageOptions.some(storage => storage.kind === 'backpack')" size="small" :theme-overrides="effectiveDestination === 'backpack' ? worldActionButtonTheme : worldNeutralButtonTheme" :aria-pressed="effectiveDestination === 'backpack'" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" @click="selectedDestination = 'backpack'") Рюкзак
           n-button(v-if="hasMiniStorage || effectiveDestination === 'mini_storage'" size="small" :theme-overrides="effectiveDestination === 'mini_storage' ? worldActionButtonTheme : worldNeutralButtonTheme" :aria-pressed="effectiveDestination === 'mini_storage'" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" @click="selectedDestination = 'mini_storage'") Мини-склад
@@ -133,8 +154,8 @@ section.mining-panel(aria-label="Получение ресурсов")
       p(v-if="state.pending_quantity") Ожидает выдачи: {{ state.pending_quantity }}. Освободите место в хранилище.
       p.mining-unavailable(v-if="unavailable" role="status") {{ unavailable }}
       .mining-progress(v-if="progress.required_seconds > 0")
-        world-work-progress(:snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="act('heartbeat')")
-      n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="runner.busy.value && !checking" :disabled="actionBlocked" @click="runner.pending.value ? act('heartbeat', true) : act(state.working ? 'stop' : state.pending_quantity ? 'heartbeat' : 'start')") {{ actionLabel }}
+        world-work-progress(:snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="checkProgress")
+      n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="(runner.busy.value && !checking) || (needsQuotaRefresh && reading)" :disabled="actionBlocked" @click="submitAction") {{ actionLabel }}
 </template>
 <style scoped>
 .mining-destinations { display: flex; flex-wrap: wrap; gap: .4rem; }

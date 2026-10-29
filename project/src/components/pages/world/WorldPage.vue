@@ -92,11 +92,6 @@ watch([nodeId, session], () => {
 }, { immediate: true });
 watch([nodeId, session], () => { purchasedRoom.value = null; mapSelection.value = []; }, { flush: 'sync' });
 onScopeDispose(() => world.cancel());
-// Refresh just the open branch; overlapping loads and late session responses are ignored by the store.
-const updates = setInterval(() => {
-  if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !world.loading && world.node && !commandBusy.value && !pendingCommand.value) void world.load(world.node.id, true);
-}, 30000);
-onScopeDispose(() => clearInterval(updates));
 function changed(ids: number[]) { world.invalidate(ids, true); void load(true); void refreshActiveWork(); void auth.dispatch('auth/fetchData'); }
 
 const features = computed(() => world.node ? nodeFeatures(world.node, world.capabilities) : null);
@@ -177,6 +172,10 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           span.world-eyebrow Территория и расположение
           h2 {{ childTitle }}
         .world-map-tools
+          n-button(size="small" :loading="world.loading" :disabled="world.loading || commandBusy || !!pendingCommand" title="Обновить карту и данные объекта" @click="changed([world.node.id])")
+            template(#icon)
+              font-awesome-icon(icon="rotate" aria-hidden="true")
+            | Обновить
           world-help-hint(label="Параметры объекта" symbol="i" @open="nodeInfoOpened = true")
             dl.world-facts
               dt Объект
@@ -192,11 +191,11 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
                 dd {{ fact.value }}
             world-character-progress(v-if="nodeInfoOpened" :key="session")
       .world-children
-        world-map(:working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
+        world-map(:active="activeTab === 'map'" :working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
           template(#information)
-            world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active) && world.capabilities?.world_write" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
+            world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active) && world.capabilities?.world_write" :active="activeTab === 'map'" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
             world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
-            world-node-extensions(slot="map" v-bind="extensionProps" @changed="changed([world.node.id])")
+            world-node-extensions(slot="map" :active="activeTab === 'map'" v-bind="extensionProps" @changed="changed([world.node.id])")
           template(#placement)
             .world-placement-tabs(v-if="world.node.owned_by_me")
               .placement-tab-buttons(role="tablist" aria-label="Размещение на карте")
@@ -207,11 +206,11 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
               #placement-items(v-if="itemsVisited" v-show="placementTab === 'items'" role="tabpanel" aria-labelledby="placement-items-tab")
                 world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
-    world-node-extensions(v-show="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
+    world-node-extensions(v-show="activeTab === 'map'" :active="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
 
     section.world-tab-panel(v-if="visitedTabs.includes('cultivation') && features?.cultivation" v-show="activeTab === 'cultivation'" aria-label="Выращивание")
-      world-node-extensions(slot="cultivation" v-bind="extensionProps" @changed="changed([world.node.id])")
+      world-node-extensions(slot="cultivation" :active="activeTab === 'cultivation'" v-bind="extensionProps" @changed="changed([world.node.id])")
 
     section.world-tab-panel(v-if="visitedTabs.includes('workshop')" v-show="activeTab === 'workshop'" aria-label="Вещи и крафт")
       .world-section-title

@@ -24,7 +24,7 @@ import WorldHarvestPanel from './WorldHarvestPanel.vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 
-const props = defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null }>();
+const props = withDefaults(defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null; active?: boolean }>(), { active: true });
 const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: number[]] }>();
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const router = useRouter();
@@ -290,7 +290,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
     slot(name="information")
     template(v-if="writable")
       .map-construction-session(v-for="child in constructionNodes" :key="child.id" v-show="selectedNode?.id === child.id")
-        world-build-panel(:node-id="child.id" :revision="child.revision" :owner="owner" :session="session ?? 0" embedded @changed="emit('changed', [node.id, child.id])")
+        world-build-panel(:node-id="child.id" :revision="child.revision" :owner="owner" :session="session ?? 0" :active="active" embedded @changed="emit('changed', [node.id, child.id])")
     section.map-cell-information
       button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
       template(v-if="selectedNode")
@@ -312,8 +312,8 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
         router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
         router-link(v-if="selectedNode.status === 'active' && (selectedNode.owned_by_me || selectedNode.extensions?.includes('public_workspace'))" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
-        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop")
-        world-harvest-panel(v-if="selectedNode.type === 'CHEST' && selectedNode.status === 'active' && selectedNode.extensions?.includes('harvest')" :key="`stock-${selectedNode.id}`" :node-id="selectedNode.id" :session="session ?? 0" :revision="selectedNode.revision" :command="command" embedded)
+        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop" :active="active")
+        world-harvest-panel(v-if="selectedNode.type === 'CHEST' && selectedNode.status === 'active' && selectedNode.extensions?.includes('harvest')" :key="`stock-${selectedNode.id}`" :node-id="selectedNode.id" :session="session ?? 0" :revision="selectedNode.revision" :command="command" :active="active" embedded)
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")
         span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}

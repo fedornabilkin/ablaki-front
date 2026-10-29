@@ -6,12 +6,13 @@ import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox } from 'naive-ui';
 import { creditCost, needsPersonalTopUp } from '@/entities/world/credits';
 import { useWorldBudget } from '@/hooks/useWorldBudget';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { loadCultivation, loadCrops, previewCultivation, type CultivationAction } from '@/services/api/worldCultivation';
 import { worldError } from '@/services/api/world';
 import type { WorldQuote } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import WorldHelpHint from './WorldHelpHint.vue';
-const props = defineProps<{ bedId: number; session: number; command: WorldCommandRunner; droppedCrop?: { id: number; sequence: number } | null }>();
+const props = withDefaults(defineProps<{ bedId: number; session: number; command: WorldCommandRunner; droppedCrop?: { id: number; sequence: number } | null; active?: boolean }>(), { active: true });
 const personalContribution = ref(false);
 const digReceipt = ref<string | null>(null);
 const payerNode = ref<number | null>(null);
@@ -20,9 +21,12 @@ const state = shallowRef<Awaited<ReturnType<typeof loadCultivation>> | null>(nul
 const error = ref(''), loading = ref(false), calculating = ref(false), selected = ref<number | null>(null), page = ref(1), pages = ref(1);
 const quote = shallowRef<{ action: CultivationAction; input: Record<string, unknown>; value: WorldQuote } | null>(null);
 const now = ref(Math.floor(Date.now() / 1000)); let offset = 0, generation = 0, previewGeneration = 0, disposed = false;
+const visible = usePageVisibility();
+const checkedDeadlines = new Set<string>();
+let cataloguePage: number | null = null;
 const labels: Record<CultivationAction, string> = { dig: 'Вскопать грядку', sow: 'Посадить семена', water: 'Полить', harvest: 'Собрать урожай', cancel: 'Очистить грядку' };
 const cycle = computed(() => state.value?.cycle), crop = computed(() => crops.value.find(c => c.id === selected.value));
-const locked = computed(() => loading.value || calculating.value || props.command.busy.value || Boolean(props.command.pending.value) || !state.value?.writable);
+const locked = computed(() => !visible.value || props.active === false || loading.value || calculating.value || props.command.busy.value || Boolean(props.command.pending.value) || !state.value?.writable);
 const materials = computed(() => (quote.value?.value.terms.materials ?? []) as { name: string; quantity: number; have: number; available: boolean }[]);
 const tool = computed(() => quote.value?.value.terms.tool as { name: string; durability: number; wear: number; available: boolean } | undefined);
 const canConfirm = computed(() => materials.value.every(m => m.available) && tool.value?.available !== false && (quote.value?.value.terms.output as { fits?: boolean } | undefined)?.fits !== false);
@@ -32,14 +36,16 @@ const cost = computed(() => [...materials.value.map(m => `${m.quantity} ${m.name
 const price = computed(() => typeof quote.value?.value.terms.price_cr === 'string' ? quote.value.value.terms.price_cr : '0');
 const duration = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return s >= 3600 ? `${Math.floor(s / 3600)} ч ${Math.floor(s % 3600 / 60)} мин` : `${Math.floor(s / 60)} мин ${s % 60} с`; };
 const countdown = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
-async function load() {
+async function load(refreshFunds = true) {
   const current = ++generation; previewGeneration++; loading.value = true; calculating.value = false; error.value = ''; quote.value = null;
   try {
-    const [bed, catalogue] = await Promise.all([loadCultivation(props.bedId), loadCrops(page.value)]);
+    const requestedPage = page.value;
+    const [bed, catalogue] = await Promise.all([loadCultivation(props.bedId), cataloguePage === requestedPage ? Promise.resolve(null) : loadCrops(requestedPage)]);
     if (disposed || current !== generation) return;
-    state.value = bed; crops.value = catalogue.items; pages.value = catalogue.pageCount; offset = bed.server_time - Math.floor(Date.now() / 1000); now.value = bed.server_time;
-    void refreshBudget();
-    if (!catalogue.items.some(c => c.id === selected.value)) selected.value = catalogue.items[0]?.id ?? null;
+    state.value = bed; offset = bed.server_time - Math.floor(Date.now() / 1000); now.value = bed.server_time;
+    if (catalogue) { crops.value = catalogue.items; pages.value = catalogue.pageCount; cataloguePage = requestedPage; }
+    if (refreshFunds) void refreshBudget();
+    if (!crops.value.some(c => c.id === selected.value)) selected.value = crops.value[0]?.id ?? null;
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed && current === generation) loading.value = false; }
 }
@@ -71,7 +77,8 @@ async function execute() {
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([() => props.bedId, () => props.session, page], () => { state.value = null; digReceipt.value = null; payerNode.value = null; personalContribution.value = false; void load(); }, { immediate: true });
+watch([() => props.bedId, () => props.session], () => { checkedDeadlines.clear(); cataloguePage = null; state.value = null; crops.value = []; digReceipt.value = null; payerNode.value = null; personalContribution.value = false; if (props.active !== false) void load(); }, { immediate: true });
+watch(page, () => { if (props.active !== false) void load(); });
 watch(selected, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
 watch(personalContribution, () => { quote.value = null; previewGeneration++; calculating.value = false; }, { flush: 'sync' });
 watch([primaryAction, selected, personalContribution, loading, props.command.busy, props.command.pending], () => { if (primaryAction.value && !locked.value && !quote.value) void preview(primaryAction.value); }, { flush: 'post' });
@@ -95,8 +102,17 @@ watch([ready, locked, state], () => {
 watch(() => props.bedId, () => { pendingSeed.value = null; });
 const timer = setInterval(() => {
   now.value = Math.floor(Date.now() / 1000) + offset;
-  if (cycle.value && state.value && !locked.value && [cycle.value.ready_at, cycle.value.expires_at, cycle.value.water_due_at, cycle.value.water_deadline_at].some(t => t !== null && state.value!.server_time < t && now.value >= t)) void load();
+  checkDeadlines();
 }, 1000);
+function checkDeadlines() {
+  if (!visible.value || props.active === false || !cycle.value || !state.value || locked.value) return;
+  const due = [cycle.value.ready_at, cycle.value.expires_at, cycle.value.water_due_at, cycle.value.water_deadline_at]
+    .filter((t): t is number => t !== null && state.value!.server_time < t && now.value >= t && !checkedDeadlines.has(`${cycle.value!.id}:${t}`));
+  if (!due.length) return;
+  due.forEach(t => checkedDeadlines.add(`${cycle.value!.id}:${t}`));
+  void load(false);
+}
+watch([visible, () => props.active], () => { if (!visible.value || props.active === false) return; if (!state.value && !loading.value) void load(); else checkDeadlines(); });
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; clearInterval(timer); });
 </script>
 <template lang="pug">

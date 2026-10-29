@@ -9,14 +9,18 @@ import WorldHelpHint from './WorldHelpHint.vue';
 import { loadHarvest, previewHarvest, type HarvestAction } from '@/services/api/worldHarvest';
 import { formatCredits, creditCost } from '@/entities/world/credits';
 import { worldError } from '@/services/api/world';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
-const props = defineProps<{ nodeId: number; session: number; revision: number; command: WorldCommandRunner; embedded?: boolean }>();
+const props = withDefaults(defineProps<{ nodeId: number; session: number; revision: number; command: WorldCommandRunner; embedded?: boolean; active?: boolean }>(), { active: true });
 const state = shallowRef<Awaited<ReturnType<typeof loadHarvest>> | null>(null);
 const selected = ref<number | null>(null), quantity = ref<number | null>(1), prices = reactive<Record<number, string>>({});
 const destination = ref<number | null>(null);
 const destinations = computed(() => state.value?.destinations?.map(row => ({ label: `${row.name} · №${row.id}`, value: row.id })) ?? []);
 const error = ref(''), loading = ref(false), saving = ref(false);
 let generation = 0, disposed = false, offset = 0;
+let dirty = false;
+const visible = usePageVisibility();
+const checkedSpoilage = new Set<string>();
 const item = computed(() => state.value?.items.find(i => i.inventory_id === selected.value));
 const cells = computed(() => Array.from({ length: state.value?.capacity ?? 5 }, (_, i) => ({ position: i + 1, item: state.value?.items.find(row => row.position === i + 1) })));
 const locked = computed(() => loading.value || saving.value || props.command.busy.value || !!props.command.pending.value || !state.value?.writable);
@@ -27,7 +31,7 @@ const total = computed(() => {
 });
 const date = (time: number) => new Date(time * 1000).toLocaleString('ru-RU');
 async function load() {
-  const current = ++generation; loading.value = true; error.value = '';
+  const current = ++generation; loading.value = true; error.value = ''; dirty = false;
   try {
     const result = await loadHarvest(props.nodeId);
     if (disposed || current !== generation) return;
@@ -54,9 +58,17 @@ async function act(action: HarvestAction, withdrawOffer = false) {
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed) saving.value = false; }
 }
-watch([() => props.nodeId, () => props.session], () => { state.value = null; selected.value = null; destination.value = null; quantity.value = 1; void load(); }, { immediate: true });
-watch(() => props.revision, () => { if (!saving.value) void load(); });
-const timer = setInterval(() => { if (!locked.value && state.value?.items.some(i => !i.spoiled && (Date.now() + offset) >= i.fresh_until * 1000)) void load(); }, 5000);
+watch([() => props.nodeId, () => props.session], () => { checkedSpoilage.clear(); state.value = null; selected.value = null; destination.value = null; quantity.value = 1; if (props.active !== false) void load(); }, { immediate: true });
+watch(() => props.revision, () => { dirty = true; if (visible.value && props.active !== false && !saving.value) void load(); });
+function checkSpoilage() {
+  if (!visible.value || props.active === false || locked.value || !state.value) return;
+  const due = state.value.items.filter(i => !i.spoiled && Date.now() + offset >= i.fresh_until * 1000 && !checkedSpoilage.has(`${i.inventory_id}:${i.fresh_until}`));
+  if (!due.length) return;
+  due.forEach(i => checkedSpoilage.add(`${i.inventory_id}:${i.fresh_until}`));
+  void load();
+}
+const timer = setInterval(checkSpoilage, 5000);
+watch([visible, () => props.active], () => { if (!visible.value || props.active === false) return; if ((!state.value || dirty) && !loading.value) void load(); else checkSpoilage(); });
 onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 </script>
 <template lang="pug">

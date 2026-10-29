@@ -10,8 +10,9 @@ import { projectedBuildSeconds } from '@/entities/world/buildProgress';
 import * as api from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { formatCredits } from '@/entities/world/credits';
-const props = defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean }>();
+const props = withDefaults(defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean; active?: boolean }>(), { active: true });
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
 const error = ref(''), working = ref(false), otherWork = ref<number | null>(null);
@@ -33,14 +34,16 @@ const busy = runner.busy, uncertain = computed(() => !!runner.pending.value && !
 let epoch = 0, disposed = false, timer: ReturnType<typeof setInterval> | undefined;
 const polling = ref(false);
 let completionAttempt = 0;
+let nextHeartbeatAt = 0;
+const visible = usePageVisibility(), foreground = computed(() => visible.value && props.active !== false);
 const animation = setInterval(() => {
   elapsed.value = (performance.now() - receivedAt) / 1000;
   if (project.value) displayedSeconds.value = Math.max(displayedSeconds.value, projectedBuildSeconds(project.value, elapsed.value));
-  if (working.value && project.value?.status === 'building' && seconds.value >= project.value.required_seconds && !busy.value && !uncertain.value && performance.now() - completionAttempt > 1000) {
+  if (foreground.value && working.value && project.value?.status === 'building' && seconds.value >= project.value.required_seconds && !busy.value && !uncertain.value && performance.now() >= nextHeartbeatAt && performance.now() - completionAttempt > 1000) {
     completionAttempt = performance.now(); void send(`builds/${project.value.id}/heartbeat`);
   }
 }, 100);
-const sync = setInterval(() => { if (!working.value && !busy.value && !uncertain.value && !polling.value && project.value?.status === 'building') void refresh(); }, 10_000);
+const sync = setInterval(() => { if (foreground.value && !working.value && !busy.value && !uncertain.value && !polling.value && project.value?.status === 'building' && project.value.live_work?.length) void refresh(); }, 10_000);
 function halt() { working.value = false; if (timer) clearInterval(timer); timer = undefined; }
 async function load() {
   const token = ++epoch; halt(); loading.value = true; error.value = ''; if (project.value?.node_id !== props.node.id) project.value = null;
@@ -63,6 +66,8 @@ async function refresh() {
   finally { polling.value = false; }
 }
 async function send(path: string, body: Record<string, unknown> = {}, retry = false) {
+  if (busy.value || (!retry && runner.pending.value)) return;
+  if (path.endsWith('/heartbeat')) nextHeartbeatAt = performance.now() + 10000;
   const token = epoch; error.value = '';
   const result = retry ? await runner.retry() : await runner.submit(path, body);
   if (disposed || token !== epoch) return;
@@ -73,6 +78,7 @@ async function send(path: string, body: Record<string, unknown> = {}, retry = fa
       if (result.work.ended_at === null && project.value?.status === 'building' && !working.value) resume(project.value.id);
       else if (result.work.ended_at !== null) halt();
     }
+    if (path.endsWith('/stop')) halt();
     if (!props.embedded && typeof result.return_node_id === 'number' && result.return_node_id > 0) {
       cancelOpen.value = false;
       await router.push(`/world/nodes/${result.return_node_id}#map`);
@@ -95,8 +101,8 @@ async function start() {
   if (!result || !project.value || project.value.status !== 'building' || disposed) return;
   if (!working.value) resume(id);
 }
-function resume(id: number) { halt(); working.value = true; timer = setInterval(() => { if (!busy.value && !uncertain.value) void send(`builds/${id}/heartbeat`); }, 10_000); }
-async function stop() { if (!project.value) return; const result = await send(`builds/${project.value.id}/stop`); if (result) { halt(); emit('changed'); } }
+function resume(id: number) { halt(); working.value = true; nextHeartbeatAt = performance.now() + 10000; timer = setInterval(() => { if (foreground.value && !busy.value && !uncertain.value && performance.now() >= nextHeartbeatAt) void send(`builds/${id}/heartbeat`); }, 10_000); }
+async function stop() { if (project.value) await send(`builds/${project.value.id}/stop`); }
 function retry() { if (runner.pending.value) void send(runner.pending.value.path, runner.pending.value.body, true); }
 function requestCancel() {
   if (!project.value || busy.value || uncertain.value) return;
@@ -109,8 +115,14 @@ async function cancelBuild() {
   if (result) cancelOpen.value = false;
 }
 watch(() => [props.node.id, props.session, project.value?.id, project.value?.status], () => { cancelOpen.value = false; });
-watch(() => [props.node.id, props.node.status, props.session], () => { void load(); }, { immediate: true });
-watch(() => props.node.revision, () => { if (project.value && !busy.value && !polling.value) void refresh(); });
+watch([() => props.node.id, () => props.node.status, () => props.session, foreground], (current, previous) => {
+  const identityChanged = current.slice(0, 3).some((value, index) => value !== previous?.[index]);
+  if (!foreground.value) { if (identityChanged) { epoch++; halt(); project.value = null; loading.value = false; } return; }
+  if (identityChanged || !project.value) { void load(); return; }
+  if (busy.value || uncertain.value || polling.value || project.value.status !== 'building') return;
+  if (working.value) void send(`builds/${project.value.id}/heartbeat`); else void refresh();
+}, { immediate: true });
+watch(() => props.node.revision, () => { if (foreground.value && project.value && !loading.value && !busy.value && !polling.value) void refresh(); });
 onScopeDispose(() => { disposed = true; epoch++; halt(); clearInterval(animation); clearInterval(sync); });
 </script>
 <template lang="pug">

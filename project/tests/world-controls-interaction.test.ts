@@ -31,16 +31,17 @@ import WorldHousingPanel from '../src/components/pages/world/WorldHousingPanel.v
 import WorldBudgetGrant from '../src/components/pages/world/WorldBudgetGrant.vue';
 import BuildSettingsModal from '../src/components/pages/world/modals/BuildSettingsModal.vue';
 import WorldChecklist from '../src/components/pages/world/WorldChecklist.vue';
+import WorldMvpProgress from '../src/components/pages/world/WorldMvpProgress.vue';
 import { checklistKey, parseChecklist } from '../src/entities/world/checklist';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ housing: vi.fn(), housingPreview: vi.fn(), budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ mvp: vi.fn(), housing: vi.fn(), housingPreview: vi.fn(), budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const popover = { setup: (_: unknown, { slots }: any) => () => h('div', [slots.trigger?.(), slots.default?.()]) };
   const modal = { props: { show: Boolean }, setup: (props: any, { slots }: any) => () => props.show ? h('section', { role: 'dialog' }, slots.default?.()) : null };
-  return { NSkeleton: block('span'), NModal: modal, NPopover: popover, NTooltip: popover, NCard: block('section'), NProgress: block('progress'), NAlert: block('aside'), NButton: block('button'), NInputNumber: block('input'), NInput: block('input'), NSelect: block('select'), NSpin: block('span'), NCheckbox: block('input') };
+  return { NTabs: block('div'), NTabPane: block('div'), NSkeleton: block('span'), NModal: modal, NPopover: popover, NTooltip: popover, NCard: block('section'), NProgress: block('progress'), NAlert: block('aside'), NButton: block('button'), NInputNumber: block('input'), NInput: block('input'), NSelect: block('select'), NSpin: block('span'), NCheckbox: block('input') };
 });
 vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ push: mocks.push }) }));
 vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 1 } }, dispatch: vi.fn() }) }));
@@ -49,6 +50,7 @@ vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: ()
 vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: async () => null, object: mocks.object, gatherState: mocks.gather, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, startOverview: async () => ({node: await mocks.startState(), funding: null, starter_funding: null}), node: (value: unknown) => value, build: (value: unknown) => value }));
 vi.mock('../src/services/api/worldHousing', () => ({loadHousing: mocks.housing, previewHousing: mocks.housingPreview}));
 vi.mock('../src/services/api/worldEconomy', () => ({previewBudgetGrant: mocks.budgetGrant}));
+vi.mock('../src/services/api/worldMvp', async importOriginal => ({ ...await importOriginal<any>(), loadMvp: mocks.mvp }));
 vi.mock('../src/services/api/worldMining', () => ({ loadMining: mocks.mining, parseMining: (value: unknown) => value }));
 vi.mock('../src/services/api/worldStorage', () => ({ loadStorageList: mocks.storageList, loadStorageContents: mocks.storage, previewTransfer: mocks.transfer }));
 vi.mock('../src/services/api/worldWorkspace', () => ({ loadWorkspace: mocks.workspace, previewWorkspace: mocks.preview }));
@@ -86,6 +88,7 @@ clientView(WorldBuildPanel, 'components/pages/world/WorldBuildPanel.vue');
 clientView(WorldHousingPanel, 'components/pages/world/WorldHousingPanel.vue');
 clientView(BuildSettingsModal, 'components/pages/world/modals/BuildSettingsModal.vue');
 clientView(WorldChecklist, 'components/pages/world/WorldChecklist.vue');
+clientView(WorldMvpProgress, 'components/pages/world/WorldMvpProgress.vue');
 const quote = { quote_id: 'a'.repeat(32), expected_revisions: {}, server_time: 1, expires_at: 99999999, terms: {} };
 const node: WorldNode = { id: 1, type: 'PLOT', label: 'Усадьба', name: 'Усадьба', code: '', root_id: 1, parent_id: null, status: 'active', visibility: 'private', revision: 1, portable: false, coordinates: { x: 0, y: 0 }, child_count: 0, descendant_count: 0, population_total: 0, owned_by_me: true, footprint: null, details: {}, permissions: { administer: false, manage: true, storage: true }, actions: [] };
 let apps: { unmount: () => void }[] = [];
@@ -139,6 +142,71 @@ describe('world acceptance checklist modal', () => {
     expect(viewText(view.root)).toContain('Пройдено 1 из'); expect(mocks.runner.submit).not.toHaveBeenCalled();
   });
 });
+describe('world panel request budgets', () => {
+  it.each([false,true])('checks one spoilage deadline once even when the worker or request is delayed: %s', async fail => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
+    const snapshot = {owned_by_me: true,writable: true,allow_sales: true,capacity: 5,server_time: 100,items: [{inventory_id: 5,position: 1,name: 'Морковь',quantity: 7,price: null,fresh_until: 101,spoiled: false}]};
+    mocks.harvest.mockResolvedValueOnce(snapshot);
+    if (fail) mocks.harvest.mockRejectedValue(new Error('offline')); else mocks.harvest.mockResolvedValue(snapshot);
+    mount(WorldHarvestPanel, () => ({nodeId: 10,session: 1,revision: 1,command: mocks.runner})); await flushView();
+    await vi.advanceTimersByTimeAsync(60_000); await flushView();
+    expect(mocks.harvest).toHaveBeenCalledTimes(2); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('defers a hidden stock panel and catches up its deadline when opened', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
+    const active = ref(false);
+    mocks.harvest.mockResolvedValue({owned_by_me: true,writable: true,allow_sales: true,capacity: 5,server_time: 100,items: [{inventory_id: 5,position: 1,name: 'Морковь',quantity: 7,price: null,fresh_until: 101,spoiled: false}]});
+    mount(WorldHarvestPanel, () => ({nodeId: 10,session: 1,revision: 1,command: mocks.runner,active: active.value})); await flushView();
+    await vi.advanceTimersByTimeAsync(10_000); expect(mocks.harvest).not.toHaveBeenCalled();
+    active.value = true; await flushView(); expect(mocks.harvest).toHaveBeenCalledTimes(1);
+    active.value = false; await flushView(); await vi.advanceTimersByTimeAsync(10_000); expect(mocks.harvest).toHaveBeenCalledTimes(1);
+    active.value = true; await flushView(); expect(mocks.harvest).toHaveBeenCalledTimes(2);
+  });
+  it('reuses the culture catalogue across lifecycle deadlines and clears it for a new session', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(100_000)); const session = ref(1);
+    const cycle = {id: 1,name: 'Морковь',state: 'growing',ready_at: 101,expires_at: 2000,water_due_at: 102,water_deadline_at: 103,can_water: false};
+    mocks.cultivation.mockImplementation(async () => ({bed_id: 1,dug: true,writable: true,server_time: Math.floor(Date.now()/1000),cycle}));
+    mocks.crops.mockResolvedValue({items: [],pageCount: 0}); mocks.cultivationPreview.mockResolvedValue(quote);
+    mount(WorldCultivationPanel, () => ({bedId: 1,session: session.value,command: mocks.runner})); await flushView();
+    await vi.advanceTimersByTimeAsync(5000); await flushView();
+    expect(mocks.cultivation).toHaveBeenCalledTimes(4); expect(mocks.crops).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(30_000); expect(mocks.cultivation).toHaveBeenCalledTimes(4);
+    session.value++; await flushView(); expect(mocks.crops).toHaveBeenCalledTimes(2);
+  });
+  it('polls construction only for active helpers and only while the panel is visible', async () => {
+    vi.useFakeTimers(); const active = ref(false), revision = ref(1);
+    const project = {id: 5,node_id: 1,status: 'building',owner_user_id: 1,required_seconds: 120,worked_seconds: 0,labor_budget: '0',server_time: 100,live_work: [] as any[]};
+    mocks.builds.mockResolvedValue({items: [project]});
+    mount(SimpleBuildPanel, () => ({node: {id: 1,status: 'constructing',revision: revision.value},owner: 1,session: 1,active: active.value})); await flushView();
+    expect(mocks.builds).not.toHaveBeenCalled();
+    active.value = true; await flushView();
+    await vi.advanceTimersByTimeAsync(30_000); expect(mocks.builds).toHaveBeenCalledTimes(1); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    mocks.builds.mockResolvedValue({items: [{...project,live_work: [{accounted_at: 100,last_seen_at: 100}]}]}); revision.value++; await flushView();
+    await vi.advanceTimersByTimeAsync(10_000); expect(mocks.builds).toHaveBeenCalledTimes(3);
+    active.value = false; await flushView(); await vi.advanceTimersByTimeAsync(30_000); expect(mocks.builds).toHaveBeenCalledTimes(3);
+  });
+  it('refreshes goals once when the same successful command also invalidates the parent revision', async () => {
+    const revision = ref(1);
+    mocks.mvp.mockResolvedValue({enabled: true,worldInstance: '1:100',serverTime: 100,health: {hp: 100,maximum: 100,foods: []},quotas: [],goals: [{code: 'day-1',claimed: false,funded: true,canClaim: true,credits: '50.0000',steps: []}],feedback: '/forum'});
+    const view = mount(WorldMvpProgress, () => ({owner: 1,session: 1,revision: revision.value,writable: true,onChanged: () => revision.value++})); await flushView();
+    expect(mocks.mvp).toHaveBeenCalledTimes(1);
+    findView(view.root,n => n.tag === 'button' && n.props['aria-label'] === 'Задания')!.props.onClick(); await flushView();
+    mocks.runner.submit.mockResolvedValue({});
+    findView(view.root,n => n.tag === 'button' && viewText(n) === 'Получить')!.props.onClick(); await flushView();
+    expect(mocks.mvp).toHaveBeenCalledTimes(2);
+  });
+  it('invalidates the parent once when construction stops', async () => {
+    const project = {id: 5,node_id: 1,status: 'building',owner_user_id: 1,required_seconds: 120,worked_seconds: 0,labor_budget: '0'};
+    mocks.builds.mockResolvedValue({items: [project]}); const changed = vi.fn();
+    const view = mount(SimpleBuildPanel, () => ({node: {id: 1,status: 'constructing'},owner: 1,session: 1,onChanged: changed})); await flushView();
+    mocks.runner.submit.mockResolvedValue({build: project,work: {ended_at: null}});
+    findView(view.root,n => n.tag === 'button' && viewText(n) === 'Строить')!.props.onClick(); await flushView();
+    changed.mockClear(); mocks.runner.submit.mockResolvedValue({build: project,work: {ended_at: 101}});
+    findView(view.root,n => n.tag === 'button' && viewText(n) === 'Остановить')!.props.onClick(); await flushView();
+    expect(changed).toHaveBeenCalledOnce();
+  });
+});
+
 describe('credit input precision', () => {
   it('keeps an exact fractional wage after editing and blur', async () => {
     const value = ref('0.0001'), change = (next: string) => { value.value = next; };
