@@ -30,6 +30,22 @@ beforeEach(() => {
 });
 afterEach(() => { app?.unmount(); app = undefined; vi.useRealTimers(); });
 describe('source batch destination', () => {
+  it('shows the remaining daily quota before work starts and counts down from server time', async () => {
+    vi.useFakeTimers({toFake: ['setInterval', 'clearInterval', 'performance']});
+    mocks.load.mockResolvedValue({...state(), quota: {maximum: 20, remaining: 7, restores_at: 180}});
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    const limit = findView(view.root, n => n.props.class === 'mining-quota')!;
+    expect(viewText(limit)).toContain('Добыч за день осталось: 7 / 20'); expect(viewText(limit)).toContain('00:01:20');
+    await vi.advanceTimersByTimeAsync(2000); await flushView(); expect(viewText(limit)).toContain('00:01:18');
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('shows an exhausted daily quota and blocks starting before a request is sent', async () => {
+    mocks.load.mockResolvedValue({...state(), quota: {maximum: 20, remaining: 0, restores_at: 180}});
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    expect(viewText(view.root)).toContain('Добыч за день осталось: 0 / 20'); expect(viewText(view.root)).toContain('Лимит исчерпан.');
+    const action = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Работать над партией'))!;
+    expect(action.props.disabled).toBe(true); action.props.onClick(); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
   it('explains a missing tool and blocks the start before sending a command', async () => {
     mocks.load.mockResolvedValue({ ...state(), actions: [{ ...state().actions[0], unavailable_reason: 'Нужен исправный инструмент: Молоток.' }] });
     const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true })); app = view.app; await flushView();

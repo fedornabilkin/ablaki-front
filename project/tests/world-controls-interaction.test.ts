@@ -598,11 +598,11 @@ describe('map permissions and embedded mini-storage', () => {
     expect(mocks.runner.submit).not.toHaveBeenCalled(); expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.harvest).toHaveBeenLastCalledWith(change === 'selection' ? 3 : 2);
   });
-  it('keeps the live progress at the top and the same mining session while inspecting a mini', async () => {
+  it('keeps the daily quota at the top and progress beside the action while inspecting a mini', async () => {
     vi.useFakeTimers({toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Date', 'performance']});
     const selection = ref<any[]>([]);
     const snapshot = {node_id: 1, ready: true, working: true, work_id: 7, action_code: 'mine-stone', workers: 1, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180,
-      worked_seconds: 30, required_seconds: 180, server_time: 100, live_work: [{accounted_at: 100, last_seen_at: 100}],
+      worked_seconds: 30, required_seconds: 180, server_time: 100, quota: {maximum: 20, remaining: 18, restores_at: 180}, live_work: [{accounted_at: 100, last_seen_at: 100}],
       actions: [{code: 'mine-stone', work_seconds: 180, cooldown_seconds: 0, output: [{name: 'Камень', quantity: 15}], tools: []}],
       employment: {owner: false, enabled: true, reward_cr: '3.0000', accepted_reward_cr: '3.0000', storage_id: 2, storages: []}};
     mocks.mining.mockResolvedValue(snapshot); mocks.harvest.mockResolvedValue(stock()); mocks.runner.submit.mockResolvedValue(snapshot);
@@ -611,7 +611,12 @@ describe('map permissions and embedded mini-storage', () => {
     const view = mount(page); await flushView();
     const mining = findView(view.root, n => n.props['aria-label'] === 'Получение ресурсов')!;
     const progress = findView(mining, n => n.props.class === 'mining-progress')!;
-    expect(mining.children.indexOf(progress)).toBe(1);
+    const limit = findView(mining, n => n.props.class === 'mining-quota')!;
+    const action = findView(mining, n => n.tag === 'button' && viewText(n).includes('Приостановить добычу'))!;
+    expect(mining.children.indexOf(limit)).toBe(1);
+    expect(viewText(limit)).toContain('Добыч за день осталось: 18 / 20');
+    expect(mining.children.indexOf(progress)).toBeGreaterThan(mining.children.indexOf(limit));
+    expect(mining.children.indexOf(action)).toBe(mining.children.indexOf(progress) + 1);
     expect(findView(mining, n => n.tag === 'aside' && n.props.type === 'info')).toBeUndefined();
     expect(findView(mining, n => n.tag === 'button' && n.props['aria-label'] === 'Как учитывается добыча')).toBeDefined();
     const before = findView(progress, n => n.tag === 'progress')!.props.percentage;
