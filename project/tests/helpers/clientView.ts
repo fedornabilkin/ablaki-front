@@ -7,6 +7,10 @@ import pug from 'pug';
 import WorldCredits from '../../src/components/pages/world/WorldCredits.vue';
 import WorldCountdown from '../../src/components/pages/world/WorldCountdown.vue';
 import WorldQuotaNotice from '../../src/components/pages/world/WorldQuotaNotice.vue';
+import ChoiceButtons from '../../src/components/ChoiceButtons.vue';
+import ItemCellContent from '../../src/components/ItemCellContent.vue';
+import SectionNav from '../../src/components/SectionNav.vue';
+import AppDialog from '../../src/components/AppDialog.vue';
 
 // Exercise the actual client template and its handlers without requiring a browser installation.
 export function clientView(component: any, file: string) {
@@ -20,6 +24,10 @@ export function clientView(component: any, file: string) {
 clientView(WorldCredits, 'components/pages/world/WorldCredits.vue');
 clientView(WorldCountdown, 'components/pages/world/WorldCountdown.vue');
 clientView(WorldQuotaNotice, 'components/pages/world/WorldQuotaNotice.vue');
+clientView(ChoiceButtons, 'components/ChoiceButtons.vue');
+clientView(ItemCellContent, 'components/ItemCellContent.vue');
+clientView(SectionNav, 'components/SectionNav.vue');
+clientView(AppDialog, 'components/AppDialog.vue');
 export interface ViewNode { tag: string; props: Record<string, any>; style: Record<string, string>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
 function element(tag: string): ViewNode { return { tag, props: {}, style: { display: '' }, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
 const renderer = createRenderer<ViewNode, ViewNode>({

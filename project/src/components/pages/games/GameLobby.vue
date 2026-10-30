@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
@@ -159,7 +160,7 @@ game-page-layout(:kind="kind" :version="overviewVersion" :snapshot="snapshot")
               font-awesome-icon.coin-side(icon="circle" :class="{ hollow: side === 1 }" aria-hidden="true")
           n-button(v-else :disabled="busy || (!!selected && !completed) || !canPlay(game)" @click="selected = game") Играть
     page-pager(v-if="!error && mode === 'my'" v-model:page="page" :result="data" :disabled="loading || busy")
-n-modal(v-model:show="showCreate" preset="card" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
+app-dialog(icon="dice" v-model:show="showCreate" title="Создать игру" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy")
   n-form(@submit.prevent="validCreate && act(kind, 'post', { kon, count })")
     p.muted Созданные игры доступны другим участникам. До начала их можно отменить во вкладке «Мои игры».
     n-form-item(:label="'Ставка, ' + unit" :label-props="{ for: 'game-kon' }")
@@ -171,7 +172,7 @@ n-modal(v-model:show="showCreate" preset="card" title="Создать игру" 
       world-credits(v-else :value="kon && count ? kon * count : 0")
     n-alert.mb-3(v-if="actionError" type="error") {{ actionError }}
     n-button(type="primary" attr-type="submit" :loading="busy" :disabled="!validCreate") Создать и списать ставку
-n-modal(:show="!saper && !!selected" preset="card" title="Орёл или решка?" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && (selected = null)")
+app-dialog(icon="dice" :show="!saper && !!selected" title="Орёл или решка?" :style="{ width: 'min(27.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && (selected = null)")
   template(v-if="selected")
     p Игра №{{ selected.id }} · Ставка #[world-credits(:value="selected.kon")]
     p.muted Выбор стороны сразу отправляет ход и списывает ставку.

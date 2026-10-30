@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch, onMounted, onScopeDispose, nextTick } from 'vue';
@@ -197,7 +198,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
       n-button(:theme-overrides="worldActionButtonTheme" secondary @click="showRecipe = true")
         font-awesome-icon(icon="eye")
         |  {{ items.get(recipe.item_id)?.name }}
-n-modal(:theme-overrides="worldModalTheme" v-model:show="showItem" preset="card" :title="rawItem?.name" :style="{width: 'min(28rem, calc(100vw - 2rem))'}")
+app-dialog(icon="cube" v-model:show="showItem" :title="rawItem?.name" :style="{width: 'min(28rem, calc(100vw - 2rem))'}")
   template(v-if="rawItem")
     p {{ rawItem.description }}
     p В наличии: {{ stock.get(rawItem.id) || 0 }}

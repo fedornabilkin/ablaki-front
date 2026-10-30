@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { useStore } from 'vuex';
 import { NButton, NModal } from 'naive-ui';
@@ -65,7 +66,7 @@ n-button.online-button(quaternary @click="show = true" title="Пользоват
   template(#icon)
     font-awesome-icon(icon="users" aria-hidden="true")
   span.online-count {{ count ?? '—' }}
-n-modal(v-model:show="show" preset="card" title="Пользователи онлайн" :style="{ width: 'min(38.75rem, calc(100vw - 1.5rem))' }")
+app-dialog(icon="users" v-model:show="show" title="Пользователи онлайн" :style="{ width: 'min(38.75rem, calc(100vw - 1.5rem))' }")
   .stack
     p.muted(v-if="windowSeconds") Активность за последние {{ Math.ceil(windowSeconds / 60) }} мин.
     .online-scroll(role="region" aria-label="Список пользователей онлайн" tabindex="0")

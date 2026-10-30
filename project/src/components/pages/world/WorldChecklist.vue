@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ChoiceButtons from '@/components/ChoiceButtons.vue';
+import AppDialog from '@/components/AppDialog.vue';
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NInput, NModal, NProgress, NSelect, NSpin } from 'naive-ui';
 import { checklistItems, checklistKey, checklistStatus, emptyChecklist, emptyEntry, observeChecklist, readChecklist, saveChecklist, type ChecklistId, type ChecklistResult, type ChecklistRun } from '@/entities/world/checklist';
@@ -67,7 +69,7 @@ n-button.world-checklist-button(:theme-overrides="worldActionButtonTheme" size="
     font-awesome-icon(icon="clipboard-check" aria-hidden="true")
   | Чеклист
   span.checklist-badge(v-if="key") {{ counts.pass }}/{{ checklistItems.length }}
-n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" title="Проверка MVP" class="world-checklist-modal" :style="{ width: 'min(56rem, calc(100vw - 1.5rem))' }")
+app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MVP" class="world-checklist-modal" :style="{ width: 'min(56rem, calc(100vw - 1.5rem))' }")
   .world-checklist(:aria-busy="snapshot.loading")
     p.checklist-intro Результаты и комментарии сохраняются в этом браузере отдельно для каждого пользователя и нового мира. Подтверждённые этапы отмечаются автоматически; любой результат можно уточнить вручную.
     n-alert(v-if="storageError" type="warning") {{ storageError }}
@@ -89,9 +91,7 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
         n-button(size="small" @click="confirmClear = false") Оставить
       .checklist-tabs(role="tablist" aria-label="Группы проверок")
         button(v-for="name in groups" :key="name" type="button" role="tab" :aria-selected="group === name" @click="group = name") {{ name }}
-      .checklist-filters(aria-label="Фильтр проверок")
-        n-button(size="tiny" :type="filter === 'all' ? 'primary' : 'default'" :aria-pressed="filter === 'all'" @click="filter = 'all'") Все
-        n-button(size="tiny" :type="filter === 'open' ? 'primary' : 'default'" :aria-pressed="filter === 'open'" @click="filter = 'open'") Открытые
+      choice-buttons(v-model="filter" label="Фильтр проверок" :options="[{ value: 'all', label: 'Все', icon: 'list-check' }, { value: 'open', label: 'Открытые', icon: 'clock' }]")
       section.checklist-group(:aria-label="group")
         p(v-if="!filteredItems.length") Все проверки этой группы пройдены.
         details.checklist-item(v-for="item in filteredItems" :key="item.id" :open="checklistStatus(run.entries[item.id]) !== 'pass'" :class="`result-${checklistStatus(run.entries[item.id])}`")

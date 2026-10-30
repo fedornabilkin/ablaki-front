@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ChoiceButtons from '@/components/ChoiceButtons.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { creditCost } from '@/entities/world/credits';
 import { projectCraftTerms } from '@/entities/world/craftPreview';
@@ -26,7 +27,8 @@ const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null)
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
 const category = ref('all'), availability = ref('all');
-const categories = computed(() => [{value: 'all', label: 'Все группы'}, ...[...new Set(state.value?.recipes.map(r => r.category ?? 'Прочее') ?? [])].map(name => ({value: name, label: name}))]);
+const categoryIcons: Record<string, string> = { 'Деревообработка': 'tree', 'Ткачество': 'shirt', 'Каменное дело': 'mountain', 'Кузнечное дело': 'hammer', 'Алхимия': 'flask', 'Огород': 'seedling' };
+const categories = computed(() => [{value: 'all', label: 'Все группы', icon: 'cubes'}, ...[...new Set(state.value?.recipes.map(r => r.category ?? 'Прочее') ?? [])].map(name => ({value: name, label: name, icon: categoryIcons[name] || state.value?.recipes.find(r => (r.category ?? 'Прочее') === name)?.icon || 'cube'}))]);
 const availabilityOptions = [{value: 'all', label: 'Все'}, {value: 'ready', label: 'Хватает ресурсов'}, {value: 'shortage', label: 'Не хватает ресурсов'}, {value: 'locked', label: 'Закрытые'}];
 const lastResult = ref<CraftResult | null>(null);
 const useObjectBudget = ref(false);
@@ -107,11 +109,10 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
       section.recipe-catalog(aria-label="Рецепты мастерской")
         .workspace-section-heading
           span.workspace-eyebrow Рецепты объекта
-          h2 Что изготовить
-        n-input(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
+          n-input.recipe-search(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
         .recipe-filters
-          n-select(v-model:value="category" :options="categories" size="small" aria-label="Группа предметов")
-          n-select(v-model:value="availability" :options="availabilityOptions" size="small" aria-label="Доступность изготовления")
+          choice-buttons(v-model="category" :options="categories" label="Группа предметов" mobile-icons)
+          choice-buttons(v-model="availability" :options="availabilityOptions" label="Доступность изготовления")
         p.recipe-legend Выберите плитку. Материалы и оборудование подбираются автоматически; стоимость появится в панели справа.
         .recipe-tiles
           .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
@@ -134,8 +135,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
           .selected-heading
             font-awesome-icon(:icon="selectedRecipe.icon || 'cube'" aria-hidden="true")
             h2 {{ selectedRecipe.name }}
-          label.batch-count Количество партий
-            n-input-number(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading || Boolean(pending)" aria-label="Количество партий")
+            n-input-number.batch-count(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading || Boolean(pending)" aria-label="Количество партий")
           world-payment-sources(v-model:checked="useObjectBudget" :mode="state.object_budget_payment ? 'budget-choice' : 'personal'" :price="displayedTerms?.price" :disabled="busy || Boolean(pending)")
           template(v-if="displayedTerms")
             .material-tiles
@@ -143,8 +143,10 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
                 font-awesome-icon(icon="cubes" aria-hidden="true")
                 strong {{ material.name }}
                 span {{ material.have }} / {{ material.quantity }}
-            p(:class="{ missing: !displayedTerms.output.fits }") Результат: {{ displayedTerms.output.name }} × {{ displayedTerms.output.quantity }}
-            p +{{ displayedTerms.experience }} XP · {{ state.storages.find(s => s.id === output)?.name }}
+            p.craft-summary
+              span(:class="{ missing: !displayedTerms.output.fits }" :title="displayedTerms.output.name") ×{{ displayedTerms.output.quantity }}
+              span +{{ displayedTerms.experience }} XP
+              span {{ state.storages.find(s => s.id === output)?.name }}
             p.missing(v-for="reason in (calculating || waitingForPreview ? [] : displayedTerms.reasons)" :key="reason") {{ reason }}
           template(v-else)
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
@@ -174,10 +176,10 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
         p(v-else) Выберите рецепт для изготовления.
 </template>
 <style scoped>
-.recipe-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+.recipe-filters { display: grid; gap: .6rem; }
 .workspace { display: grid; gap: 1.25rem; max-width: 1320px; padding-block: 1.5rem 3rem; }
 .workspace-navigation { padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
-.workspace-section-heading { margin-bottom: 1rem; }.workspace-section-heading h2 { margin: .25rem 0 0; font-size: 1.2rem; }.workspace-eyebrow { color: var(--primary); text-transform: uppercase; font-size: .72rem; letter-spacing: .1em; font-weight: 700; }
+.workspace-section-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }.recipe-search { width: min(55%, 22rem); }.workspace-eyebrow { color: var(--primary); text-transform: uppercase; font-size: .72rem; letter-spacing: .1em; font-weight: 700; }
 .workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1rem; align-items: start; }
 .recipe-catalog { min-width: 0; padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }.recipe-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: .85rem; padding: 3px; }
 .recipe-tile { display: grid; gap: .4rem; justify-items: start; align-content: start; min-height: 145px; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; }.recipe-tile > svg { font-size: 1.7rem; color: var(--primary); }.recipe-tile span, .recipe-tile small { font-size: .75rem; color: var(--text-muted); }.recipe-tile.ready span { color: var(--success, #249653); }.recipe-tile.selected { outline: 2px solid var(--primary); background: var(--primary-soft); }.recipe-tile:focus-visible { outline: 2px solid var(--primary); }.recipe-tile:disabled { cursor: default; opacity: .6; }
@@ -192,5 +194,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 .recipe-tile.selected { outline: none; border-color: var(--border); }
 .recipe-legend { color: var(--text-muted); margin-block: .75rem 1rem; line-height: 1.5; }
 .missing { color: var(--error, #d03050); font-weight: 600; }
-.recipe-tile-wrap { position: relative; min-width: 0; }.recipe-tile-wrap > .recipe-tile { width: 100%; height: 100%; padding-right: 1.9rem; }.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .4rem; right: .4rem; z-index: 1; }.workspace .batch-count { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }.batch-count .n-input-number { width: 8rem; flex: 0 0 8rem; }.craft-result p { margin-top: .35rem; }.craft-command :deep(.world-credits) { margin-left: .5rem; }
+.selected-heading h2 { min-width: 0; flex: 1; overflow-wrap: anywhere; }.selected-heading .batch-count { width: 7rem; flex: 0 0 7rem; }.craft-summary { display: flex; align-items: baseline; gap: .4rem; font-size: .8rem; }.craft-summary > span + span::before { content: '·'; margin-right: .4rem; }.craft-summary > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media(max-width: 620px) { .workspace-section-heading { gap: .5rem; }.recipe-search { width: 55%; }.recipe-catalog, .craft-command { padding: 1rem; } }
+.recipe-tile-wrap { position: relative; min-width: 0; }.recipe-tile-wrap > .recipe-tile { width: 100%; height: 100%; padding-right: 1.9rem; }.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .4rem; right: .4rem; z-index: 1; }.craft-result p { margin-top: .35rem; }.craft-command :deep(.world-credits) { margin-left: .5rem; }
 </style>

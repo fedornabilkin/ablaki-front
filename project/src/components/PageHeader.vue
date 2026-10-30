@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionNav from './SectionNav.vue';
 defineProps<{ pageTitle: string; extraLinks?: { link: string; title: string; icon?: string; type?: string }[] }>();
 </script>
 <template lang="pug">
@@ -8,8 +9,7 @@ defineProps<{ pageTitle: string; extraLinks?: { link: string; title: string; ico
       h1 {{ pageTitle }}
       .actions
         slot(name="actions")
-    nav.tab-links(v-if="extraLinks?.length" aria-label="Разделы страницы")
-      router-link.nav-item(v-for="link in extraLinks" :key="link.link" :to="link.link" active-class="" exact-active-class="selected") {{ link.title }}
+    section-nav(v-if="extraLinks?.length" label="Разделы страницы" :items="extraLinks.map(link => ({ to: link.link, label: link.title, icon: link.icon }))")
     slot
 </template>
 <style scoped lang="scss">

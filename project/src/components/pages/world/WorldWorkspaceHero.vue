@@ -35,4 +35,14 @@ p { margin: 0; color: var(--text-muted); line-height: 1.5; }
 .compact { padding: .75rem; gap: .75rem; }.compact .workspace-crest { flex-basis: 2.75rem; height: 2.75rem; font-size: 1.3rem; }.compact h1 { font-size: 1.2rem; }.compact p { font-size: .8rem; }
 @media(max-width: 900px) { .world-workspace-hero { flex-wrap: wrap; }.world-page-actions { width: 100%; } }
 @media(max-width: 600px) { .world-workspace-hero { padding: 1rem; gap: .75rem; }.workspace-crest { flex-basis: 3rem; height: 3rem; font-size: 1.5rem; } }
+@media(max-width: 620px) {
+  .world-workspace-hero { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); padding: .75rem; gap: .6rem; }
+  .workspace-crest { height: 2.5rem; font-size: 1.2rem; }
+  .workspace-eyebrow { font-size: .65rem; }
+  h1 { margin: .15rem 0 .25rem; font-size: 1.25rem; }
+  p { font-size: .8rem; }
+  .workspace-hero-actions { margin-top: .4rem; gap: .4rem; font-size: .8rem; }
+  .workspace-parent { padding: .3rem .5rem; font-size: .8rem; }
+  .world-page-actions { grid-column: 1 / -1; }
+}
 </style>

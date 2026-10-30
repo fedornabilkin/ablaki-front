@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from '../WorldCreditInput.vue';
@@ -40,7 +41,7 @@ async function save(retry = false) {
 }
 </script>
 <template lang="pug">
-n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="repairing ? 'Параметры ремонта' : 'Параметры строительства'" :mask-closable="!blocked" :close-on-esc="!blocked" :closable="!blocked" :style="{ width: 'min(54rem, 95vw)' }" @update:show="emit('update:show', $event)")
+app-dialog(icon="hammer" :show="show" :title="repairing ? 'Параметры ремонта' : 'Параметры строительства'" :mask-closable="!blocked" :close-on-esc="!blocked" :closable="!blocked" :style="{ width: 'min(54rem, 95vw)' }" @update:show="emit('update:show', $event)")
   .build-creation-status(role="status")
     n-spin(v-if="creating" size="small")
     span(v-if="creating") {{ repairing ? 'Подготавливаем ремонт…' : 'Размещаем объект…' }}

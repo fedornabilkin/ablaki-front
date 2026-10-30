@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionNav from '@/components/SectionNav.vue';
 import { computed, ref, onScopeDispose } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
@@ -49,11 +50,7 @@ async function removeAll() {
         template(#icon)
           font-awesome-icon(icon="fa fa-plus")
         span Создать
-    router-link(v-for="tab in tabs" :key="tab.to" :to="tab.to" custom v-slot="{ href, navigate, isExactActive }")
-      n-button.game-tab(tag="a" :href="href" :type="isExactActive ? 'primary' : 'default'" :aria-label="tab.label" @click="navigate")
-        template(#icon)
-          font-awesome-icon(:icon="tab.icon")
-        span.game-tab-label {{ tab.label }}
+    section-nav(label="Разделы игры" :items="tabs")
     n-popconfirm(:positive-button-props="{ disabled: busy || removing }" @positive-click="removeAll")
       template(#trigger)
         n-button.game-delete(type="error" secondary :disabled="busy || removing" :loading="removing" aria-label="Удалить все свои не начатые игры" title="Удалить все свои не начатые игры")

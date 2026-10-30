@@ -1,0 +1,12 @@
+:root { --motion-fast: 140ms; --motion-normal: 240ms; --motion-ease: cubic-bezier(.22, 1, .36, 1); }
+// Only visual properties animate: calculations, requests and layout remain immediate.
+:where(button, .n-button, a, summary) { -webkit-tap-highlight-color: transparent; transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
+:where(.section-link, .action-button, .choice-buttons .n-button):active:not(:disabled) { transform: scale(.98); }
+.section-link, .action-button, .choice-buttons .n-button { transition: transform var(--motion-fast) var(--motion-ease), color var(--motion-fast) ease, background-color var(--motion-fast) ease, border-color var(--motion-fast) ease; }
+@keyframes surface-appear { from { opacity: 0; translate: 0 5px; } to { opacity: 1; translate: 0 0; } }
+@media(prefers-reduced-motion: no-preference) {
+  #content > .page, #content > .workspace, #content > .world-page, #content > .world-storage-page,
+  .world-tab-panel, .world-map-panel, details[open] > :not(summary) { animation: surface-appear var(--motion-normal) var(--motion-ease); }
+  .n-modal, .n-popover, .n-dialog { transition-duration: var(--motion-normal) !important; transition-timing-function: var(--motion-ease) !important; }
+}
+@media(prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }.section-link:active, .action-button:active, .choice-buttons .n-button:active { transform: none; } }

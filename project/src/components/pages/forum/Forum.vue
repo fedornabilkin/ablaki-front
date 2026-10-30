@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SectionNav from '@/components/SectionNav.vue';
+import AppDialog from '@/components/AppDialog.vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
@@ -65,15 +67,14 @@ page-header(page-title="Форум")
   .toolbar
     create-button(v-if="authenticated" label="Добавить тему" @click="showCreate = true")
     router-link.nav-item(v-else :to="{ path: '/users/login', query: { redirect: route.fullPath } }") Войти для обсуждения
-    router-link(v-for="link in links" :key="link.link" :to="link.link" custom v-slot="{ href, navigate, isExactActive }")
-      n-button(tag="a" :href="href" :type="isExactActive ? 'primary' : 'default'" @click="navigate") {{ link.title }}
+    section-nav(label="Разделы форума" :items="links.map(link => ({ to: link.link, label: link.title, icon: link.link === '/forum/my' ? 'user' : 'comments' }))")
 .container.page
   n-card
     list-filters(v-model:search="search" v-model:values="filters" :loading="loading" @reset="reset")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       forum-theme-list(:themes="data.items")
     page-pager(v-if="!error" v-model:page="page" :result="data" :disabled="loading")
-n-modal(v-model:show="showCreate" preset="card" title="Новая тема" :style="{ width: 'min(35rem, calc(100vw - 2rem))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
+app-dialog(icon="comments" v-model:show="showCreate" title="Новая тема" :style="{ width: 'min(35rem, calc(100vw - 2rem))' }" :mask-closable="!saving" :closable="!saving" :close-on-esc="!saving")
   n-form(@submit.prevent="create")
     .theme-title-row
       n-form-item.theme-title-field(:show-label="false")

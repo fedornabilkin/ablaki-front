@@ -3,7 +3,7 @@ export type NodeType = typeof nodeTypes[number];
 export interface WorldReason { code: string; message?: string }
 export interface WorldAction { code: string; allowed: boolean; reasons: WorldReason[] }
 export interface MapBounds { x: number; y: number; width: number; height: number }
-export interface WorldOwnership { id?: number | null; owned_by_me: boolean; has_finances?: boolean }
+export interface WorldOwnership { id?: number | null; user?: { id: number; username: string; is_online: boolean } | null; owned_by_me: boolean; has_finances?: boolean }
 export interface WorldNode {
   owner?: WorldOwnership;
   extensions?: string[];

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionNav from '@/components/SectionNav.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
@@ -27,13 +28,7 @@ function change(value: unknown) { return value === null || value === undefined |
 <template lang="pug">
 page-header(page-title="История")
 .container.page
-  nav.history-tabs(aria-label="Раздел истории")
-    router-link(to="/balance" :aria-current="!rating ? 'page' : undefined" :class="{ selected: !rating }")
-      font-awesome-icon(icon="coins" aria-hidden="true")
-      | Баланс
-    router-link(to="/rating" :aria-current="rating ? 'page' : undefined" :class="{ selected: rating }")
-      font-awesome-icon(icon="star" aria-hidden="true")
-      | Рейтинг
+  section-nav.history-tabs(label="Раздел истории" :items="[{ to: '/balance', label: 'Баланс', icon: 'coins', active: !rating }, { to: '/rating', label: 'Рейтинг', icon: 'star', active: rating }]")
   n-card
     .history-types(role="group" aria-label="Тип операции")
       action-button(icon="scroll" label="Все" :aria-pressed="!filters.type" :type="!filters.type ? 'primary' : 'default'" @click="filters = { type: '' }")
@@ -57,6 +52,4 @@ page-header(page-title="История")
 </template>
 <style scoped>
 .history-tabs, .history-types { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
-.history-tabs a { display: inline-flex; align-items: center; gap: .5rem; padding: .75rem 1rem; border-bottom: 2px solid transparent; }
-.history-tabs .selected { color: var(--primary); border-bottom-color: var(--primary); }
 </style>

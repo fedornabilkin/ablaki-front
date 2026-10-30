@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NModal, NProgress, NSpin, NTabs, NTabPane } from 'naive-ui';
@@ -45,11 +46,12 @@ watch(() => props.revision, refresh);
 onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
-n-button.mvp-tasks-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
-  template(#icon)
-    font-awesome-icon(icon="list-check" aria-hidden="true")
+span.mvp-tasks-trigger
+  n-button.mvp-tasks-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
+    template(#icon)
+      font-awesome-icon(icon="list-check" aria-hidden="true")
   span.tasks-badge(v-if="remainingTasks !== null && remainingTasks > 0" :aria-label="`Осталось заданий: ${remainingTasks}`") {{ remainingTasks }}
-n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
+app-dialog(icon="list-check" v-model:show="show" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
  .mvp-progress(:aria-busy="loading")
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   router-link.mvp-action(v-if="closedTest && !state" to="/forum" @click="show = false") Сообщить на форуме о желании участвовать в тестировании
@@ -116,7 +118,8 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
       | Сообщить о проблеме на форуме
 </template>
 <style scoped>
-.tasks-badge { position: absolute; right: -.35rem; top: -.4rem; display: inline-grid; place-items: center; min-width: 1.15rem; height: 1.15rem; border-radius: 1rem; padding-inline: .2rem; background: var(--bg-base); color: var(--primary); border: 1px solid var(--primary); font-size: .7rem; font-weight: 750; }
+.mvp-tasks-trigger { position: relative; display: inline-flex; flex-shrink: 0; }
+.tasks-badge { position: absolute; z-index: 1; right: -.4rem; top: -.4rem; display: inline-grid; place-items: center; box-sizing: border-box; min-width: 1.2rem; height: 1.2rem; border-radius: 1rem; padding-inline: .2rem; background: var(--primary); color: var(--primary-contrast, #171717); border: 2px solid var(--bg-surface); font-size: .7rem; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; pointer-events: none; }
 .mvp-progress { display: grid; gap: 1rem; min-width: 0; max-height: 75vh; overflow-y: auto; padding: .15rem; }.mvp-progress h3, .mvp-progress p { margin: 0; }
 .journey-heading, .journey-reward { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }.journey-heading h3 { font-size: 1.1rem; }.journey-heading > strong { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary); }.journey-eyebrow { color: var(--text-muted); font-size: .75rem; }
 .journey-steps { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }.journey-step { display: flex; align-items: center; gap: .75rem; padding: .85rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); }.step-icon { flex: 0 0 2rem; display: grid; place-items: center; height: 2rem; border-radius: 50%; color: var(--primary); background: var(--primary-soft); }.complete .step-icon { color: var(--success, #36ad6a); }.step-body { display: grid; gap: .25rem; flex: 1; min-width: 0; }.step-body span, .journey-note, .journey-reward p { color: var(--text-muted); font-size: .8rem; line-height: 1.5; }

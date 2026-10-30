@@ -36,19 +36,29 @@ watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, prop
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-.hero-finances(v-if="available !== null || treasury !== null" :title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-live="polite")
-  div
-    span Бюджет
-    strong
-      world-credits(v-if="available !== null" :value="available")
-      template(v-else) —
-    small(v-if="reserved !== null") Резерв: #[world-credits(:value="reserved")]
-  div
-    span Казна
-    strong
-      world-credits(v-if="treasury !== null" :value="treasury")
-      template(v-else) —
+table.hero-finances(v-if="available !== null || treasury !== null" :title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-label="Финансы объекта" aria-live="polite")
+  thead
+    tr
+      th(scope="col") Бюджет
+      th(scope="col") Казна
+      th(scope="col") Резерв
+  tbody
+    tr
+      td
+        world-credits(v-if="available !== null" :value="available")
+        template(v-else) —
+      td
+        world-credits(v-if="treasury !== null" :value="treasury")
+        template(v-else) —
+      td
+        world-credits(v-if="reserved !== null" :value="reserved")
+        template(v-else) —
 </template>
 <style scoped>
-.hero-finances { display: flex; flex-wrap: wrap; gap: 1.5rem; }.hero-finances > div { display: grid; align-content: start; gap: .2rem; min-width: 5rem; }.hero-finances span, .hero-finances small { color: var(--text-muted); font-size: .8rem; }.hero-finances strong { font-variant-numeric: tabular-nums; }
+.hero-finances { width: auto; margin: 0; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.hero-finances th, .hero-finances td { padding: .2rem .75rem; text-align: right; white-space: nowrap; }
+.hero-finances th { color: var(--text-muted); font-size: .75rem; font-weight: 500; border-bottom: 1px solid var(--border); }
+.hero-finances td { font-size: .9rem; font-weight: 650; }
+.hero-finances th:first-child, .hero-finances td:first-child { padding-left: 0; text-align: left; }
+.hero-finances th:last-child, .hero-finances td:last-child { padding-right: 0; }
 </style>

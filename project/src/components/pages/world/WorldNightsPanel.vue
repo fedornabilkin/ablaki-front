@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -33,7 +34,7 @@ onScopeDispose(() => { disposed = true; generation++; });
     template(#icon)
       font-awesome-icon(icon="moon")
     | Ночи и здоровье
-  n-modal(:theme-overrides="worldModalTheme" v-model:show="show" preset="card" title="Ночи и здоровье · последние 30 ночей" class="world-nights-modal" :style="{ width: 'min(42rem, calc(100vw - 2rem))' }")
+  app-dialog(icon="moon" v-model:show="show" title="Ночи и здоровье · последние 30 ночей" class="world-nights-modal" :style="{ width: 'min(42rem, calc(100vw - 2rem))' }")
     .night-scroll(tabindex="0" aria-label="Хронология последних 30 ночей")
       n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="loading" @click="load") Обновить расчёт
       n-alert(closable v-if="error" type="error" role="alert") {{ error }}

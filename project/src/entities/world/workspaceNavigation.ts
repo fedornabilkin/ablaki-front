@@ -1,10 +1,10 @@
 import type { RouteLocationNormalized, LocationQuery } from 'vue-router';
 
 export const workspaceSections = [
-  { id: 'inventory', title: 'Инвентарь' },
-  { id: 'recipes', title: 'Рецепты' },
-  { id: 'map', title: 'Карта рецептов' },
-  { id: 'history', title: 'История' },
+  { id: 'inventory', title: 'Инвентарь', icon: 'box' },
+  { id: 'recipes', title: 'Рецепты', icon: 'scroll' },
+  { id: 'map', title: 'Карта рецептов', icon: 'map' },
+  { id: 'history', title: 'История', icon: 'clock' },
 ] as const;
 export function workspaceNode(value: unknown): number | undefined {
   return typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number(value) <= 2147483647 ? Number(value) : undefined;
