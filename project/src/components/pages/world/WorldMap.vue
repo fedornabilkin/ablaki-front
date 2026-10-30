@@ -6,6 +6,7 @@ import { NAlert, NButton, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldMapData, WorldNode } from '@/entities/world/types';
 import { occupiesCell } from '@/entities/world/coordinates';
+import { mapNameLines } from '@/entities/world/names';
 import type { MapPoint } from '@/entities/world/coordinates';
 import { nodeLabels } from '@/entities/world/types';
 import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
@@ -279,9 +280,9 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}${lockedBed(child) ? '. Закрыта' : statuses[child.status] ? '. ' + statuses[child.status] : ''}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
           rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
           font-awesome-icon(v-if="child.details.is_lodging" icon="bed" x="65" y="7" width="14" height="14" aria-label="Ваш ночлег")
-          font-awesome-icon(:icon="icons[child.type]" x="32" y="13" width="24" height="24" aria-hidden="true")
+          font-awesome-icon(:icon="icons[child.type]" x="32" y="8" width="24" height="24" aria-hidden="true")
           font-awesome-icon(v-if="child.status === 'constructing'" icon="hammer" x="64" y="8" width="16" height="16" aria-hidden="true")
-          text(:x="size / 2" y="55" text-anchor="middle" class="map-object-label") {{ child.label.length > 12 ? child.label.slice(0, 11) + '…' : child.label }}
+          text(v-for="(line, index) in mapNameLines(child.label)" :key="index" :x="size / 2" :y="mapNameLines(child.label).length === 1 ? 53 : 46 + index * 12" text-anchor="middle" :textLength="Array.from(line).length >= 12 ? 72 : undefined" lengthAdjust="spacingAndGlyphs" class="map-object-label") {{ line }}
           font-awesome-icon(v-if="lockedBed(child)" icon="lock" x="64" y="8" width="14" height="14" aria-label="Недоступно")
           text(v-else-if="statuses[child.status]" :x="size / 2" y="69" text-anchor="middle" class="map-cell-status") {{ statuses[child.status] }}
           text(x="7" y="82" class="map-coordinate") {{ child.coordinates.x }}, {{ child.coordinates.y }}
@@ -293,14 +294,14 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
     slot(name="information")
     template(v-if="writable")
       .map-construction-session(v-for="child in constructionNodes" :key="child.id" v-show="selectedNode?.id === child.id")
-        world-build-panel(:node-id="child.id" :revision="child.revision" :owner="owner" :session="session ?? 0" :active="active" embedded @changed="emit('changed', [node.id, child.id])")
+        world-build-panel(:node-id="child.id" :revision="child.revision" :owner="owner" :session="session ?? 0" :active="active" :show-result="selectedNode?.id === child.id" embedded @changed="emit('changed', [node.id, child.id])")
     section.map-cell-information
       button.world-inspector-close(v-if="selected.length" type="button" aria-label="Снять выделение" @click="clearSelection") ×
       template(v-if="selectedNode")
         h3.world-selected-heading
           font-awesome-icon(:icon="icons[selectedNode.type]" :title="nodeLabels[selectedNode.type]" aria-hidden="true")
           span {{ selectedNode.label }}
-        world-object-preview(:node="selectedNode")
+        world-object-preview(:node="selectedNode" :session="session ?? 0" :active="active")
         world-repair-panel(:key="selectedNode.id" :node="selectedNode" :owner="owner" :session="session ?? 0" :writable="writable" @changed="emit('changed', [selectedNode.id])")
         dl
           dt Координаты
@@ -313,8 +314,6 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
             dt Прочность
             dd {{ selectedNode.details.condition }} / {{ selectedNode.details.max_condition ?? '—' }}
         router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
-        router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
-        router-link(v-if="selectedNode.status === 'active' && (selectedNode.owned_by_me || selectedNode.extensions?.includes('public_workspace'))" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
         world-harvest-panel(v-if="selectedNode.type === 'CHEST' && selectedNode.status === 'active' && selectedNode.extensions?.includes('harvest')" :key="`stock-${selectedNode.id}`" :node-id="selectedNode.id" :session="session ?? 0" :revision="selectedNode.revision" :command="command" :active="active" embedded)
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")

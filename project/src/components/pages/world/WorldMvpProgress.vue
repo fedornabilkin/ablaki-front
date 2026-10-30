@@ -10,14 +10,15 @@ import { isClosedTestError, worldError } from '@/services/api/world';
 import { formatCredits } from '@/entities/world/credits';
 import WorldCountdown from './WorldCountdown.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
+import WorldDevelopmentRoute from './WorldDevelopmentRoute.vue';
 const props = defineProps<{ owner: number; session: number; revision: number; writable: boolean }>();
 const emit = defineEmits<{ changed: []; snapshot: [value: { state: MvpState | null; loading: boolean; error: string }] }>();
 const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(false), loading = ref(false);
-const show = ref(false), tab = ref('camp');
+const show = ref(false), tab = ref('development');
 watch([state, loading, error], () => emit('snapshot', { state: state.value, loading: loading.value, error: error.value }), { flush: 'sync' });
 const activeGoal = computed(() => state.value?.goals.find(goal => goal.code === (tab.value === 'resources' ? 'day-2' : 'day-1')));
 const orderedSteps = computed(() => [...(activeGoal.value?.steps ?? [])].sort((a, b) => Number(a.completed) - Number(b.completed)));
-const remainingTasks = computed(() => state.value?.goals.reduce((total, goal) => total + (goal.claimed ? 0 : goal.steps.filter(step => !step.completed).length), 0) ?? null);
+const remainingTasks = computed(() => state.value?.development ? state.value.development.total - state.value.development.completed : state.value?.goals.reduce((total, goal) => total + (goal.claimed ? 0 : goal.steps.filter(step => !step.completed).length), 0) ?? null);
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.mvp`), computed(() => props.session));
 let generation = 0;
 let refreshQueued = false, disposed = false;
@@ -28,7 +29,7 @@ function refresh() {
 }
 async function load() {
   const current = ++generation; loading.value = true; error.value = ''; closedTest.value = false;
-  try { const result = await loadMvp(); if (current === generation) { state.value = result; error.value = ''; } }
+  try { const result = await loadMvp(); if (current === generation) { state.value = result; if (!result.development && tab.value === 'development') tab.value = 'camp'; error.value = ''; } }
   catch (cause) { if (current === generation) { error.value = worldError(cause); closedTest.value = isClosedTestError(cause); } }
   finally { if (current === generation) loading.value = false; }
 }
@@ -40,7 +41,7 @@ async function act(path?: string, body: Record<string, unknown> = {}) {
 const busy = computed(() => !props.writable || runner.busy.value || !!runner.pending.value);
 const titles: Record<string, string> = { 'day-1': 'Первый лагерь', 'day-2': 'Ресурсы и первый металл' };
 const quotaLabels: Record<string, string> = { crafting_hourly: 'Изготовление за час', extraction_daily: 'Добыча сегодня', sales_daily: 'Продажи сегодня' };
-watch(() => [props.owner, props.session], () => { generation++; state.value = null; error.value = ''; show.value = false; if (props.owner) void load(); }, {immediate: true});
+watch(() => [props.owner, props.session], () => { generation++; state.value = null; error.value = ''; show.value = false; tab.value = 'development'; if (props.owner) void load(); }, {immediate: true});
 watch(show, value => { if (value && !state.value && !error.value && !loading.value) void load(); });
 watch(() => props.revision, refresh);
 onScopeDispose(() => { disposed = true; generation++; });
@@ -59,11 +60,36 @@ app-dialog(icon="list-check" v-model:show="show" title="Мой путь в ми�
   n-spin(v-if="loading && !state" size="small")
   n-button(v-if="runner.pending.value" :loading="runner.busy.value" @click="act()") Проверить результат запроса
   n-tabs(v-if="state?.enabled" v-model:value="tab" type="segment" animated)
+    n-tab-pane(v-if="state.development" name="development" tab="Развитие")
+      template(#tab)
+        span.journey-tab(title="Развитие" aria-label="Развитие")
+          font-awesome-icon(icon="flag" aria-hidden="true")
+          span.journey-tab-label Развитие
     n-tab-pane(name="camp" tab="Лагерь")
+      template(#tab)
+        span.journey-tab(title="Лагерь" aria-label="Лагерь")
+          font-awesome-icon(icon="tent" aria-hidden="true")
+          span.journey-tab-label Лагерь
     n-tab-pane(name="resources" tab="Ресурсы")
+      template(#tab)
+        span.journey-tab(title="Ресурсы" aria-label="Ресурсы")
+          font-awesome-icon(icon="cubes" aria-hidden="true")
+          span.journey-tab-label Ресурсы
     n-tab-pane(name="quotas" tab="Лимиты")
+      template(#tab)
+        span.journey-tab(title="Лимиты" aria-label="Лимиты")
+          font-awesome-icon(icon="clock" aria-hidden="true")
+          span.journey-tab-label Лимиты
     n-tab-pane(name="health" tab="Здоровье")
+      template(#tab)
+        span.journey-tab(title="Здоровье" aria-label="Здоровье")
+          font-awesome-icon(icon="apple-alt" aria-hidden="true")
+          span.journey-tab-label Здоровье
   template(v-if="state?.enabled")
+    template(v-if="tab === 'development'")
+      world-development-route(v-if="state.development" :route="state.development" @navigate="show = false")
+      n-alert(v-if="state.targetStartCredits && !state.starterPaid" type="info") Стартовые #[world-credits(:value="state.targetStartCredits")] поступают из резерва города в бюджет стоянки. Перед заселением проверьте наличие резерва. Если вы уже в очереди, повторно заселяться не нужно.
+      p.journey-note Награды первых этапов доступны во вкладках «Лагерь» и «Ресурсы». При заполненном складе работодателя выберите другую оплачиваемую работу или открытый заказ города.
     template(v-if="activeGoal && (tab === 'camp' || tab === 'resources')")
       .journey-heading
         div
@@ -120,10 +146,11 @@ app-dialog(icon="list-check" v-model:show="show" title="Мой путь в ми�
 <style scoped>
 .mvp-tasks-trigger { position: relative; display: inline-flex; flex-shrink: 0; }
 .tasks-badge { position: absolute; z-index: 1; right: -.4rem; top: -.4rem; display: inline-grid; place-items: center; box-sizing: border-box; min-width: 1.2rem; height: 1.2rem; border-radius: 1rem; padding-inline: .2rem; background: var(--primary); color: var(--primary-contrast, #171717); border: 2px solid var(--bg-surface); font-size: .7rem; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; pointer-events: none; }
-.mvp-progress { display: grid; gap: 1rem; min-width: 0; max-height: 75vh; overflow-y: auto; padding: .15rem; }.mvp-progress h3, .mvp-progress p { margin: 0; }
+.mvp-progress { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; min-width: 0; max-height: 75vh; overflow-y: auto; padding: .15rem; }.mvp-progress h3, .mvp-progress p { margin: 0; }
+.journey-tab { display: inline-flex; align-items: center; gap: .4rem; }
 .journey-heading, .journey-reward { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }.journey-heading h3 { font-size: 1.1rem; }.journey-heading > strong { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary); }.journey-eyebrow { color: var(--text-muted); font-size: .75rem; }
 .journey-steps { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }.journey-step { display: flex; align-items: center; gap: .75rem; padding: .85rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); }.step-icon { flex: 0 0 2rem; display: grid; place-items: center; height: 2rem; border-radius: 50%; color: var(--primary); background: var(--primary-soft); }.complete .step-icon { color: var(--success, #36ad6a); }.step-body { display: grid; gap: .25rem; flex: 1; min-width: 0; }.step-body span, .journey-note, .journey-reward p { color: var(--text-muted); font-size: .8rem; line-height: 1.5; }
 .mvp-action { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .45rem .7rem; border: 1px solid var(--border); border-radius: .45rem; color: var(--primary); background: var(--primary-soft); font-size: .8rem; text-align: center; }.mvp-action:hover { border-color: var(--primary); }.mvp-action:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .mvp-links { display: flex; flex-wrap: wrap; gap: .5rem; }.journey-reward, .quota-card { padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-base); }.journey-quotas, .quota-card { display: grid; gap: .75rem; }.mvp-foods { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .75rem; }.food-card { display: grid; gap: .6rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; }.food-card > svg { color: var(--primary); }.food-card span { font-size: .8rem; color: var(--text-muted); }.journey-feedback { font-size: .8rem; color: var(--text-muted); text-align: center; }
-@media(max-width: 500px) { .journey-step { flex-wrap: wrap; }.journey-step .mvp-action { margin-left: 2.75rem; }.journey-reward { flex-wrap: wrap; } }
+@media(max-width: 500px) { .journey-tab { min-height: 2rem; }.journey-tab-label { display: none; }.journey-step { flex-wrap: wrap; }.journey-step .mvp-action { margin-left: 2.75rem; }.journey-reward { flex-wrap: wrap; } }
 </style>

@@ -67,7 +67,7 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
       p Цена списывается из бюджета текущего объекта. При нехватке кредитов можно добавить разницу с личного баланса. Материалы нужны отдельно; труд владельца бесплатный.
       p Бюджет труда позволяет оплачивать помощь других игроков. Название и бюджет можно изменить позднее.
       router-link(v-if="missingResources" :to="craftHref") Открыть крафт для недостающих ресурсов
-  n-alert(v-if="placed" type="success" closable @close="placed = null")
+  n-alert.placement-notice(v-if="placed" type="success" closable @close="placed = null")
     p Объект размещён. Карта обновлена, можно начинать строительство.
     router-link(:to="`/world/nodes/${placed}#map`") Перейти к строительству →
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
@@ -93,6 +93,7 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
   build-settings-modal(v-model:show="open" :project="project" :name="name" :owner="owner" :session="session" :draft="draft" :budget-error="budgetError" :creating="runner.busy.value" :creation-error="runner.error.value" :creation-pending="!!runner.pending.value" @refresh-budget="refreshBudget" @create="create" @saved="emit('changed')")
 </template>
 <style scoped>
+.placement-notice { margin-bottom: 1rem; }
 .build-tile:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
 .build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .4rem; top: .4rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { padding-right: 1.3rem; }
 .palette-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }

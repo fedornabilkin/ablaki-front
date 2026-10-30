@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppFacts from '@/components/AppFacts.vue';
 import SectionNav from '@/components/SectionNav.vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
 import WorldWorkspaceNav from './WorldWorkspaceNav.vue';
@@ -105,8 +106,21 @@ const nodeIcon = computed(() => world.node ? icons[world.node.type] : 'globe');
 const nodeKind = computed(() => world.node ? nodeLabels[world.node.type] : 'Мир');
 const parentName = computed(() => world.breadcrumbs.find(node => node.id === world.node?.parent_id)?.label ?? 'Родительский объект');
 const detail = computed(() => world.node?.details ?? {});
-const detailLabels: Record<string, string> = { climate: 'Климат', settlement_kind: 'Тип поселения', population: 'Жители', plot_limit: 'Лимит участков', building_kind: 'Тип постройки', level: 'Уровень', condition: 'Прочность', max_condition: 'Максимальная прочность', area: 'Площадь', exposure_class: 'Защита', plot_kind: 'Тип участка', fertility: 'Плодородие', allow_building: 'Можно строить', unlocked: 'Открыта', ordinal: 'Номер', harvested_quantity: 'Собрано урожая', operational_status: 'Состояние работы', settings_json: 'Настройки' };
-const facts = computed(() => ['condition', 'max_condition', 'area', 'exposure_class'].map(key => ({ key, label: detailLabels[key], value: detail.value[key] ?? '—' })));
+const facts = computed(() => {
+  const current = world.node;
+  if (!current) return [];
+  const exposure = String(detail.value.exposure_class ?? '—');
+  const exposureLabels: Record<string, string> = { outdoor: 'Под открытым небом', covered: 'Под навесом', indoor: 'В помещении', carried: 'В рюкзаке' };
+  return [
+    { key: 'object', label: 'Объект', icon: nodeIcon.value, value: `${current.label} · №${current.id}` },
+    { key: 'status', label: 'Статус', icon: statusIcons[current.status] || 'check-circle', value: statuses[current.status] || current.status },
+    { key: 'access', label: 'Доступ', icon: current.visibility === 'private' ? 'lock' : 'globe', value: current.visibility === 'private' ? 'Личный' : 'Открытый' },
+    { key: 'coordinates', label: 'Координаты', icon: 'crosshairs', value: `${current.coordinates.x}, ${current.coordinates.y}` },
+    { key: 'condition', label: 'Прочность', icon: 'shield-halved', value: `${detail.value.condition ?? '—'} / ${detail.value.max_condition ?? '—'}` },
+    { key: 'area', label: 'Площадь', icon: 'map', value: String(detail.value.area ?? '—') },
+    { key: 'exposure', label: 'Защита', icon: 'house', value: exposureLabels[exposure] ?? exposure },
+  ];
+});
 const extensionProps = computed(() => ({ node: world.node!, owner: owner.value, session: session.value, revision: world.dataRevision, writable: Boolean(world.capabilities?.world_write), command }));
 function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, hash: `#${tab}` }; }
 </script>
@@ -171,18 +185,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
                 font-awesome-icon(icon="rotate" aria-hidden="true")
               span.world-refresh-label Обновить
             world-help-hint(label="Параметры объекта" symbol="i")
-              dl.world-facts
-                dt Объект
-                dd {{ world.node.label }} · №{{ world.node.id }}
-                dt Статус
-                dd {{ statuses[world.node.status] || world.node.status }}
-                dt Доступ
-                dd {{ world.node.visibility === 'private' ? 'Личный' : 'Открытый' }}
-                dt Координаты
-                dd {{ world.node.coordinates.x }}, {{ world.node.coordinates.y }}
-                template(v-for="fact in facts" :key="fact.key")
-                  dt {{ fact.label }}
-                  dd {{ fact.value }}
+              app-facts(:items="facts")
         .world-children
           world-map(:active="activeTab === 'map'" :working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
             template(#information)
@@ -276,9 +279,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 .world-action-links { gap: 0; }
 .world-action-links a { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
 .world-action-links p { color: var(--text-muted); }
-.world-facts { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem 1rem; margin: .75rem 0 1rem; }
-.world-facts dt { color: var(--text-muted); }
-.world-facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .world-siblings { padding: .75rem 0; border-top: 1px solid var(--border); }
 .world-section-title { margin-bottom: .5rem; }
 .world-inline-links { padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, reactive, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldMvpProgress from '../src/components/pages/world/WorldMvpProgress.vue';
+import WorldDevelopmentRoute from '../src/components/pages/world/WorldDevelopmentRoute.vue';
 import WorldStorageExpansion from '../src/components/pages/world/WorldStorageExpansion.vue';
 import WorldPaymentSources from '../src/components/pages/world/WorldPaymentSources.vue';
 import WorldHelpHint from '../src/components/pages/world/WorldHelpHint.vue';
@@ -17,6 +18,7 @@ vi.mock('../src/services/api/worldMvp', () => ({ loadMvp: mocks.mvp, milestoneLa
 vi.mock('../src/services/api/worldEconomyStorage', () => ({ loadEconomyStorage: mocks.storage, previewEconomyStorage: mocks.storagePreview }));
 vi.mock('../src/services/api/world', () => ({ isClosedTestError: () => false, worldError: () => 'Ошибка запроса' }));
 clientView(WorldMvpProgress, 'components/pages/world/WorldMvpProgress.vue');
+clientView(WorldDevelopmentRoute, 'components/pages/world/WorldDevelopmentRoute.vue');
 clientView(WorldPaymentSources, 'components/pages/world/WorldPaymentSources.vue');
 clientView(WorldHelpHint, 'components/pages/world/WorldHelpHint.vue');
 clientView(WorldStorageExpansion, 'components/pages/world/WorldStorageExpansion.vue');
@@ -52,6 +54,18 @@ describe('economy panel load recovery', () => {
     expect(eat.props.disabled).toBe(false); expect(eat.props.type).toBe('primary');
     eat.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('economy/food', { code: 'carrot', health_revision: 4 });
+  });
+  it('opens the development route and closes it when following a step', async () => {
+    mocks.mvp.mockResolvedValue({ enabled: true, feedback: '/forum', goals: [], quotas: [], health: { hp: 100, maximum: 100, foods: [] },
+      development: { version: 1, completed: 0, total: 1, nextStage: 'home', stages: [{ code: 'home', title: 'Своя стоянка', description: 'Начните с города.', completed: false,
+        steps: [{ code: 'city_joined', title: 'Заселиться в город', completed: false, quantity: 0, required: 1, href: '/world' }] }] } });
+    const view = mountView(WorldMvpProgress, () => ({ owner: 1, session: 1, revision: 1, writable: true })); app = view.app;
+    findView(view.root, node => node.tag === 'button' && node.props['aria-label'] === 'Задания')!.props.onClick(); await flushView();
+    expect(viewText(view.root)).toContain('От стоянки до буровой');
+    const step = findView(view.root, node => node.tag === 'a' && node.props['aria-label'] === 'Заселиться в город')!;
+    expect(step.props.to).toBe('/world'); step.props.onClick(); await flushView();
+    expect(findView(view.root, node => node.props.role === 'dialog')).toBeUndefined();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
   });
   it('switches four journey tabs and closes the modal when following a task action', async () => {
     const goal = (code: string) => ({ code, claimed: false, funded: true, canClaim: false, credits: '50.0000', steps: [{ code: 'camp', completed: false, quantity: 0, required: 1, href: '/world/nodes/5' }] });

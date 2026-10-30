@@ -31,7 +31,7 @@ export function parseMvp(value: unknown) {
   if (!/^\/forum(?:\/read\/[1-9]\d*)?$/.test(feedback)) throw new Error('invalid-world-response');
   const href = (value: unknown): string | null => {
     if (value === undefined || value === null) return null;
-    if (typeof value !== 'string' || !/^\/world(?:\/nodes\/[1-9]\d*|\/workspace\/[1-9]\d*)?$/.test(value)) throw new Error('invalid-world-response');
+    if (typeof value !== 'string' || !/^\/world(?:\/nodes\/[1-9]\d*|\/workspace\/[1-9]\d*|\/character)?$/.test(value)) throw new Error('invalid-world-response');
     return value;
   };
   return { enabled: bool(row.enabled), feedback: '/forum', serverTime: integer(row.server_time),
@@ -41,6 +41,7 @@ export function parseMvp(value: unknown) {
     personalCredits: row.personal_credit_cr === undefined ? null : creditAmount(row.personal_credit_cr),
     targetStartCredits: startAmount == null ? null : creditAmount(startAmount),
     secondMilestoneDay: row.second_milestone_day === undefined || row.second_milestone_day === null ? null : integer(row.second_milestone_day, 1, 365),
+    development: row.development == null ? null : parseDevelopment(row.development, href),
     health: parseHealth(row.health),
     goals: list(row.goals).map(value => {
       const goal = record(value);
@@ -55,11 +56,30 @@ export function parseMvp(value: unknown) {
 export async function loadMvp() { return parseMvp((await apiClient.get(config.makeApiUrl('v1/world/economy'))).data); }
 export type MvpState = ReturnType<typeof parseMvp>;
 
+function parseDevelopment(value: unknown, href: (value: unknown) => string | null) {
+  const route = record(value);
+  const stages = list(route.stages).map(value => {
+    const stage = record(value);
+    return { code: text(stage.code), title: text(stage.title), description: text(stage.description), completed: bool(stage.completed),
+      steps: list(stage.steps).map(value => {
+        const step = record(value);
+        return { code: text(step.code), title: text(step.title), completed: bool(step.completed), quantity: integer(step.quantity), required: integer(step.required, 1), href: href(step.action_href) };
+      }) };
+  });
+  const nextStage = route.next_stage == null ? null : text(route.next_stage);
+  if (nextStage !== null && !stages.some(stage => stage.code === nextStage)) throw new Error('invalid-world-response');
+  const total = integer(route.total, 1), completed = integer(route.completed, 0, total);
+  if (stages.reduce((count, stage) => count + stage.steps.length, 0) !== total) throw new Error('invalid-world-response');
+  return { version: integer(route.version, 1), stages, nextStage, total, completed };
+}
+
+export type DevelopmentState = NonNullable<MvpState['development']>;
+
 export const milestoneLabels: Record<string, string> = {
   city_joined: 'Вступить в мир', starter_site_active: 'Завершить стоянку', explore_3_owned_map_cells: 'Исследовать три ячейки',
   shelter_built: 'Построить шалаш', hammer_crafted: 'Получить молоток', gather_5_logs: 'Получить пять брёвен', gather_5_stones: 'Получить пять камней',
   campfire_placed: 'Разместить костёр', garden_built: 'Построить огород', shovel_crafted: 'Изготовить лопату', bed_dug: 'Вскопать грядку', carrot_sown: 'Посадить морковь',
-  daily_supply_claimed: 'Получить ежедневное снабжение', carrot_harvested: 'Собрать морковь', mine_built: 'Построить шахту', stone_pickaxe_crafted: 'Изготовить каменную кирку',
+  daily_supply_claimed: 'Получить ежедневное снабжение', carrot_harvested: 'Собрать морковь', mine_built: 'Построить шахту', stone_pickaxe_crafted: 'Получить каменную кирку',
   stone_mined: 'Добыть камень в шахте', coal_mined: 'Добыть уголь', ore_mined: 'Добыть руду', forge_built: 'Построить кузницу',
   bench_crafted: 'Изготовить верстак', furnace_crafted: 'Изготовить плавильню', ingot_crafted: 'Изготовить слиток',
 };

@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import { ref } from 'vue';
-import { NButton, NPopover } from 'naive-ui';
+import { NButton } from 'naive-ui';
 import WorldCharacterProgress from './WorldCharacterProgress.vue';
 import type { MvpState } from '@/services/api/worldMvp';
 defineProps<{ health?: MvpState['health']; healthError?: string; session: number }>();
 const opened = ref(false);
 </script>
 <template lang="pug">
-n-popover(trigger="click" placement="bottom-end" :style="{ maxWidth: 'min(30rem, 90vw)' }" @update:show="value => { if (value) opened = true; }")
+app-popover(trigger="click" placement="bottom-end" @update:show="value => { if (value) opened = true; }")
   template(#trigger)
     n-button(size="small" circle aria-label="Персонаж: здоровье и прокачка" title="Персонаж")
       template(#icon)

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import ItemCellContent from '@/components/ItemCellContent.vue';
 import { computed } from 'vue';
-import { NPopover } from 'naive-ui';
+
 import type { CraftItem, CraftSlot } from '@/services/api/classicCraft';
 import { inventoryCells } from '@/entities/craft/inventory';
 const props = defineProps<{ slots: CraftSlot[]; count: number; active: number; items: Map<number, CraftItem>; selected?: CraftSlot; blocked: boolean; target?: number; dragging?: number; label: string }>();
@@ -11,7 +12,7 @@ const cells = computed(() => inventoryCells(props.slots, props.count));
 <template lang="pug">
 .inventory-grid(:aria-label="label" role="list")
   .inventory-cell(v-for="(slot, index) in cells" :key="index" role="listitem" :ref="element => emit('element', index + 1, element)" :class="{'drop-target': target === index + 1, locked: index >= active, matching: slot && selected && slot.id !== selected.id && slot.item_id === selected.item_id}")
-    n-popover(v-if="slot" trigger="hover" :disabled="!!dragging")
+    app-popover(v-if="slot" trigger="hover" :disabled="!!dragging")
       template(#trigger)
         button.slot-item(type="button" :class="{selected: selected?.id === slot.id, dragging: dragging === slot.id}" :aria-label="(items.get(slot.item_id)?.name || 'Предмет') + ': ' + slot.quantity + ' шт.' + (index >= active ? '. Слот закрыт, предмет сохранён' : '')" :aria-pressed="selected?.id === slot.id" :disabled="blocked" aria-keyshortcuts="Shift+Enter" @keydown.shift.enter.prevent="emit('destination', index + 1)" @pointerdown="emit('down', $event, slot)" @pointermove="emit('move', $event)" @pointerup="emit('up', $event)" @pointercancel="emit('cancel')" @lostpointercapture="emit('cancel')" @click="emit('choose', $event, slot)")
           item-cell-content(:icon="items.get(slot.item_id)?.icon" :quantity="slot.quantity" :name="items.get(slot.item_id)?.name")

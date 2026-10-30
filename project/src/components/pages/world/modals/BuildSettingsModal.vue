@@ -11,6 +11,7 @@ import { NAlert, NButton, NCheckbox, NInput, NModal, NSpin } from 'naive-ui';
 import type { Build } from '@/services/api/simpleWorld';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { creditUnits, formatCredits } from '@/entities/world/credits';
+import { WORLD_NAME_MAX_LENGTH, validWorldName, worldNameLength } from '@/entities/world/names';
 const props = defineProps<{ show: boolean; project: Build | null; name: string; owner: number; session: number; navigate?: boolean; creating?: boolean; creationError?: string; repair?: boolean; draft?: { price: string; minimumBudget?: string; budgetAvailable: string | null }; creationPending?: boolean; budgetError?: string }>();
 const repairing = computed(() => props.repair || props.project?.job_kind === 'repair');
 const emit = defineEmits<{ 'update:show': [value: boolean]; saved: []; 'refresh-budget': []; create: [value: { name: string; labor_budget: string; top_up: boolean }, retry: boolean] }>();
@@ -20,7 +21,7 @@ const blocked = computed(() => runner.busy.value || !!runner.pending.value || !!
 const minimum = computed(() => props.draft?.minimumBudget ?? props.project?.minimum_labor_budget ?? '0');
 const normalizedBudget = computed(() => budget.value.trim() || '0');
 const helpers = computed(() => /^(0|[1-9]\d*)(\.\d{1,4})?$/.test(normalizedBudget.value) ? String(creditUnits(normalizedBudget.value) / 20000n) : '0');
-const valid = computed(() => !!name.value.trim() && /^(0|[1-9]\d{0,10})(\.\d{1,4})?$/.test(normalizedBudget.value) && (Number(normalizedBudget.value) === 0 || Number(normalizedBudget.value) >= Number(minimum.value)) && (props.project?.can_reduce_budget !== false || Number(normalizedBudget.value) >= Number(props.project.labor_budget)));
+const valid = computed(() => validWorldName(name.value) && /^(0|[1-9]\d{0,10})(\.\d{1,4})?$/.test(normalizedBudget.value) && (Number(normalizedBudget.value) === 0 || Number(normalizedBudget.value) >= Number(minimum.value)) && (props.project?.can_reduce_budget !== false || Number(normalizedBudget.value) >= Number(props.project.labor_budget)));
 const available = computed(() => props.draft?.budgetAvailable ?? props.project?.budget_available ?? null);
 const needsTopUp = computed(() => valid.value && available.value !== null && creditUnits(props.draft?.price ?? '0') + creditUnits(normalizedBudget.value) - creditUnits(props.project?.labor_budget ?? '0') > creditUnits(available.value));
 const paymentPrice = computed(() => {
@@ -42,7 +43,7 @@ async function save(retry = false) {
 </script>
 <template lang="pug">
 app-dialog(icon="hammer" :show="show" :title="repairing ? 'Параметры ремонта' : 'Параметры строительства'" :mask-closable="!blocked" :close-on-esc="!blocked" :closable="!blocked" :style="{ width: 'min(54rem, 95vw)' }" @update:show="emit('update:show', $event)")
-  .build-creation-status(role="status")
+  .build-creation-status(v-if="creating || (!project && !creationError && !draft)" role="status")
     n-spin(v-if="creating" size="small")
     span(v-if="creating") {{ repairing ? 'Подготавливаем ремонт…' : 'Размещаем объект…' }}
     span(v-else-if="!project && !creationError && !draft") Ожидаем подтверждение размещения.
@@ -59,9 +60,10 @@ app-dialog(icon="hammer" :show="show" :title="repairing ? 'Параметры р
           p При отмене возвращается 70% материалов, цена объекта не возвращается.
       .build-settings-fields
         label Название
-          n-input(v-model:value="name" :maxlength="120" :disabled="blocked" :input-props="{ 'aria-label': 'Название объекта' }")
+          n-input(v-model:value="name" :maxlength="WORLD_NAME_MAX_LENGTH" :count-graphemes="worldNameLength" show-count :disabled="blocked" :input-props="{ 'aria-label': 'Название объекта' }")
+          small.build-name-hint Не более {{ WORLD_NAME_MAX_LENGTH }} символов
         label {{ repairing ? 'Бюджет ремонта, кредиты' : 'Бюджет строительства, кредиты' }}
-          world-credit-input(v-model:value="budget" :disabled="blocked" :input-props="{ inputmode: 'decimal', 'aria-label': repairing ? 'Бюджет ремонта' : 'Бюджет строительства' }")
+          world-credit-input.build-budget-input(v-model:value="budget" exact :disabled="blocked" :input-props="{ type: 'number', min: '0', step: '0.0001', inputmode: 'decimal', 'aria-label': repairing ? 'Бюджет ремонта' : 'Бюджет строительства' }")
       p(v-if="project?.can_reduce_budget === false") Помощники уже приняли работу. Их оплату можно увеличить.
       .build-money-summary
         p Свободный бюджет:
@@ -83,6 +85,8 @@ app-dialog(icon="hammer" :show="show" :title="repairing ? 'Параметры р
 </template>
 <style scoped>
 .build-creation-status { display: flex; align-items: center; gap: .5rem; min-height: 1.5rem; }
+.build-budget-input { width: 50%; min-width: 7rem; }
+.build-name-hint { color: var(--text-muted); font-size: .75rem; }
 .build-settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }.build-settings-form, .build-settings-fields { display: grid; gap: .85rem; }.build-settings-fields label { display: grid; gap: .4rem; min-width: 0; }.build-settings-form > .n-button { justify-self: start; }.build-money-summary p { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; margin: .3rem 0; }.build-settings-layout :deep(.world-credits) { margin-inline: .2em; }.build-instructions { color: var(--text-muted); font-size: .85rem; }.build-instructions h3 { margin-top: 0; color: var(--text); }.build-mobile-help { display: none; }
-@media(max-width: 640px) { .build-settings-layout { grid-template-columns: 1fr; }.build-instructions { display: none; }.build-mobile-help { display: flex; justify-content: flex-end; } }
+@media(max-width: 640px) { .build-settings-layout { grid-template-columns: 1fr; }.build-settings-form { position: relative; }.build-instructions { display: none; }.build-mobile-help { display: flex; position: absolute; right: 0; top: -.3rem; } }
 </style>
