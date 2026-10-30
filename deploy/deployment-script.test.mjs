@@ -33,6 +33,15 @@ test('nginx test templates serve the direct static root without a default server
   }
 });
 
+test('frontend nginx compresses text assets and varies by accepted encoding while retaining immutable caching', () => {
+  for (const name of ['test-frontend.http.conf.example','test-frontend.https.conf.example','production-frontend.locations.conf.example']) {
+    const config = readFileSync(new URL(`./nginx/${name}`, import.meta.url),'utf8');
+    assert.match(config,/gzip on;/); assert.match(config,/gzip_vary on;/); assert.match(config,/gzip_min_length 1024;/);
+    assert.match(config,/gzip_types[^;]*text\/css[^;]*application\/javascript[^;]*application\/json[^;]*image\/svg\+xml/);
+    assert.match(config,/public, max-age=31536000, immutable/); assert.match(config,/no-store/);
+  }
+});
+
 test('a remaining test checkout is preserved before releases, backup or rsync are touched', { skip: unavailable }, () => {
   const tempRoot = realpathSync.native(tmpdir());
   const fixture = mkdtempSync(join(tempRoot, 'ablaki-web-root-'));

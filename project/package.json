@@ -5,7 +5,10 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --host 0.0.0.0",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run --project unit",
+    "test:slow": "vitest run --project slow",
+    "test:full": "vitest run",
+    "test:profile": "vitest run --experimental.importDurations"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.6.0",

@@ -4,6 +4,8 @@
 
 [Workflow](../../.github/workflows/node.js.yml), [карта target](../../deploy/deployment-target.mjs), [серверный скрипт](../../deploy/frontend-deploy.sh), [общая валидация URL](../../deploy/check-api.mjs). Настройка backend описана отдельно в [его инструкции](https://github.com/fedornabilkin/ablaki/blob/master/docs/operations/production-test-deployment.md).
 
+Актуализация проверок от 30 октября: перед production выполняется `npm run test:full` (обычный проект, затем slow). Перед test — авторизация/HTTP, проверки выкладки и сборка; полный `test:full` запускается отдельным job после публикации. [Команды и локальные замеры](frontend-tests-2026-10-30.md).
+
 ## 1. Параметры окружений
 
 | Параметр | Production | Test |
@@ -197,4 +199,4 @@ Releases production и test хранятся отдельно. Готовый к
 | 404 для всех assets | Root vhost на порту 3181 и asset location должны указывать на /var/code/ablaki-front |
 | Повтор SHA не меняет VITE_* | Нужен новый коммит и новая сборка |
 
-Локальные Node tests используют только временный HTTP сервер, без production запросов. Статическая проверка workflow и Bash не заменяет реальную публикацию и проверку rollback на test VPS. [План оставшихся серверных проверок](../plan/2026-09-06-production-test-deployment.md).
+Локальные Node tests используют только временный HTTP сервер, без production запросов. Статическая проверка workflow и Bash не заменяет реальную публикацию и проверку rollback на test VPS. [План оставшихся серверных проверок](deployment-github-vps.md).

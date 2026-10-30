@@ -1,3 +1,5 @@
+// @module-tag slow
+// Broad component/rendering checks: use test:slow or test:full.
 import { describe, expect, it } from 'vitest';
 import { createSSRApp, h } from 'vue';
 import { renderToString } from '@vue/server-renderer';

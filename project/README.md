@@ -15,23 +15,19 @@ npm run dev
 npm run build
 ```
 
-### Run your tests
-```
-npm run test
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Run your unit tests
+### Tests
 ```
 npm run test:unit
+npm run test:slow
+npm run test:full
+npm run test:profile
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+`test:unit` runs the ordinary isolated checks. `test:slow` runs the separately marked rendering and broad interaction checks. `test:full` runs both projects, unit first and slow second; it is required before production. `test:profile` runs the full suite and reports import costs.
+
+Slow files use `*.slow.test.ts` and the Vitest `// @module-tag slow` marker. Filtering happens at file discovery, so the ordinary run does not load their component graphs. Per-file isolation remains enabled. Transformed modules are cached under `node_modules/.vitest-cache` for subsequent runs; `npm ci` removes this local cache.
+
+To select cases: `npm run test:unit -- tests/auth.test.ts tests/httpClient.test.ts` or `npm run test:slow -- world-controls-interaction`. Build/runtime configuration is in `vite.config.js`. There is no separate lint or typecheck command.
 
 # Работа с проектом
 ## Вывод ошибок 

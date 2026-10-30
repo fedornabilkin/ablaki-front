@@ -1,12 +1,72 @@
+import { parseKitchen } from '../src/services/api/worldKitchen';
 import { describe, expect, it } from 'vitest';
 import { parseMvp } from '../src/services/api/worldMvp';
 import { parseMining } from '../src/services/api/worldMining';
 import { parseEconomyHistory } from '../src/services/api/worldEconomyHistory';
+import { checklistItems, checklistKey, checklistStatus, emptyChecklist, emptyEntry, observeChecklist, parseChecklist, readChecklist, saveChecklist } from '../src/entities/world/checklist';
 
 const mvp = () => ({ enabled: true, server_time: 100, feedback_path: '/forum/read/80',
-  health: { hp: 85, max_hp: 100, revision: 1, foods: [{ code: 'world-cooked-carrot', name: 'Печёная морковь', restore_hp: 15, quantity: 2 }] },
+  health: { hp: 85, max_hp: 100, revision: 1, foods: [{ code: 'world-cooked-carrot', name: 'Печёная морковь', restore_hp: 4, quantity: 2 }] },
   goals: [{ code: 'day-1', claimed: false, funded: true, can_claim: false, credits_cr: '50.0000', steps: [{ code: 'city_joined', completed: true, quantity: 1, required: 1 }] }],
   quotas: [{ kind: 'extraction_daily', maximum: 20, remaining: 19, restores_at: 86400 }] });
+
+describe('persistent world acceptance checklist', () => {
+  it('separates accounts and recreated worlds, rejects unsafe identifiers', () => {
+    expect(checklistKey(1, '1:100')).not.toBe(checklistKey(2, '1:100'));
+    expect(checklistKey(1, '1:100')).not.toBe(checklistKey(1, '1:101'));
+    for (const owner of [0, -1, NaN, 1.5]) expect(() => checklistKey(owner, '1:100')).toThrow();
+    for (const instance of ['', '../token', '1:0', 'abc', '1:1:1']) expect(() => checklistKey(1, instance)).toThrow();
+    expect(parseMvp({ ...mvp(), world_instance: '1:1793300000' }).worldInstance).toBe('1:1793300000');
+    expect(parseMvp(mvp()).worldInstance).toBeNull();
+    expect(() => parseMvp({ ...mvp(), world_instance: '<script>' })).toThrow();
+  });
+  it('persists observed milestones after consumption and respects a manual failure', () => {
+    const state = parseMvp({ ...mvp(), starter_funding: { status: 'paid', amount_cr: '250.0000' } });
+    const run = emptyChecklist(1000);
+    run.entries.starter = { ...emptyEntry(), result: 'fail', note: 'Сумма не совпала', updatedAt: 1100 };
+    const observed = observeChecklist(run, state, 1200);
+    expect(observed.entries.starter).toMatchObject({ result: 'fail', autoAt: 1200, note: 'Сумма не совпала' });
+    expect(checklistStatus(observed.entries.starter)).toBe('fail');
+    observed.entries.starter!.result = 'auto';
+    expect(checklistStatus(observed.entries.starter)).toBe('pass');
+    expect(observeChecklist(observed, parseMvp(mvp()), 1300)).toBe(observed);
+    expect(observed.entries.starter!.autoAt).toBe(1200);
+    expect(observeChecklist(run, null)).toBe(run);
+  });
+  it('requires all grouped steps and both claimed rewards; never passes manual checks automatically', () => {
+    const state = parseMvp(mvp());
+    state.goals[0].steps.push({code: 'starter_site_active', completed: true, quantity: 1, required: 1, href: null});
+    state.goals[0].claimed = true;
+    const partial = observeChecklist(emptyChecklist(1000), state, 1200);
+    expect(checklistStatus(partial.entries.join)).toBe('pass');
+    expect(checklistStatus(partial.entries.rewards)).toBe('pending');
+    state.goals.push({...state.goals[0], code: 'day-2'});
+    const complete = observeChecklist(partial, state, 1300);
+    expect(checklistStatus(complete.entries.rewards)).toBe('pass');
+    expect(checklistStatus(complete.entries.npc)).toBe('pending');
+    expect(new Set(checklistItems.map(item => item.id)).size).toBe(checklistItems.length);
+  });
+  it('restores manual results and notes on reload without retaining unknown injected keys', () => {
+    const values = new Map<string, string>(), storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+    const key = checklistKey(1, '1:100'), run = emptyChecklist(1000);
+    run.entries.npc = { result: 'pass', note: '15 камня, оплата 3', autoAt: null, updatedAt: 1200 };
+    expect(saveChecklist(storage, key, run)).toBe(true);
+    expect(readChecklist(storage, key).run).toEqual(run);
+    expect(readChecklist(storage, checklistKey(2, '1:100')).run.entries).toEqual({});
+    expect(parseChecklist(JSON.stringify({...run, entries: {...run.entries, foreign: {token: 'ignored'}}}))).toEqual(run);
+  });
+  it('rejects corrupt, oversized and incompatible storage and reports unavailable persistence', () => {
+    for (const raw of ['{', 'null', '[]', JSON.stringify({...emptyChecklist(), version: 2}), JSON.stringify({...emptyChecklist(), startedAt: -1}),
+      JSON.stringify({...emptyChecklist(), entries: {npc: {...emptyEntry(), note: 'x'.repeat(1501)}}}),
+      JSON.stringify({...emptyChecklist(), entries: {npc: {...emptyEntry(), result: 'forged'}}}), 'x'.repeat(100001)]) {
+      expect(() => parseChecklist(raw)).toThrow();
+      expect(readChecklist({getItem: () => raw}, 'key').error).not.toBe('');
+    }
+    const broken = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('full'); } };
+    expect(readChecklist(broken, 'key').error).not.toBe('');
+    expect(saveChecklist(broken, 'key', emptyChecklist())).toBe(false);
+  });
+});
 
 describe('closed-test server contracts', () => {
   it('shows the accepted settlement payout instead of the default profile rate', () => {
@@ -14,7 +74,7 @@ describe('closed-test server contracts', () => {
     expect(parseMvp({...mvp(), target_start_credit_cr: '250.0000', starter_funding: null}).targetStartCredits).toBeNull();
   });
   it('keeps health revision, funded goals and exact reward credits', () => {
-    expect(parseMvp(mvp())).toMatchObject({ feedback: '/forum', health: { hp: 85, revision: 1, foods: [{ restore: 15, quantity: 2 }] }, goals: [{ credits: '50.0000', funded: true, canClaim: false }] });
+    expect(parseMvp(mvp())).toMatchObject({ feedback: '/forum', health: { hp: 85, revision: 1, foods: [{ restore: 4, quantity: 2 }] }, goals: [{ credits: '50.0000', funded: true, canClaim: false }] });
   });
   it('rejects unsafe feedback links, impossible health and malformed rewards', () => {
     for (const path of ['https://foreign.invalid/', '//foreign.invalid/', '/forum/read/0', '/forum/read/80?token=secret']) expect(() => parseMvp({ ...mvp(), feedback_path: path })).toThrow();
@@ -79,5 +139,32 @@ describe('closed-test server contracts', () => {
     expect(parseEconomyHistory(data).items[0]).toMatchObject({ balanceBefore: null, profileVersion: null, transferIds: [] });
     for (const change of [{ transfer_phase: 'paid' }, { transfer_ids: [-1] }, { profile_version: '2' }, { balance_after_cr: 'NaN' }])
       expect(() => parseEconomyHistory({ ...data, items: [{ ...item, ...change }] })).toThrow();
+  });
+});
+
+const health = () => ({ hp: 100, max_hp: 100, revision: 4, can_eat: true, disorder_until: null,
+  foods: [{ code: 'world-cooked-carrot', name: 'Печёная морковь', restore_hp: 4, kitchen_restore_hp: 15, quantity: 2,
+    can_eat: true, repeat_limit: 2, repeat_remaining: 1, repeat_seconds: 21600, restores_at: null }] });
+const breakfast = { code: 'breakfast', name: 'Завтрак', starts_at: 100, ends_at: 200 };
+const kitchen = () => ({ node_id: 12, meal: { timezone: 'Europe/Moscow', current: breakfast, next: { ...breakfast, code: 'lunch', name: 'Обед', starts_at: 300, ends_at: 400 } }, meal_used: false, health: health(), server_time: 150 });
+
+describe('food and meal contracts', () => {
+  it('keeps dish-specific limits and full-health nutrition available', () => {
+    const data = parseMvp({ enabled: true, feedback_path: '/forum', server_time: 150, health: health(), can_fund_goals: true,
+      goals: [{ code: 'day-1', claimed: false, funded: false, can_claim: false, credits_cr: '50.0000', steps: [], funding_settlement_id: 5, blocked_reason: 'Нужен резерв' }], quotas: [] });
+    expect(data.health).toMatchObject({ canEat: true, foods: [{ restore: 4, kitchenRestore: 15, repeatLimit: 2, repeatRemaining: 1, repeatSeconds: 21600, canEat: true }] });
+    expect(data.goals[0]).toMatchObject({ canClaim: false, blockedReason: 'Нужен резерв', fundingSettlement: 5 });
+    expect(data.canFundGoals).toBe(true);
+  });
+  it('preserves the shared meal window, used flag and the next meal outside serving hours', () => {
+    expect(parseKitchen(kitchen())).toMatchObject({ nodeId: 12, used: false, current: { code: 'breakfast', endsAt: 200 }, next: { code: 'lunch', startsAt: 300 } });
+    expect(parseKitchen({ ...kitchen(), meal_used: true, meal: { ...kitchen().meal, current: null } })).toMatchObject({ used: true, current: null, next: { code: 'lunch' } });
+  });
+  it('rejects malformed windows and repeat limits before displaying an action', () => {
+    expect(() => parseKitchen({ ...kitchen(), meal: { ...kitchen().meal, timezone: 'UTC' } })).toThrow();
+    expect(() => parseKitchen({ ...kitchen(), meal_used: 'false' })).toThrow();
+    expect(() => parseKitchen({ ...kitchen(), meal: { ...kitchen().meal, current: { ...breakfast, code: 'snack' } } })).toThrow();
+    expect(() => parseKitchen({ ...kitchen(), meal: { ...kitchen().meal, current: { ...breakfast, ends_at: breakfast.starts_at } } })).toThrow();
+    expect(() => parseKitchen({ ...kitchen(), health: { ...health(), foods: [{ ...health().foods[0], repeat_limit: 0 }] } })).toThrow();
   });
 });

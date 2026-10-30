@@ -1,6 +1,13 @@
 import type { MapPoint } from './coordinates';
 export interface MapPricing { paid_cells: number; base_price: string; next_price: string; curve?: 'rings'; outer_ring_multiplier?: number; bulk_minimum: number; discount_bps: number; max_quantity: number; currency: 'Cr' }
 export function requiredExplorerLevel(point: MapPoint): number { return Math.max(1, Math.min(3, Math.max(Math.abs(point.x), Math.abs(point.y)))); }
+export function explorationPredecessors(point: MapPoint): MapPoint[] {
+  const ring = Math.max(Math.abs(point.x), Math.abs(point.y)), cells: MapPoint[] = [];
+  if (ring < 2) return cells;
+  if (Math.abs(point.x) === ring) cells.push({ x: point.x - Math.sign(point.x), y: point.y });
+  if (Math.abs(point.y) === ring) cells.push({ x: point.x, y: point.y - Math.sign(point.y) });
+  return cells;
+}
 export function mapPurchase(pricing: MapPricing, cells: number | MapPoint[]) {
   const quantity = typeof cells === 'number' ? cells : cells.length;
   if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > pricing.max_quantity) throw new Error('invalid-map-quantity');

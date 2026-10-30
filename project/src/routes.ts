@@ -39,6 +39,7 @@ export const routes: RouteRecordRaw[] = [
   { path: '/city', component: () => import('./components/pages/city/City.vue'), meta: { requiresAuth: true } },
   { path: '/city/demo', component: () => import('./components/pages/city/City.vue'), meta: { requiresAuth: true } },
   { path: '/world', component: () => import('./components/pages/world/WorldPage.vue'), meta: { requiresAuth: true } },
+  { path: '/world/character', component: () => import('./components/pages/world/WorldCharacterPage.vue'), meta: { requiresAuth: true } },
   { path: '/world/nodes/:id', component: () => import('./components/pages/world/WorldPage.vue'), meta: { requiresAuth: true } },
     { path: '/world/storage/:id', component: () => import('./components/pages/world/WorldStoragePage.vue'), meta: { requiresAuth: true } },
     { path: '/world/equipment/:id/wear', component: () => import('./components/pages/world/WorldEquipmentWearPage.vue'), meta: { requiresAuth: true } },

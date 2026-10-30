@@ -26,9 +26,9 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.runner = { busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn(), retry: vi.fn() };
   mocks.load.mockResolvedValue(state());
-  mocks.storages.mockResolvedValue([{ id: 9, kind: 'stockpile', name: 'Склад', capacity: 50 }, { id: 10, kind: 'recovery', name: 'Возврат', capacity: 50 }]);
+  mocks.storages.mockResolvedValue([{ id: 9, kind: 'stockpile', name: 'Склад', capacity: 5 }, { id: 10, kind: 'recovery', name: 'Возврат', capacity: 50 }]);
 });
-afterEach(() => { app?.unmount(); app = undefined; vi.useRealTimers(); });
+afterEach(() => { app?.unmount(); app = undefined; vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('source batch destination', () => {
   it('shows the remaining daily quota before work starts and counts down from server time', async () => {
     vi.useFakeTimers({toFake: ['setInterval', 'clearInterval', 'performance']});
@@ -80,10 +80,11 @@ describe('source batch destination', () => {
   });
   it('ignores an older read that arrives after starting work', async () => {
     vi.useFakeTimers();
+    const revision = ref(1);
     let finish!: (value: unknown) => void;
     mocks.load.mockResolvedValueOnce(state()).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
-    const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true })); app = view.app; await flushView();
-    await vi.advanceTimersByTimeAsync(10_000);
+    const view = mountView(WorldMiningPanel, () => ({ nodeId: 4, owner: 1, session: 1, writable: true, revision: revision.value })); app = view.app; await flushView();
+    revision.value++; await flushView();
     mocks.runner.submit.mockResolvedValue({ ...state(), working: true, action_code: 'gather-log' });
     findView(view.root, node => node.tag === 'button' && viewText(node).includes('Работать над партией'))!.props.onClick(); await flushView();
     finish(state()); await flushView(); expect(viewText(view.root)).toContain('Приостановить добычу');
@@ -112,12 +113,16 @@ describe('source batch destination', () => {
     expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', { action_code: 'gather-log', output_destination: 'mini_storage' });
     expect(changed).toHaveBeenCalledOnce();
   });
-  it('returns an idle owner to backpack when the selected local mini-storage becomes unavailable', async () => {
+  it('refreshes changed storage choices on demand without polling an idle owner', async () => {
     vi.useFakeTimers();
-    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    const revision = ref(1);
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true, revision: revision.value})); app = view.app; await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n) === 'Мини-склад')!.props.onClick(); await flushView();
     mocks.load.mockResolvedValue({...state(), output_storages: [state().output_storages[0]]});
     await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+    revision.value++; await flushView();
+    expect(mocks.load).toHaveBeenCalledTimes(2);
     expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Рюкзак')!.props['aria-pressed']).toBe(true);
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Работать над партией'))!.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start', {action_code: 'gather-log'});
@@ -131,5 +136,81 @@ describe('source batch destination', () => {
     release({...state(), output_storages: [{ id: 99, kind: 'stockpile', name: 'Чужое хранилище', capacity: 50 }]}); await flushView();
     expect(findView(view.root, node => node.props['aria-label'] === 'Куда поступит добыча')).toBeUndefined();
     expect(mocks.storages).not.toHaveBeenCalled();
+  });
+});
+
+describe('source network activity', () => {
+  const working = () => ({...state(), working: true, work_id: 7, action_code: 'gather-log', required_seconds: 120, live_work: [{accounted_at: 100, last_seen_at: 100}]});
+  it('unlocks a source cooldown locally without polling or starting a batch', async () => {
+    vi.useFakeTimers(); mocks.load.mockResolvedValue({...state(),actions: [{...state().actions[0],work_seconds: 0,available_at: 102}]});
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4,owner: 1,session: 1,writable: true})); app = view.app; await flushView();
+    const button = () => findView(view.root,n => n.tag === 'button' && viewText(n).includes('Получить готовую партию'))!;
+    expect(button().props.disabled).toBe(true);
+    await vi.advanceTimersByTimeAsync(3000); await flushView(); expect(button().props.disabled).toBe(false);
+    expect(mocks.load).toHaveBeenCalledTimes(1); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('offers one explicit quota refresh after its deadline instead of polling or spending a batch', async () => {
+    vi.useFakeTimers(); mocks.load.mockResolvedValueOnce({...state(),quota: {maximum: 20,remaining: 0,restores_at: 102}}).mockResolvedValue({...state(),server_time: 103,quota: {maximum: 20,remaining: 20,restores_at: 86500}});
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4,owner: 1,session: 1,writable: true})); app = view.app; await flushView();
+    await vi.advanceTimersByTimeAsync(3000); await flushView(); expect(mocks.load).toHaveBeenCalledTimes(1);
+    const refresh = findView(view.root,n => n.tag === 'button' && viewText(n) === 'Обновить лимит')!;
+    expect(refresh.props.disabled).toBe(false); refresh.props.onClick(); await flushView();
+    expect(mocks.load).toHaveBeenCalledTimes(2); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Добыч за день осталось: 20 / 20');
+  });
+  it.each([state(), {...state(), action_code: 'gather-log', worked_seconds: 30}])('does not read or heartbeat an idle or paused source', async snapshot => {
+    vi.useFakeTimers(); mocks.load.mockResolvedValue(snapshot);
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    await vi.advanceTimersByTimeAsync(60_000); await flushView();
+    expect(mocks.load).toHaveBeenCalledTimes(1); expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('starts heartbeats after confirmation, stops after pause and starts again on resume', async () => {
+    vi.useFakeTimers();
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    const button = () => findView(view.root,n => n.tag === 'button' && /Работать над партией|Приостановить добычу|Возобновить работу/.test(viewText(n)))!;
+    mocks.runner.submit.mockResolvedValue(working()); button().props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('objects/4/mining/start',{action_code: 'gather-log'});
+    await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledTimes(2);
+    mocks.runner.submit.mockResolvedValue({...working(),working: false}); button().props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenLastCalledWith('objects/4/mining/stop',{});
+    const count = mocks.runner.submit.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(30_000); await flushView(); expect(mocks.runner.submit).toHaveBeenCalledTimes(count);
+    mocks.runner.submit.mockResolvedValue(working()); button().props.onClick(); await flushView();
+    await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledTimes(count+2); expect(mocks.load).toHaveBeenCalledTimes(1);
+  });
+  it('defers a hidden panel and pauses network work in a background document', async () => {
+    vi.useFakeTimers(); const events = new Map<string,()=>void>();
+    const document = {visibilityState: 'visible',addEventListener: (name: string,callback: ()=>void) => events.set(name,callback),removeEventListener: (name: string) => events.delete(name)};
+    vi.stubGlobal('document',document);
+    const active = ref(false); mocks.load.mockResolvedValue(working()); mocks.runner.submit.mockResolvedValue(working());
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true,active: active.value})); app = view.app; await flushView();
+    await vi.advanceTimersByTimeAsync(20_000); expect(mocks.load).not.toHaveBeenCalled(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    active.value = true; await flushView(); expect(mocks.load).toHaveBeenCalledTimes(1);
+    document.visibilityState = 'hidden'; events.get('visibilitychange')!(); await flushView();
+    await vi.advanceTimersByTimeAsync(30_000); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    document.visibilityState = 'visible'; events.get('visibilitychange')!(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledTimes(1);
+    active.value = false; await flushView(); await vi.advanceTimersByTimeAsync(30_000);
+    expect(mocks.runner.submit).toHaveBeenCalledTimes(1);
+    view.app.unmount(); app = undefined; expect(events.size).toBe(0);
+  });
+  it('suspends automatic work after an unconfirmed heartbeat instead of repeatedly starting new commands', async () => {
+    vi.useFakeTimers(); mocks.load.mockResolvedValue(working()); mocks.runner.submit.mockResolvedValue(undefined);
+    const revision = ref(1);
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true, revision: revision.value})); app = view.app; await flushView();
+    await vi.advanceTimersByTimeAsync(60_000); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledTimes(1); expect(mocks.load).toHaveBeenCalledTimes(1);
+    mocks.load.mockResolvedValue(state()); revision.value++; await flushView();
+    expect(mocks.load).toHaveBeenCalledTimes(2); expect(viewText(view.root)).toContain('Работать над партией');
+  });
+  it('coalesces completion checks and interval ticks while a ready batch awaits the server', async () => {
+    vi.useFakeTimers(); const snapshot = {...working(),required_seconds: 2,actions: [{...state().actions[0],work_seconds: 2}]};
+    mocks.load.mockResolvedValue(snapshot); mocks.runner.submit.mockResolvedValue(snapshot);
+    const view = mountView(WorldMiningPanel, () => ({nodeId: 4, owner: 1, session: 1, writable: true})); app = view.app; await flushView();
+    await vi.advanceTimersByTimeAsync(11_000); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(10_000); expect(mocks.runner.submit).toHaveBeenCalledTimes(2);
   });
 });

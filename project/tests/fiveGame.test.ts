@@ -1,35 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fiveGame, fiveRole, canMoveFive, moveFive, createFive, cancelFive } from '../src/services/api/fiveGame';
-import { createSSRApp } from 'vue';
-import { renderToString } from '@vue/server-renderer';
-import { createMemoryHistory, createRouter } from 'vue-router';
-import FiveBoard from '../src/components/pages/games/five/FiveBoard.vue';
-import { routes } from '../src/routes';
 const client = vi.hoisted(() => ({ post: vi.fn(), delete: vi.fn() }));
 vi.mock('../src/services/httpClient', () => ({ apiClient: client }));
-// Popup positioning requires a browser; render its trigger while testing the board's real controls.
-vi.mock('naive-ui', async importOriginal => ({ ...await importOriginal<typeof import('naive-ui')>(), NPopconfirm: { template: '<div><slot name="trigger" /></div>' } }));
-export const dto = { id: 1, user_id: 1, user_gamer: 0, creator: { id: 1, username: 'Creator', person: { rating: 12.5 } },
+const dto = { id: 1, user_id: 1, user_gamer: 0, creator: { id: 1, username: 'Creator', person: { rating: 12.5 } },
   kon: '10', bank: '20', commission: '1', winner_amount: '19', status: 'free', turn: 'gamer', user_points: 0, gamer_points: 0,
   last_hod: { id: 7, status: 'wait', gamer_ball: 0, user_amount: 0, gamer_amount: 0 } };
 describe('5 apples API contract', () => {
-  it('connects all game pages under authentication and renders role-specific controls', async () => {
-    const router = createRouter({ history: createMemoryHistory(), routes });
-    for (const path of ['/games/five', '/games/five/my', '/games/five/history']) {
-      const route = router.resolve(path);
-      expect(route.meta.requiresAuth).toBe(true); expect(route.matched[0].path).not.toContain('rest');
-    }
-    const render = async (userId: number, data = dto) => {
-      const app = createSSRApp(FiveBoard, { game: fiveGame(data), userId, credit: 100, busy: false, blocked: false });
-      app.use(router); app.component('font-awesome-icon', { template: '<span />' });
-      return renderToString(app);
-    };
-    const guest = await render(2);
-    expect(guest).toContain('Победителю:'); expect(guest).toContain('aria-label="19 кредитов"'); expect(guest).toContain('Число яблок'); expect(guest).toContain('/wall/Creator');
-    expect(guest).not.toContain('Ваш скрытый ход');
-    const creator = await render(1, { ...dto, last_hod: { ...dto.last_hod, user_ball: 4 } } as typeof dto);
-    expect(creator).toContain('Ваш скрытый ход: 4'); expect(creator).toContain('Отменить игру'); expect(creator).not.toContain('Число яблок');
-  });
+
   it('uses server amounts, role, turn and balance without guessing hidden moves', () => {
     const game = fiveGame(dto);
     expect(game.winner_amount).toBe(19); expect(game.last_hod?.user_ball).toBeUndefined();

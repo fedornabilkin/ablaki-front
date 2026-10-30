@@ -1,6 +1,8 @@
+import { projectedWorkSeconds } from '../src/entities/world/workProgress';
+import { pixelToWorld, worldToPixel } from '../src/entities/world/coordinates';
 import { describe, expect, it } from 'vitest';
 import { mapAreaCells, mapPurchase } from '../src/entities/world/mapSelection';
-import { discountedCredits, formatCredits } from '../src/entities/world/credits';
+import { discountedCredits, formatCredits, needsPersonalTopUp } from '../src/entities/world/credits';
 import { optimisticTransfer, storageCells, storageTransfer } from '../src/entities/world/storageInteraction';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { StorageMapContext } from '../src/entities/world/storageInteraction';
@@ -103,5 +105,37 @@ describe('storage cell destinations', () => {
     expect(storageTransfer(source, unit, target, 2, 2, null)).toBeNull();
     expect(storageTransfer(source, unit, target, 2, 1, 41)).toBeNull();
     expect(storageTransfer(source, unit, target, 1, 1, null)).toBeNull();
+  });
+});
+
+it('maps Cartesian cells to screen pixels and back, including negative coordinates', () => {
+  const viewport = { minX: -3, maxY: 4 };
+  expect(worldToPixel({ x: -1, y: 2 }, viewport, 72)).toEqual({ x: 144, y: 144 });
+  expect(pixelToWorld({ x: 145, y: 143 }, viewport, 72)).toEqual({ x: -1, y: 3 });
+  expect(pixelToWorld(worldToPixel({ x: 0, y: -2 }, viewport, 72), viewport, 72)).toEqual({ x: 0, y: -2 });
+});
+
+
+describe('server anchored work projection', () => {
+  const work = { worked_seconds: 20, required_seconds: 120, server_time: 110, working: true, live_work: [{ accounted_at: 100, last_seen_at: 105 }] };
+  it('advances smoothly from the last checkpoint and stops at the disconnect window', () => {
+    expect(projectedWorkSeconds(work, 0)).toBe(30);
+    expect(projectedWorkSeconds(work, 2.5)).toBe(32.5);
+    expect(projectedWorkSeconds(work, 1000)).toBe(85);
+    expect(projectedWorkSeconds({ ...work, working: false }, 1000)).toBe(20);
+    expect(projectedWorkSeconds({ ...work, required_seconds: 40 }, 1000)).toBe(40);
+  });
+  it('accepts a new server checkpoint without double counting work', () => {
+    const next = { ...work, worked_seconds: 40, server_time: 120, live_work: [{ accounted_at: 120, last_seen_at: 120 }] };
+    expect(projectedWorkSeconds(work, 10)).toBe(projectedWorkSeconds(next, 0));
+    expect(projectedWorkSeconds(next, 5)).toBe(45);
+  });
+});
+describe('optional personal contributions', () => {
+  it('requires a contribution only for a positive shortfall and known budget', () => {
+    expect(needsPersonalTopUp('0.0001', '0')).toBe(true);
+    expect(needsPersonalTopUp('0', '0')).toBe(false);
+    expect(needsPersonalTopUp('10.0000', '10')).toBe(false);
+    expect(needsPersonalTopUp('10', null)).toBe(false);
   });
 });

@@ -10,14 +10,21 @@ import { formatCredits } from '@/entities/world/credits';
 import WorldCountdown from './WorldCountdown.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
 const props = defineProps<{ owner: number; session: number; revision: number; writable: boolean }>();
-const emit = defineEmits<{ changed: [] }>();
+const emit = defineEmits<{ changed: []; snapshot: [value: { state: MvpState | null; loading: boolean; error: string }] }>();
 const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(false), loading = ref(false);
 const show = ref(false), tab = ref('camp');
+watch([state, loading, error], () => emit('snapshot', { state: state.value, loading: loading.value, error: error.value }), { flush: 'sync' });
 const activeGoal = computed(() => state.value?.goals.find(goal => goal.code === (tab.value === 'resources' ? 'day-2' : 'day-1')));
 const orderedSteps = computed(() => [...(activeGoal.value?.steps ?? [])].sort((a, b) => Number(a.completed) - Number(b.completed)));
 const remainingTasks = computed(() => state.value?.goals.reduce((total, goal) => total + (goal.claimed ? 0 : goal.steps.filter(step => !step.completed).length), 0) ?? null);
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.mvp`), computed(() => props.session));
 let generation = 0;
+let refreshQueued = false, disposed = false;
+function refresh() {
+  if (refreshQueued) return;
+  refreshQueued = true;
+  queueMicrotask(() => { refreshQueued = false; if (!disposed && props.owner) void load(); });
+}
 async function load() {
   const current = ++generation; loading.value = true; error.value = ''; closedTest.value = false;
   try { const result = await loadMvp(); if (current === generation) { state.value = result; error.value = ''; } }
@@ -27,15 +34,15 @@ async function load() {
 async function act(path?: string, body: Record<string, unknown> = {}) {
   const current = generation;
   const result = path ? await runner.submit(path, body) : await runner.retry();
-  if (result && current === generation) { emit('changed'); await load(); }
+  if (result && current === generation) { emit('changed'); refresh(); }
 }
 const busy = computed(() => !props.writable || runner.busy.value || !!runner.pending.value);
 const titles: Record<string, string> = { 'day-1': 'Первый лагерь', 'day-2': 'Ресурсы и первый металл' };
 const quotaLabels: Record<string, string> = { crafting_hourly: 'Изготовление за час', extraction_daily: 'Добыча сегодня', sales_daily: 'Продажи сегодня' };
 watch(() => [props.owner, props.session], () => { generation++; state.value = null; error.value = ''; show.value = false; if (props.owner) void load(); }, {immediate: true});
 watch(show, value => { if (value && !state.value && !error.value && !loading.value) void load(); });
-watch(() => props.revision, () => { if (props.owner) void load(); });
-onScopeDispose(() => { generation++; });
+watch(() => props.revision, refresh);
+onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 n-button.mvp-tasks-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")

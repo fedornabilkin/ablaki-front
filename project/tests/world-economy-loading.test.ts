@@ -3,18 +3,22 @@ import { h, reactive, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldMvpProgress from '../src/components/pages/world/WorldMvpProgress.vue';
 import WorldStorageExpansion from '../src/components/pages/world/WorldStorageExpansion.vue';
+import WorldPaymentSources from '../src/components/pages/world/WorldPaymentSources.vue';
+import WorldHelpHint from '../src/components/pages/world/WorldHelpHint.vue';
 
 const mocks = vi.hoisted(() => ({ mvp: vi.fn(), storage: vi.fn(), storagePreview: vi.fn(), runner: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const modal = { props: { show: Boolean }, setup: (props: any, { slots }: any) => () => props.show ? h('section', { role: 'dialog' }, slots.default?.()) : null };
-  return { NModal: modal, NSpin: block('span'), NTabs: block('div'), NTabPane: block('div'), NAlert: block('aside'), NButton: block('button'), NProgress: block('progress'), NInputNumber: block('input'), NCheckbox: block('input') };
+  return { NModal: modal, NPopover: block('div'), NSpin: block('span'), NTabs: block('div'), NTabPane: block('div'), NAlert: block('aside'), NButton: block('button'), NProgress: block('progress'), NInputNumber: block('input'), NCheckbox: block('input') };
 });
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/worldMvp', () => ({ loadMvp: mocks.mvp, milestoneLabels: {} }));
 vi.mock('../src/services/api/worldEconomyStorage', () => ({ loadEconomyStorage: mocks.storage, previewEconomyStorage: mocks.storagePreview }));
 vi.mock('../src/services/api/world', () => ({ isClosedTestError: () => false, worldError: () => 'Ошибка запроса' }));
 clientView(WorldMvpProgress, 'components/pages/world/WorldMvpProgress.vue');
+clientView(WorldPaymentSources, 'components/pages/world/WorldPaymentSources.vue');
+clientView(WorldHelpHint, 'components/pages/world/WorldHelpHint.vue');
 clientView(WorldStorageExpansion, 'components/pages/world/WorldStorageExpansion.vue');
 let app: { unmount: () => void } | undefined;
 beforeEach(() => {
@@ -38,7 +42,7 @@ describe('economy panel load recovery', () => {
   it('explains an unfunded completed goal, links to the forum list and enables available food', async () => {
     mocks.mvp.mockResolvedValue({ enabled: true, feedback: '/forum', goals: [{ code: 'day-1', claimed: false, funded: false, canClaim: false, credits: '50.0000', blockedReason: 'Организатору нужно обеспечить резерв', steps: [{ code: 'camp', completed: true, quantity: 1, required: 1 }] }], quotas: [],
       health: { hp: 100, maximum: 100, canEat: true, revision: 4, foods: [{ code: 'carrot', name: 'Морковь', restore: 4, quantity: 2, canEat: true, repeatLimit: 2, repeatRemaining: 1, repeatSeconds: 21600 }] } });
-    const view = mountView(WorldMvpProgress, () => ({ owner: 1, session: 1, writable: true })); app = view.app;
+    const view = mountView(WorldMvpProgress, () => ({ owner: 1, session: 1, revision: 1, writable: true })); app = view.app;
     findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Задания')!.props.onClick(); await flushView();
     expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Ожидает резерва')!.props.disabled).toBe(true);
     expect(viewText(view.root)).toContain('Награда ожидает резерва');

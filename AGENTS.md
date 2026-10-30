@@ -2,8 +2,8 @@
 
 Перед изменениями прочитайте agreements/general.md и agreements/architecture.md.
 Планы оформляйте по agreements/plans.md; публикацию — по agreements/deployment.md.
-Приложение находится в project. Проверки: npm run test:unit и npm run build из project.
-Текущие блокеры и результаты проверки веток находятся в docs/plan/2026-09-05-critical-refactoring.md и docs/plan/2026-09-05-branch-audit.md.
+Приложение находится в project. Быстрые проверки: npm run test:unit. Полный прогон npm run test:full включает отдельную группу slow; она также доступна через npm run test:slow. Сборка: npm run build. Команды выполняются из project; полный набор обязателен перед production.
+Текущие блокеры и результаты проверки веток находятся в docs/plan/2026-09-05-critical-refactoring.md и docs/plan/done/2026-09-05-branch-audit.md.
 
 По указанию владельца от 2026-09-15 следующие задачи брать из темы http://94.250.251.94:3181/forum/read/64. Перед новой задачей читать актуальные сообщения и сверять с выполненными пунктами в docs/plan и docs/plan/done. Публиковать сообщения в тему только по отдельному поручению владельца.
 

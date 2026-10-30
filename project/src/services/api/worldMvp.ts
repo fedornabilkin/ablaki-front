@@ -24,6 +24,8 @@ export function parseHealth(value: unknown) {
 }
 export function parseMvp(value: unknown) {
   const row = record(value);
+  const worldInstance = row.world_instance == null ? null : text(row.world_instance);
+  if (worldInstance !== null && !/^[1-9]\d{0,18}:[1-9]\d{0,18}$/.test(worldInstance)) throw new Error('invalid-world-response');
   const startAmount = row.starter_funding === undefined ? row.target_start_credit_cr : row.starter_funding === null ? null : record(row.starter_funding).amount_cr;
   const feedback = text(row.feedback_path);
   if (!/^\/forum(?:\/read\/[1-9]\d*)?$/.test(feedback)) throw new Error('invalid-world-response');
@@ -33,6 +35,8 @@ export function parseMvp(value: unknown) {
     return value;
   };
   return { enabled: bool(row.enabled), feedback: '/forum', serverTime: integer(row.server_time),
+    worldInstance,
+    starterPaid: row.starter_funding == null ? false : record(row.starter_funding).status === 'paid',
     canFundGoals: row.can_fund_goals === undefined ? false : bool(row.can_fund_goals),
     personalCredits: row.personal_credit_cr === undefined ? null : creditAmount(row.personal_credit_cr),
     targetStartCredits: startAmount == null ? null : creditAmount(startAmount),

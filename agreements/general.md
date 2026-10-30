@@ -18,7 +18,7 @@
 - Правила нового кода: [architecture.md](architecture.md). Целевая схема публикации: [deployment.md](deployment.md).
 
 ## Проверки
-- Из project запускать npm run test:unit и npm run build после значимых изменений.
+- Из project запускать npm run test:unit и npm run build после значимых изменений. Обычный test:unit исключает тяжёлые `*.slow.test.ts`; отдельная группа запускается через test:slow. Полный test:full выполняет unit, затем slow в одном процессе Vitest, сохраняя изоляцию файлов; перед production обязателен полный набор. После публикации test полный набор запускается отдельным CI job.
 - test:unit использует Vitest. Не ссылаться на отсутствующие lint, typecheck или test:e2e:heavy.
 - Новый код с логикой создавать на TypeScript, новые Vue-компоненты — script setup lang="ts". Старый JS переводить только при необходимости задачи.
 - Отдельный typecheck ещё не настроен; транспиляция Vite/Vitest не заменяет проверку типов.

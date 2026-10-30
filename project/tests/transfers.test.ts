@@ -2,6 +2,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createRenderer, h, reactive, ref, ssrContextKey, type App } from 'vue';
 import Transfers from '../src/components/pages/user/Transfers.vue';
 const context = vi.hoisted(() => ({ store: null as any, state: null as any, mutate: vi.fn(), refresh: vi.fn() }));
+// Only Transfers.setup is mounted here; do not load the UI library and child views.
+vi.mock('naive-ui', () => ({ NAlert: {}, NButton: {}, NCard: {}, NForm: {}, NFormItem: {}, NInput: {}, NInputNumber: {}, NPopconfirm: {}, NPopover: {} }));
+vi.mock('../src/components/PageHeader.vue', () => ({ default: {} }));
+vi.mock('../src/components/PagePager.vue', () => ({ default: {} }));
+vi.mock('../src/components/RequestState.vue', () => ({ default: {} }));
+vi.mock('../src/components/ActionButton.vue', () => ({ default: {} }));
+vi.mock('../src/components/user/UserAvatar.vue', () => ({ default: {} }));
 vi.mock('vuex', () => ({ useStore: () => context.store }));
 vi.mock('../src/hooks/useListQuery', () => ({ useListQuery: () => ({ page: ref(1), filters: ref({ mode: 'active' }), params: ref({}) }) }));
 vi.mock('../src/hooks/usePageRequest', () => ({ usePageRequest: () => ({ data: ref({ items: [], total: 0, pageSize: 20 }), loading: ref(false), error: ref(''), refresh: context.refresh }) }));

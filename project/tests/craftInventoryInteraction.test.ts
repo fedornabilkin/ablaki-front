@@ -1,22 +1,11 @@
-import { createRenderer, h, nextTick, ref } from 'vue';
-import * as Vue from 'vue';
-import { readFileSync } from 'node:fs';
-import { parse, compileScript } from '@vue/compiler-sfc';
-import { compile } from '@vue/compiler-dom';
-import pug from 'pug';
+import { createRenderer, h, nextTick, ref, ssrContextKey } from 'vue';
+import { clientView } from './helpers/clientView';
 import { describe, expect, it, vi } from 'vitest';
 import CraftInventory from '../src/components/pages/craft/CraftInventory.vue';
 import CraftSlotGrid from '../src/components/pages/craft/CraftSlotGrid.vue';
 import type { CraftState } from '../src/services/api/classicCraft';
-// Vitest loads SFCs for SSR. Compile the same template for the in-memory client renderer.
-const {descriptor} = parse(readFileSync(new URL('../src/components/pages/craft/CraftInventory.vue', import.meta.url), 'utf8'));
-const bindings = compileScript(descriptor, {id: 'inventory-interaction'}).bindings;
-const template = pug.render(descriptor.template!.content, {doctype: 'html'});
-const {code} = compile(template, {mode: 'function', prefixIdentifiers: true, bindingMetadata: bindings});
-const gridDescriptor = parse(readFileSync(new URL('../src/components/pages/craft/CraftSlotGrid.vue', import.meta.url), 'utf8')).descriptor;
-const gridCode = compile(pug.render(gridDescriptor.template!.content, {doctype: 'html'}), {mode: 'function', prefixIdentifiers: true, bindingMetadata: compileScript(gridDescriptor, {id: 'grid-interaction'}).bindings}).code;
-(CraftSlotGrid as any).render = new Function('Vue', gridCode)(Vue);
-const ClientInventory = {...CraftInventory, render: new Function('Vue', code)(Vue)};
+clientView(CraftSlotGrid, 'components/pages/craft/CraftSlotGrid.vue');
+const ClientInventory = clientView({...CraftInventory}, 'components/pages/craft/CraftInventory.vue');
 vi.mock('naive-ui', async () => {
   const {h} = await import('vue');
   return {
@@ -46,7 +35,7 @@ function mount(targetQuantity = 100, change?: (state: CraftState) => void) {
   state.inventory_slots[0].quantity = targetQuantity;
   change?.(state);
   const app = renderer.createApp({setup: () => () => h(ClientInventory, {state, blocked: blocked.value, onCommand: command, onSubmit: submit})});
-  app.provide(Vue.ssrContextKey, {modules: new Set()});
+  app.provide(ssrContextKey, {modules: new Set()});
   app.component('font-awesome-icon', {render: () => h('i')});
   app.mount(root);
   const slot = find(root, node => node.props['aria-label'] === 'Log: 3 шт.')!;

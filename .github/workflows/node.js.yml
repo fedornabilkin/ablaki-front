@@ -111,7 +111,7 @@ jobs:
           if [[ "$DEPLOY_TARGET" = test ]]; then
             npm run test:unit -- tests/auth.test.ts tests/httpClient.test.ts
           else
-            npm run test:unit
+            npm run test:full
           fi
 
       - name: Build frontend
@@ -264,6 +264,6 @@ jobs:
       - name: Install dependencies
         working-directory: project
         run: npm ci
-      - name: Run full unit test suite
+      - name: Run full test suite (unit, then slow)
         working-directory: project
-        run: npm run test:unit
+        run: npm run test:full
