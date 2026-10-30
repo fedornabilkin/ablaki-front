@@ -29,6 +29,7 @@ it('saves edits using the PUT method allowed by the deployed CORS policy', async
 });
 async function renderPost(userId: number | null, changes = {}) {
   const app = createSSRApp({ render: () => h(ForumPost, { item: { ...item, ...changes }, giving: false }) });
+  app.component('font-awesome-icon', { render: () => h('i') });
   app.use(createStore({ state: { auth: { revision: 1 } }, getters: { 'auth/user': () => userId ? { id: userId } : null, 'auth/isAuthenticated': () => !!userId } }));
   return renderToString(app);
 }

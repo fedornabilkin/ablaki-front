@@ -1,3 +1,4 @@
+import { historyWinner, historyPlayer, historyCompletedAt, historyTime } from '../src/services/api/gameHistory';
 import { describe, expect, it } from 'vitest';
 import { overviewSnapshot, playerOutcome, summaryData, winnerName } from '@/services/api/gameOverview';
 
@@ -39,5 +40,34 @@ describe('game summary boundary', () => {
     });
     expect(overviewSnapshot({ game: { id: 9 } })).toBeNull();
     expect(() => overviewSnapshot({ overview: { summary, recent: [{}] } })).toThrow('invalid-response');
+  });
+});
+
+const game = { id: 3, user_id: 1, user_gamer: 2, username: 'Alice', username_gamer: 'Bob', kon: 5, created_at: 1, updated_at: 1704067200 };
+describe('game history projection', () => {
+it.each(['orel', 'saper'] as const)('marks the actual winner for %s regardless of the viewing account', kind => {
+    expect(historyWinner({ ...game, win: true }, kind)).toBe('player');
+    expect(historyWinner({ ...game, win: false }, kind)).toBe('creator');
+    expect(historyWinner({ ...game, win: 'false' }, kind)).toBeNull();
+  });
+  it('handles duel/five outcomes and never awards a cup for a draw or active game', () => {
+    expect(historyWinner({ ...game, result: 'user' }, 'duel')).toBe('creator');
+    expect(historyWinner({ ...game, result: 'gamer' }, 'duel')).toBe('player');
+    expect(historyWinner({ ...game, result: 'draw' }, 'duel')).toBe('draw');
+    expect(historyWinner({ ...game, status: 'user' }, 'five')).toBe('creator');
+    expect(historyWinner({ ...game, status: 'gamer' }, 'five')).toBe('player');
+    expect(historyWinner({ ...game, status: 'play' }, 'five')).toBeNull();
+  });
+  it('uses completion timestamps, respects explicit nulls, and never substitutes creation time', () => {
+    expect(historyCompletedAt({ ...game, time_over_at: 123 }, 'saper')).toBe(123);
+    expect(historyCompletedAt(game, 'duel')).toBe(1704067200);
+    expect(historyCompletedAt({ ...game, completed_at: null }, 'orel')).toBeNull();
+    expect(historyCompletedAt({ id: 1, created_at: 123 }, 'five')).toBeNull();
+    expect(historyTime(1704067200)).toContain('03:00:00');
+    for (const completed_at of [false, '', -1, Infinity, 'broken']) expect(historyCompletedAt({ ...game, completed_at }, 'orel')).toBeNull();
+  });
+  it('does not invent a rating or a link for a missing player', () => {
+    expect(historyPlayer(game, 'creator')).toEqual({ id: 1, username: 'Alice' });
+    expect(historyPlayer({ ...game, username_gamer: null }, 'player')).toBeNull();
   });
 });

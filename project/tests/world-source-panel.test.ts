@@ -26,7 +26,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.runner = { busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn(), retry: vi.fn() };
   mocks.load.mockResolvedValue(state());
-  mocks.storages.mockResolvedValue([{ id: 9, kind: 'stockpile', name: 'Склад', capacity: 50 }, { id: 10, kind: 'recovery', name: 'Возврат', capacity: 50 }]);
+  mocks.storages.mockResolvedValue([{ id: 9, kind: 'stockpile', name: 'Склад', capacity: 5 }, { id: 10, kind: 'recovery', name: 'Возврат', capacity: 50 }]);
 });
 afterEach(() => { app?.unmount(); app = undefined; vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('source batch destination', () => {

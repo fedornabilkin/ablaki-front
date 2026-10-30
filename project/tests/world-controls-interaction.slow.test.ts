@@ -1,3 +1,5 @@
+// @module-tag slow
+// Broad component/rendering checks: use test:slow or test:full.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, markRaw, reactive, ref } from 'vue';
 import { readFileSync } from 'node:fs';
@@ -51,6 +53,12 @@ vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ 
 vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 1 } }, dispatch: vi.fn() }) }));
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: (_session: unknown, _owner: unknown, completed: unknown) => { mocks.runner.completed = completed; return mocks.runner; } }));
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
+// These child panels are outside the scenarios below; avoid empty SSR-only client renders.
+vi.mock('../src/components/pages/world/WorldRepairPanel.vue', () => ({ default: { render: () => null } }));
+vi.mock('../src/components/pages/world/WorldNightsPanel.vue', () => ({ default: { render: () => null } }));
+vi.mock('../src/components/pages/world/WorldStorageExpansion.vue', () => ({ default: { render: () => null } }));
+vi.mock('../src/components/pages/world/WorldWorkspaceHero.vue', () => ({ default: { setup: (_: unknown, {slots}: any) => () => h('header', slots.default?.()) } }));
+vi.mock('../src/components/pages/world/WorldWorkspaceNav.vue', () => ({ default: { render: () => null } }));
 vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: mocks.activeBuild, objects: mocks.objects, object: mocks.object, gatherState: mocks.gather, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, startOverview: async () => ({node: await mocks.startState(), funding: mocks.startFunding, starter_funding: null}), node: (value: unknown) => value, build: (value: unknown) => value }));
 vi.mock('../src/services/api/worldHousing', () => ({loadHousing: mocks.housing, previewHousing: mocks.housingPreview}));
 vi.mock('../src/services/api/worldEconomy', () => ({previewBudgetGrant: mocks.budgetGrant}));
@@ -105,7 +113,7 @@ let apps: { unmount: () => void }[] = [];
 function mount(component: any, props?: () => Record<string, unknown>) { const result = mountView(component, props); apps.push(result.app); return result; }
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.navigation.mockResolvedValue({breadcrumbs: [],node: {id: 1,label: 'Home'}});
+  mocks.navigation.mockResolvedValue({breadcrumbs: [],node: {name: 'Объект', id: 1,label: 'Home'}});
   mocks.startFunding = null; mocks.activeBuild.mockResolvedValue(null); mocks.progression.mockResolvedValue({craft: [], professions: []});
   mocks.housing.mockResolvedValue({supported: false, active: false, writable: false, place: null, lodging: null, current: null, nightsEnabled: true});
   mocks.budget.mockResolvedValue({ available: '0.0000', reserved: '0.0000' });
@@ -204,7 +212,7 @@ describe('world panel request budgets', () => {
     vi.useFakeTimers(); const active = ref(false), revision = ref(1);
     const project = {id: 5,node_id: 1,status: 'building',owner_user_id: 1,required_seconds: 120,worked_seconds: 0,labor_budget: '0',server_time: 100,live_work: [] as any[]};
     mocks.builds.mockResolvedValue({items: [project]});
-    mount(SimpleBuildPanel, () => ({node: {id: 1,status: 'constructing',revision: revision.value},owner: 1,session: 1,active: active.value})); await flushView();
+    mount(SimpleBuildPanel, () => ({node: {name: 'Объект', id: 1,status: 'constructing',revision: revision.value},owner: 1,session: 1,active: active.value})); await flushView();
     expect(mocks.builds).not.toHaveBeenCalled();
     active.value = true; await flushView();
     await vi.advanceTimersByTimeAsync(30_000); expect(mocks.builds).toHaveBeenCalledTimes(1); expect(mocks.runner.submit).not.toHaveBeenCalled();
@@ -225,7 +233,7 @@ describe('world panel request budgets', () => {
   it('invalidates the parent once when construction stops', async () => {
     const project = {id: 5,node_id: 1,status: 'building',owner_user_id: 1,required_seconds: 120,worked_seconds: 0,labor_budget: '0'};
     mocks.builds.mockResolvedValue({items: [project]}); const changed = vi.fn();
-    const view = mount(SimpleBuildPanel, () => ({node: {id: 1,status: 'constructing'},owner: 1,session: 1,onChanged: changed})); await flushView();
+    const view = mount(SimpleBuildPanel, () => ({node: {name: 'Объект', id: 1,status: 'constructing'},owner: 1,session: 1,onChanged: changed})); await flushView();
     mocks.runner.submit.mockResolvedValue({build: project,work: {ended_at: null}});
     findView(view.root,n => n.tag === 'button' && viewText(n) === 'Строить')!.props.onClick(); await flushView();
     changed.mockClear(); mocks.runner.submit.mockResolvedValue({build: project,work: {ended_at: 101}});
@@ -305,7 +313,7 @@ describe('placement construction flow', () => {
 describe('restored world core panels', () => {
   it('shows loading instead of an unavailable construction before the response', async () => {
     const pending = deferred<any>(); mocks.builds.mockReturnValue(pending.promise);
-    const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing' }, owner: 1, session: 1 }));
+    const view = mount(SimpleBuildPanel, () => ({ node: {name: 'Объект',  id: 1, status: 'constructing' }, owner: 1, session: 1 }));
     await flushView();
     expect(viewText(view.root)).not.toContain('Стройка недоступна');
     expect(findView(view.root, n => n.props.size === 'small')).toBeDefined();
@@ -316,7 +324,7 @@ describe('restored world core panels', () => {
   it('requires confirmation before cancelling an unstarted build and returns to its parent map', async () => {
     const build = { id: 5, node_id: 1, parent_id: 9, status: 'building', owner_user_id: 1, required_seconds: 30, worked_seconds: 0, labor_budget: '0' };
     mocks.builds.mockResolvedValue({ items: [build] });
-    const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing' }, owner: 1, session: 1 }));
+    const view = mount(SimpleBuildPanel, () => ({ node: {name: 'Объект',  id: 1, status: 'constructing' }, owner: 1, session: 1 }));
     await flushView();
     const click = (label: string) => findView(view.root, n => n.tag === 'button' && viewText(n) === label)!.props.onClick();
     click('Отменить'); await flushView();
@@ -335,7 +343,7 @@ describe('restored world core panels', () => {
   it('closes construction cancellation confirmation when the session changes', async () => {
     mocks.builds.mockResolvedValue({ items: [{ id: 5, node_id: 1, status: 'building', owner_user_id: 1, required_seconds: 30, worked_seconds: 0, labor_budget: '0' }] });
     const session = ref(1);
-    const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing' }, owner: 1, session: session.value }));
+    const view = mount(SimpleBuildPanel, () => ({ node: {name: 'Объект',  id: 1, status: 'constructing' }, owner: 1, session: session.value }));
     await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n) === 'Отменить')!.props.onClick(); await flushView();
     session.value++; await flushView();
@@ -358,14 +366,14 @@ describe('restored world core panels', () => {
   it('rounds construction payments without changing the underlying amount', async () => {
     mocks.templates.mockResolvedValue([]);
     mocks.builds.mockResolvedValue({ items: [{ id: 5, status: 'building', owner_user_id: 1, required_seconds: 30, worked_seconds: 1, labor_budget: '6.7800' }] });
-    const view = mount(SimpleBuildPanel, () => ({ node: { id: 1, status: 'constructing', owner_user_id: 1 }, owner: 1, session: 1 }));
+    const view = mount(SimpleBuildPanel, () => ({ node: {name: 'Объект',  id: 1, status: 'constructing', owner_user_id: 1 }, owner: 1, session: 1 }));
     await flushView();
     expect(viewText(view.root)).toContain('6.8');
     expect(viewText(view.root)).not.toContain('6.7800');
   });
   it('places the campsite reactively and keeps the current map open', async () => {
     mocks.startState.mockResolvedValue(null);
-    mocks.runner.submit.mockResolvedValue({ node: { id: 23 } });
+    mocks.runner.submit.mockResolvedValue({ node: {name: 'Объект',  id: 23 } });
     const view = mount(WorldStartPanel, () => ({ node: { ...node, type: 'SETTLEMENT' }, owner: 1, session: 1, writable: true }));
     await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Начать здесь'))!.props.onClick(); await flushView();
@@ -1062,7 +1070,7 @@ describe('settlement reserve follow-up controls', () => {
   });
   it('keeps an embedded child construction on its parent page after completion', async () => {
     mocks.builds.mockResolvedValue({items: [{id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'building', required_seconds: 30, worked_seconds: 0, labor_budget: '0.0000'}]});
-    mocks.runner.submit.mockResolvedValue({build: {id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'completed', required_seconds: 30, worked_seconds: 30, labor_budget: '0.0000'}, node: {id: 2}});
+    mocks.runner.submit.mockResolvedValue({build: {id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'completed', required_seconds: 30, worked_seconds: 30, labor_budget: '0.0000'}, node: {name: 'Объект', id: 2}});
     const view = mount(SimpleBuildPanel, () => ({node: {id: 2, name: 'Огород', status: 'constructing', revision: 1}, owner: 1, session: 1, embedded: true})); await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n).trim() === 'Строить')!.props.onClick(); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('builds/5/start', {}); expect(mocks.push).not.toHaveBeenCalled();

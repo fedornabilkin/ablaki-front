@@ -2,6 +2,16 @@ import { afterEach, beforeEach, it, expect, vi } from 'vitest';
 import { createRenderer, h, reactive, ref, nextTick, ssrContextKey } from 'vue';
 import GameLobby from '../src/components/pages/games/GameLobby.vue';
 const context = vi.hoisted(() => ({ route: null as any, store: null as any, page: null as any, state: null as any, mutate: vi.fn(), refresh: vi.fn(), refreshSummary: vi.fn() }));
+// These checks exercise GameLobby.setup; child rendering is outside their scope.
+vi.mock('naive-ui', () => ({ NAlert: {}, NButton: {}, NCard: {}, NForm: {}, NFormItem: {}, NInputNumber: {}, NModal: {}, NPopconfirm: {} }));
+vi.mock('../src/components/PageHeader.vue', () => ({ default: {} }));
+vi.mock('../src/components/PagePager.vue', () => ({ default: {} }));
+vi.mock('../src/components/RequestState.vue', () => ({ default: {} }));
+vi.mock('../src/components/pages/games/GameStakeFilter.vue', () => ({ default: {} }));
+vi.mock('../src/components/pages/games/GamePageLayout.vue', () => ({ default: {} }));
+vi.mock('../src/components/pages/games/saper/SaperBoard.vue', () => ({ default: {} }));
+vi.mock('../src/components/pages/games/GameToolbar.vue', () => ({ default: {} }));
+vi.mock('../src/components/pages/games/saper/SaperSuggestions.vue', () => ({ default: {} }));
 vi.mock('vue-router', () => ({ useRoute: () => context.route }));
 vi.mock('vuex', () => ({ useStore: () => context.store }));
 vi.mock('../src/hooks/useListQuery', () => ({ useListQuery: () => ({ page: ref(1), search: ref(''), filters: ref({}), params: ref({}), reset: () => {} }) }));

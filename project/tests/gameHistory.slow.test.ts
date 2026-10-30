@@ -1,3 +1,8 @@
+// @module-tag slow
+// Broad component/rendering checks: use test:slow or test:full.
+import FiveBoard from '../src/components/pages/games/five/FiveBoard.vue';
+import { fiveGame } from '../src/services/api/fiveGame';
+import { vi } from 'vitest';
 import { describe, expect, it } from 'vitest';
 import { createSSRApp } from 'vue';
 import { renderToString } from '@vue/server-renderer';
@@ -6,8 +11,7 @@ import { createRequire } from 'node:module';
 import { faStar, faTrophy } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import GameHistoryList from '../src/components/pages/games/GameHistoryList.vue';
-import { historyWinner, historyPlayer, historyCompletedAt, historyTime, type HistoryGameKind } from '../src/services/api/gameHistory';
-import { routes } from '../src/routes';
+import { historyPlayer, type HistoryGameKind } from '../src/services/api/gameHistory';
 
 const game = { id: 3, user_id: 1, user_gamer: 2, username: 'Alice', username_gamer: 'Bob', kon: 5, created_at: 1, updated_at: 1704067200 };
 // The Node SSR entry of vue-fontawesome uses the CommonJS core instance.
@@ -21,31 +25,7 @@ async function render(kind: HistoryGameKind, fields = {}) {
 }
 
 describe('shared game history', () => {
-  it.each(['orel', 'saper'] as const)('marks the actual winner for %s regardless of the viewing account', kind => {
-    expect(historyWinner({ ...game, win: true }, kind)).toBe('player');
-    expect(historyWinner({ ...game, win: false }, kind)).toBe('creator');
-    expect(historyWinner({ ...game, win: 'false' }, kind)).toBeNull();
-  });
-  it('handles duel/five outcomes and never awards a cup for a draw or active game', () => {
-    expect(historyWinner({ ...game, result: 'user' }, 'duel')).toBe('creator');
-    expect(historyWinner({ ...game, result: 'gamer' }, 'duel')).toBe('player');
-    expect(historyWinner({ ...game, result: 'draw' }, 'duel')).toBe('draw');
-    expect(historyWinner({ ...game, status: 'user' }, 'five')).toBe('creator');
-    expect(historyWinner({ ...game, status: 'gamer' }, 'five')).toBe('player');
-    expect(historyWinner({ ...game, status: 'play' }, 'five')).toBeNull();
-  });
-  it('uses completion timestamps, respects explicit nulls, and never substitutes creation time', () => {
-    expect(historyCompletedAt({ ...game, time_over_at: 123 }, 'saper')).toBe(123);
-    expect(historyCompletedAt(game, 'duel')).toBe(1704067200);
-    expect(historyCompletedAt({ ...game, completed_at: null }, 'orel')).toBeNull();
-    expect(historyCompletedAt({ id: 1, created_at: 123 }, 'five')).toBeNull();
-    expect(historyTime(1704067200)).toContain('03:00:00');
-    for (const completed_at of [false, '', -1, Infinity, 'broken']) expect(historyCompletedAt({ ...game, completed_at }, 'orel')).toBeNull();
-  });
-  it('does not invent a rating or a link for a missing player', () => {
-    expect(historyPlayer(game, 'creator')).toEqual({ id: 1, username: 'Alice' });
-    expect(historyPlayer({ ...game, username_gamer: null }, 'player')).toBeNull();
-  });
+
   it.each([
     ['orel', { win: true }, 'Игрок'], ['saper', { win: false, completed_at: 1704067200 }, 'Создатель'],
     ['duel', { result: 'user' }, 'Создатель'], ['five', { status: 'gamer' }, 'Игрок'],
@@ -73,12 +53,25 @@ describe('shared game history', () => {
     const html = await render('orel', { creator, win: false });
     expect(html).toContain('42,5'); expect(html).toContain('data-icon="star"');
   });
-  it('has an authenticated history route for every game', () => {
-    const router = createRouter({ history: createMemoryHistory(), routes });
-    for (const kind of ['orel', 'saper', 'duel', 'five']) {
-      const route = router.resolve(`/games/${kind}/history`);
-      expect(route.matched.some(record => record.meta.requiresAuth)).toBe(true);
-      expect(route.matched.some(record => record.path.includes('rest'))).toBe(false);
-    }
+
+});
+
+const fiveDto = { id: 1, user_id: 1, user_gamer: 0, creator: { id: 1, username: 'Creator', person: { rating: 12.5 } },
+  kon: '10', bank: '20', commission: '1', winner_amount: '19', status: 'free', turn: 'gamer', user_points: 0, gamer_points: 0,
+  last_hod: { id: 7, status: 'wait', gamer_ball: 0, user_amount: 0, gamer_amount: 0 } };
+vi.mock('naive-ui', async importOriginal => ({ ...await importOriginal<typeof import('naive-ui')>(), NPopconfirm: { template: '<div><slot name="trigger" /></div>' } }));
+describe('five-game rendering', () => {
+  it('renders five-game controls for the creator and opponent', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }] });
+    const render = async (userId: number, data = fiveDto) => {
+      const app = createSSRApp(FiveBoard, { game: fiveGame(data), userId, credit: 100, busy: false, blocked: false });
+      app.use(router); app.component('font-awesome-icon', { template: '<span />' });
+      return renderToString(app);
+    };
+    const guest = await render(2);
+    expect(guest).toContain('Победителю:'); expect(guest).toContain('aria-label="19 кредитов"'); expect(guest).toContain('Число яблок'); expect(guest).toContain('/wall/Creator');
+    expect(guest).not.toContain('Ваш скрытый ход');
+    const creator = await render(1, { ...fiveDto, last_hod: { ...fiveDto.last_hod, user_ball: 4 } } as typeof fiveDto);
+    expect(creator).toContain('Ваш скрытый ход: 4'); expect(creator).toContain('Отменить игру'); expect(creator).not.toContain('Число яблок');
   });
 });

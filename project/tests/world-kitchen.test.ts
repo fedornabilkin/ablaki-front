@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 import { clientView, findView, flushView, mountView, viewText } from './helpers/clientView';
 import WorldKitchenPanel from '../src/components/pages/world/WorldKitchenPanel.vue';
+import WorldHelpHint from '../src/components/pages/world/WorldHelpHint.vue';
 const mocks = vi.hoisted(() => ({ load: vi.fn(), runner: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
@@ -11,6 +12,7 @@ vi.mock('../src/services/api/worldKitchen', () => ({ loadKitchen: mocks.load }))
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/world', () => ({ worldError: () => 'Ошибка загрузки' }));
 clientView(WorldKitchenPanel, 'components/pages/world/WorldKitchenPanel.vue');
+clientView(WorldHelpHint, 'components/pages/world/WorldHelpHint.vue');
 const state = () => ({ nodeId: 12, serverTime: 1000, used: false, current: { code: 'breakfast', name: 'Завтрак', startsAt: 900, endsAt: 1002 }, next: { code: 'lunch', name: 'Обед', startsAt: 2000, endsAt: 2500 },
   health: { hp: 70, maximum: 100, revision: 4, foods: [{ code: 'carrot', name: 'Морковь', quantity: 2, kitchenRestore: 15 }] } });
 let app: { unmount: () => void } | undefined;

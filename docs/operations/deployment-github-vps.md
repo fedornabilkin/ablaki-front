@@ -4,6 +4,8 @@
 
 [Workflow](../../.github/workflows/node.js.yml), [карта target](../../deploy/deployment-target.mjs), [серверный скрипт](../../deploy/frontend-deploy.sh), [общая валидация URL](../../deploy/check-api.mjs). Настройка backend описана отдельно в [его инструкции](https://github.com/fedornabilkin/ablaki/blob/master/docs/operations/production-test-deployment.md).
 
+Актуализация проверок от 30 октября: перед production выполняется `npm run test:full` (обычный проект, затем slow). Перед test — авторизация/HTTP, проверки выкладки и сборка; полный `test:full` запускается отдельным job после публикации. [Команды и локальные замеры](frontend-tests-2026-10-30.md).
+
 ## 1. Параметры окружений
 
 | Параметр | Production | Test |

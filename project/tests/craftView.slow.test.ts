@@ -1,3 +1,5 @@
+// @module-tag slow
+// Broad component/rendering checks: use test:slow or test:full.
 import { createSSRApp } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { renderToString } from '@vue/server-renderer';
@@ -18,9 +20,9 @@ const state: CraftState = {
   categories: [{id: 1, name: 'Дерево', code: 'wood', description: 'Обработка дерева'}], stations: [], skills: [], inventory: [{item_id: 1, quantity: 4}], inventory_slots: [{id: 10, item_id: 1, quantity: 4}], credit: 0, charge_credits: false, starter_available: false, gather_available: true, slot_limit: 100, slots_used: 1,
 };
 async function detail(value: CraftState) {
-  const app = createSSRApp(CraftRecipeDetail, {state: value, recipe: value.recipes[0], busy: false, blocked: false});
-  const router = createRouter({history: createMemoryHistory(), routes: [{path: '/craft', component: {template: '<div />'}}]});
-  app.use(router); await router.push('/craft'); await router.isReady();
+  const app = createSSRApp(CraftRecipeDetail, {state: value, recipe: value.recipes[0], busy: false, blocked: false, craftHref: '/world/workspace/42'});
+  const router = createRouter({history: createMemoryHistory(), routes: [{path: '/:pathMatch(.*)*', component: {template: '<div />'}}]});
+  app.use(router); await router.push('/world/workspace/map?node=42'); await router.isReady();
   app.component('font-awesome-icon', FontAwesomeIcon);
   setupSsrStyles(app);
   return renderToString(app);
@@ -45,21 +47,22 @@ describe('craft view with server state', () => {
     const html = await renderToString(app);
     expect(html.match(/role="listitem"/g)).toHaveLength(51);
     expect(html).toContain('Бревно: 100 шт.');
+    expect(html.match(/aria-label="Бревно: \d+ шт\.[^"]*"/g)).toHaveLength(100);
     expect(html).not.toContain('class="empty-slot"');
   });
-  it('links to campsite crafting from the recipe catalog in free and paid mode', async () => {
-    const free = await detail(state), paid = await detail({...state, charge_credits: true});
+  it('links to manufacturing in the selected campsite from the recipe catalog', async () => {
+    const html = await detail(state);
     const create = (html: string) => html.match(/<button\b[^>]*>(?:(?!<\/button>)[\s\S])*?Создать(?:(?!<\/button>)[\s\S])*?<\/button>/)?.[0];
-    expect(create(free)).toBeUndefined(); expect(create(paid)).toBeUndefined();
-    expect(free).toContain('href="/world?recipe_id=1"');
-    expect(paid).toContain('Изготовить предмет');
-    expect(free).toContain('Без списания кредитов');
+    expect(create(html)).toBeUndefined();
+    expect(html).toContain('href="/world/workspace/42?recipe_id=1"');
+    expect(html).toContain('Изготовить предмет');
+    expect(html).toContain('Без списания кредитов');
   });
-  it('marks missing ingredients with an accessible warning and blocks crafting', async () => {
+  it('shows ingredient shortages and preserves the campsite in recipe links', async () => {
     const html = await detail({...state, inventory: []});
     expect(html).toContain('aria-label="Не хватает ресурса"');
     expect(html).toContain('Не хватает ресурсов');
-    expect(html).toContain('href="/world/workspace/map?item=1"');
+    expect(html).toContain('href="/world/workspace/map?node=42&amp;item=1"');
     expect(html).toContain('type="number"');
     expect(html).toContain('min="1"');
     expect(html).toContain('max="100"');
