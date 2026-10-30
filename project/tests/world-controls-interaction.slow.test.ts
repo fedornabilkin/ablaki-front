@@ -158,11 +158,11 @@ describe('world acceptance checklist modal', () => {
     expect(passed.props.open).toBe(false);
     const row = findView(passed, n => n.props.class === 'checklist-result')!;
     expect(row.children.some(n => n.tag === 'select')).toBe(true); expect(row.children.some(n => n.tag === 'input')).toBe(true);
-    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Открытые')!.props.onClick(); await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Открытые')!.props.onClick(); await flushView();
     expect(findView(view.root, n => n.tag === 'details' && String(n.props.class).includes('result-pass'))).toBeUndefined();
     findView(view.root, n => n.props.role === 'tab' && viewText(n) === 'Лагерь')!.props.onClick(); await flushView();
     expect(findView(view.root, n => n.props['aria-label'] === 'Лагерь')).toBeDefined();
-    findView(view.root, n => n.tag === 'button' && viewText(n) === 'Все')!.props.onClick(); await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Все')!.props.onClick(); await flushView();
     expect(parseChecklist(view.values.get(checklistKey(1,'1:100'))!).entries.starter!.autoAt).not.toBeNull();
   });
   it('uses shared server facts and refresh events without issuing game commands', async () => {
@@ -396,6 +396,52 @@ async function mountStorage() {
   return { ...view, session, writable, cell };
 }
 describe('direct storage controls', () => {
+  it('loads the object tree only on demand, reuses it and clears it when the session changes', async () => {
+    const view = await mountStorage();
+    const bed = {...storage(3).storage, kind: 'placement', name: 'Грядка · Размещение', node_id: 3};
+    mocks.storageList.mockResolvedValue([storage(1).storage, storage(2).storage, bed]);
+    mocks.navigation.mockResolvedValue({breadcrumbs: [{...node, id: 8, label: 'Мир Аблаки'}], node: {...node, id: 3, label: 'Грядка'}});
+    view.session.value++; await flushView();
+    expect(mocks.navigation).not.toHaveBeenCalled();
+    const trigger = () => findView(view.root, n => n.tag === 'button' && viewText(n) === 'Грядка')!.parent!;
+    trigger().props.onFocusin(); await flushView();
+    trigger().props.onFocusin(); await flushView();
+    expect(mocks.navigation).toHaveBeenCalledTimes(1);
+    expect(mocks.navigation).toHaveBeenCalledWith(3);
+    expect(viewText(view.root)).toContain('Мир Аблаки');
+    view.session.value++; await flushView(); trigger().props.onFocusin(); await flushView();
+    expect(mocks.navigation).toHaveBeenCalledTimes(2);
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('switches storage buttons without opening the same storage on both sides or while a command is pending', async () => {
+    const view = await mountStorage();
+    mocks.storageList.mockResolvedValue([storage(1).storage, storage(2).storage, storage(3).storage]);
+    view.session.value++; await flushView();
+    const picker = (id: number) => findView(findView(view.root, node => node.props['aria-label'] === 'Выбор правого хранилища')!, node => node.tag === 'button' && viewText(node) === `Хранилище ${id}`)!;
+    expect(picker(1).props.disabled).toBe(true);
+    picker(1).props.onClick(); await flushView();
+    expect(picker(2).props['aria-pressed']).toBe(true);
+    mocks.runner.pending.value = { path: '/storage/transfer' };
+    picker(3).props.onClick(); await flushView();
+    expect(picker(2).props['aria-pressed']).toBe(true);
+    mocks.runner.pending.value = null;
+    picker(3).props.onClick(); await flushView();
+    expect(picker(3).props['aria-pressed']).toBe(true);
+    expect(view.cell(3, 1)).toBeDefined();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
+  it('shows item controls at the selected cell and clears selection through the close icon without transferring', async () => {
+    const view = await mountStorage();
+    expect(findView(view.root, node => node.props['aria-label'] === 'Выбранный предмет')).toBeUndefined();
+    view.cell(1, 1).props.onClick(); await flushView();
+    const controls = findView(view.root, node => node.props['aria-label'] === 'Выбранный предмет')!;
+    expect(findView(controls, node => node.tag === 'input' && node.props['aria-label'] === 'Количество предметов')).toBeDefined();
+    expect(findView(controls, node => node.tag === 'label')).toBeUndefined();
+    findView(controls, node => node.tag === 'button' && node.props['aria-label'] === 'Снять выбор')!.props.onClick(); await flushView();
+    expect(view.cell(1, 1).props['aria-pressed']).toBe(false);
+    expect(findView(view.root, node => node.props['aria-label'] === 'Выбранный предмет')).toBeUndefined();
+    expect(mocks.transfer).not.toHaveBeenCalled();
+  });
   it('moves cells before the request finishes and restores them on a rejected preview', async () => {
     const view = await mountStorage(), request = deferred<typeof quote>();
     mocks.transfer.mockReturnValue(request.promise);
@@ -1091,6 +1137,22 @@ describe('world construction, character and compact controls', () => {
   const receipt = {finished_at: 1000, participants: [{user_id: 1, name: 'Владелец', owner: true, seconds: 20, paid_cr: '0.0000'}, {user_id: 2, name: 'Помощник', owner: false, seconds: 80, paid_cr: '8.0000'}], labor_budget_cr: '10.0000', paid_cr: '8.0000', released_cr: '2.0000', object_price_cr: '5.0000', spent_cr: '13.0000', material_refund_percent: 0};
   const project = {id: 5, node_id: 2, parent_id: 1, owner_user_id: 1, status: 'building', required_seconds: 100, worked_seconds: 0, labor_budget: '10.0000'};
   const mvp = () => ({enabled: true, worldInstance: '1:100', serverTime: 100, starterPaid: true, personalCredits: '50.0000', targetStartCredits: '250.0000', health: {hp: 75, maximum: 100, foods: [], disorderUntil: null}, quotas: [], goals: []});
+  it('keeps a dismissed result hidden after remounting but shows a new project and another player’s result', async () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value)});
+    let completed = {...project, status: 'completed', worked_seconds: 100, result: receipt};
+    mocks.builds.mockImplementation(async () => ({items: [completed]}));
+    const open = async (owner = 1) => { const view = mount(SimpleBuildPanel, () => ({node: {id: 2, name: 'Огород', status: 'active', revision: 1}, owner, session: 1, embedded: true})); await flushView(); return view; };
+    const first = await open();
+    findView(first.root, n => n.tag === 'button' && n.props['aria-label'] === 'Закрыть результаты строительства')!.props.onClick(); await flushView();
+    expect(viewText(first.root)).not.toContain('Строительство завершено');
+    first.app.unmount();
+    const reopened = await open(); expect(viewText(reopened.root)).not.toContain('Строительство завершено'); reopened.app.unmount();
+    const anotherPlayer = await open(2); expect(viewText(anotherPlayer.root)).toContain('Строительство завершено'); anotherPlayer.app.unmount();
+    completed = {...completed, id: 6};
+    const next = await open(); expect(viewText(next.root)).toContain('Строительство завершено');
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
   it('keeps city links as tiles alongside the starting steps', async () => {
     mocks.startState.mockResolvedValue(null);
     mocks.startFunding = {available: true, available_places: 3, amount_cr: null, message: 'Есть места', settlements: [{node_id: 4, name: 'Североград', available_places: 2, amount_cr: '250.0000'}, {node_id: 5, name: 'Южный', available_places: 1, amount_cr: '100.0000'}]};
@@ -1136,9 +1198,10 @@ describe('world construction, character and compact controls', () => {
     ]});
     const view = mount(WorldWorkspace); await flushView();
     const catalogue = () => findView(view.root, n => n.props['aria-label'] === 'Рецепты мастерской')!;
-    findView(view.root, n => n.tag === 'select' && n.props['aria-label'] === 'Группа предметов')!.props['onUpdate:value']('Дерево'); await flushView();
+    const group = findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Дерево')!;
+    group.props.onClick(); await flushView(); expect(group.props['aria-pressed']).toBe(true);
     expect(viewText(catalogue())).toContain('Доска'); expect(viewText(catalogue())).not.toContain('Слиток');
-    findView(view.root, n => n.tag === 'select' && n.props['aria-label'] === 'Доступность изготовления')!.props['onUpdate:value']('shortage'); await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Не хватает ресурсов')!.props.onClick(); await flushView();
     expect(viewText(catalogue())).toContain('Верстак'); expect(viewText(catalogue())).not.toContain('Доска'); expect(mocks.workspace).toHaveBeenCalledTimes(1);
   });
   it('separates bed information from compact watering and harvest timers', async () => {

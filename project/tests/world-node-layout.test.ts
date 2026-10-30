@@ -1,4 +1,5 @@
 import { mergeWorldTree } from '../src/entities/world/tree';
+import { visitWorldTree } from '../src/entities/world/visitor';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { watchEffect, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -16,6 +17,28 @@ import { gatherState } from '../src/services/api/simpleWorld';
 
 const capabilities: WorldCapabilities = { contract_version: 1, schema_ready: true, world_read: true, world_write: true, storage_v2: true, economy_tick: true };
 afterEach(() => vi.restoreAllMocks());
+it('accepts only the matching public owner identity and handles unowned nodes', () => {
+  const owner = { id: 7, owned_by_me: false, has_finances: true, user: { id: 7, username: 'bot', is_online: false, auth_key: 'must-not-pass' } };
+  expect(parseWorldNode({ ...node('PLOT'), owner }).owner?.user).toEqual({ id: 7, username: 'bot', is_online: false });
+  expect(parseWorldNode({ ...node('PLOT'), owner: { ...owner, id: null, user: null } }).owner?.user).toBeNull();
+  for (const user of [{ ...owner.user, id: 8 }, { ...owner.user, username: '' }, { ...owner.user, is_online: 'yes' }]) {
+    expect(() => parseWorldNode({ ...node('PLOT'), owner: { ...owner, user } })).toThrow('invalid-world-response');
+  }
+});
+it('visits loaded containers and leaves uniformly, supports pruning and rejects cycles before merging', () => {
+  const root = treeNode({ ...node('WORLD'), id: 1 });
+  const child = treeNode({ ...node('BUILDING'), id: 2, parent_id: 1 });
+  const leaf = treeNode({ ...node('ROOM'), id: 3, parent_id: 2 });
+  root.children = [child]; child.children = [leaf];
+  const entered: number[] = [], left: number[] = [];
+  visitWorldTree(root, { enter(n) { entered.push(n.id); }, leave(n) { left.push(n.id); } });
+  expect(entered).toEqual([1, 2, 3]); expect(left).toEqual([3, 2, 1]);
+  entered.length = 0;
+  visitWorldTree(root, { enter(n) { entered.push(n.id); if (n.id === 2) return false; } });
+  expect(entered).toEqual([1, 2]);
+  leaf.children = [root]; const index = new Map<number, WorldTreeNode>();
+  expect(() => mergeWorldTree(index, root)).toThrow('Invalid world tree'); expect(index.size).toBe(0);
+});
 function screen(id = 10) {
   const current = { ...node('BUILDING'), id };
   return { contract_version: 1, server_time: 1, capabilities, navigation: { node: current, parent_id: current.parent_id, breadcrumbs: [current], siblings: { items: [], _meta: { totalCount: 0, pageCount: 0, currentPage: 1, perPage: 20 } } }, map: { node_id: id, items: [], cells: [], can_expand: true } };
@@ -80,7 +103,7 @@ function node(type: WorldNode['type'], details: WorldNode['details'] = {}, stora
 it('uses the same navigation for every world node and adds campsite gameplay tabs', () => {
   const campsite = { ...node('PLOT', { plot_kind: 'campsite' }), extensions: ['nights'] };
   const campTabs = tabsForNode(campsite, nodeFeatures(campsite, capabilities));
-  expect(campTabs).toEqual(['map', 'workshop', 'finance', 'statistics']);
+  expect(campTabs).toEqual(['map', 'workshop', 'finance']);
   expect(tabForHash('#shelter', campTabs)).toBe('map');
   expect(tabForHash('#nights', campTabs)).toBe('map');
   expect(tabForHash('#garden', campTabs)).toBe('map');
@@ -91,13 +114,13 @@ it('uses the same navigation for every world node and adds campsite gameplay tab
 
 it('shows the same common sections for parent nodes, rooms and shelters', () => {
   const world = node('WORLD', {}, false);
-  expect(tabsForNode(world, nodeFeatures(world, capabilities))).toEqual(['map', 'statistics']);
+  expect(tabsForNode(world, nodeFeatures(world, capabilities))).toEqual(['map']);
   const settlement = node('SETTLEMENT', {}, false);
-  expect(tabsForNode(settlement, nodeFeatures(settlement, capabilities))).toEqual(['map', 'statistics']);
+  expect(tabsForNode(settlement, nodeFeatures(settlement, capabilities))).toEqual(['map']);
   const room = node('ROOM');
-  expect(tabsForNode(room, nodeFeatures(room, capabilities))).toEqual(['map', 'workshop', 'finance', 'statistics']);
+  expect(tabsForNode(room, nodeFeatures(room, capabilities))).toEqual(['map', 'workshop', 'finance']);
   const shelter = node('BUILDING', { shelter_instance_id: 4 });
-  expect(tabsForNode(shelter, nodeFeatures(shelter, capabilities))).toEqual(['map', 'workshop', 'finance', 'statistics']);
+  expect(tabsForNode(shelter, nodeFeatures(shelter, capabilities))).toEqual(['map', 'workshop', 'finance']);
   expect(tabForHash('#building-repair', tabsForNode(shelter, nodeFeatures(shelter, capabilities)))).toBe('map');
 });
 
@@ -105,7 +128,7 @@ it('opens manufacturing in a public NPC workshop without exposing its inventory'
   const workshop = { ...node('BUILDING', {}, false), extensions: ['public_workspace'] };
   const features = nodeFeatures(workshop, capabilities);
   expect(features.manufacturing).toBe(true); expect(features.storage).toBe(false);
-  expect(tabsForNode(workshop, features)).toEqual(['map', 'workshop', 'statistics']);
+  expect(tabsForNode(workshop, features)).toEqual(['map', 'workshop']);
   expect(nodeFeatures({ ...workshop, extensions: [] }, capabilities).manufacturing).toBe(false);
   expect(nodeFeatures({ ...workshop, status: 'constructing' }, capabilities).manufacturing).toBe(false);
 });
@@ -119,12 +142,13 @@ it('accepts the daily minimum after starter supplies and rejects a malformed min
   await expect(gatherState(10)).rejects.toThrow('invalid-world-response');
 });
 
-it('keeps the map and statistics available throughout the world hierarchy', () => {
+it('keeps the map available and retires the statistics tab throughout the world hierarchy', () => {
   for (const type of nodeTypes) {
     const current = node(type);
     const tabs = tabsForNode(current, nodeFeatures(current, capabilities));
     expect(tabs[0]).toBe('map');
-    expect(tabs).toContain('statistics');
+    expect(tabs).not.toContain('statistics');
+    expect(tabForHash('#statistics', tabs)).toBe('map');
   }
   const garden = node('PLOT', { plot_kind: 'garden' });
   expect(tabsForNode(garden, nodeFeatures(garden, capabilities))).not.toContain('development');
@@ -134,7 +158,7 @@ it('uses identical base tabs and rights for all kinds, including legacy special 
   for (const type of nodeTypes) for (const status of ['active', 'constructing']) for (const owned of [true, false]) {
     const current = { ...node(type, { plot_kind: 'campsite', building_kind: 'warehouse', shelter_instance_id: 4, unlocked: 1 }, owned), status, owned_by_me: owned };
     const features = nodeFeatures(current, capabilities);
-    expect(tabsForNode(current, features)).toEqual(owned ? ['map', 'workshop', 'finance', 'statistics'] : ['map', 'statistics']);
+    expect(tabsForNode(current, features)).toEqual(owned ? ['map', 'workshop', 'finance'] : ['map']);
     expect(features.storage).toBe(owned);
     expect(features.finance).toBe(owned);
     expect(features.housing || features.nights || features.cultivation).toBe(false);
@@ -144,7 +168,7 @@ it('uses identical base tabs and rights for all kinds, including legacy special 
 it('retains explicit extensions while keeping the common interface unchanged', () => {
   for (const type of nodeTypes) {
     const current = { ...node(type), extensions: ['nights', 'cultivation', 'mining'] };
-    expect(tabsForNode(current, nodeFeatures(current, capabilities))).toEqual(['map', 'cultivation', 'workshop', 'finance', 'statistics']);
+    expect(tabsForNode(current, nodeFeatures(current, capabilities))).toEqual(['map', 'cultivation', 'workshop', 'finance']);
     expect(nodeFeatures({ ...current, status: 'constructing' }, capabilities).cultivation).toBe(false);
   }
 });

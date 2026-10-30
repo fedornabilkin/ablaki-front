@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldHelpHint from './WorldHelpHint.vue';
@@ -20,6 +21,17 @@ const error = ref(''), working = ref(false), otherWork = ref<number | null>(null
 const loading = ref(true);
 const settingsOpen = ref(false), elapsed = ref(0), displayedSeconds = ref(0);
 const cancelOpen = ref(false);
+const resultDismissed = ref(false);
+const resultKey = computed(() => project.value && project.value.status !== 'building' ? `ablakin:build-result:${props.owner}:${props.node.id}:${project.value.id}:${project.value.result?.finished_at ?? 0}` : '');
+watch(resultKey, key => {
+  try { resultDismissed.value = !!key && localStorage.getItem(key) === '1'; }
+  catch { resultDismissed.value = false; }
+}, { immediate: true, flush: 'sync' });
+function dismissResult() {
+  resultDismissed.value = true;
+  try { if (resultKey.value) localStorage.setItem(resultKey.value, '1'); }
+  catch { /* Closing still works when browser storage is unavailable. */ }
+}
 let receivedAt = performance.now();
 const seconds = computed(() => displayedSeconds.value);
 const maximum = computed(() => project.value?.max_condition ?? Math.max(1, Math.ceil((project.value?.required_seconds ?? 0) * 100 / 60)));
@@ -127,7 +139,7 @@ watch(() => props.node.revision, () => { if (foreground.value && project.value &
 onScopeDispose(() => { disposed = true; epoch++; halt(); clearInterval(animation); clearInterval(sync); });
 </script>
 <template lang="pug">
-section.build-information(aria-label="Строительство")
+section.build-information(v-if="!resultDismissed || !project || project.status === 'building'" aria-label="Строительство")
   .build-heading
     h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
     world-help-hint(label="Условия строительных работ")
@@ -164,10 +176,10 @@ section.build-information(aria-label="Строительство")
         template(#icon)
           font-awesome-icon(icon="times")
         | {{ repairing ? 'Завершить ремонт досрочно' : 'Отменить' }}
-  world-build-results(v-else-if="project && project.status !== 'building'" :project="project")
+  world-build-results(v-else-if="project && project.status !== 'building'" :project="project" @close="dismissResult")
   p(v-else-if="!error && !project") Здесь сейчас нет доступной стройки.
   build-settings-modal(v-model:show="settingsOpen" :project="project" :name="node.name" :owner="owner" :session="session" @saved="refresh(); emit('changed')")
-  n-modal(v-model:show="cancelOpen" :theme-overrides="worldModalTheme" preset="card" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
+  app-dialog(icon="hammer" v-model:show="cancelOpen" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
     p Объект будет удалён с карты. 30% ресурсов не будут возвращены, даже если строительство ещё не начиналось.
     p Вернётся 70% каждого материала с округлением вниз до целого количества.
     p Цена объекта не возвращается. Выполненная работа помощников будет оплачена, остаток трудового бюджета освобождён.

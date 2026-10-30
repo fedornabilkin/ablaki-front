@@ -54,7 +54,7 @@ watch([() => props.map?.exploration?.allowed && props.node.owned_by_me, () => pr
 }, { immediate: true });
 const size = 88, key = (p: MapPoint) => `${p.x}:${p.y}`;
 const icons = { WORLD: 'globe', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
-const statuses: Record<string, string> = { active: 'Доступен', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'На паузе', damaged: 'Повреждён', destroyed: 'Разрушен' };
+const statuses: Record<string, string> = { active: '', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'На паузе', damaged: 'Повреждён', destroyed: 'Разрушен' };
 const drag = ref<{ start: MapPoint; end: MapPoint; x: number; y: number; moved: boolean; additive: boolean } | null>(null);
 let suppressClick = false;
 const bounds = computed(() => props.map?.bounds ?? props.node.map ?? { x: -2, y: -2, width: 5, height: 5 });
@@ -276,13 +276,14 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           title Ячейка {{ cell.x }}, {{ cell.y }}
         rect(v-for="cell in selected" :key="`selected-${key(cell)}`" :x="position(cell).x + 2" :y="position(cell).y + 2" :width="size - 4" :height="size - 4" class="map-selected")
         polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)")
-        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}. ${lockedBed(child) ? 'Закрыта' : statuses[child.status] || child.status}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
+        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}${lockedBed(child) ? '. Закрыта' : statuses[child.status] ? '. ' + statuses[child.status] : ''}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
           rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
           font-awesome-icon(v-if="child.details.is_lodging" icon="bed" x="65" y="7" width="14" height="14" aria-label="Ваш ночлег")
-          font-awesome-icon(:icon="lockedBed(child) ? 'lock' : icons[child.type]" x="32" y="13" width="24" height="24" aria-hidden="true")
+          font-awesome-icon(:icon="icons[child.type]" x="32" y="13" width="24" height="24" aria-hidden="true")
           font-awesome-icon(v-if="child.status === 'constructing'" icon="hammer" x="64" y="8" width="16" height="16" aria-hidden="true")
           text(:x="size / 2" y="55" text-anchor="middle" class="map-object-label") {{ child.label.length > 12 ? child.label.slice(0, 11) + '…' : child.label }}
-          text(:x="size / 2" y="69" text-anchor="middle" class="map-cell-status") {{ child.type === 'BED' && !child.details.unlocked ? 'Закрыта' : statuses[child.status] || 'Недоступен' }}
+          font-awesome-icon(v-if="lockedBed(child)" icon="lock" x="64" y="8" width="14" height="14" aria-label="Недоступно")
+          text(v-else-if="statuses[child.status]" :x="size / 2" y="69" text-anchor="middle" class="map-cell-status") {{ statuses[child.status] }}
           text(x="7" y="82" class="map-coordinate") {{ child.coordinates.x }}, {{ child.coordinates.y }}
           title {{ child.label }} · {{ child.coordinates.x }}, {{ child.coordinates.y }}
         rect(v-if="marquee" v-bind="marquee" class="map-marquee")

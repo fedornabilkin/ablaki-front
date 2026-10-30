@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ChoiceButtons from '@/components/ChoiceButtons.vue';
 import { computed } from 'vue';
 import { NButton, NCard } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
@@ -50,8 +51,7 @@ page-header(page-title="Статистика")
     p.muted.small Сегодня и вчера — календарные дни по московскому времени. Для игр и сделок период определяется датой создания записи. Прочерк означает, что сервер не предоставил данные.
   n-card(title="Рейтинг участников")
     p.muted За всё время показан текущий рейтинг, за выбранный период — полученный рейтинг. Сутки — последние 24 часа.
-    .period-buttons(role="group" aria-label="Период рейтинга")
-      n-button(v-for="period in rankingPeriods" :key="period.value" :type="filters.period === period.value ? 'primary' : 'default'" :secondary="filters.period !== period.value" :aria-pressed="filters.period === period.value" @click="choosePeriod(period.value)") {{ period.label }}
+    choice-buttons.period-buttons(:model-value="filters.period" :options="rankingPeriods" label="Период рейтинга" @update:model-value="choosePeriod")
     list-filters(v-model:search="search" v-model:values="filters" :loading="ranking.loading.value" placeholder="Найти участника" @reset="reset")
     request-state(:loading="ranking.loading.value" :error="ranking.error.value" :empty="!ranking.data.value.items.length" @retry="ranking.refresh")
       .record-row(v-for="(user, index) in ranking.data.value.items" :key="user.id")

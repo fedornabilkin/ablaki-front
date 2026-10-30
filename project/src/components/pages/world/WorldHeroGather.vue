@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NPopover, NModal, NButton, NProgress, NAlert } from 'naive-ui';
 import { worldModalTheme, worldActionButtonTheme } from '@/entities/world/theme';
@@ -46,7 +47,7 @@ onScopeDispose(() => { disposed = true; generation++; });
         button.gather-error(:class="{ 'world-action': !!runner.pending.value }" type="button" :aria-label="runner.pending.value ? 'Повторить сбор сырья' : 'Ошибка сбора сырья'" :disabled="runner.busy.value" @click="runner.pending.value && !runner.busy.value ? gather() : undefined")
           font-awesome-icon(:icon="runner.busy.value ? 'spinner' : 'exclamation-circle'" :spin="runner.busy.value")
       | {{ error || runner.error.value || 'Ответ ещё не получен. Нажмите, чтобы повторить тот же запрос.' }}
-  n-modal(v-model:show="open" :theme-overrides="worldModalTheme" preset="card" title="Ежедневный сбор сырья" :style="{ width: 'min(32rem, 94vw)' }")
+  app-dialog(icon="cubes" v-model:show="open" title="Ежедневный сбор сырья" :style="{ width: 'min(32rem, 94vw)' }")
     n-alert.gather-receipt(v-if="receipt" type="success" closable @close="receipt = ''") Получено: {{ receipt }}
     p Стартовый запас постепенно уменьшается. Построенная добыча сокращает соответствующую выдачу вдвое. После исчерпания запаса остаётся по одной единице каждого ресурса, включая песок и глину, раз в сутки.
     n-alert(v-if="state?.gather_minimum" type="info") Стартовый запас использован. Минимальный ежедневный сбор остаётся доступным.

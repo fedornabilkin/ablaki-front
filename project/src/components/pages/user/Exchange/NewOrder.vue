@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import { useToasts } from '@/hooks/useToasts';
 import { computed, ref } from 'vue';
 import { useStore } from 'vuex';
@@ -32,7 +33,7 @@ async function create() {
 }
 </script>
 <template lang="pug">
-n-modal(:show="isOpen" preset="card" title="Добавить заявку" :style="{ width: 'min(32.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && $emit('close')")
+app-dialog(icon="exchange-alt" :show="isOpen" title="Добавить заявку" :style="{ width: 'min(32.5rem, calc(100vw - 2rem))' }" :mask-closable="!busy" :closable="!busy" :close-on-esc="!busy" @update:show="!busy && $emit('close')")
   n-form(@submit.prevent="create")
     n-radio-group.mb-3(v-model:value="type" :disabled="busy" aria-label="Тип заявки")
       n-radio-button(value="buy") Продать кредиты

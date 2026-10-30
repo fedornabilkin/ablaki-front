@@ -1,4 +1,5 @@
 <script setup>
+import AppDialog from '@/components/AppDialog.vue';
 import { ref } from "@vue/reactivity";
 import { NModal, NButton, NInputNumber, useNotification } from 'naive-ui';
 import { duel } from '@/services/api/games/duel.js';
@@ -46,7 +47,7 @@ const createGame = () => {
 </script>
 
 <template lang="pug">
-  n-modal(:show="isOpen" preset="card" title="Новая дуэль" style="max-width: 500px;" @update:show="(v) => v || closeDialog()")
+  app-dialog(icon="crosshairs" :show="isOpen" title="Новая дуэль" style="max-width: 500px;" @update:show="(v) => v || closeDialog()")
     .form-newgame
       .row
         .col-sm.label Ставка (банк — две ставки)

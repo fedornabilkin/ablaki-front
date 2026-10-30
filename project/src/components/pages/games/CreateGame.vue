@@ -1,5 +1,5 @@
 <template lang="pug">
-  n-modal(:show="isOpen" preset="card" title="Создать игры" style="max-width: 500px;" @update:show="(v) => v || closeDialog()")
+  app-dialog(icon="dice" :show="isOpen" title="Создать игры" style="max-width: 500px;" @update:show="(v) => v || closeDialog()")
 
     form(action="" class="form-newgame")
       div.row
@@ -27,12 +27,13 @@
 </template>
 
 <script>
+import AppDialog from '@/components/AppDialog.vue';
 import {NModal, NInputNumber, NButton, useNotification} from 'naive-ui';
 import {errorHandler} from "@/services/api/errorHandler";
 import {ref} from "@vue/reactivity";
 
 export default {
-    components: { NModal, NInputNumber, NButton },
+    components: { AppDialog, NInputNumber, NButton },
     props: {
       isOpen: {type: Boolean, default: true,},
       konList: {type: Array, default: [1,2,3],},

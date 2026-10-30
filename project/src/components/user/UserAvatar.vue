@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { NAvatar } from 'naive-ui';
 import { field, person, type RecordData } from '@/services/api/portal';
 import { formatAccountNumber } from '@/services/api/header';
-const props = withDefaults(defineProps<{ user: RecordData; online?: boolean }>(), { online: undefined });
+const props = withDefaults(defineProps<{ user: RecordData; online?: boolean; size?: number; showRating?: boolean }>(), { online: undefined, size: 44, showRating: true });
 const username = computed(() => field(props.user.username));
 const online = computed(() => props.online ?? props.user.is_online === true);
 const avatar = computed(() => {
@@ -14,11 +14,11 @@ const avatar = computed(() => {
 <template lang="pug">
 .user-avatar
   .avatar-picture
-    n-avatar(round :size="44" :src="avatar" :img-props="{ alt: '' }") {{ username.slice(0, 1).toLocaleUpperCase('ru') }}
+    n-avatar(round :size="size" :src="avatar" :img-props="{ alt: '' }") {{ username.slice(0, 1).toLocaleUpperCase('ru') }}
     span.presence-dot(v-if="online" role="img" aria-label="В сети" title="В сети")
   .user-details
     router-link.user-login(:to="'/wall/' + encodeURIComponent(username)") {{ username }}
-    span.user-rating(:aria-label="'Рейтинг: ' + formatAccountNumber(person(user).rating)" title="Рейтинг")
+    span.user-rating(v-if="showRating" :aria-label="'Рейтинг: ' + formatAccountNumber(person(user).rating)" title="Рейтинг")
       font-awesome-icon(icon="star" aria-hidden="true")
       | {{ formatAccountNumber(person(user).rating) }}
 </template>

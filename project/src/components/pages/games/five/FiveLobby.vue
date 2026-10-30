@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, shallowRef, watch } from 'vue';
@@ -98,7 +99,7 @@ game-page-layout(kind="five" :version="overviewVersion" :snapshot="snapshot")
       request-state(:loading="games.loading.value" :error="games.error.value" :empty="!games.data.value.items.length" @retry="games.refresh")
         .game-row(v-for="game in games.data.value.items" :key="game.id")
           span №{{ game.id }}
-          user-avatar(v-if="historyPlayer(game, 'creator')" :user="historyPlayer(game, 'creator')!")
+          user-avatar(v-if="historyPlayer(game, 'creator')" :user="historyPlayer(game, 'creator')")
           span #[world-credits(:value="game.kon")]
           span {{ game.status === 'free' ? 'Ждём соперника' : 'Идёт игра' }}
           n-button(type="primary" secondary :disabled="play.busy.value" @click="play.open(fiveGame(game))") {{ mine ? 'Открыть' : 'Участвовать' }}
@@ -107,7 +108,7 @@ game-page-layout(kind="five" :version="overviewVersion" :snapshot="snapshot")
               n-button(:disabled="deleting || play.busy.value") Удалить
             | Удалить игру №{{ game.id }} и вернуть ставку?
       page-pager(v-if="mine && !games.error.value" v-model:page="page" :result="games.data.value" :disabled="games.loading.value")
-n-modal(:show="showCreate" preset="card" title="Новая игра «5 яблок»" style="width: min(500px, 95vw)" :mask-closable="!play.busy.value" :closable="!play.busy.value" @update:show="value => { if (!play.busy.value) showCreate = value; }")
+app-dialog(icon="apple-alt" :show="showCreate" title="Новая игра «5 яблок»" style="width: min(500px, 95vw)" :mask-closable="!play.busy.value" :closable="!play.busy.value" @update:show="value => { if (!play.busy.value) showCreate = value; }")
   .stack
     label Ставка (кредиты)
       n-input-number(:min="1" :max="Math.min(1000000000, Number.isFinite(credit) ? credit : 0)" :step="1" :precision="0" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(1000000000, Number.isFinite(credit) ? credit : 0), step: 1}" v-model:value="stake" :disabled="play.busy.value")

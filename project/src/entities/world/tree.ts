@@ -1,5 +1,6 @@
 import { reactive } from 'vue';
 import type { WorldNode, WorldScreen, WorldTreeNode } from './types';
+import { visitWorldTree } from './visitor';
 
 export function treeNode(node: WorldNode): WorldTreeNode {
   return { ...node, children: [], children_loaded: node.child_count === 0,
@@ -34,6 +35,8 @@ function patch(target: Record<string, unknown>, source: Record<string, unknown>)
 }
 
 export function mergeWorldTree(index: Map<number, WorldTreeNode>, incoming: WorldTreeNode): WorldTreeNode {
+  // Validate before mutating the live index: malformed snapshots must not half-update it.
+  visitWorldTree(incoming, { enter() {} });
   const received = new Set<number>(), parents = new Map<number, number | null>();
   function collect(node: WorldTreeNode) {
     received.add(node.id);
@@ -42,7 +45,9 @@ export function mergeWorldTree(index: Map<number, WorldTreeNode>, incoming: Worl
     node.children.filter(child => child.status !== 'archived' && (!older || existing.children.some(known => known.id === child.id))).forEach(collect);
   }
   collect(incoming);
-  function remove(node: WorldTreeNode) { if (received.has(node.id)) return; node.children.forEach(remove); index.delete(node.id); }
+  function remove(node: WorldTreeNode) {
+    visitWorldTree(node, { enter(child) { if (received.has(child.id)) return false; }, leave(child) { index.delete(child.id); } });
+  }
   function merge(source: WorldTreeNode): WorldTreeNode {
     let target = index.get(source.id);
     if (!target) { target = reactive({ ...source, children: [] }) as WorldTreeNode; index.set(source.id, target); }

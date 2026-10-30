@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ChoiceButtons from '@/components/ChoiceButtons.vue';
+import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, watch } from 'vue';
 import { useStore } from 'vuex';
 import { NButton, NCard } from 'naive-ui';
@@ -23,8 +25,7 @@ watch(() => props.snapshot, value => {
 <template lang="pug">
 n-card(:title="scope === 'recent' ? 'Последние игры' : 'История игр'")
   .stack
-    .history-buttons(v-if="scope !== 'recent'" role="group" aria-label="Период истории")
-      n-button(v-for="item in historyPeriods" :key="item.value" :type="period === item.value ? 'primary' : 'default'" :aria-pressed="period === item.value" @click="selectPeriod(item.value)") {{ item.label }}
+    choice-buttons(v-if="scope !== 'recent'" :model-value="period" :options="historyPeriods" label="Период истории" @update:model-value="selectPeriod")
     .history-buttons.stake-buttons(v-if="scope !== 'recent'" role="group" aria-label="Ставка")
       n-button(v-if="kons.data.value.length || kon" :type="!kon ? 'primary' : 'default'" :aria-pressed="!kon" @click="selectKon('')") Все ставки
       span.muted(v-if="kons.loading.value" role="status") Загрузка ставок…

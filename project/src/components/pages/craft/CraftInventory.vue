@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
@@ -112,7 +113,7 @@ watch(() => props.state, cancel);
       span Активно {{ active }} / 50 · постоянно {{ permanent }}
       n-button(:theme-overrides="worldActionButtonTheme" v-if="permanent < 50" size="small" :disabled="blocked" @click="requestBuy") Открыть слоты
     p.muted(v-if="state.slots_expire_at") Временные слоты до {{ new Date(state.slots_expire_at * 1000).toLocaleString('ru-RU') }}
-    craft-slot-grid(:slots="state.inventory_slots" :count="50" :active="active" :items="items" :selected="selected" :blocked="blocked" :target="overSlot?.container === 0 ? overSlot.position : undefined" :dragging="drag?.moving ? drag.slotId : undefined" label="Инвентарь: 10 на 5 слотов" @element="(position, element) => slotElement(0, position, element)" @choose="select" @down="down" @move="move" @up="up" @cancel="cancel" @destination="position => destination(0, position)" @unlock="requestBuy")
+    craft-slot-grid(:slots="state.inventory_slots" :count="50" :active="active" :items="items" :selected="selected" :blocked="blocked" :target="overSlot?.container === 0 ? overSlot.position : undefined" :dragging="drag?.moving ? drag.slotId : undefined" label="Инвентарь" @element="(position, element) => slotElement(0, position, element)" @choose="select" @down="down" @move="move" @up="up" @cancel="cancel" @destination="position => destination(0, position)" @unlock="requestBuy")
       .trash-cell(role="listitem")
         button.trash-target(ref="trash" type="button" :class="{over: overTrash}" :disabled="blocked" title="Корзина" aria-label="Корзина: перетащите предмет или выберите его и нажмите Enter здесь" @click="selected && requestDiscard(selected)")
           font-awesome-icon(icon="trash-alt")
@@ -164,7 +165,7 @@ watch(() => props.state, cancel);
     template(v-if="discarded")
       p {{ items.get(discarded.item_id)?.name }}. Удалённые предметы нельзя восстановить.
       n-input-number(:min="1" :max="Math.min(10000, discarded.quantity)" :step="1" :input-props="{type: 'number', inputmode: 'numeric', min: 1, max: Math.min(10000, discarded.quantity), step: 1}" v-model:value="discardQuantity" :precision="0" :disabled="blocked" aria-label="Количество удаляемых предметов")
-  n-modal(v-if="state.backpack_storage_id && slotCommand" :theme-overrides="worldModalTheme" v-model:show="showBuy" preset="card" title="Открыть постоянные слоты" :style="{width: 'min(32rem, 94vw)'}")
+  app-dialog(icon="box" v-if="state.backpack_storage_id && slotCommand" v-model:show="showBuy" title="Открыть постоянные слоты" :style="{width: 'min(32rem, 94vw)'}")
     world-storage-expansion(:storage="state.backpack_storage_id" :session="session ?? 0" :revision="slotRevision ?? 0" :writable="slotWritable !== false" :command="slotCommand")
   n-modal(v-else :theme-overrides="worldModalTheme" v-model:show="showBuy" preset="dialog" title="Открыть постоянные слоты" positive-text="Купить" negative-text="Отмена" :positive-button-props="{disabled: !validBuy, themeOverrides: worldActionButtonTheme}" :negative-button-props="{themeOverrides: worldActionButtonTheme}" @positive-click="buy")
     p Следующий слот: #[world-credits(:value="quotedPrice")]
@@ -182,13 +183,12 @@ watch(() => props.state, cancel);
 .durability { display: flex; align-items: center; gap: .3rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mobile-transfer-hint { display: none; }.repair-details summary { cursor: pointer; }.repair-details ul { padding-left: 1rem; font-size: .8rem; }.repair-details p { margin: .4rem 0; }
 .repair-details .missing { color: #f87171; }
-.chest-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }.use-item { display: flex; gap: .5rem; }.use-item > * { min-width: 0; }
+.use-item { display: flex; gap: .5rem; }.use-item > * { min-width: 0; }
 .overflow-items { display: flex; flex-wrap: wrap; gap: .5rem; }.overflow-items p { flex-basis: 100%; }.overflow-items .slot-item { width: 90px; min-height: 70px; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .4rem; touch-action: none; }.overflow-items .matching { background: #3b3523; }
 .drag-preview { position: fixed; pointer-events: none; z-index: 2000; padding: .7rem; background: #493c29; border-radius: .5rem; color: #f2d39d; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media(max-width: 850px) {
-  .craft-inventory { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
-  .inventory-scroll :deep(.inventory-grid) { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
-  .chest-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+  .craft-inventory { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .inventory-scroll :deep(.inventory-grid) { max-height: 55dvh; overflow: auto; padding: 3px; }
   .inventory-details { position: sticky; top: calc(var(--site-header-height, 60px) + 8px); }
   .chest-panel { order: -1; }.selected-item, .chest-panel { padding: .4rem; gap: .5rem; }
   .durability-label { display: none; }.chest-header { font-size: .75rem; gap: .3rem; margin: 0; }

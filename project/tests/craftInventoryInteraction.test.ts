@@ -79,7 +79,7 @@ describe('inventory drag to trash', () => {
     const contents = find(view.root, n => n.props['aria-label'] === 'Содержимое сундука')!;
     expect(contents).toBeTruthy();
     find(contents, n => n.props['aria-label'] === 'Log: 2 шт.')!.props.onClick({detail: 1}); await nextTick();
-    const backpack = find(view.root, n => n.props['aria-label'] === 'Инвентарь: 10 на 5 слотов')!;
+    const backpack = find(view.root, n => n.props['aria-label'] === 'Инвентарь')!;
     find(backpack, n => n.props['aria-label'] === 'Пустой слот 4')!.props.onClick();
     expect(view.submit).toHaveBeenCalledExactlyOnceWith({action: 'transfer', id: 5, quantity: 2, slot_id: 10, container_id: 0, position: 4});
     view.app.unmount();

@@ -16,7 +16,10 @@ watch(() => props.loading, loading => {
     n-skeleton(text :repeat="3")
   n-alert(v-else-if="error" type="error" title="Не удалось загрузить данные" role="alert")
     p {{ error }}
-    n-button(@click="$emit('retry')") Повторить
+    n-button(@click="$emit('retry')")
+      template(#icon)
+        font-awesome-icon(icon="rotate" aria-hidden="true")
+      | Повторить
   n-empty(v-else-if="empty" description="Пока нет записей")
   slot(v-else)
 </template>

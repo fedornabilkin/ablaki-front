@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
@@ -108,7 +109,7 @@ section.world-economy
         h3 Финансовый отчёт объекта
         p Сводка, сверка остатков и журнал операций.
         n-button(:theme-overrides="worldActionButtonTheme" @click="reportOpen = true") Открыть отчёт
-        n-modal(v-model:show="reportOpen" :theme-overrides="worldModalTheme" preset="card" title="Операции объекта" :style="{width: 'min(60rem, 94vw)'}")
+        app-dialog(icon="coins" v-model:show="reportOpen" title="Операции объекта" :style="{width: 'min(60rem, 94vw)'}")
           world-finance-report(v-if="reportOpen" :node-id="nodeId" :session="session")
 </template>
 <style scoped>

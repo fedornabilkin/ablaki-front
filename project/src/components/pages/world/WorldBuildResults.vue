@@ -2,10 +2,13 @@
 import type { Build } from '@/services/api/simpleWorld';
 import WorldCredits from './WorldCredits.vue';
 defineProps<{ project: Build }>();
+defineEmits<{ close: [] }>();
 const duration = (seconds: number) => seconds >= 60 ? `${Math.floor(seconds / 60)} мин ${seconds % 60} с` : `${seconds} с`;
 </script>
 <template lang="pug">
 section.build-results(v-if="project.status !== 'building'" aria-label="Результаты строительства" role="status")
+  button.build-result-close(type="button" aria-label="Закрыть результаты строительства" title="Закрыть" @click="$emit('close')")
+    font-awesome-icon(icon="times" aria-hidden="true")
   h3 {{ project.status === 'completed' ? (project.job_kind === 'repair' ? 'Ремонт завершён' : 'Строительство завершено') : 'Строительство отменено' }}
   p Общий вклад: {{ duration(project.worked_seconds) }} из {{ duration(project.required_seconds) }}.
   template(v-if="project.result")
@@ -42,4 +45,7 @@ section.build-results(v-if="project.status !== 'building'" aria-label="Резу�
 </template>
 <style scoped>
 .build-results { display: grid; gap: .65rem; padding: .9rem; border: 1px solid var(--border); border-radius: .65rem; background: linear-gradient(120deg, #36ad6a12, transparent); }.build-results h3, .build-results p { margin: 0; }.build-result-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }.build-result-totals > div { display: grid; gap: .25rem; }.build-result-totals span, .build-results small { color: var(--text-muted); font-size: .75rem; }.build-contributors { overflow-x: auto; }.build-contributors table { width: 100%; border-collapse: collapse; font-size: .8rem; }.build-contributors th, .build-contributors td { padding: .45rem .35rem; border-bottom: 1px solid var(--border); text-align: left; }.build-contributors th { color: var(--text-muted); }
+.build-results { position: relative; }.build-results h3 { padding-right: 1.8rem; }
+.build-result-close { position: absolute; top: .35rem; right: .35rem; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: .4rem; background: transparent; color: var(--text-muted); cursor: pointer; }
+.build-result-close:hover { background: var(--primary-soft); color: var(--text); }.build-result-close:focus-visible { outline: 2px solid var(--primary); }
 </style>

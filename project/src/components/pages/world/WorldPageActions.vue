@@ -32,5 +32,9 @@ function changed() {
   world-character-button(:key="session" :session="session" :health="snapshot.state?.health" :health-error="snapshot.error")
 </template>
 <style scoped>
-.world-page-actions { display: flex; align-items: start; justify-content: flex-end; flex-wrap: wrap; gap: 1rem; margin-left: auto; }
+.world-page-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .65rem; margin-left: auto; }
+@media (max-width: 620px) {
+  .world-page-actions { justify-content: flex-start; align-items: center; gap: .5rem; margin-left: 0; }
+  .world-page-actions > .hero-finances { flex-basis: 100%; }
+}
 </style>

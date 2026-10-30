@@ -1,6 +1,6 @@
 import type { WorldCapabilities, WorldNode } from './types';
 
-export type NodeTab = 'map' | 'cultivation' | 'workshop' | 'finance' | 'statistics';
+export type NodeTab = 'map' | 'cultivation' | 'workshop' | 'finance';
 
 export interface NodeFeatureSet {
   storage: boolean;
@@ -13,7 +13,6 @@ export interface NodeFeatureSet {
 
 export const tabLabels: Record<NodeTab, string> = {
   map: 'Карта', cultivation: 'Выращивание', workshop: 'Вещи и крафт', finance: 'Казна',
-  statistics: 'Статистика',
 };
 
 export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | null): NodeFeatureSet {
@@ -35,7 +34,6 @@ export function tabsForNode(node: WorldNode, features: NodeFeatureSet): NodeTab[
   if (features.cultivation) tabs.push('cultivation');
   if (features.storage || features.manufacturing) tabs.push('workshop');
   if (features.finance) tabs.push('finance');
-  tabs.push('statistics');
   return tabs;
 }
 
