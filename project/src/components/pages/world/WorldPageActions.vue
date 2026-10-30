@@ -7,6 +7,7 @@ import type { WorldNode } from '@/entities/world/types';
 import WorldHeroFinances from './WorldHeroFinances.vue';
 import WorldMvpProgress from './WorldMvpProgress.vue';
 import WorldChecklist from './WorldChecklist.vue';
+import WorldCharacterButton from './WorldCharacterButton.vue';
 import type { MvpState } from '@/services/api/worldMvp';
 defineProps<{ node?: WorldNode; nodeId?: number }>();
 const auth = useStore(), world = useWorldStore(), route = useRoute();
@@ -28,6 +29,7 @@ function changed() {
   world-hero-finances(:node="node" :node-id="nodeId" :owner="owner" :session="session" :revision="world.dataRevision")
   world-mvp-progress(:owner="owner" :session="session" :revision="world.dataRevision + refresh" :writable="world.capabilities?.world_write ?? true" @changed="changed" @snapshot="snapshot = $event")
   world-checklist(:owner="owner" :session="session" :snapshot="snapshot" @refresh="refresh++")
+  world-character-button(:key="session" :session="session" :health="snapshot.state?.health" :health-error="snapshot.error")
 </template>
 <style scoped>
 .world-page-actions { display: flex; align-items: start; justify-content: flex-end; flex-wrap: wrap; gap: 1rem; margin-left: auto; }

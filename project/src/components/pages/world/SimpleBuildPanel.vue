@@ -6,6 +6,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { NAlert, NButton, NModal, NProgress, NSpin, NTooltip } from 'naive-ui';
 import BuildSettingsModal from './modals/BuildSettingsModal.vue';
+import WorldBuildResults from './WorldBuildResults.vue';
 import { projectedBuildSeconds } from '@/entities/world/buildProgress';
 import * as api from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
@@ -48,7 +49,7 @@ function halt() { working.value = false; if (timer) clearInterval(timer); timer 
 async function load() {
   const token = ++epoch; halt(); loading.value = true; error.value = ''; if (project.value?.node_id !== props.node.id) project.value = null;
   try {
-    const [active, projects] = await Promise.all([api.activeBuild(), api.builds({ node_id: props.node.id, status: 'building' })]);
+    const [active, projects] = await Promise.all([api.activeBuild(), api.builds({ node_id: props.node.id })]);
     if (disposed || token !== epoch) return;
     if (projects.items[0]) accept(projects.items[0]); else project.value = null;
     otherWork.value = active && active.id !== project.value?.id ? active.node_id : null;
@@ -163,11 +164,13 @@ section.build-information(aria-label="Строительство")
         template(#icon)
           font-awesome-icon(icon="times")
         | {{ repairing ? 'Завершить ремонт досрочно' : 'Отменить' }}
-  p(v-else-if="!error && (!project || project.status !== 'building')") Здесь сейчас нет доступной стройки.
+  world-build-results(v-else-if="project && project.status !== 'building'" :project="project")
+  p(v-else-if="!error && !project") Здесь сейчас нет доступной стройки.
   build-settings-modal(v-model:show="settingsOpen" :project="project" :name="node.name" :owner="owner" :session="session" @saved="refresh(); emit('changed')")
   n-modal(v-model:show="cancelOpen" :theme-overrides="worldModalTheme" preset="card" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")
     p Объект будет удалён с карты. 30% ресурсов не будут возвращены, даже если строительство ещё не начиналось.
     p Вернётся 70% каждого материала с округлением вниз до целого количества.
+    p Цена объекта не возвращается. Выполненная работа помощников будет оплачена, остаток трудового бюджета освобождён.
     n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
     .build-actions
       n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="cancelOpen = false") Продолжить строительство

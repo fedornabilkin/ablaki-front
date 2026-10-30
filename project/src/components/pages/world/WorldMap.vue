@@ -11,7 +11,7 @@ import { nodeLabels } from '@/entities/world/types';
 import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
 import { useWorldBudget } from '@/hooks/useWorldBudget';
 import { loadGarden, previewGarden } from '@/services/api/worldGarden';
-import { mapAreaCells, mapPurchase, requiredExplorerLevel, selectMapCells } from '@/entities/world/mapSelection';
+import { explorationPredecessors, mapAreaCells, mapPurchase, requiredExplorerLevel, selectMapCells } from '@/entities/world/mapSelection';
 import { loadExplorer, previewProfession, previewMapCells, worldError } from '@/services/api/world';
 import WorldBuildPanel from './WorldBuildPanel.vue';
 import WorldCultivationPanel from './WorldCultivationPanel.vue';
@@ -61,7 +61,7 @@ const bounds = computed(() => props.map?.bounds ?? props.node.map ?? { x: -2, y:
 const width = computed(() => bounds.value.width * size), height = computed(() => bounds.value.height * size);
 const nodes = computed(() => (props.map?.items ?? []).filter(node => node.status !== 'archived'));
 const selectedNode = computed(() => selected.value.length === 1 ? nodes.value.find(n => occupiesCell(n, selected.value[0])) : undefined);
-const constructionNodes = computed(() => nodes.value.filter(n => n.status === 'constructing' && (n.id === props.workingNodeId || (n.id === selectedNode.value?.id && n.owned_by_me))));
+const constructionNodes = computed(() => nodes.value.filter(n => (n.status === 'constructing' || n.details.last_build_id) && (n.id === props.workingNodeId || n.id === selectedNode.value?.id)));
 const known = computed(() => new Map((props.map?.cells ?? []).map(c => [key(c), c.state])));
 const state = (p: MapPoint) => known.value.get(key(p)) ?? 'closed';
 const point = computed(() => selected.value.length === 1 ? selected.value[0] : null);
@@ -84,13 +84,15 @@ const price = computed(() => {
   return allDiscovered.value && props.map?.pricing ? mapPurchase(props.map.pricing, [...selected.value].sort((a, b) => a.y - b.y || a.x - b.x)) : null;
 });
 const allClosed = computed(() => selected.value.length > 0 && selected.value.every(p => state(p) === 'closed' && !occupied(p)));
+const missingPredecessors = (p: MapPoint) => explorationPredecessors(p).filter(cell => state(cell) === 'closed');
+const requiredCells = computed(() => [...new Map(selected.value.flatMap(missingPredecessors).map(p => [`${p.x}:${p.y}`, p])).values()]);
 const required = computed(() => Math.max(1, ...selected.value.map(requiredExplorerLevel)));
 const explorerLevel = computed(() => Math.max(props.map?.exploration?.level ?? 0, explorer.value?.enrolled ? explorer.value.level : 0));
 const levelAllowed = computed(() => !!props.map?.exploration?.allowed && explorerLevel.value >= required.value);
 const neededElixirs = computed(() => selected.value.filter(p => requiredExplorerLevel(p) > (props.map?.exploration?.level ?? 0)).length);
 const elixirAllowed = computed(() => !!props.map?.exploration?.allowed && neededElixirs.value > 0 && props.map.exploration.elixir_quantity >= neededElixirs.value);
 const cellActionsAllowed = computed(() => props.writable && props.node.owned_by_me && (isGarden.value ? !!garden.value?.can_expand : !!props.map?.can_expand));
-const canExploreCell = (p: MapPoint) => cellActionsAllowed.value && !isGarden.value && !!props.map?.exploration?.allowed && state(p) === 'closed' && !occupied(p) && (explorerLevel.value >= requiredExplorerLevel(p) || (props.map.exploration?.elixir_quantity ?? 0) > 0);
+const canExploreCell = (p: MapPoint) => cellActionsAllowed.value && !isGarden.value && !!props.map?.exploration?.allowed && state(p) === 'closed' && !missingPredecessors(p).length && !occupied(p) && (explorerLevel.value >= requiredExplorerLevel(p) || (props.map.exploration?.elixir_quantity ?? 0) > 0);
 const blocked = computed(() => calculating.value || gardenLoading.value || props.command.busy.value || !!props.command.pending.value || !props.writable);
 const canBuy = computed(() => !!price.value && (gardenSelection.value ? !!garden.value?.can_expand : !!props.map?.can_expand));
 const position = (p: MapPoint) => ({ x: (p.x - bounds.value.x) * size, y: (bounds.value.y + bounds.value.height - 1 - p.y) * size });
@@ -191,7 +193,7 @@ function dropSeed(event: DragEvent, node: WorldNode) {
 async function act(action: 'explore' | 'buy') {
   const elixir = action === 'explore' && !levelAllowed.value && elixirAllowed.value;
   if (blocked.value || !cellActionsAllowed.value || !selected.value.length) return;
-  if (action === 'explore' && (!props.map?.can_expand || !allClosed.value || !(elixir ? elixirAllowed.value : levelAllowed.value))) return;
+  if (action === 'explore' && (!props.map?.can_expand || !allClosed.value || requiredCells.value.length || !(elixir ? elixirAllowed.value : levelAllowed.value))) return;
   if (action === 'buy' && !canBuy.value) return;
   const expectedPrice = action === 'buy' ? price.value!.total : '0.0000';
   const personalTopUp = action === 'buy' && topUp.value && needsPersonalTopUp(expectedPrice, gardenSelection.value ? garden.value?.garden?.available_budget : availableBudget.value);
@@ -312,7 +314,6 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
         router-link.world-map-open(:to="`/world/nodes/${selectedNode.id}`") Перейти к объекту →
         router-link(v-if="selectedNode.permissions.storage" :to="`/world/nodes/${selectedNode.id}#workshop`") Вещи и размещение
         router-link(v-if="selectedNode.status === 'active' && (selectedNode.owned_by_me || selectedNode.extensions?.includes('public_workspace'))" :to="`/world/workspace/${selectedNode.id}`") Изготовление в объекте
-        world-cultivation-panel(v-if="selectedNode.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop" :active="active")
         world-harvest-panel(v-if="selectedNode.type === 'CHEST' && selectedNode.status === 'active' && selectedNode.extensions?.includes('harvest')" :key="`stock-${selectedNode.id}`" :node-id="selectedNode.id" :session="session ?? 0" :revision="selectedNode.revision" :command="command" :active="active" embedded)
       world-placed-item-panel(v-else-if="selectedItem" :item="selectedItem" :node-id="node.id" :session="session ?? 0" :command="command" :writable="writable" @changed="emit('changed', $event)")
       template(v-else-if="selected.length")
@@ -321,6 +322,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
         h3 Выберите ячейку
       section.map-cell-actions(v-if="cellActionsAllowed && selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
+        p.map-predecessor-notice(v-if="allClosed && requiredCells.length" role="status") Сначала исследуйте ячейки: {{ requiredCells.map(p => `${p.x}, ${p.y}`).join('; ') }}. Для диагонали нужны обе соседние стороны.
         .explore-action
           h4 Открытие ячеек
           world-help-hint(label="Исследование и покупка ячеек" symbol="!")
@@ -335,7 +337,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
             p(v-if="!canBuy && !allClosed") {{ map?.exploration?.reason || 'Выделите закрытые либо исследованные свободные ячейки.' }}
             p(v-if="!isGarden && !map?.exploration?.allowed") {{ map?.exploration?.reason || 'Исследование этой карты пока недоступно.' }}
             p(v-if="!writable") Только просмотр: действия временно недоступны.
-        n-button(:theme-overrides="worldActionButtonTheme" v-if="!isGarden && selected.some(p => state(p) === 'closed')" type="primary" :loading="calculating" :disabled="blocked || !map?.can_expand || !allClosed || (!levelAllowed && !elixirAllowed)" @click="act('explore')") {{ !levelAllowed && elixirAllowed ? `Исследовать ${selected.length} · ${neededElixirs} эликс.` : `Исследовать ${selected.length}` }}
+        n-button(:theme-overrides="worldActionButtonTheme" v-if="!isGarden && selected.some(p => state(p) === 'closed')" type="primary" :loading="calculating" :disabled="blocked || !map?.can_expand || !allClosed || requiredCells.length > 0 || (!levelAllowed && !elixirAllowed)" @click="act('explore')") {{ !levelAllowed && elixirAllowed ? `Исследовать ${selected.length} · ${neededElixirs} эликс.` : `Исследовать ${selected.length}` }}
         template(v-if="isGarden || selected.some(p => state(p) === 'discovered')")
           p(v-if="price") {{ selected.length }} ячеек: #[world-credits(:value="price.gross")]  − #[world-credits(:value="price.discount")]  скидки = #[world-credits(:value="price.total")]
           world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
@@ -346,9 +348,11 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       n-alert(closable v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
       n-alert(closable v-if="professionNotice" type="success" role="status") {{ professionNotice }}
       n-button(:theme-overrides="worldActionButtonTheme" v-if="gardenError" :disabled="blocked" @click="refreshGarden") Обновить карту
+    world-cultivation-panel.map-cultivation(v-if="selectedNode?.extensions?.includes('cultivation')" :key="selectedNode.id" :bed-id="selectedNode.id" :session="session ?? 0" :command="command" :dropped-crop="droppedCrop" :active="active")
 </template>
 
 <style scoped>
+.map-cultivation { margin-top: .75rem; border: 1px solid var(--border); border-radius: .65rem; padding: .85rem; }.map-predecessor-notice { font-size: .8rem; color: var(--text-muted); }
 .world-map-window { position: relative; }.map-opening-indicator { position: absolute; z-index: 2; top: .65rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .55rem; padding: .6rem .9rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); box-shadow: 0 4px 16px #0003; white-space: nowrap; pointer-events: none; }
 .map-cell-information :deep(.map-selection-help) { position: absolute; right: 0; top: 0; }.map-cell-information:has(.map-selection-help) { padding-right: 1.8rem; }
 .world-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem); gap: 1rem; align-items: start; }

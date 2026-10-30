@@ -23,6 +23,7 @@ export function parseWorldNode(value: unknown): WorldNode {
     else if (key === 'settings_json') details[key] = entry === null ? null : text(entry, 65536);
     else if (key === 'production_enabled' || key === 'repair_active') details[key] = boolean(entry);
     else if (key === 'storage_capacity') details[key] = integer(entry, 0, 100);
+    else if (key === 'last_build_id') details[key] = integer(entry, 1);
     else if (['harvested_quantity', 'template_revision_id', 'population', 'plot_limit', 'level', 'condition', 'max_condition', 'active_project_id', 'shelter_instance_id', 'shelter_plot_id', 'area', 'fertility', 'allow_building', 'garden_node_id', 'ordinal', 'unlocked'].includes(key)) details[key] = entry === null ? null : integer(entry);
   }
   const owner = row.owner === undefined ? undefined : record(row.owner);

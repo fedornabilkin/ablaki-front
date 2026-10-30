@@ -25,6 +25,9 @@ const craftHref = useCampsiteCraft(session);
 const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null), loading = ref(false), calculating = ref(false), error = ref(''), notice = ref('');
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
+const category = ref('all'), availability = ref('all');
+const categories = computed(() => [{value: 'all', label: 'Все группы'}, ...[...new Set(state.value?.recipes.map(r => r.category ?? 'Прочее') ?? [])].map(name => ({value: name, label: name}))]);
+const availabilityOptions = [{value: 'all', label: 'Все'}, {value: 'ready', label: 'Хватает ресурсов'}, {value: 'shortage', label: 'Не хватает ресурсов'}, {value: 'locked', label: 'Закрытые'}];
 const lastResult = ref<CraftResult | null>(null);
 const useObjectBudget = ref(false);
 const waitingForPreview = ref(false);
@@ -39,7 +42,9 @@ const displayedTerms = computed(() => calculation.value && calculation.value.inp
 const selectedRecipe = computed(() => state.value?.recipes.find(r => r.id === recipe.value));
 const storageOptions = computed(() => state.value?.storages.map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
 const outputOptions = computed(() => state.value?.storages.filter(s => s.output_allowed).map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
-const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())) ?? []);
+const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())
+  && (category.value === 'all' || (r.category ?? 'Прочее') === category.value)
+  && (availability.value === 'all' || availability.value === 'ready' && r.available && !r.locked_reasons.length || availability.value === 'shortage' && !r.available && !r.locked_reasons.length || availability.value === 'locked' && r.locked_reasons.length)) ?? []);
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
 function invalidate(clear = false) { clearTimeout(previewTimer); previewGeneration++; if (clear) calculation.value = null; calculating.value = false; waitingForPreview.value = false; }
 function schedulePreview() { invalidate(); if (loading.value || disposed) return; waitingForPreview.value = true; previewTimer = setTimeout(() => { void preview(); }, 600); }
@@ -104,6 +109,9 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
           span.workspace-eyebrow Рецепты объекта
           h2 Что изготовить
         n-input(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
+        .recipe-filters
+          n-select(v-model:value="category" :options="categories" size="small" aria-label="Группа предметов")
+          n-select(v-model:value="availability" :options="availabilityOptions" size="small" aria-label="Доступность изготовления")
         p.recipe-legend Выберите плитку. Материалы и оборудование подбираются автоматически; стоимость появится в панели справа.
         .recipe-tiles
           .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
@@ -166,6 +174,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
         p(v-else) Выберите рецепт для изготовления.
 </template>
 <style scoped>
+.recipe-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
 .workspace { display: grid; gap: 1.25rem; max-width: 1320px; padding-block: 1.5rem 3rem; }
 .workspace-navigation { padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
 .workspace-section-heading { margin-bottom: 1rem; }.workspace-section-heading h2 { margin: .25rem 0 0; font-size: 1.2rem; }.workspace-eyebrow { color: var(--primary); text-transform: uppercase; font-size: .72rem; letter-spacing: .1em; font-weight: 700; }

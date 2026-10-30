@@ -4,7 +4,7 @@ import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch, onMounted, onScopeDispose, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
-import { NAlert, NButton, NInput, NPopover, NPagination, NModal } from 'naive-ui';
+import { NAlert, NButton, NInput, NPopover, NPagination, NModal, NSelect } from 'naive-ui';
 import CraftRoadmap from './CraftRoadmap.vue';
 import CraftRecipeDetail from './CraftRecipeDetail.vue';
 import CraftInventory from './CraftInventory.vue';
@@ -36,6 +36,8 @@ const pageTitle = computed(() => ({ inventory: 'Инвентарь', recipes: '�
 const pageIcon = computed(() => ({ inventory: 'box', recipes: 'scroll', map: 'map', history: 'calendar-days' } as Record<string, string>)[tab.value]);
 const pageDescription = computed(() => ({ inventory: 'Рюкзак и переносимые контейнеры. Выбирайте предметы для использования и перемещения.', recipes: 'Рецепты и доступные материалы. Выберите предмет, чтобы изучить его или перейти к изготовлению.', map: 'Связи рецептов, материалы и оборудование для изготовления.', history: 'Изготовление, использование и перемещение ваших предметов.' } as Record<string, string>)[tab.value]);
 const selected = ref<number | null>(null), category = ref<number | null>(null), search = ref('');
+const availability = ref('all');
+const availabilityOptions = [{value: 'all', label: 'Все'}, {value: 'ready', label: 'Хватает ресурсов'}, {value: 'shortage', label: 'Не хватает ресурсов'}, {value: 'locked', label: 'Закрытые'}];
 const showControls = ref(true), showRecipe = ref(true);
 const root = ref<HTMLElement>(), controls = ref<HTMLElement>(), roadmap = ref<InstanceType<typeof CraftRoadmap>>();
 const mapHeight = ref(720), controlsHeight = ref(180), narrow = ref(false);
@@ -53,7 +55,8 @@ watch([() => route.query.item, () => route.meta.workspaceSection, () => !!state.
 const stock = computed(() => new Map(state.value?.inventory.map(i => [i.item_id, i.quantity]) ?? []));
 const recipe = computed(() => state.value?.recipes.find(r => r.id === selected.value));
 const readyRecipes = computed(() => new Set(state.value?.recipes.filter(r => !craftRequirements(state.value!, r, 1).reasons.length).map(r => r.id) ?? []));
-const filtered = computed(() => state.value?.recipes.filter(r => (!category.value || r.category_id === category.value) && items.value.get(r.item_id)?.name.toLowerCase().includes(search.value.trim().toLowerCase())) ?? []);
+const filtered = computed(() => state.value?.recipes.filter(r => (!category.value || r.category_id === category.value) && items.value.get(r.item_id)?.name.toLowerCase().includes(search.value.trim().toLowerCase())
+  && (availability.value === 'all' || availability.value === 'ready' && readyRecipes.value.has(r.id) || availability.value === 'shortage' && !readyRecipes.value.has(r.id) && !r.locked_reasons.length || availability.value === 'locked' && r.locked_reasons.length)) ?? []);
 const craftIcons: Record<string, string> = {'classic-wood': 'tree', 'classic-stone': 'mountain', 'classic-metal': 'hammer', 'classic-textile': 'shirt', 'classic-alchemy': 'flask'};
 async function select(id: number) {
   selected.value = id; showRecipe.value = true;
@@ -150,6 +153,9 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
         n-button(:loading="slotCommand.busy.value" @click="slotCommand.retry") Проверить результат
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
         n-input(v-model:value="search" placeholder="Название предмета" aria-label="Поиск рецепта")
+        .recipe-filters
+          n-select(v-model:value="category" :options="[{value: 0, label: 'Все группы'}, ...state.categories.map(c => ({value: c.id, label: c.name}))]" placeholder="Все группы" aria-label="Группа предметов")
+          n-select(v-model:value="availability" :options="availabilityOptions" aria-label="Доступность изготовления")
         .item-grid
           article.list-recipe(v-for="r in filtered" :key="r.id" :class="{ ready: readyRecipes.has(r.id), locked: r.locked_reasons.length > 0, shortage: !readyRecipes.has(r.id) && !r.locked_reasons.length }")
             font-awesome-icon.recipe-lock(v-if="r.locked_reasons.length" icon="lock" title="Рецепт закрыт")
@@ -199,6 +205,7 @@ n-modal(:theme-overrides="worldModalTheme" v-model:show="showItem" preset="card"
     p(v-else) Рецепт этого предмета пока недоступен.
 </template>
 <style scoped lang="scss">
+.recipe-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
 .workshop:not(.map-mode) { max-width: 1320px; margin-inline: auto; padding: 1.5rem 12px 3rem; gap: 1.25rem; }
 .workshop .workshop-controls { width: 100%; display: grid; gap: 1rem; }
 .workspace-navigation { display: flex; align-items: start; justify-content: space-between; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }

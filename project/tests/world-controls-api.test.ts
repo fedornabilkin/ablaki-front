@@ -7,7 +7,9 @@ import { apiClient } from '../src/services/httpClient';
 import { loadStorageContents } from '../src/services/api/worldStorage';
 import { parseWorkspace } from '../src/services/api/worldWorkspace';
 import { parseMining } from '../src/services/api/worldMining';
-import { gatherState, startOverview } from '../src/services/api/simpleWorld';
+import { build, gatherState, startOverview } from '../src/services/api/simpleWorld';
+import { parseProgression } from '../src/services/api/worldCharacter';
+import { explorationPredecessors } from '../src/entities/world/mapSelection';
 
 const header = { id: 1, kind: 'backpack', name: 'Рюкзак', node_id: null, container_inventory_id: null, capacity: 100, revision: 3 };
 function page(number: number, revision = 3) {
@@ -15,6 +17,23 @@ function page(number: number, revision = 3) {
     slots: [], container: null, location: null, writable: true, server_time: 1, _meta: { totalCount: 2, perPage: 1, currentPage: number, pageCount: 2 } };
 }
 afterEach(() => vi.restoreAllMocks());
+it('validates a completed construction receipt and keeps older build responses compatible', () => {
+  const project = {id: 1, node_id: 2, owner_user_id: 3, required_seconds: 100, worked_seconds: 100, labor_budget: '10.0000', status: 'completed'};
+  const result = {finished_at: 1000, participants: [{user_id: 3, name: 'Владелец', owner: true, seconds: 20, paid_cr: '0.0000'}, {user_id: 4, name: 'Строитель', owner: false, seconds: 80, paid_cr: '8.0000'}], labor_budget_cr: '10.0000', paid_cr: '8.0000', released_cr: '2.0000', object_price_cr: '5.0000', spent_cr: '13.0000', material_refund_percent: 0};
+  expect(build({...project, result}).result).toEqual(result); expect(build(project).result).toBeUndefined();
+  for (const change of [{paid_cr: '-1'}, {material_refund_percent: 101}, {participants: [...result.participants, result.participants[0]]}, {participants: [{...result.participants[0], owner: 'yes'}]}]) expect(() => build({...project, result: {...result, ...change}})).toThrow();
+});
+it('parses character progression and rejects malformed experience', () => {
+  const value = {craft: [{name: 'Дерево', level: 2, xp: 125}], professions: [{name: 'Исследователь', level: 1, xp: 10}]};
+  expect(parseProgression(value)).toEqual(value);
+  expect(() => parseProgression({...value, craft: [{...value.craft[0], xp: -1}]})).toThrow();
+});
+it('requires both predecessors at corners and a nearer predecessor on other outer cells', () => {
+  expect(explorationPredecessors({x: 1,y: 1})).toEqual([]);
+  expect(explorationPredecessors({x: 2,y: 0})).toEqual([{x: 1,y: 0}]);
+  expect(explorationPredecessors({x: -2,y: -2})).toEqual([{x: -1,y: -2}, {x: -2,y: -1}]);
+  expect(explorationPredecessors({x: 3,y: 1})).toEqual([{x: 2,y: 1}]);
+});
 it('validates employer wages and keeps the accepted batch price separate from new terms', () => {
   const row = { node_id: 1, ready: true, working: true, workers: 1, produced_quantity: 0, pending_quantity: 0, seconds_per_unit: 180, server_time: 100,
     employment: { enabled: false, reward_cr: '5.0000', storage_id: 7, owner: false, available: true, reason: null, accepted_reward_cr: '2.0000', storages: [] } };

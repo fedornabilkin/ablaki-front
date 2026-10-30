@@ -21,7 +21,6 @@ import WorldRepairPanel from './WorldRepairPanel.vue';
 import WorldPlacementPalette from './WorldPlacementPalette.vue';
 import WorldPageActions from './WorldPageActions.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
-import WorldCharacterProgress from './WorldCharacterProgress.vue';
 import WorldBuildPalette from './WorldBuildPalette.vue';
 import { activeBuild, type Build } from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
@@ -33,10 +32,8 @@ const invalidId = computed(() => nodeId.value !== null && (!Number.isSafeInteger
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const mapSelection = ref<{ x: number; y: number }[]>([]);
-const nodeInfoOpened = ref(false);
 const placementTab = ref<'objects' | 'items'>('objects'), itemsVisited = ref(false);
 watch([nodeId, session], () => { placementTab.value = 'objects'; itemsVisited.value = false; });
-watch([nodeId, session], () => { nodeInfoOpened.value = false; });
 const purchasedRoom = ref<number | null>(null);
 const activeWork = ref<Build | null>(null), workError = ref('');
 const pauseRunner = useSimpleWorldCommand(computed(() => `${owner.value}.pause-build`), session);
@@ -176,7 +173,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             template(#icon)
               font-awesome-icon(icon="rotate" aria-hidden="true")
             | Обновить
-          world-help-hint(label="Параметры объекта" symbol="i" @open="nodeInfoOpened = true")
+          world-help-hint(label="Параметры объекта" symbol="i")
             dl.world-facts
               dt Объект
               dd {{ world.node.label }} · №{{ world.node.id }}
@@ -189,11 +186,10 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
               template(v-for="fact in facts" :key="fact.key")
                 dt {{ fact.label }}
                 dd {{ fact.value }}
-            world-character-progress(v-if="nodeInfoOpened" :key="session")
       .world-children
         world-map(:active="activeTab === 'map'" :working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
           template(#information)
-            world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active) && world.capabilities?.world_write" :active="activeTab === 'map'" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
+            world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active || world.node.details.last_build_id) && world.capabilities?.world_write" :active="activeTab === 'map'" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
             world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
             world-node-extensions(slot="map" :active="activeTab === 'map'" v-bind="extensionProps" @changed="changed([world.node.id])")
           template(#placement)

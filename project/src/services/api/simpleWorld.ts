@@ -3,7 +3,8 @@ import config from '@/config/config';
 import { record } from './world';
 
 export interface SimpleNode { id: number; parent_id: number | null; name: string; hierarchy_level: number; node_type: string; building_kind: string | null; owner_user_id: number | null; status: string; revision: number }
-export interface Build { id: number; node_id: number; owner_user_id: number; status: string; required_seconds: number; worked_seconds: number; labor_budget: string; parent_id?: number; can_reduce_budget?: boolean; minimum_labor_budget?: string; builder_limit?: number | null; job_kind?: string; initial_condition?: number; max_condition?: number; condition?: number; funding_node_id?: number; budget_available?: string; world_time_rate?: number; server_time?: number; live_work?: { accounted_at: number; last_seen_at: number }[] }
+export interface BuildResult { finished_at: number; participants: { user_id: number; name: string; owner: boolean; seconds: number; paid_cr: string }[]; labor_budget_cr: string; paid_cr: string; released_cr: string; object_price_cr: string; spent_cr: string; material_refund_percent: number }
+export interface Build { result?: BuildResult; id: number; node_id: number; owner_user_id: number; status: string; required_seconds: number; worked_seconds: number; labor_budget: string; parent_id?: number; can_reduce_budget?: boolean; minimum_labor_budget?: string; builder_limit?: number | null; job_kind?: string; initial_condition?: number; max_condition?: number; condition?: number; funding_node_id?: number; budget_available?: string; world_time_rate?: number; server_time?: number; live_work?: { accounted_at: number; last_seen_at: number }[] }
 export interface Template { id: number; name: string; description?: string; build_seconds: number; minimum_labor_budget?: string; material_summary: string; kind?: string; available?: boolean; unavailable_reason?: string; world_build_seconds?: number; world_time_rate?: number; economy?: { profile_version: number; price_cr: string; terms_digest: string } }
 const number = (value: unknown): number => {
   const result = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
@@ -27,7 +28,19 @@ export function build(value: unknown): Build {
     ...(row.funding_node_id === undefined ? {} : { funding_node_id: number(row.funding_node_id), budget_available: money(row.budget_available) }),
     ...(row.world_time_rate === undefined ? {} : { world_time_rate: number(row.world_time_rate) }),
     ...(row.server_time === undefined ? {} : { server_time: number(row.server_time) }),
-    ...(row.live_work === undefined ? {} : { live_work: parseLiveWork(row.live_work) }) };
+    ...(row.live_work === undefined ? {} : { live_work: parseLiveWork(row.live_work) }),
+    ...(row.result == null ? {} : { result: parseBuildResult(row.result) }) };
+}
+function parseBuildResult(value: unknown): BuildResult {
+  const row = record(value);
+  if (!Array.isArray(row.participants) || row.participants.length > 10000) throw new Error('invalid-world-response');
+  const participants = row.participants.map(value => {
+    const p = record(value);
+    if (typeof p.owner !== 'boolean' || typeof p.name !== 'string' || p.name.length > 255) throw new Error('invalid-world-response');
+    return {user_id: number(p.user_id), name: p.name, owner: p.owner, seconds: number(p.seconds), paid_cr: money(p.paid_cr)};
+  });
+  if (new Set(participants.map(p => p.user_id)).size !== participants.length || number(row.material_refund_percent) > 100) throw new Error('invalid-world-response');
+  return { finished_at: number(row.finished_at), participants, labor_budget_cr: money(row.labor_budget_cr), paid_cr: money(row.paid_cr), released_cr: money(row.released_cr), object_price_cr: money(row.object_price_cr), spent_cr: money(row.spent_cr), material_refund_percent: number(row.material_refund_percent) };
 }
 function parseLiveWork(value: unknown): { accounted_at: number; last_seen_at: number }[] {
   if (!Array.isArray(value) || value.length > 1000) throw new Error('invalid-world-response');

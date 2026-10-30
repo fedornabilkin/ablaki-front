@@ -3,6 +3,7 @@ import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from '../WorldCreditInput.vue';
 import WorldPaymentSources from '../WorldPaymentSources.vue';
+import WorldHelpHint from '../WorldHelpHint.vue';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { NAlert, NButton, NCheckbox, NInput, NModal, NSpin } from 'naive-ui';
@@ -39,11 +40,7 @@ async function save(retry = false) {
 }
 </script>
 <template lang="pug">
-n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="repairing ? 'Параметры ремонта' : 'Параметры строительства'" :mask-closable="!blocked" :close-on-esc="!blocked" :closable="!blocked" :style="{ width: 'min(42rem, 95vw)' }" @update:show="emit('update:show', $event)")
-  p Бюджет строительства позволяет нанять строителей. Владелец работает бесплатно.
-  p Нулевой бюджет — самостоятельная стройка.
-  p(v-if="Number(minimum) > 0") Для найма бюджет от #[world-credits(:value="minimum")]. Одновременно помощников: {{ helpers }} (2 кредита на место).
-  p(v-if="draft && creditUnits(draft.price) > 0n") Цена объекта: #[world-credits(:value="draft.price")] . Материалы и бюджет труда учитываются отдельно.
+n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="repairing ? 'Параметры ремонта' : 'Параметры строительства'" :mask-closable="!blocked" :close-on-esc="!blocked" :closable="!blocked" :style="{ width: 'min(54rem, 95vw)' }" @update:show="emit('update:show', $event)")
   .build-creation-status(role="status")
     n-spin(v-if="creating" size="small")
     span(v-if="creating") {{ repairing ? 'Подготавливаем ремонт…' : 'Размещаем объект…' }}
@@ -51,21 +48,40 @@ n-modal(:theme-overrides="worldModalTheme" :show="show" preset="card" :title="re
   n-alert(closable v-if="creationError" type="error") {{ creationError }}
   n-alert(closable v-if="budgetError" type="error") {{ budgetError }}
   n-button(v-if="budgetError" :disabled="blocked" @click="emit('refresh-budget')") Повторить проверку бюджета
-  .build-settings-fields
-    label Название
-      n-input(v-model:value="name" :maxlength="120" :disabled="blocked" :input-props="{ 'aria-label': 'Название объекта' }")
-    label {{ repairing ? 'Бюджет ремонта, кредиты' : 'Бюджет строительства, кредиты' }}
-      world-credit-input(v-model:value="budget" :disabled="blocked" :input-props="{ inputmode: 'decimal', 'aria-label': repairing ? 'Бюджет ремонта' : 'Бюджет строительства' }")
-  p(v-if="project?.can_reduce_budget === false") Помощники уже приняли работу. Их оплату можно увеличить.
-  p Свободный бюджет:
-    world-credits(v-if="available !== null" :value="available")
-    template(v-else) загружается…
-    | . Уже выделено строителям: #[world-credits(:value="project?.labor_budget ?? '0'")].
-  world-payment-sources(v-model:checked="topUp" :price="paymentPrice" :available="available" :disabled="blocked || creationPending")
-  n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
-  n-button(:theme-overrides="worldActionButtonTheme" v-if="creationPending || runner.pending.value" :disabled="blocked" @click="save(true)") Повторить запрос
-  n-button(:theme-overrides="worldActionButtonTheme" v-else type="primary" :disabled="blocked || !valid || (!project && !draft) || (needsTopUp && !topUp) || (draft && available === null && Number(paymentPrice) > 0)" :loading="runner.busy.value || creating" @click="save()") Сохранить
+  .build-settings-layout
+    .build-settings-form
+      .build-mobile-help
+        world-help-hint(label="Как настроить строительство")
+          p Бюджет нужен для найма. Владелец работает бесплатно; для самостоятельной стройки укажите 0.
+          p(v-if="Number(minimum) > 0") Для найма от #[world-credits(:value="minimum")]. Помощников: {{ helpers }} (2 кредита на место).
+          p Оплата распределяется пропорционально вкладу. Неиспользованный бюджет освобождается.
+          p При отмене возвращается 70% материалов, цена объекта не возвращается.
+      .build-settings-fields
+        label Название
+          n-input(v-model:value="name" :maxlength="120" :disabled="blocked" :input-props="{ 'aria-label': 'Название объекта' }")
+        label {{ repairing ? 'Бюджет ремонта, кредиты' : 'Бюджет строительства, кредиты' }}
+          world-credit-input(v-model:value="budget" :disabled="blocked" :input-props="{ inputmode: 'decimal', 'aria-label': repairing ? 'Бюджет ремонта' : 'Бюджет строительства' }")
+      p(v-if="project?.can_reduce_budget === false") Помощники уже приняли работу. Их оплату можно увеличить.
+      .build-money-summary
+        p Свободный бюджет:
+          world-credits(v-if="available !== null" :value="available")
+          template(v-else) загружается…
+        p Уже выделено строителям: #[world-credits(:value="project?.labor_budget ?? '0'")]
+        p(v-if="draft && creditUnits(draft.price) > 0n") Цена объекта: #[world-credits(:value="draft.price")]
+      world-payment-sources(v-model:checked="topUp" :price="paymentPrice" :available="available" :disabled="blocked || creationPending")
+      n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
+      n-button(:theme-overrides="worldActionButtonTheme" v-if="creationPending || runner.pending.value" :disabled="blocked" @click="save(true)") Повторить запрос
+      n-button(:theme-overrides="worldActionButtonTheme" v-else type="primary" :disabled="blocked || !valid || (!project && !draft) || (needsTopUp && !topUp) || (draft && available === null && Number(paymentPrice) > 0)" :loading="runner.busy.value || creating" @click="save()") Сохранить
+    aside.build-instructions(aria-label="Условия строительства")
+      h3 Как устроена стройка
+      p Бюджет позволяет нанять строителей. Владелец работает бесплатно; для самостоятельной стройки укажите 0.
+      p(v-if="Number(minimum) > 0") Для найма бюджет от #[world-credits(:value="minimum")]. Одновременно помощников: {{ helpers }} (2 кредита на место).
+      p Можно разместить несколько проектов. Другие участники могут строить их, пока вы занимаетесь миром. Персонаж работает на одной стройке за раз.
+      p Оплата пропорциональна вкладу. Неиспользованный бюджет освобождается после завершения.
+      p Материалы и цена объекта учитываются отдельно. При отмене возвращается 70% материалов; цена объекта не возвращается.
 </template>
 <style scoped>
-.build-creation-status { display: flex; align-items: center; gap: .5rem; min-height: 1.5rem; }.build-settings-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }.build-settings-fields label { display: grid; gap: .4rem; min-width: 0; }@media(max-width: 540px) { .build-settings-fields { grid-template-columns: 1fr; } }
+.build-creation-status { display: flex; align-items: center; gap: .5rem; min-height: 1.5rem; }
+.build-settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }.build-settings-form, .build-settings-fields { display: grid; gap: .85rem; }.build-settings-fields label { display: grid; gap: .4rem; min-width: 0; }.build-settings-form > .n-button { justify-self: start; }.build-money-summary p { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; margin: .3rem 0; }.build-settings-layout :deep(.world-credits) { margin-inline: .2em; }.build-instructions { color: var(--text-muted); font-size: .85rem; }.build-instructions h3 { margin-top: 0; color: var(--text); }.build-mobile-help { display: none; }
+@media(max-width: 640px) { .build-settings-layout { grid-template-columns: 1fr; }.build-instructions { display: none; }.build-mobile-help { display: flex; justify-content: flex-end; } }
 </style>

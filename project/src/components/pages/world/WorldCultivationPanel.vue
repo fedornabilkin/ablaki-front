@@ -158,19 +158,19 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
       n-alert(closable v-else-if="cycle.water_missed" type="warning") Полив пропущен. Урожай уменьшен вдвое; рост продолжается.
       n-alert(closable v-if="cycle.event_loss_bps" type="warning") Погодные события уменьшили урожай на {{ cycle.event_loss_bps / 100 }}%. Защита теплицы уже учтена.
       .cultivation-metrics
-        .cultivation-card
-          span {{ now < cycle.ready_at ? 'До созревания' : 'Урожай созрел' }}
-          strong(v-if="now < cycle.ready_at") {{ countdown(cycle.ready_at - now) }}
-        .cultivation-card
+        n-button.cultivation-timer.harvest-timer(:theme-overrides="worldActionButtonTheme" :type="primaryAction === 'harvest' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'harvest' || !ready" @click="execute")
+          .timer-label
+            span Собрать
+            strong {{ now < cycle.ready_at ? countdown(cycle.ready_at - now) : cycle.state === 'expired' ? 'Урожай погиб' : 'Урожай созрел' }}
+        n-button.cultivation-timer.water-timer(v-if="cycle.water_due_at && cycle.water_due_at < cycle.ready_at" :theme-overrides="worldActionButtonTheme" :type="primaryAction === 'water' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'water' || !ready" @click="execute")
+          .timer-label
+            span Полить
+            strong {{ now >= cycle.ready_at ? 'Полив завершён' : cycle.can_water ? 'Пора полить' : countdown(cycle.water_due_at - now) }}
+            small(v-if="now < cycle.ready_at && cycle.can_water && cycle.water_deadline_at") Осталось {{ countdown(cycle.water_deadline_at - now) }}
+        .cultivation-death-timer
           span До гибели урожая
           strong {{ countdown(cycle.expires_at - now) }}
-        .cultivation-card(v-if="cycle.water_due_at && cycle.water_due_at < cycle.ready_at && now < cycle.ready_at")
-          span {{ cycle.can_water ? 'Полив доступен' : 'Следующий полив' }}
-          strong {{ cycle.can_water ? 'Пора полить' : duration(cycle.water_due_at - now) }}
-          small(v-if="cycle.can_water && cycle.water_deadline_at") На полив осталось {{ countdown(cycle.water_deadline_at - now) }}
       .cultivation-actions
-        n-button(:theme-overrides="worldActionButtonTheme" v-if="primaryAction === 'water'" type="primary" :disabled="locked || !ready" @click="execute") Полить
-        n-button(:theme-overrides="worldActionButtonTheme" v-if="cycle.state === 'ripe'" type="primary" :disabled="locked || !ready" @click="execute") Собрать урожай
         n-button(:theme-overrides="worldDangerButtonTheme" type="error" :disabled="locked" @click="preview('cancel')")
           template(#icon)
             font-awesome-icon(icon="times" aria-hidden="true")
@@ -196,7 +196,7 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
 .cultivation-dig { display: flex; align-items: center; gap: .5rem; }
 .crop-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .6rem; }.crop-tile { display: grid; gap: .4rem; padding: .8rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }.crop-tile.selected { outline: 2px solid var(--primary); }.crop-tile > svg { font-size: 1.4rem; color: var(--primary); }.crop-tile span, .crop-tile small { font-size: .75rem; color: var(--text-muted); }
 .cultivation-heading, .cultivation-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
-.cultivation-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.cultivation-metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; align-items: stretch; }.cultivation-timer { height: auto; min-height: 3.5rem; padding: .5rem; }.timer-label { display: grid; gap: .2rem; text-align: center; white-space: normal; }.timer-label strong { font-size: .9rem; font-variant-numeric: tabular-nums; }.timer-label small { font-size: .7rem; }.harvest-timer { grid-column: 1; grid-row: 1; }.water-timer { grid-column: 1; grid-row: 2; }.cultivation-death-timer { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .3rem; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; background: #e66a6808; }.cultivation-death-timer span { font-size: .75rem; color: var(--text-muted); }.cultivation-death-timer strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
 .cultivation-card { display: grid; gap: .65rem; border: 1px solid var(--border); border-radius: .75rem; padding: 1rem; }
 .cultivation-card strong { font-size: 1.35rem; }
 .cultivation-card small, p { color: var(--text-muted); }

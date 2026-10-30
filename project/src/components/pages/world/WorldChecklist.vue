@@ -11,6 +11,8 @@ const show = ref(false), confirmClear = ref(false), storageError = ref('');
 const run = ref<ChecklistRun>(emptyChecklist());
 const key = computed(() => props.owner > 0 && Number.isSafeInteger(props.owner) && props.snapshot.state?.worldInstance ? checklistKey(props.owner, props.snapshot.state.worldInstance) : null);
 const groups = [...new Set(checklistItems.map(item => item.group))];
+const group = ref<string>(groups[0]), filter = ref<'all' | 'open'>('all');
+const filteredItems = computed(() => checklistItems.filter(item => item.group === group.value && (filter.value === 'all' || checklistStatus(run.value.entries[item.id]) !== 'pass')));
 const statusLabels = { pending: 'Не проверено', pass: 'Пройдено', fail: 'Ошибка', skip: 'Пропущено' };
 const options = [{ value: 'auto', label: 'По данным сервера' }, { value: 'pending', label: 'Не проверено' }, { value: 'pass', label: 'Пройдено вручную' }, { value: 'fail', label: 'Найдена ошибка' }, { value: 'skip', label: 'Пропустить' }];
 const counts = computed(() => checklistItems.reduce((value, item) => { value[checklistStatus(run.value.entries[item.id])]++; return value; }, { pending: 0, pass: 0, fail: 0, skip: 0 }));
@@ -85,31 +87,36 @@ n-modal(v-model:show="show" :theme-overrides="worldModalTheme" preset="card" tit
         p Будут удалены только результаты и комментарии этого чеклиста. Подтверждённые сервером этапы отметятся снова.
         n-button(size="small" :theme-overrides="worldDangerButtonTheme" @click="clear") Сбросить
         n-button(size="small" @click="confirmClear = false") Оставить
-      section.checklist-group(v-for="group in groups" :key="group")
-        h3 {{ group }}
-        article.checklist-item(v-for="item in checklistItems.filter(item => item.group === group)" :key="item.id" :class="`result-${checklistStatus(run.entries[item.id])}`")
-          .checklist-item-heading
+      .checklist-tabs(role="tablist" aria-label="Группы проверок")
+        button(v-for="name in groups" :key="name" type="button" role="tab" :aria-selected="group === name" @click="group = name") {{ name }}
+      .checklist-filters(aria-label="Фильтр проверок")
+        n-button(size="tiny" :type="filter === 'all' ? 'primary' : 'default'" :aria-pressed="filter === 'all'" @click="filter = 'all'") Все
+        n-button(size="tiny" :type="filter === 'open' ? 'primary' : 'default'" :aria-pressed="filter === 'open'" @click="filter = 'open'") Открытые
+      section.checklist-group(:aria-label="group")
+        p(v-if="!filteredItems.length") Все проверки этой группы пройдены.
+        details.checklist-item(v-for="item in filteredItems" :key="item.id" :open="checklistStatus(run.entries[item.id]) !== 'pass'" :class="`result-${checklistStatus(run.entries[item.id])}`")
+          summary.checklist-item-heading
             strong {{ item.title }}
             span.checklist-status {{ statusLabels[checklistStatus(run.entries[item.id])] }}
-          p {{ item.detail }}
-          .checklist-result
-            n-select(:value="run.entries[item.id]?.result ?? (automatic(item.id) ? 'auto' : 'pending')" :options="automatic(item.id) ? options : options.filter(option => option.value !== 'auto')" :placeholder="'Не проверено'" :aria-label="`Результат: ${item.title}`" @update:value="update(item.id, { result: $event })")
+          .checklist-item-body
+            p {{ item.detail }}
+            .checklist-result
+              n-select(size="small" :value="run.entries[item.id]?.result ?? (automatic(item.id) ? 'auto' : 'pending')" :options="automatic(item.id) ? options : options.filter(option => option.value !== 'auto')" :placeholder="'Не проверено'" :aria-label="`Результат: ${item.title}`" @update:value="update(item.id, { result: $event })")
+              n-input(size="small" :value="run.entries[item.id]?.note ?? ''" :maxlength="1500" placeholder="Результат или замечание" :aria-label="`Комментарий: ${item.title}`" @update:value="update(item.id, { note: $event })")
             small(v-if="run.entries[item.id]?.autoAt") Сервер подтвердил {{ date(run.entries[item.id]?.autoAt ?? 0) }}
-            small(v-else) {{ automatic(item.id) ? 'Ожидает подтверждения сервера или вашей отметки' : 'Проверьте вручную и выберите результат' }}
-          n-input(:value="run.entries[item.id]?.note ?? ''" type="textarea" :autosize="{ minRows: 1, maxRows: 5 }" :maxlength="1500" placeholder="Результат, замечание или шаги воспроизведения" :aria-label="`Комментарий: ${item.title}`" @update:value="update(item.id, { note: $event })")
     p.checklist-footer(v-if="key") Начало проверки: {{ date(run.startedAt) }} · {{ storageError ? 'Не сохранено в браузере' : 'Сохраняется автоматически' }}
 </template>
 <style scoped>
 .checklist-badge { margin-left: .45rem; font-size: .7rem; font-variant-numeric: tabular-nums; }
-.world-checklist { display: grid; gap: 1rem; max-height: 75vh; overflow-y: auto; padding: .15rem; }
+.world-checklist { display: grid; gap: .65rem; max-height: 75vh; overflow-y: auto; padding: .15rem; }
 .checklist-intro, .checklist-item p, .checklist-footer, .checklist-result small { color: var(--text-muted); font-size: .8rem; line-height: 1.5; margin: 0; }
 .checklist-summary, .checklist-item-heading, .checklist-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .6rem; }
 .checklist-summary span { font-size: .8rem; color: var(--text-muted); }
 .checklist-toolbar { justify-content: flex-start; }
-.checklist-group { display: grid; gap: .75rem; }.checklist-group h3 { margin: .5rem 0 0; font-size: 1rem; }
-.checklist-item { display: grid; gap: .65rem; padding: 1rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: .65rem; background: var(--bg-base); }
+.checklist-tabs { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--border); }.checklist-tabs button { flex-shrink: 0; padding: .5rem .7rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; }.checklist-tabs button[aria-selected="true"] { color: var(--primary); border-color: var(--primary); }.checklist-filters { display: flex; gap: .4rem; }
+.checklist-group { display: grid; gap: .45rem; }.checklist-item { padding: .6rem .75rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: .5rem; background: var(--bg-base); }.checklist-item-heading { cursor: pointer; font-size: .85rem; }.checklist-item-body { display: grid; gap: .5rem; margin-top: .5rem; }.checklist-item-body small { color: var(--text-muted); font-size: .7rem; }
 .result-pass { border-left-color: #36ad6a; }.result-fail { border-left-color: #e14c60; }.result-skip { opacity: .75; }
 .checklist-status { font-size: .75rem; color: var(--text-muted); }.result-pass .checklist-status { color: #36ad6a; }.result-fail .checklist-status { color: #e14c60; }
-.checklist-result { display: grid; grid-template-columns: minmax(10rem, 14rem) 1fr; gap: .65rem; align-items: center; }
-@media(max-width: 550px) { .checklist-result { grid-template-columns: 1fr; }.checklist-item { padding: .75rem; } }
+.checklist-result { display: grid; grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr); gap: .5rem; align-items: center; }
+@media(max-width: 550px) { .checklist-result { grid-template-columns: minmax(7rem, .8fr) minmax(0, 1fr); }.checklist-item { padding: .5rem; } }
 </style>
