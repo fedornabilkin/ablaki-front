@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { NPopover } from 'naive-ui';
+import AppPopover from '@/components/AppPopover.vue';
+
 defineOptions({ inheritAttrs: false });
 withDefaults(defineProps<{ label: string; symbol?: string }>(), { symbol: '?' });
 const emit = defineEmits<{ open: [] }>();
 </script>
 <template lang="pug">
-n-popover(trigger="click" placement="bottom" :style="{ maxWidth: 'min(32rem, 90vw)' }" @update:show="value => { if (value) emit('open'); }")
+app-popover(trigger="click" placement="bottom" @update:show="value => { if (value) emit('open'); }")
   template(#trigger)
     button.world-help-hint(v-bind="$attrs" type="button" :aria-label="label")
       font-awesome-icon(icon="question-circle" aria-hidden="true")

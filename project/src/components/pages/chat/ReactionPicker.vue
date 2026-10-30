@@ -1,6 +1,7 @@
 <script setup>
+import AppPopover from '@/components/AppPopover.vue';
 import {ref} from 'vue';
-import {NPopover} from 'naive-ui';
+
 import {ALLOWED_REACTIONS} from '@/services/chat/protocol';
 
 const emit = defineEmits(['pick']);
@@ -13,7 +14,7 @@ const onPick = (emoji) => {
 </script>
 
 <template>
-    <n-popover trigger="click" v-model:show="show" placement="top">
+    <app-popover trigger="click" v-model:show="show" placement="top">
         <template #trigger>
             <button class="reaction-trigger" title="Реакция">😀</button>
         </template>
@@ -25,7 +26,7 @@ const onPick = (emoji) => {
                 @click="onPick(emoji)"
             >{{ emoji }}</button>
         </div>
-    </n-popover>
+    </app-popover>
 </template>
 
 <style lang="scss" scoped>

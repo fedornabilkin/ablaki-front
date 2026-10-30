@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton, NInputNumber, NPopover, NSelect, NSkeleton } from 'naive-ui';
+import { NAlert, NButton, NInputNumber, NSelect, NSkeleton } from 'naive-ui';
 import { loadStorageContents, loadStorageList, previewTransfer, type StorageHeader, type StorageView } from '@/services/api/worldStorage';
 import { optimisticTransfer, storageTransfer, type StorageMapContext } from '@/entities/world/storageInteraction';
 import { loadWorldMap, loadWorldNavigation, loadWorldScreen, worldError } from '@/services/api/world';
@@ -208,7 +209,7 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
       h3(v-if="index === 0 && !storageId") Слоты ноды «{{ node?.label || panel.view?.location?.name || nodeId }}»
       h3(v-else) {{ panel.view?.storage.name || 'Выберите хранилище' }}
       .storage-choices(v-if="storageId || index === 1" role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
-        n-popover(v-for="header in choices" :key="header.id" trigger="hover" placement="bottom" :style="{ maxWidth: 'min(22rem, calc(100vw - 3rem))' }" @update:show="value => { if (value) loadStoragePath(header); }")
+        app-popover(v-for="header in choices" :key="header.id" trigger="hover" placement="bottom" width="22rem" @update:show="value => { if (value) loadStoragePath(header); }")
           template(#trigger)
             span.storage-choice-trigger(@focusin="loadStoragePath(header)")
               n-button(:theme-overrides="header.id === panel.view?.storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" size="small" :title="`${storageName(header)} · ${header.node_id ? 'объект №' + header.node_id : 'хранилище №' + header.id}`" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="chooseStorage(index, header.id)") {{ storageName(header) }}

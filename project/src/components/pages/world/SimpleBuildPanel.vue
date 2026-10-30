@@ -14,30 +14,29 @@ import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { formatCredits } from '@/entities/world/credits';
-const props = withDefaults(defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean; active?: boolean }>(), { active: true });
+const props = withDefaults(defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean; active?: boolean; showResult?: boolean }>(), { active: true, showResult: true });
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
 const error = ref(''), working = ref(false), otherWork = ref<number | null>(null);
 const loading = ref(true);
 const settingsOpen = ref(false), elapsed = ref(0), displayedSeconds = ref(0);
 const cancelOpen = ref(false);
-const resultDismissed = ref(false);
-const resultKey = computed(() => project.value && project.value.status !== 'building' ? `ablakin:build-result:${props.owner}:${props.node.id}:${project.value.id}:${project.value.result?.finished_at ?? 0}` : '');
-watch(resultKey, key => {
-  try { resultDismissed.value = !!key && localStorage.getItem(key) === '1'; }
-  catch { resultDismissed.value = false; }
-}, { immediate: true, flush: 'sync' });
-function dismissResult() {
-  resultDismissed.value = true;
-  try { if (resultKey.value) localStorage.setItem(resultKey.value, '1'); }
-  catch { /* Closing still works when browser storage is unavailable. */ }
-}
+const resultVisible = ref(false);
+let observedBuildId: number | null = null;
+function dismissResult() { resultVisible.value = false; }
 let receivedAt = performance.now();
 const seconds = computed(() => displayedSeconds.value);
 const maximum = computed(() => project.value?.max_condition ?? Math.max(1, Math.ceil((project.value?.required_seconds ?? 0) * 100 / 60)));
 const repairing = computed(() => project.value?.job_kind === 'repair');
 const strength = computed(() => { const initial = project.value?.initial_condition ?? 0; return Math.min(maximum.value, initial + Math.floor(seconds.value * (maximum.value - initial) / Math.max(1, project.value?.required_seconds ?? 1))); });
 function accept(build: api.Build) {
+  if (project.value?.id !== build.id || build.status === 'building') dismissResult();
+  // A receipt is a live notification, never a result restored from history.
+  if (build.status === 'building') observedBuildId = foreground.value && props.showResult ? build.id : null;
+  else {
+    if (observedBuildId === build.id && foreground.value && props.showResult) resultVisible.value = true;
+    observedBuildId = null;
+  }
   const initial = projectedBuildSeconds(build, 0);
   displayedSeconds.value = project.value?.id === build.id && build.status === 'building' && build.live_work?.length ? Math.min(build.required_seconds, Math.max(displayedSeconds.value, initial)) : initial;
   project.value = build; receivedAt = performance.now(); elapsed.value = 0;
@@ -49,6 +48,8 @@ const polling = ref(false);
 let completionAttempt = 0;
 let nextHeartbeatAt = 0;
 const visible = usePageVisibility(), foreground = computed(() => visible.value && props.active !== false);
+watch([() => props.node.id, () => props.owner, () => props.session], () => { observedBuildId = null; dismissResult(); }, { flush: 'sync' });
+watch([foreground, () => props.showResult], ([active, selected]) => { if (!active || !selected) { observedBuildId = null; dismissResult(); } }, { flush: 'sync' });
 const animation = setInterval(() => {
   elapsed.value = (performance.now() - receivedAt) / 1000;
   if (project.value) displayedSeconds.value = Math.max(displayedSeconds.value, projectedBuildSeconds(project.value, elapsed.value));
@@ -139,7 +140,7 @@ watch(() => props.node.revision, () => { if (foreground.value && project.value &
 onScopeDispose(() => { disposed = true; epoch++; halt(); clearInterval(animation); clearInterval(sync); });
 </script>
 <template lang="pug">
-section.build-information(v-if="!resultDismissed || !project || project.status === 'building'" aria-label="Строительство")
+section.build-information(v-if="resultVisible || !project || project.status === 'building' || error || runner.error.value || uncertain" aria-label="Строительство")
   .build-heading
     h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
     world-help-hint(label="Условия строительных работ")
@@ -176,7 +177,7 @@ section.build-information(v-if="!resultDismissed || !project || project.status =
         template(#icon)
           font-awesome-icon(icon="times")
         | {{ repairing ? 'Завершить ремонт досрочно' : 'Отменить' }}
-  world-build-results(v-else-if="project && project.status !== 'building'" :project="project" @close="dismissResult")
+  world-build-results(v-else-if="resultVisible && project" :project="project" @close="dismissResult")
   p(v-else-if="!error && !project") Здесь сейчас нет доступной стройки.
   build-settings-modal(v-model:show="settingsOpen" :project="project" :name="node.name" :owner="owner" :session="session" @saved="refresh(); emit('changed')")
   app-dialog(icon="hammer" v-model:show="cancelOpen" title="Отменить строительство?" :mask-closable="!busy" :close-on-esc="!busy" :closable="!busy" :style="{ width: 'min(32rem, 95vw)' }")

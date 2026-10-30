@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import SectionNav from '@/components/SectionNav.vue';
 import { computed, ref, onScopeDispose } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NPopover, NPopconfirm } from 'naive-ui';
+import { NAlert, NButton, NPopconfirm } from 'naive-ui';
 import CreateButton from '@/components/CreateButton.vue';
 import { mutate, errorText } from '@/services/api/portal';
 import type { HistoryGameKind } from '@/services/api/gameHistory';
@@ -58,7 +59,7 @@ async function removeAll() {
             font-awesome-icon(icon="trash-alt")
           span.game-delete-label Удалить
       | Удалить все свои не начатые игры этого типа и вернуть ставки на счёт? Начатые игры сохранятся.
-    n-popover(trigger="click" placement="bottom-end" :style="{ maxWidth: 'calc(100vw - 2rem)' }")
+    app-popover(trigger="click" placement="bottom-end")
       template(#trigger)
         n-button.game-help-trigger(aria-label="Правила игры" title="Правила игры" text)
           font-awesome-icon(icon="exclamation" aria-hidden="true")

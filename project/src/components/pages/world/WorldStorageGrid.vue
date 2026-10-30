@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import ItemCellContent from '@/components/ItemCellContent.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, ref, watch } from 'vue';
-import { NPopover } from 'naive-ui';
+
 import type { StorageView } from '@/services/api/worldStorage';
 import { storageCells, type StorageMapContext } from '@/entities/world/storageInteraction';
 import { nodeIcons } from '@/entities/world/types';
@@ -20,7 +21,7 @@ const exposure: Record<string, string> = { outdoor: 'На улице', covered: 
 <template lang="pug">
 .storage-grid-panel
   .storage-grid(role="group" :aria-label="view.storage.name")
-    n-popover(v-for="cell in cells" :key="cell.position" trigger="manual" placement="bottom" :show="Boolean(cell.item && cell.item.id === selected && !dragging && $slots['selected-item'])" width="min(22rem, calc(100vw - 6rem))" :style="{ boxSizing: 'border-box' }")
+    app-popover(v-for="cell in cells" :key="cell.position" trigger="manual" placement="bottom" :show="Boolean(cell.item && cell.item.id === selected && !dragging && $slots['selected-item'])" width="22rem")
       template(#trigger)
         button.storage-cell(type="button" :data-storage="view.storage.id" :data-position="cell.position" :data-drop="(cell.available && destinations.includes(cell.position)) ? 'true' : undefined" :class="{ selected: cell.item?.id === selected, locked: !cell.available, purchase: cell.purchase, occupied: !!cell.object, destination: (cell.available && destinations.includes(cell.position)), dragging: dragging === cell.item?.id, 'drop-target': target === `${view.storage.id}:${cell.position}` }" :disabled="blocked || (!cell.item && (!cell.available || !!cell.object))" :aria-pressed="Boolean(cell.item && selected === cell.item.id)" :aria-label="`${cell.item ? cell.item.name + ', ' + cell.item.quantity + ' шт.' : cell.object?.label || 'Пустое место'}, ячейка ${cell.position}. ${cell.object ? 'Недоступно для размещения' : cell.purchase ? 'К покупке' : cell.available ? 'Доступна' : 'Закрыта'}`" @click="emit('choose', cell.position)" @pointerdown="emit('down', $event, cell.position)" @pointermove="emit('move', $event)" @pointerup="emit('up', $event)" @pointercancel="emit('cancel')" @lostpointercapture="emit('cancel')")
           item-cell-content(v-if="cell.item || !cell.available" :icon="cell.item?.icon || (cell.object ? nodeIcons[cell.object.type] : cell.purchase ? 'bag-shopping' : 'lock')" :quantity="cell.item?.quantity" :marker="cell.position" :name="cell.item?.name || cell.object?.label || (cell.purchase ? 'К покупке' : 'Закрыто')")

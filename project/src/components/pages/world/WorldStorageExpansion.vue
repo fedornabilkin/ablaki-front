@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton, NInputNumber, NPopover } from 'naive-ui';
+import { NAlert, NButton, NInputNumber } from 'naive-ui';
 import { loadEconomyStorage, previewEconomyStorage, type EconomyStorageState } from '@/services/api/worldEconomyStorage';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldQuote } from '@/entities/world/types';
@@ -43,7 +44,7 @@ watch(() => [props.storage, props.session], () => { receipt.value = ''; opened.v
 onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
-component(v-if="state?.options.length || error || loadingState || receipt" :is="cell ? NPopover : 'section'" v-bind="cell ? { trigger: 'click', placement: 'bottom', show: opened, width: 'min(22rem, calc(100vw - 6rem))', style: { boxSizing: 'border-box' } } : {}" @update:show="opened = $event")
+component(v-if="state?.options.length || error || loadingState || receipt" :is="cell ? AppPopover : 'section'" v-bind="cell ? { trigger: 'click', placement: 'bottom', show: opened, width: '22rem' } : {}" @update:show="opened = $event")
   template(v-if="cell" #trigger)
     button.storage-add-cell(type="button" aria-label="Расширить хранилище" title="Добавить постоянные слоты" :disabled="loadingState || !writable || command.busy.value || !!command.pending.value")
       font-awesome-icon(icon="plus" aria-hidden="true")

@@ -1,6 +1,7 @@
 <script setup>
+import AppPopover from '@/components/AppPopover.vue';
 import {computed} from 'vue';
-import {NAvatar, NPopover, NButton, NEmpty} from 'naive-ui';
+import { NAvatar, NButton, NEmpty } from 'naive-ui';
 import {useChatStore} from '@/store/chat';
 
 const chat = useChatStore();
@@ -20,7 +21,7 @@ const roleOf = (user) => {
         <n-empty v-if="users.length === 0" description="Никого нет" size="small" />
         <ul v-else>
             <li v-for="u in users" :key="u.id" class="user-row">
-                <n-popover trigger="click" placement="left">
+                <app-popover trigger="click" placement="left">
                     <template #trigger>
                         <button class="user-btn">
                             <n-avatar round size="small">
@@ -46,7 +47,7 @@ const roleOf = (user) => {
                             <n-button size="small" type="primary" block>На стену</n-button>
                         </router-link>
                     </div>
-                </n-popover>
+                </app-popover>
             </li>
         </ul>
     </div>

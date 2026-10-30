@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NPopover, NModal, NButton, NProgress, NAlert } from 'naive-ui';
+import { NModal, NButton, NProgress, NAlert } from 'naive-ui';
 import { worldModalTheme, worldActionButtonTheme } from '@/entities/world/theme';
 import CraftGatherButton from '../craft/CraftGatherButton.vue';
 import { gatherState } from '@/services/api/simpleWorld';
@@ -42,7 +43,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 .world-hero-gather
   craft-gather-button.world-action(:available="state?.gather_available ?? true" :remaining="state?.gather_remaining" :limit="state?.gather_limit" :exhausted="state?.gather_exhausted" :minimum="state?.gather_minimum" :disabled="!state || !writable || runner.busy.value" :countdown="countdown" @gather="open = true")
   span.gather-feedback
-    n-popover(v-if="error || runner.error.value || runner.pending.value" trigger="click" placement="bottom")
+    app-popover(v-if="error || runner.error.value || runner.pending.value" trigger="click" placement="bottom")
       template(#trigger)
         button.gather-error(:class="{ 'world-action': !!runner.pending.value }" type="button" :aria-label="runner.pending.value ? 'Повторить сбор сырья' : 'Ошибка сбора сырья'" :disabled="runner.busy.value" @click="runner.pending.value && !runner.busy.value ? gather() : undefined")
           font-awesome-icon(:icon="runner.busy.value ? 'spinner' : 'exclamation-circle'" :spin="runner.busy.value")

@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch, onMounted, onScopeDispose, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
-import { NAlert, NButton, NInput, NPopover, NPagination, NModal, NSelect } from 'naive-ui';
+import { NAlert, NButton, NInput, NPagination, NModal, NSelect } from 'naive-ui';
 import CraftRoadmap from './CraftRoadmap.vue';
 import CraftRecipeDetail from './CraftRecipeDetail.vue';
 import CraftInventory from './CraftInventory.vue';
@@ -124,7 +125,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
         font-awesome-icon(icon="eye-slash")
   aside.skills(v-if="state && (tab === 'recipes' || mapMode)" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
     .skill(v-for="c in state.categories" :key="c.id" :class="{active: category === c.id}")
-      n-popover(trigger="hover")
+      app-popover(trigger="hover")
         template(#trigger)
           button.skill-select(type="button" :aria-pressed="category === c.id" :aria-label="c.name + '. ' + c.description" @click="filterCategory(c.id)")
             font-awesome-icon.skill-icon(:icon="craftIcons[c.code] || 'cube'")

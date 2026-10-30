@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { NButton, NInputNumber, NPopover } from 'naive-ui';
+import { NButton, NInputNumber } from 'naive-ui';
 import type { CraftRecipe, CraftState } from '@/services/api/classicCraft';
 import { craftRequirements, maxCraftQuantity } from '@/entities/craft/classic';
 const props = defineProps<{state: CraftState; recipe: CraftRecipe; blocked: boolean; busy: boolean; craftHref?: string}>();
@@ -39,7 +40,7 @@ aside.recipe-detail(aria-label="Выбранный рецепт")
       span.resource-name
         font-awesome-icon(:icon="items.get(r.id)?.icon || 'cube'")
         router-link(:to="{path: '/world/workspace/map', query: { ...(route.query.node ? { node: route.query.node } : {}), item: r.id }}") {{ r.name }}
-        n-popover(v-if="r.retained" trigger="hover")
+        app-popover(v-if="r.retained" trigger="hover")
           template(#trigger)
             span.resource-symbol(tabindex="0" :aria-label="r.station ? 'Станция: один предмет сохраняется' : 'Инструмент: один предмет сохраняется'")
               font-awesome-icon(:icon="r.station ? 'industry' : 'wrench'")

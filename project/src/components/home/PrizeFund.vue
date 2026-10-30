@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed } from 'vue';
 import { useStore } from 'vuex';
-import { NButton, NCard, NPopover } from 'naive-ui';
+import { NButton, NCard } from 'naive-ui';
 import RequestState from '@/components/RequestState.vue';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { prizeFund, type PrizeFund } from '@/services/api/homeActivity';
@@ -20,7 +21,7 @@ const credits = formatCredits;
 <template lang="pug">
 n-card(title="Призовой фонд")
   template(#header-extra)
-    n-popover(trigger="click" :width="300")
+    app-popover(trigger="click" :width="300")
       template(#trigger)
         n-button(quaternary circle aria-label="Как рассчитывается призовой фонд")
           font-awesome-icon(icon="question-circle" aria-hidden="true")

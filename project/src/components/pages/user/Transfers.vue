@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import AppPopover from '@/components/AppPopover.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NInputNumber, NPopconfirm, NPopover } from 'naive-ui';
+import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NInputNumber, NPopconfirm } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import PagePager from '@/components/PagePager.vue';
 import RequestState from '@/components/RequestState.vue';
@@ -62,7 +63,7 @@ page-header(page-title="Переводы кредитов")
   .cards
     n-card(title="Создать перевод")
       template(#header-extra)
-        n-popover(trigger="click" :width="300")
+        app-popover(trigger="click" :width="300")
           template(#trigger)
             n-button(quaternary circle aria-label="Как создать перевод" title="Как создать перевод")
               font-awesome-icon(icon="question-circle" aria-hidden="true")
@@ -88,7 +89,7 @@ page-header(page-title="Переводы кредитов")
           | Создать до {{ count }} переводов по #[world-credits(:value="amount")] ? Если баланс изменится, сервер создаст доступное количество.
     n-card(title="Получить перевод")
       template(#header-extra)
-        n-popover(trigger="click" :width="300")
+        app-popover(trigger="click" :width="300")
           template(#trigger)
             n-button(quaternary circle aria-label="Как получить перевод" title="Как получить перевод")
               font-awesome-icon(icon="question-circle" aria-hidden="true")
