@@ -689,7 +689,7 @@ describe('map controls', () => {
   it('researches a batch and requires enough elixirs for every cell above the current level', async () => {
     const elixirs = ref(1), selection = [{ x: 1, y: 1 }, { x: 2, y: 0 }, { x: -2, y: 0 }];
     mocks.mapPreview.mockResolvedValue({ ...quote, terms: { price: '0.0000', elixir_quantity: 2 } });
-    const view = mount(WorldMap, () => ({ node, session: 1, writable: true, command: mocks.runner, selection, map: { node_id: 1, items: [], cells: [{x: 1, y: 0, state: 'discovered'}, {x: -1, y: 0, state: 'open'}], can_expand: true, exploration: { allowed: true, level: 1, elixir_quantity: elixirs.value } } }));
+    const view = mount(WorldMap, () => ({ node, session: 1, writable: true, command: mocks.runner, selection, map: { node_id: 1, items: [], cells: [{x: 1, y: 0, state: 'open'}, {x: -1, y: 0, state: 'open'}], can_expand: true, exploration: { allowed: true, level: 1, elixir_quantity: elixirs.value } } }));
     await flushView(); const research = () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Исследовать 3'))!;
     expect(research().props.disabled).toBe(true); elixirs.value = 2; await flushView(); expect(research().props.disabled).toBe(false);
     research().props.onClick(); await flushView();
@@ -712,7 +712,7 @@ describe('map controls', () => {
     const preview = { ...quote, terms: { price: '0.0000', use_elixir: useElixir } };
     mocks.mapPreview.mockResolvedValue(preview);
     const view = mount(WorldMap, () => ({ node, session: 1, writable: true, command: mocks.runner, selection: selection.value, map: {
-      node_id: 1, items: [], cells: [{x: 1, y: 0, state: 'discovered'}], can_expand: true, bounds: { x: -2, y: -2, width: 5, height: 5 }, exploration: { allowed: true, level, elixir_quantity: elixirs, max_level_per_node: 3, reason: '' },
+      node_id: 1, items: [], cells: [{x: 1, y: 0, state: 'open'}], can_expand: true, bounds: { x: -2, y: -2, width: 5, height: 5 }, exploration: { allowed: true, level, elixir_quantity: elixirs, max_level_per_node: 3, reason: '' },
     } }));
     await flushView();
     const button = findView(view.root, element => element.tag === 'button' && viewText(element).includes('Исследовать'))!;
@@ -920,7 +920,7 @@ describe('one-click world actions', () => {
     mocks.budget.mockResolvedValue({ available: '0.0000' });
     mocks.cultivationPreview.mockResolvedValue({ ...quote, terms: { price_cr: '2.0000', payer_node_id: 4, materials: [{ name: 'Вода', quantity: 1, have: 4, available: true }] } });
     const view = mount(WorldCultivationPanel, props); await flushView();
-    const water = () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Пора полить'))!;
+    const water = () => findView(view.root, n => n.tag === 'button' && String(n.props.class).includes('water-timer'))!;
     expect(water().props.disabled).toBe(true);
     expect(viewText(view.root)).toContain('В бюджете не хватает кредитов');
     water().props.onClick(); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled();
@@ -1259,8 +1259,10 @@ describe('world construction, character and compact controls', () => {
     const button = () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Исследовать 1'))!;
     expect(button().props.disabled).toBe(true); button().props.onClick(); await flushView(); expect(mocks.mapPreview).not.toHaveBeenCalled();
     cells.value = [{x: 1,y: 2,state: 'discovered'}]; await flushView(); expect(button().props.disabled).toBe(true);
-    cells.value.push({x: 2,y: 1,state: 'open'}); await flushView(); expect(button().props.disabled).toBe(false);
-    expect(viewText(view.root)).not.toContain('Сначала исследуйте ячейки:');
+    cells.value.push({x: 2,y: 1,state: 'open'}); await flushView(); expect(button().props.disabled).toBe(true);
+    expect(viewText(view.root)).toContain('Сначала купите ячейки:');
+    cells.value[0].state = 'open'; await flushView(); expect(button().props.disabled).toBe(false);
+    expect(viewText(view.root)).not.toContain('Сначала купите ячейки:');
   });
   it('shows completion and wages to a helper and never restarts a finished project', async () => {
     vi.useFakeTimers();
@@ -1309,6 +1311,23 @@ describe('world construction, character and compact controls', () => {
     const water = findView(cultivation, n => n.tag === 'button' && String(n.props.class).includes('water-timer'))!;
     expect(viewText(water)).toContain('00:00:10'); await vi.advanceTimersByTimeAsync(1000); expect(viewText(water)).toContain('00:00:09');
     expect(findView(cultivation, n => n.props.class === 'cultivation-death-timer')).toBeDefined();
+  });
+  it('shows only the watering action and deadline, and disables it before a delayed refresh', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
+    mocks.cultivation.mockResolvedValue({bed_id: 1,owner: true,dug: true,writable: true,server_time: 100,
+      cycle: {id: 1,name: 'Морковь',state: 'needs_water',ready_at: 300,expires_at: 900,water_due_at: 90,water_deadline_at: 102,can_water: true}});
+    mocks.crops.mockResolvedValue({items: [],pageCount: 0});
+    mocks.cultivationPreview.mockResolvedValue(quote);
+    const view = mount(WorldCultivationPanel, () => ({bedId: 1,session: 1,command: mocks.runner})); await flushView();
+    const water = () => findView(view.root, n => n.tag === 'button' && String(n.props.class).includes('water-timer'))!;
+    expect(viewText(water()).replace(/\s+/g, ' ').trim()).toBe('Полить 00:00:02');
+    expect(water().props.disabled).toBe(false);
+    mocks.cultivation.mockReturnValue(new Promise(() => {}));
+    await vi.advanceTimersByTimeAsync(2000); await flushView();
+    expect(viewText(water()).replace(/\s+/g, ' ').trim()).toBe('Полить 00:00:00');
+    expect(water().props.disabled).toBe(true);
+    water().props.onClick(); await flushView();
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
   });
   it('loads progression only when the person icon is opened and displays shared health', async () => {
     mocks.progression.mockResolvedValue({craft: [{name: 'Дерево',level: 2,xp: 125}],professions: []});
