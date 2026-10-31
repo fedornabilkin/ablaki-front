@@ -42,7 +42,7 @@ import { checklistKey, parseChecklist } from '../src/entities/world/checklist';
 import type { StorageView } from '../src/services/api/worldStorage';
 import type { WorldNode } from '../src/entities/world/types';
 
-const mocks = vi.hoisted(() => ({ children: vi.fn(), navigation: vi.fn(), startFunding: null as any, activeBuild: vi.fn(), objects: vi.fn(), progression: vi.fn(), onboarding: vi.fn(), nights: vi.fn(), mvp: vi.fn(), housing: vi.fn(), housingPreview: vi.fn(), budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
+const mocks = vi.hoisted(() => ({ children: vi.fn(), navigation: vi.fn(), startFunding: null as any, activeBuild: vi.fn(), objects: vi.fn(), character: vi.fn(), progression: vi.fn(), onboarding: vi.fn(), nights: vi.fn(), mvp: vi.fn(), housing: vi.fn(), housingPreview: vi.fn(), budgetGrant: vi.fn(), object: vi.fn(), mining: vi.fn(), gather: vi.fn(), budget: vi.fn(), builds: vi.fn(), templates: vi.fn(), startState: vi.fn(), push: vi.fn(), storageList: vi.fn(), storage: vi.fn(), transfer: vi.fn(), workspace: vi.fn(), preview: vi.fn(), mapPreview: vi.fn(), explorer: vi.fn(), garden: vi.fn(), gardenPreview: vi.fn(), equipment: vi.fn(), equipmentPreview: vi.fn(), cultivation: vi.fn(), crops: vi.fn(), cultivationPreview: vi.fn(), supplies: vi.fn(), suppliesPreview: vi.fn(), harvest: vi.fn(), harvestPreview: vi.fn(), runner: null as any, route: null as any }));
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const popover = { setup: (_: unknown, { slots, attrs }: any) => () => h('div', attrs, [slots.trigger?.(), slots.default?.()]) };
@@ -64,7 +64,7 @@ vi.mock('../src/components/pages/world/WorldWorkspaceNav.vue', () => ({ default:
 vi.mock('../src/services/api/simpleWorld', () => ({ activeBuild: mocks.activeBuild, objects: mocks.objects, object: mocks.object, gatherState: mocks.gather, budget: mocks.budget, builds: mocks.builds, templates: mocks.templates, startState: mocks.startState, startOverview: async () => ({node: await mocks.startState(), funding: mocks.startFunding, starter_funding: null}), node: (value: unknown) => value, build: (value: unknown) => value }));
 vi.mock('../src/services/api/worldHousing', () => ({loadHousing: mocks.housing, previewHousing: mocks.housingPreview}));
 vi.mock('../src/services/api/worldEconomy', () => ({previewBudgetGrant: mocks.budgetGrant}));
-vi.mock('../src/services/api/worldCharacter', () => ({loadProgression: mocks.progression}));
+vi.mock('../src/services/api/worldCharacter', () => ({loadProgression: mocks.progression, loadCharacterOverview: mocks.character}));
 vi.mock('../src/services/api/worldNights', () => ({loadNights: mocks.nights}));
 vi.mock('../src/services/api/worldMvp', async importOriginal => ({ ...await importOriginal<any>(), loadMvp: mocks.mvp }));
 vi.mock('../src/services/api/worldMining', () => ({ loadMining: mocks.mining, parseMining: (value: unknown) => value }));
@@ -1343,11 +1343,12 @@ describe('world construction, character and compact controls', () => {
     expect(viewText(view.root)).toContain('Новый персонаж'); expect(viewText(view.root)).not.toContain('Старый персонаж');
   });
   it('shows real character sections and keeps available data when one section fails', async () => {
-    mocks.mvp.mockResolvedValue(mvp()); mocks.onboarding.mockResolvedValue({joined: true,joined_at: 100,starter_site_id: 1});
+    mocks.character.mockResolvedValue({economy: mvp(), progression: {craft: [{name: 'Дерево',level: 2,xp: 125}], professions: []}, work: null}); mocks.onboarding.mockResolvedValue({joined: true,joined_at: 100,starter_site_id: 1});
     mocks.objects.mockResolvedValue({items: [{id: 2,name: 'Моя шахта',status: 'active'}],total: 1,pageSize: 20});
     mocks.storageList.mockResolvedValue([]); mocks.nights.mockRejectedValue(new Error('offline'));
     const view = mount(WorldCharacterPage); await flushView();
     expect(viewText(view.root)).toContain('Здоровье: 75 / 100'); expect(viewText(view.root)).toContain('Моя шахта'); expect(viewText(view.root)).toContain('Ночи: Ошибка запроса');
     expect(mocks.objects).toHaveBeenCalledWith({owner_user_id: 1,page: 1,'per-page': 20}); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(mocks.character).toHaveBeenCalledOnce(); expect(mocks.progression).not.toHaveBeenCalled(); expect(mocks.activeBuild).not.toHaveBeenCalled();
   });
 });

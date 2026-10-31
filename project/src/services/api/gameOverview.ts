@@ -1,5 +1,5 @@
 import { formatCredits } from '@/entities/world/credits';
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { record, type RecordData } from './portal';
 
@@ -39,7 +39,7 @@ export function summaryData(value: unknown): GameSummary {
   };
 }
 export async function gameSummary(kind: GameKind): Promise<GameSummary> {
-  return summaryData((await apiClient.get(config.makeApiUrl(`v1/${kind}/summary`))).data);
+  return summaryData((await readApi(config.makeApiUrl(`v1/${kind}/summary`))).data);
 }
 export function winnerName(game: RecordData): string | null {
   if (typeof game.win !== 'boolean') return null;

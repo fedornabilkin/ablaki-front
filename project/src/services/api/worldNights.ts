@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 const invalid = (): never => { throw new Error('invalid-night-response'); };
@@ -20,7 +20,7 @@ function policy(value: unknown) {
 export async function loadNights(node: number, page: number, outcome: string, size = 20) {
   id(node); integer(page, 1, 1000000); if (!['', 'protected', 'unprotected'].includes(outcome)) invalid();
   integer(size, 1, 30);
-  const r = record((await apiClient.get(config.makeApiUrl(`v1/world/nodes/${node}/nights`), { params: { page, outcome, 'per-page': size } })).data);
+  const r = record((await readApi(config.makeApiUrl(`v1/world/nodes/${node}/nights`), { params: { page, outcome, 'per-page': size } })).data);
   if (id(r.node_id) !== node) invalid();
   const enabled = bool(r.enabled), rules = r.policy === null ? null : policy(r.policy), server_time = integer(r.server_time);
   const grace_until = timeOrNull(r.grace_until), first = r.first_eligible_night === null ? null : night(r.first_eligible_night), upcoming = r.current_or_next_night === null ? null : night(r.current_or_next_night);

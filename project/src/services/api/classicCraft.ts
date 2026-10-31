@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { errorText } from './portal';
 import { parseEquipmentRequirements, type EquipmentRequirement } from './worldEquipment';
@@ -82,13 +82,13 @@ export function parseCraftState(value: unknown): CraftState {
   return state;
 }
 const url = (path = '') => config.makeApiUrl(`v1/craft${path}`);
-export async function loadCraft(): Promise<CraftState> { return parseCraftState((await apiClient.get(url())).data); }
+export async function loadCraft(): Promise<CraftState> { return parseCraftState((await readApi(url())).data); }
 export async function sendCraft(command: CraftCommand): Promise<{state: CraftState; message: string}> {
   const d = object((await apiClient.post(url('/command'), command)).data);
   return { state: parseCraftState(d.state), message: str(d.message) };
 }
 export async function loadCraftHistory(page: number): Promise<{items: CraftEvent[]; pages: number}> {
-  const d = object((await apiClient.get(url('/history'), {params: {page, 'per-page': 20, envelope: 1}})).data);
+  const d = object((await readApi(url('/history'), {params: {page, 'per-page': 20, envelope: 1}})).data);
   const rows = arr(d.items, v => { const r = object(v); return {id: num(r.id, 1), action: str(r.action), item_id: nullable(r.item_id), recipe_id: nullable(r.recipe_id), quantity: num(r.quantity), credit_change: num(r.credit_change, -100000000), created_at: num(r.created_at)}; });
   return {items: rows, pages: num(object(d._meta).pageCount)};
 }

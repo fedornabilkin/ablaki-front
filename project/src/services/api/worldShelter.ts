@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { parseLodgingAssignment } from './worldHousing';
@@ -31,7 +31,7 @@ export function shelterInput(action: ShelterAction, value: unknown) {
   return { direct_deploy, end_lodging };
 }
 export async function loadShelter(node: number) {
-  const r = record((await apiClient.get(url(node))).data);
+  const r = record((await readApi(url(node))).data);
   if (id(r.node_id) !== node) invalid();
   let deployment = null, lodging = null;
   if (r.deployment !== null) {

@@ -1,6 +1,6 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
-import { mutate } from '@/services/api/portal';
+import { mutate, pageData, emptyPage } from '@/services/api/portal';
 
 export interface HistoryType { label: string; value: string; }
 export function parseHistoryTypes(data: unknown): HistoryType[] {
@@ -13,7 +13,15 @@ export function parseHistoryTypes(data: unknown): HistoryType[] {
   });
 }
 export async function historyTypes(kind: 'balance' | 'rating'): Promise<HistoryType[]> {
-  return parseHistoryTypes((await apiClient.get(config.makeApiUrl(`v1/history/${kind}-type`))).data);
+  return parseHistoryTypes((await readApi(config.makeApiUrl(`v1/history/${kind}-type`))).data);
+}
+
+export const emptyHistory = () => ({ ...emptyPage(), types: [] as HistoryType[] });
+export async function loadHistory(kind: 'balance' | 'rating', page: number, params: Record<string, unknown> = {}) {
+  const response = await readApi(config.makeApiUrl(`v1/history/${kind}`), { params: { ...params, page, include: 'types', envelope: 1 } });
+  const value = response.data;
+  if (!value || value.contract_version !== 1 || !value.filters) throw new Error('invalid-response');
+  return { ...pageData(value.history, response.headers), types: parseHistoryTypes(value.filters.types) };
 }
 
 export interface CommentGift { commentId: number; alreadyGiven: boolean; giftCount: number; giftedByMe: true; credit: number; }
@@ -43,5 +51,5 @@ export function parseDailyAvailability(value: unknown): DailyAvailability {
   return { items: data.items.map(item => ({ id: item.id })), refresh_at: data.refresh_at };
 }
 export async function dailyAvailability(): Promise<DailyAvailability> {
-  return parseDailyAvailability((await apiClient.get(config.makeApiUrl('v1/bonus/available'))).data);
+  return parseDailyAvailability((await readApi(config.makeApiUrl('v1/bonus/available'))).data);
 }

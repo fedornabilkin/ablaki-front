@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 import { creditAmount } from '@/entities/world/credits';
@@ -53,7 +53,7 @@ export function parseMvp(value: unknown) {
     quotas: list(row.quotas).filter(value => value !== null).map(value => parseEconomyQuota(value)!),
   };
 }
-export async function loadMvp() { return parseMvp((await apiClient.get(config.makeApiUrl('v1/world/economy'))).data); }
+export async function loadMvp() { return parseMvp((await readApi(config.makeApiUrl('v1/world/economy'))).data); }
 export type MvpState = ReturnType<typeof parseMvp>;
 
 function parseDevelopment(value: unknown, href: (value: unknown) => string | null) {

@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { investmentAmount, creditAmount } from '@/entities/world/credits';
@@ -13,7 +13,7 @@ export function harvestInput(action: HarvestAction, value: unknown) {
   return action === 'price' ? { inventory_id, price: r.price === null ? null : investmentAmount(r.price) } : { inventory_id, quantity: integer(r.quantity, 1, 10000), ...(action === 'withdraw' && r.destination_storage_id !== undefined ? { destination_storage_id: id(r.destination_storage_id) } : {}) };
 }
 export async function loadHarvest(node: number) {
-  const r = record((await apiClient.get(url(node))).data);
+  const r = record((await readApi(url(node))).data);
   const capacity = integer(r.capacity, 1, 100);
   if (id(r.node_id) !== node || !Array.isArray(r.items) || r.items.length > capacity) invalid();
   const items = r.items.map(value => {

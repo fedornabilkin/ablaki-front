@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { record } from './world';
 export interface DrillBonus { node_id: number; output_multiplier: number; reward_multiplier: number }
@@ -65,4 +65,4 @@ export function parseMining(value: unknown): MiningState {
     ...(row.output_destination === undefined ? {} : { output_destination: row.output_destination as MiningState['output_destination'] }),
     ...(quota ? { quota: { maximum: uint(quota.maximum), remaining: uint(quota.remaining), restores_at: uint(quota.restores_at) } } : {}) };
 }
-export async function loadMining(id: number) { return parseMining((await apiClient.get(config.makeApiUrl(`v1/world/objects/${id}/mining`))).data); }
+export async function loadMining(id: number) { return parseMining((await readApi(config.makeApiUrl(`v1/world/objects/${id}/mining`))).data); }

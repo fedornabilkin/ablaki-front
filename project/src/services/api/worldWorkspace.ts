@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { parseStorageHeader } from './worldStorage';
@@ -39,5 +39,5 @@ export function parseWorkspaceTerms(value: unknown) {
     output: { item_id: id(output.item_id), name: text(output.name, 120), quantity: integer(output.quantity, 1, 100000), storage_id: id(output.storage_id), fits: boolean(output.fits) } };
 }
 const url = (path: string) => config.makeApiUrl(`v1/world/workspace${path}`);
-export async function loadWorkspace(node: number, recipe?: number) { return parseWorkspace((await apiClient.get(url(''), { params: { node_id: id(node), ...(recipe === undefined ? {} : { recipe_id: id(recipe) }) } })).data); }
+export async function loadWorkspace(node: number, recipe?: number) { return parseWorkspace((await readApi(url(''), { params: { node_id: id(node), ...(recipe === undefined ? {} : { recipe_id: id(recipe) }) } })).data); }
 export async function previewWorkspace(input: WorkspaceInput) { const quote = parseWorldQuote((await apiClient.post(url('/preview'), input)).data); return { quote, terms: parseWorkspaceTerms(quote.terms) }; }

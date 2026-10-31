@@ -1,5 +1,5 @@
 import type { RecordData } from './portal';
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 
 export type HistoryGameKind = 'orel' | 'saper' | 'duel' | 'five';
@@ -15,11 +15,11 @@ export function historyPeriod(value: string): HistoryPeriod {
   return historyPeriods.find(period => period.value === value)?.value ?? 'all';
 }
 export async function historyKons(kind: HistoryGameKind, period: HistoryPeriod, scope: HistoryScope): Promise<HistoryKon[]> {
-  const { data } = await apiClient.get(config.makeApiUrl(`v1/${kind}/history-kons`), { params: { period, scope } });
+  const { data } = await readApi(config.makeApiUrl(`v1/${kind}/history-kons`), { params: { period, scope } });
   return decodeKons(data);
 }
 export async function lobbyStakes(kind: HistoryGameKind, scope: 'my' | 'available'): Promise<HistoryKon[]> {
-  const { data } = await apiClient.get(config.makeApiUrl(`v1/${kind}/stakes`), { params: { scope } });
+  const { data } = await readApi(config.makeApiUrl(`v1/${kind}/stakes`), { params: { scope } });
   return decodeKons(data);
 }
 export function decodeKons(data: unknown): HistoryKon[] {

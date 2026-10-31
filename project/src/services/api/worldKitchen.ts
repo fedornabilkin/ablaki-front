@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 import { parseHealth } from './worldMvp';
@@ -16,4 +16,4 @@ export function parseKitchen(value: unknown) {
   return { nodeId: integer(row.node_id, 1, 2147483647), current: window(meal.current), next: window(meal.next), used: row.meal_used,
     health: parseHealth(row.health), serverTime: integer(row.server_time) };
 }
-export async function loadKitchen(node: number) { return parseKitchen((await apiClient.get(config.makeApiUrl(`v1/world/economy/kitchen/${node}`))).data); }
+export async function loadKitchen(node: number) { return parseKitchen((await readApi(config.makeApiUrl(`v1/world/economy/kitchen/${node}`))).data); }

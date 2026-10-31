@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 
@@ -9,7 +9,7 @@ const id = (value: unknown) => integer(value, 1, 2147483647);
 const text = (value: unknown): string => typeof value === 'string' && value.trim().length > 0 && value.length <= 2000 ? value : invalid();
 const url = (node: number, action = 'building-operation') => config.makeApiUrl(`v1/world/nodes/${id(node)}/${action}`);
 export async function loadBuildingOperation(node: number) {
-  const row = record((await apiClient.get(url(node))).data);
+  const row = record((await readApi(url(node))).data);
   if (id(row.node_id) !== node || typeof row.writable !== 'boolean' || typeof row.operational_status !== 'string' || !Object.prototype.hasOwnProperty.call(buildingStatuses, row.operational_status)) return invalid();
   if (!Array.isArray(row.reasons) || row.reasons.length > 16 || ![null, 'pause', 'resume'].includes(row.action as null | string)) return invalid();
   const reasons = row.reasons.map(text), status = row.operational_status as keyof typeof buildingStatuses;

@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
@@ -18,7 +18,7 @@ function collectionRule(value: unknown) {
   return rule;
 }
 export async function loadNodeEconomy(node: number, page: number) {
-  const r = record((await apiClient.get(url(node, 'economy'), { params: { page } })).data), entries = record(r.entries), meta = record(entries._meta);
+  const r = record((await readApi(url(node, 'economy'), { params: { page } })).data), entries = record(r.entries), meta = record(entries._meta);
   if (r.currency !== 'Cr' || !Array.isArray(entries.items) || entries.items.length > 50) invalid();
   const b = r.balances === null ? null : record(r.balances), owner = boolean(r.can_view_finances);
   const rule = collectionRule(r.collection_rule), collect = boolean(r.collect_available), pay = boolean(r.can_pay), catchingUp = boolean(r.treasury_catching_up);
@@ -30,7 +30,7 @@ export async function loadNodeEconomy(node: number, page: number) {
     can_invest: boolean(r.can_invest), can_grant: boolean(r.can_grant), wallet_ready: boolean(r.wallet_ready), can_collect: collect, can_pay: pay, catching_up: catchingUp, rule, entries: { items, total, pageSize, currentPage } };
 }
 export async function loadObligations(node: number, page: number) {
-  const r = record((await apiClient.get(url(node, 'obligations'), { params: { page } })).data), meta = record(r._meta);
+  const r = record((await readApi(url(node, 'obligations'), { params: { page } })).data), meta = record(r._meta);
   if (id(r.node_id) !== node || !Array.isArray(r.items) || r.items.length > 50) invalid();
   const items = (r.items as unknown[]).map(value => {
     const item = record(value);

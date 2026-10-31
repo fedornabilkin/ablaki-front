@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 
@@ -15,9 +15,9 @@ export function parseCultivation(value: unknown) {
       ready_at: integer(c.ready_at), water_due_at: time(c.water_due_at), water_deadline_at: time(c.water_deadline_at), expires_at: integer(c.expires_at),
       water_missed: bool(c.water_missed), can_water: bool(c.can_water), yield_factor_bps: integer(c.yield_factor_bps, 0, 10000), event_loss_bps: c.event_loss_bps === undefined ? 0 : integer(c.event_loss_bps, 0, 10000) } : null };
 }
-export async function loadCultivation(bed: number) { return parseCultivation((await apiClient.get(config.makeApiUrl(`v1/world/beds/${integer(bed, 1)}/cultivation`))).data); }
+export async function loadCultivation(bed: number) { return parseCultivation((await readApi(config.makeApiUrl(`v1/world/beds/${integer(bed, 1)}/cultivation`))).data); }
 export async function loadCrops(page = 1) {
-  const row = record((await apiClient.get(config.makeApiUrl('v1/world/crops'), { params: { page } })).data), meta = record(row._meta);
+  const row = record((await readApi(config.makeApiUrl('v1/world/crops'), { params: { page } })).data), meta = record(row._meta);
   if (!Array.isArray(row.items) || row.items.length > 20) invalid();
   return { pageCount: integer(meta.pageCount), items: row.items.map(value => {
     const c = record(value);

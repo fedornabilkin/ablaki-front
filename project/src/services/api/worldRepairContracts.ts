@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { parseBuildingRepairPolicy } from './worldBuildingRepair';
@@ -15,7 +15,7 @@ function offer(value: unknown) {
   return { offer_id: id(row.offer_id), name: text(row.name), template_revision_id: id(row.template_revision_id), kind: row.kind as 'canopy' | 'workroom' | 'house', area: integer(row.area, 1, 4), repair: policy(row.repair) };
 }
 export async function loadRepairContracts(node: number, params: Record<string, unknown>) {
-  const row = record((await apiClient.get(url(node), { params })).data), meta = record(row._meta);
+  const row = record((await readApi(url(node), { params })).data), meta = record(row._meta);
   if (id(row.node_id) !== node || !Array.isArray(row.items) || row.items.length > 20) return invalid();
   const items = row.items.map(value => {
     const r = record(value), result = offer(r), blocked = reasons(r.reasons), available = bool(r.available);

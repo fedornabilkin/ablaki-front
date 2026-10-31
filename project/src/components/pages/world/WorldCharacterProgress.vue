@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { onScopeDispose, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NButton, NProgress, NSpin } from 'naive-ui';
 import { loadProgression } from '@/services/api/worldCharacter';
 import { worldError } from '@/services/api/world';
 import type { MvpState } from '@/services/api/worldMvp';
-const props = defineProps<{ health?: MvpState['health']; healthError?: string; session?: number }>();
-const tracks = ref<Awaited<ReturnType<typeof loadProgression>> | null>(null), loading = ref(true), error = ref('');
+const props = defineProps<{ health?: MvpState['health']; healthError?: string; session?: number; managed?: boolean; progression?: Awaited<ReturnType<typeof loadProgression>> | null; pending?: boolean }>();
+const ownTracks = ref<Awaited<ReturnType<typeof loadProgression>> | null>(null), ownLoading = ref(true), error = ref('');
+const tracks = computed(() => props.managed ? props.progression : ownTracks.value);
+const loading = computed(() => props.managed ? props.pending : ownLoading.value);
 let generation = 0;
 async function load() {
-  const current = ++generation; loading.value = true; error.value = ''; tracks.value = null;
-  try { const result = await loadProgression(); if (current === generation) tracks.value = result; }
+  if (props.managed) return;
+  const current = ++generation; ownLoading.value = true; error.value = ''; ownTracks.value = null;
+  try { const result = await loadProgression(); if (current === generation) ownTracks.value = result; }
   catch (cause) { if (current === generation) error.value = worldError(cause); }
-  finally { if (current === generation) loading.value = false; }
+  finally { if (current === generation) ownLoading.value = false; }
 }
 watch(() => props.session, load, {immediate: true});
 onScopeDispose(() => { generation++; });

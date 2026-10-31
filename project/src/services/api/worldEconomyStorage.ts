@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount } from '@/entities/world/credits';
@@ -15,6 +15,6 @@ export function parseEconomyStorage(value: unknown) {
   }) };
 }
 const url = (id: number, suffix = '') => config.makeApiUrl(`v1/world/economy/storage/${integer(id, 1)}${suffix}`);
-export async function loadEconomyStorage(id: number) { return parseEconomyStorage((await apiClient.get(url(id))).data); }
+export async function loadEconomyStorage(id: number) { return parseEconomyStorage((await readApi(url(id))).data); }
 export async function previewEconomyStorage(id: number, code: string) { return parseWorldQuote((await apiClient.post(url(id, '/expand-preview'), { code })).data); }
 export type EconomyStorageState = ReturnType<typeof parseEconomyStorage>;

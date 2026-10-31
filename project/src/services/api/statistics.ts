@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 
 export interface PeriodStats { total: number; today: number | null; yesterday: number | null; }
@@ -64,5 +64,5 @@ export function decodeStatistics(raw: unknown): Statistics {
 }
 
 export async function getStatistics(): Promise<Statistics> {
-  return decodeStatistics((await apiClient.get(config.makeApiUrl('v1/stat'))).data);
+  return decodeStatistics((await readApi(config.makeApiUrl('v1/stat'))).data);
 }

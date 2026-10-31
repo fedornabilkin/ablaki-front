@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 const invalid = (): never => { throw new Error('invalid-demolition-response'); };
@@ -13,7 +13,7 @@ function ids(value: unknown, max: number): number[] {
   return result;
 }
 export async function loadDemolition(node: number) {
-  const row = record((await apiClient.get(url(node))).data);
+  const row = record((await readApi(url(node))).data);
   if (id(row.node_id) !== node || row.price !== '0.0000' || row.refund !== '0.0000' || !Array.isArray(row.reasons) || row.reasons.length > 32) return invalid();
   const reasons = row.reasons.map(value => { const r = record(value); return { code: text(r.code), message: text(r.message) }; });
   const available = bool(row.available), area = integer(row.area, 0, 4), plot = row.plot_id === null ? null : id(row.plot_id);
@@ -30,7 +30,7 @@ export async function previewDemolition(node: number) {
   return { node, quote, name: text(terms.name), plot: id(terms.plot_id), area: integer(terms.area, 1, 4), rooms, storages };
 }
 export async function loadDemolitions(node: number, params: Record<string, unknown>) {
-  const row = record((await apiClient.get(url(node, 'demolitions'), { params })).data), meta = record(row._meta);
+  const row = record((await readApi(url(node, 'demolitions'), { params })).data), meta = record(row._meta);
   if (id(row.node_id) !== node || !Array.isArray(row.items) || row.items.length > 20) return invalid();
   const items = row.items.map(value => {
     const r = record(value);
