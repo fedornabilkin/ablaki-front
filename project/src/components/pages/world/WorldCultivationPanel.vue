@@ -26,11 +26,17 @@ const checkedDeadlines = new Set<string>();
 let cataloguePage: number | null = null;
 const labels: Record<CultivationAction, string> = { dig: 'Вскопать грядку', sow: 'Посадить семена', water: 'Полить', harvest: 'Собрать урожай', cancel: 'Очистить грядку' };
 const cycle = computed(() => state.value?.cycle), crop = computed(() => crops.value.find(c => c.id === selected.value));
+const canWaterNow = computed(() => Boolean(cycle.value?.can_water && cycle.value.water_deadline_at !== null && now.value < cycle.value.water_deadline_at && now.value < cycle.value.ready_at));
+const waterTimer = computed(() => {
+  const c = cycle.value;
+  if (!c || c.water_due_at === null) return '00:00:00';
+  return countdown((now.value < c.water_due_at ? c.water_due_at : c.water_deadline_at ?? c.ready_at) - now.value);
+});
 const locked = computed(() => !visible.value || props.active === false || loading.value || calculating.value || props.command.busy.value || Boolean(props.command.pending.value) || !state.value?.writable);
 const materials = computed(() => (quote.value?.value.terms.materials ?? []) as { name: string; quantity: number; have: number; available: boolean }[]);
 const tool = computed(() => quote.value?.value.terms.tool as { name: string; durability: number; wear: number; available: boolean } | undefined);
 const canConfirm = computed(() => materials.value.every(m => m.available) && tool.value?.available !== false && (quote.value?.value.terms.output as { fits?: boolean } | undefined)?.fits !== false);
-const primaryAction = computed<CultivationAction | null>(() => !state.value ? null : !cycle.value ? (state.value.dug ? 'sow' : 'dig') : now.value >= cycle.value.expires_at ? null : now.value >= cycle.value.ready_at ? 'harvest' : cycle.value.can_water ? 'water' : null);
+const primaryAction = computed<CultivationAction | null>(() => !state.value ? null : !cycle.value ? (state.value.dug ? 'sow' : 'dig') : now.value >= cycle.value.expires_at ? null : now.value >= cycle.value.ready_at ? 'harvest' : canWaterNow.value ? 'water' : null);
 const ready = computed(() => quote.value?.action === primaryAction.value && canConfirm.value && !paymentRequired.value);
 const cost = computed(() => [...materials.value.map(m => `${m.quantity} ${m.name}`), ...(tool.value ? [`${tool.value.name}: ${tool.value.wear} прочности`] : [])].join(', ') || 'бесплатно');
 const price = computed(() => typeof quote.value?.value.terms.price_cr === 'string' ? quote.value.value.terms.price_cr : '0');
@@ -121,7 +127,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; clear
 <template lang="pug">
 section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prevent.stop="dropSeed")
   .cultivation-heading
-    h2 Выращивание
+    h2 {{ !state || cycle ? 'Выращивание' : state.dug ? 'Грядка готова к посадке' : 'Подготовка земли' }}
     world-help-hint(label="Как выращивать урожай")
       p Вскопайте землю, посадите семена и следите за сроками полива и сбора.
       p Семена, вода и лопата — из рюкзака. Урожай попадёт в мини-склад, а при его отсутствии — в рюкзак.
@@ -133,35 +139,33 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
   template(v-if="state")
     p(v-if="typeof quote?.value.terms.worker_reward_cr === 'string' && Number(quote.value.terms.worker_reward_cr) > 0") Оплата: #[world-credits(:value="quote.value.terms.worker_reward_cr")].
     template(v-if="!cycle")
-      .cultivation-card
-        h3 {{ state.dug ? 'Грядка готова к посадке' : 'Подготовка земли' }}
-        .cultivation-dig(v-if="!state.dug")
-          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Вскопать
-          world-help-hint(label="Расход прочности лопаты" symbol="!")
-            p {{ tool ? `Расходуется ${tool.wear} ед. прочности лопаты. ${tool.available ? 'Лопата доступна.' : 'Нужна исправная лопата в рюкзаке.'}` : 'Для перекопки нужна исправная лопата в рюкзаке.' }}
-        template(v-else-if="state.owner")
-          .crop-tiles(aria-label="Культуры для посадки")
-            button.crop-tile(v-for="entry in crops" :key="entry.id" type="button" :class="{ selected: selected === entry.id }" :aria-pressed="selected === entry.id" :disabled="locked" :draggable="!locked" @dragstart="dragSeed($event, entry.id)" @click="selected = entry.id")
-              font-awesome-icon(icon="seedling" aria-hidden="true")
-              strong(:title="entry.name") {{ entry.name }}
-              small(:aria-label="`Семян: ${entry.seed_quantity}, урожай: ${entry.yield_quantity}`") {{ entry.seed_quantity }} → {{ entry.yield_quantity }}
-          .cultivation-actions(v-if="pages > 1")
-            n-button(:theme-overrides="worldActionButtonTheme" :disabled="page <= 1 || locked" @click="page--") Назад
-            span {{ page }} / {{ pages }}
-            n-button(:theme-overrides="worldActionButtonTheme" :disabled="page >= pages || locked" @click="page++") Далее
-          template(v-if="crop")
-            .crop-summary
-              span(:title="`Время роста: ${duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds)}`")
-                font-awesome-icon(icon="clock" aria-hidden="true")
-                |  {{ duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds) }}
-              world-help-hint(label="Полив и сбор урожая")
-                p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }}.
-                p(v-if="crop.water_quantity") Полив каждые {{ duration(crop.water_interval_seconds) }}, окно полива — {{ duration(crop.water_window_seconds) }}.
-                p Соберите урожай в течение {{ duration(crop.harvest_window_seconds) }} после созревания.
-          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute")
-            template(#icon)
-              font-awesome-icon(icon="seedling" aria-hidden="true")
-            | Посадить семена
+      .cultivation-dig(v-if="!state.dug")
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Вскопать
+        world-help-hint(label="Расход прочности лопаты" symbol="!")
+          p {{ tool ? `Расходуется ${tool.wear} ед. прочности лопаты. ${tool.available ? 'Лопата доступна.' : 'Нужна исправная лопата в рюкзаке.'}` : 'Для перекопки нужна исправная лопата в рюкзаке.' }}
+      template(v-else-if="state.owner")
+        .crop-tiles(aria-label="Культуры для посадки")
+          button.crop-tile(v-for="entry in crops" :key="entry.id" type="button" :class="{ selected: selected === entry.id }" :aria-pressed="selected === entry.id" :disabled="locked" :draggable="!locked" @dragstart="dragSeed($event, entry.id)" @click="selected = entry.id")
+            font-awesome-icon(icon="seedling" aria-hidden="true")
+            strong(:title="entry.name") {{ entry.name }}
+            small(:aria-label="`Семян: ${entry.seed_quantity}, урожай: ${entry.yield_quantity}`") {{ entry.seed_quantity }} → {{ entry.yield_quantity }}
+        .cultivation-actions(v-if="pages > 1")
+          n-button(:theme-overrides="worldActionButtonTheme" :disabled="page <= 1 || locked" @click="page--") Назад
+          span {{ page }} / {{ pages }}
+          n-button(:theme-overrides="worldActionButtonTheme" :disabled="page >= pages || locked" @click="page++") Далее
+        template(v-if="crop")
+          .crop-summary
+            span(:title="`Время роста: ${duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds)}`")
+              font-awesome-icon(icon="clock" aria-hidden="true")
+              |  {{ duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds) }}
+            world-help-hint(label="Полив и сбор урожая")
+              p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }}.
+              p(v-if="crop.water_quantity") Полив каждые {{ duration(crop.water_interval_seconds) }}, окно полива — {{ duration(crop.water_window_seconds) }}.
+              p Соберите урожай в течение {{ duration(crop.harvest_window_seconds) }} после созревания.
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute")
+          template(#icon)
+            font-awesome-icon(icon="seedling" aria-hidden="true")
+          | Посадить семена
     template(v-else)
       h3 {{ cycle.name }}
       n-alert(closable v-if="cycle.state === 'expired'" type="error") Урожай погиб: срок сбора истёк. Уберите остатки, чтобы подготовить новый посев.
@@ -175,8 +179,7 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
         n-button.cultivation-timer.water-timer(v-if="cycle.water_due_at && cycle.water_due_at < cycle.ready_at" :theme-overrides="worldActionButtonTheme" :type="primaryAction === 'water' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'water' || !ready" @click="execute")
           .timer-label
             span Полить
-            strong {{ now >= cycle.ready_at ? 'Полив завершён' : cycle.can_water ? 'Пора полить' : countdown(cycle.water_due_at - now) }}
-            small(v-if="now < cycle.ready_at && cycle.can_water && cycle.water_deadline_at") Осталось {{ countdown(cycle.water_deadline_at - now) }}
+            strong {{ waterTimer }}
         .cultivation-death-timer
           span До гибели урожая
           strong {{ countdown(cycle.expires_at - now) }}
@@ -222,7 +225,6 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
 .cultivation-cost { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--border); font-size: .8rem; }
 .cultivation-heading, .cultivation-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
 .cultivation-metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; align-items: stretch; }.cultivation-timer { height: auto; min-height: 3.5rem; padding: .5rem; }.timer-label { display: grid; gap: .2rem; text-align: center; white-space: normal; }.timer-label strong { font-size: .9rem; font-variant-numeric: tabular-nums; }.timer-label small { font-size: .7rem; }.harvest-timer { grid-column: 1; grid-row: 1; }.water-timer { grid-column: 1; grid-row: 2; }.cultivation-death-timer { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .3rem; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; background: #e66a6808; }.cultivation-death-timer span { font-size: .75rem; color: var(--text-muted); }.cultivation-death-timer strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
-.cultivation-card { display: grid; gap: .65rem; border: 1px solid var(--border); border-radius: .65rem; padding: .6rem; min-width: 0; }
-.cultivation-card small, p { color: var(--text-muted); }
+p { color: var(--text-muted); }
 .missing { color: #e66a68; }
 </style>

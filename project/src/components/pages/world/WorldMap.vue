@@ -85,7 +85,7 @@ const price = computed(() => {
   return allDiscovered.value && props.map?.pricing ? mapPurchase(props.map.pricing, [...selected.value].sort((a, b) => a.y - b.y || a.x - b.x)) : null;
 });
 const allClosed = computed(() => selected.value.length > 0 && selected.value.every(p => state(p) === 'closed' && !occupied(p)));
-const missingPredecessors = (p: MapPoint) => explorationPredecessors(p).filter(cell => state(cell) === 'closed');
+const missingPredecessors = (p: MapPoint) => explorationPredecessors(p).filter(cell => state(cell) !== 'open');
 const requiredCells = computed(() => [...new Map(selected.value.flatMap(missingPredecessors).map(p => [`${p.x}:${p.y}`, p])).values()]);
 const required = computed(() => Math.max(1, ...selected.value.map(requiredExplorerLevel)));
 const explorerLevel = computed(() => Math.max(props.map?.exploration?.level ?? 0, explorer.value?.enrolled ? explorer.value.level : 0));
@@ -326,7 +326,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       template(v-else-if="node.status !== 'constructing' && !node.extensions?.some(feature => ['mining', 'cultivation'].includes(feature))")
         h3 Выберите ячейку
       section.map-cell-actions(v-if="cellActionsAllowed && selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
-        p.map-predecessor-notice(v-if="allClosed && requiredCells.length" role="status") Сначала исследуйте ячейки: {{ requiredCells.map(p => `${p.x}, ${p.y}`).join('; ') }}. Для диагонали нужны обе соседние стороны.
+        p.map-predecessor-notice(v-if="allClosed && requiredCells.length" role="status") Сначала купите ячейки: {{ requiredCells.map(p => `${p.x}, ${p.y}`).join('; ') }}. Для диагонали нужны обе соседние стороны.
         .explore-action
           h4 Открытие ячеек
           world-help-hint(label="Исследование и покупка ячеек" symbol="!")
@@ -336,7 +336,9 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
             p(v-if="!isGarden") Профессия «Исследователь» выбирается один раз и даёт доступ к дальним ячейкам. Повторно открывать её не нужно: повышайте уровень за накопленный опыт или используйте эликсир.
             p(v-if="explorer?.enrolled") Профессия уже открыта. Опыт: {{ explorer.xp }}{{ explorer.next ? `; для уровня ${explorer.next.level} нужно ${explorer.next.required_xp}` : '; достигнут максимальный уровень' }}.
             p(v-if="!isGarden") Если уровня недостаточно, автоматически расходуется один эликсир на каждую ячейку выше вашего уровня. Требуется {{ neededElixirs }}, в рюкзаке {{ map?.exploration?.elixir_quantity ?? 0 }}. При достаточном уровне эликсир не расходуется.
-            p Ближайшее кольцо ячеек стоит одинаково. Каждое следующее кольцо дороже на базовую цену. Оплата из бюджета объекта; галочка разрешает доплату с личного баланса. От трёх ячеек — скидка 5%.
+            p(v-if="!isGarden") Дальние ячейки исследуются от уже купленных соседних ячеек со стороны центра; для угла нужны обе стороны. Исследованной, но не купленной ячейки недостаточно.
+            p Цена зависит от кольца и указана в расчёте перед покупкой. Оплата из бюджета объекта; галочка разрешает доплату с личного баланса. От трёх ячеек — скидка 5%.
+            p(v-if="!isGarden") Исследование и покупка повышают рейтинг. Награда уменьшается с ростом рейтинга и количеством уже выполненных действий.
             p(v-if="price && price.discount !== '0.0000'") Скидка: #[world-credits(:value="price.discount")] .
             p(v-if="!canBuy && !allClosed") {{ map?.exploration?.reason || 'Выделите закрытые либо исследованные свободные ячейки.' }}
             p(v-if="!isGarden && !map?.exploration?.allowed") {{ map?.exploration?.reason || 'Исследование этой карты пока недоступно.' }}

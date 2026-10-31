@@ -10,6 +10,8 @@ const types: Record<string, [string, string]> = {
   zakaz: ['Выплата', 'arrow-down'], referral: ['Рефералы', 'users'],
   game_ablaki: ['5 яблок', 'apple-alt'], game_ablaki_double: ['Удвоение яблок', 'apple-alt'],
   everyday_credit: ['Ежедневные кредиты', 'coins'], everyday_kg: ['Ежедневный баланс', 'cube'],
+  'world.explore': ['Исследование ячеек', 'compass'], 'world.purchase': ['Покупка ячеек', 'map'],
+  'world.construction': ['Строительство', 'hammer'], 'world.craft': ['Крафт', 'cubes'],
 };
 export function historyPresentation(type: string) {
   const legacy = /^(create|remove)_(ablaki|orel|duel|saper)$/.exec(type);
