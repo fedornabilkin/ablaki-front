@@ -15,6 +15,7 @@ import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui'
 import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
 import WorldWorkspaceNav from './WorldWorkspaceNav.vue';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
+import { useWorldPresence } from '@/hooks/useWorldPresence';
 import { worldError } from '@/services/api/world';
 import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { loadWorkspace, previewWorkspace, type WorkspaceInput } from '@/services/api/worldWorkspace';
@@ -24,6 +25,7 @@ const nodeId = computed(() => Number(route.params.id ?? route.query.node));
 const session = computed(() => Number(auth.state.auth.revision)), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const craftHref = useCampsiteCraft(session);
 const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null), loading = ref(false), calculating = ref(false), error = ref(''), notice = ref('');
+useWorldPresence(computed(() => state.value?.writable && state.value.node_id === nodeId.value ? nodeId.value : null), session, { enter: false });
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
 const category = ref('all'), availability = ref('all');

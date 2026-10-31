@@ -9,6 +9,12 @@ export const navigation = [
   { to: '/transfer', title: 'Переводы', icon: 'arrow-right', account: true },
   { to: '/users/referrals', title: 'Рефералы', icon: 'users', account: true },
 ];
+
+/** Match path segments, preferring a more specific section (e.g. referrals over members). */
+export function activeNavigation(path: string): string | undefined {
+  return navigation.filter(link => path === link.to || path.startsWith(`${link.to}/`))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.to;
+}
 export const games = [
   { to: '/games/five', title: '5 яблок', icon: 'apple-alt', description: 'Выбирайте яблоки, набирайте очки и первым достигните 21.', badge: 'До 21' },
   { to: '/games/orel', title: 'Орлянка', icon: 'coins', description: 'Выберите орла или решку, создайте свою игру или присоединитесь к чужой.', badge: '1 из 2' },

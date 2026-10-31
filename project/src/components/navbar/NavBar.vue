@@ -3,7 +3,7 @@ import { computed, ref, onMounted, onScopeDispose } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NButton } from 'naive-ui';
-import { navigation } from '@/config/navigation';
+import { navigation, activeNavigation } from '@/config/navigation';
 import HeaderAccount from './HeaderAccount.vue';
 import DailyRewards from './DailyRewards.vue';
 import OnlineUsers from './OnlineUsers.vue';
@@ -12,6 +12,7 @@ const route = useRoute();
 const user = computed(() => store.getters['auth/user']);
 const guest = computed(() => ['guest', 'error'].includes(store.getters['auth/authStatus']) && !user.value);
 const links = computed(() => navigation.filter(link => !link.account || user.value));
+const activeSection = computed(() => activeNavigation(route.path));
 const compact = ref(false);
 const header = ref<HTMLElement>();
 let headerObserver: ResizeObserver | undefined;
@@ -45,7 +46,7 @@ header.site-header(ref="header" :class="{ compact }")
     online-users
     daily-rewards(v-if="user")
     nav.desktop-nav(v-show="!compact" aria-label="Основная навигация")
-      router-link.nav-item(v-for="link in links" :key="link.to" :to="link.to" :class="{'account-link': link.account}" :aria-label="link.title")
+      router-link.nav-item(v-for="link in links" :key="link.to" :to="link.to" :class="{'account-link': link.account, 'section-active': activeSection === link.to}" :aria-current="activeSection === link.to ? 'page' : undefined" :aria-label="link.title")
         font-awesome-icon(:icon="link.icon" aria-hidden="true")
         span.nav-label {{ link.title }}
       router-link.nav-item(v-if="user" to="/users/logout" aria-label="Выйти")
@@ -67,7 +68,7 @@ header.site-header(ref="header" :class="{ compact }")
 .desktop-nav { display: flex; margin-right: auto; }
 .nav-label { display: none; }
 .desktop-nav .nav-item { border-radius: 0; border-bottom: .125rem solid transparent; padding-inline: .5rem; white-space: nowrap; }
-.desktop-nav .router-link-active { border-bottom-color: var(--primary); color: var(--text); background: transparent; }
+.desktop-nav .section-active { border-bottom-color: var(--primary); color: var(--primary); background: transparent; }
 .nav-account { min-width: 0; flex: 1; justify-content: flex-end; margin-left: auto; }
 .guest-actions { flex-wrap: wrap; justify-content: flex-end; }
 .login-link { display: inline-flex; align-items: center; gap: .35rem; }

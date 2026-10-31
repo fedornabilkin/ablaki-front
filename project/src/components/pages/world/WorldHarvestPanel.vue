@@ -4,10 +4,9 @@ import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
+import { NAlert, NButton, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import WorldHelpHint from './WorldHelpHint.vue';
 import { loadHarvest, previewHarvest, type HarvestAction } from '@/services/api/worldHarvest';
-import { formatCredits, creditCost } from '@/entities/world/credits';
 import { worldError } from '@/services/api/world';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
@@ -54,6 +53,7 @@ async function act(action: HarvestAction, withdrawOffer = false) {
     if (action === 'buy' && result.quote.terms.total !== expected) { await load(); error.value = 'Цена изменилась. Проверьте обновлённое предложение.'; return; }
     if (result.quote.terms.fits === false) { error.value = 'Освободите место в выбранном хранилище.'; return; }
     await props.command.submit(`/nodes/${props.nodeId}/harvest-${action}`, result.input, result.quote);
+    if (!disposed && current === generation && props.command.error.value) error.value = props.command.error.value;
     if (!disposed && !props.command.pending.value && !props.command.error.value) await load();
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed) saving.value = false; }
@@ -76,7 +76,7 @@ section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-labe
   .harvest-heading
     component(:is="embedded ? 'h4' : 'h2'") {{ embedded ? 'Ресурсы мини-склада' : 'Продукция склада' }}
     world-help-hint(label="Хранение и покупка ресурсов")
-      p Покупки поступают в рюкзак, оплата — в казну этого склада.
+      p Покупки поступают в рюкзак, оплата — родительскому объекту склада.
       p(v-if="state?.npc_supply") Здесь продаётся сырьё, добытое игроками. Выручка возвращается в бюджеты стартовых объектов NPC для оплаты работы.
       p(v-else) Урожай после 14 суток хранения однократно теряет 30% количества.
   p.harvest-capacity(v-if="state") {{ state.capacity }} ячеек{{ state.slot_limit ? ` · до ${state.slot_limit} шт. в ячейке` : '' }}
@@ -111,19 +111,27 @@ section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-labe
         n-button(:theme-overrides="worldActionButtonTheme" :disabled="locked || !prices[item.inventory_id]" @click="act('price')") Установить цену продажи
         n-button(:theme-overrides="worldActionButtonTheme" v-if="item.price" :disabled="locked" @click="act('price', true)") Снять с продажи
     section.harvest-action-block(v-else aria-label="Покупка урожая")
+      .harvest-action-heading
+        router-link.harvest-inventory-link(to="/world/workspace/inventory")
+          font-awesome-icon(icon="box-open" aria-hidden="true")
+          |  Рюкзак
+        world-help-hint(label="Подготовка рюкзака")
+          p Если рюкзак ещё не подготовлен, откройте инвентарь и получите стартовый набор. Покупка поступит туда же.
       world-payment-sources(mode="personal" :price="total")
       label Количество
         n-input-number(v-model:value="quantity" :min="1" :max="item.quantity" :precision="0" :disabled="locked")
       n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !state?.allow_sales || !item.price || !quantity || !item.quantity" @click="act('buy')") Купить {{ quantity }}#[world-credits(:value="total ?? '0'" cost)]
 </template>
 <style scoped>
-.harvest-panel { display: grid; gap: .75rem; }.harvest-panel p, .harvest-cell small { color: var(--text-muted); }
+.harvest-panel { display: grid; gap: .75rem; min-width: 0; padding: 1.25rem; }.harvest-panel--embedded { padding: 0; }.harvest-panel p, .harvest-cell small { color: var(--text-muted); }
 .harvest-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; }.harvest-cell { display: grid; gap: .5rem; align-content: start; min-height: 8rem; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--bg-surface); color: var(--text); cursor: pointer; }.harvest-cell.selected { outline: 2px solid var(--primary); }.harvest-cell svg { font-size: 1.5rem; color: var(--primary); }.harvest-cell span, .harvest-cell small { font-size: .8rem; }.harvest-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }.harvest-actions h3 { flex-basis: 100%; }.harvest-actions label { display: grid; gap: .4rem; max-width: 12rem; }
 @media(max-width: 650px) { .harvest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .harvest-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 .harvest-actions h3 { grid-column: 1 / -1; margin: 0; }
 .harvest-action-block { display: grid; align-content: start; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .5rem; min-width: 0; }
 .harvest-action-block h4, .harvest-action-block p { margin: 0; }.harvest-actions label { max-width: none; }
+.harvest-action-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.harvest-inventory-link { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem; }
 .harvest-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }.harvest-heading h2, .harvest-heading h4 { margin: 0; }.harvest-capacity { margin: 0; font-size: .8rem; }
 .harvest-panel--embedded .harvest-grid { grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); }.harvest-panel--embedded .harvest-cell { padding: .5rem; min-height: 6rem; }.harvest-panel--embedded .harvest-actions { grid-template-columns: minmax(0, 1fr); }
 @media(max-width: 650px) { .harvest-actions { grid-template-columns: minmax(0, 1fr); } }

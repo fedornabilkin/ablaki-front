@@ -8,7 +8,7 @@ import WorldHarvestPanel from './WorldHarvestPanel.vue';
 import WorldCultivationPanel from './WorldCultivationPanel.vue';
 import WorldEquipmentExpansionPanel from './WorldEquipmentExpansionPanel.vue';
 import WorldKitchenPanel from './WorldKitchenPanel.vue';
-const props = withDefaults(defineProps<{ node: WorldNode; slot: 'header' | 'map' | 'content' | 'cultivation' | 'equipment'; owner: number; session: number; revision: number; writable: boolean; command: WorldCommandRunner; active?: boolean }>(), { active: true });
+const props = withDefaults(defineProps<{ node: WorldNode; slot: 'header' | 'map' | 'content' | 'equipment'; owner: number; session: number; revision: number; writable: boolean; command: WorldCommandRunner; active?: boolean }>(), { active: true });
 const emit = defineEmits<{ changed: [] }>();
 const panels = computed(() => {
   if (props.node.status !== 'active') return [];
@@ -18,7 +18,7 @@ const panels = computed(() => {
     { feature: 'mining', slot: 'map', component: WorldMiningPanel, props: { ...common, active: props.active } },
     { feature: 'harvest', slot: 'content', component: WorldHarvestPanel, props: { ...common, active: props.active } },
     { feature: 'kitchen', slot: 'content', component: WorldKitchenPanel, props: common },
-    { feature: 'cultivation', slot: 'cultivation', component: WorldCultivationPanel, props: { ...common, bedId: props.node.id, active: props.active } },
+    { feature: 'cultivation', slot: 'map', component: WorldCultivationPanel, props: { ...common, bedId: props.node.id, active: props.active } },
     { feature: 'equipment_expansion', slot: 'equipment', component: WorldEquipmentExpansionPanel, props: common },
   ];
   return registry.filter(panel => panel.slot === props.slot && props.node.extensions?.includes(panel.feature) && (props.node.permissions.storage || panel.feature === 'kitchen' || panel.feature === 'cultivation' || panel.feature === 'harvest' || (panel.feature === 'mining' && (props.node.details.building_kind === 'mine' || props.node.extensions.includes('public_work')))));

@@ -11,7 +11,7 @@ import { useListQuery } from '@/hooks/useListQuery';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadObligations, previewCollection, previewPayment } from '@/services/api/worldEconomy';
 import { worldError } from '@/services/api/world';
-const props = defineProps<{ nodeId: number; session: number; canCollect: boolean; canPay: boolean; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number; session: number; canCollect: boolean; canPay: boolean; treasuryEnabled?: boolean; command: WorldCommandRunner }>();
 const { page } = useListQuery({}, { prefix: 'obligations' });
 const state = shallowRef<Awaited<ReturnType<typeof loadObligations>> | null>(null);
 const collection = shallowRef<Awaited<ReturnType<typeof previewCollection>> | null>(null);
@@ -51,12 +51,12 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-treasury
-  .treasury-heading
+  .treasury-heading(v-if="treasuryEnabled !== false || canCollect")
     h3 Собрать доход
     world-help-hint(label="Как работает сбор дохода")
       p Собранные поступления переводятся из казны в бюджет объекта, доступный для расходов и развития. Отчисления резервируются в бюджете и оплачиваются отдельным действием.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
-  n-button(:theme-overrides="worldActionButtonTheme" :disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
+  n-button(v-if="treasuryEnabled !== false || canCollect" :theme-overrides="worldActionButtonTheme" :disabled="!canCollect || busy || Boolean(pending)" :loading="calculating" @click="preview()") Рассчитать сбор
   section(v-if="collection" aria-live="polite")
     world-payment-sources(mode="treasury" :price="collection.collected")
     p В бюджет поступит: #[world-credits(:value="collection.collected")]

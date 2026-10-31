@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton } from 'naive-ui';
 import { useWorldCommand } from '@/hooks/useWorldCommand';
+import { useWorldPresence } from '@/hooks/useWorldPresence';
 import WorldStoragePanel from './WorldStoragePanel.vue';
 import WorldPageActions from './WorldPageActions.vue';
 const route = useRoute(), auth = useStore(), revision = ref(0);
@@ -12,6 +13,7 @@ const session = computed(() => Number(auth.state.auth.revision)), owner = comput
 const storageId = computed(() => Number(route.params.id));
 const nodeId = computed(() => route.query.node_id === undefined ? null : Number(route.query.node_id));
 const valid = computed(() => [storageId.value, ...(nodeId.value === null ? [] : [nodeId.value])].every(id => Number.isSafeInteger(id) && id > 0 && id <= 2147483647));
+useWorldPresence(computed(() => valid.value && owner.value ? nodeId.value : null), session, { enter: false });
 const command = useWorldCommand(session, owner, () => { revision.value++; });
 const { error, pending, busy } = command;
 </script>

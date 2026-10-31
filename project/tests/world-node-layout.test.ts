@@ -168,7 +168,7 @@ it('uses identical base tabs and rights for all kinds, including legacy special 
 it('retains explicit extensions while keeping the common interface unchanged', () => {
   for (const type of nodeTypes) {
     const current = { ...node(type), extensions: ['nights', 'cultivation', 'mining'] };
-    expect(tabsForNode(current, nodeFeatures(current, capabilities))).toEqual(['map', 'cultivation', 'workshop', 'finance']);
+    expect(tabsForNode(current, nodeFeatures(current, capabilities))).toEqual(['map', 'workshop', 'finance']);
     expect(nodeFeatures({ ...current, status: 'constructing' }, capabilities).cultivation).toBe(false);
   }
 });
@@ -220,9 +220,10 @@ it('accepts both paginated legacy maps and maps with unlockable cells', () => {
   expect(() => parseWorldMap({ node_id: 2, items: [], cells: [], can_expand: false }, 1)).toThrow('invalid-world-response');
 });
 
-it('adds explicit cultivation without changing common finances or storage', () => {
+it('keeps cultivation on the map without a separate tab', () => {
   const bed = { ...node('BED', { unlocked: 1 }), extensions: ['cultivation'] };
-  expect(tabsForNode(bed, nodeFeatures(bed, capabilities))).toContain('cultivation');
+  expect(tabsForNode(bed, nodeFeatures(bed, capabilities))).toEqual(['map', 'workshop', 'finance']);
+  expect(tabForHash('#cultivation', tabsForNode(bed, nodeFeatures(bed, capabilities)))).toBe('map');
   expect(nodeFeatures(bed, capabilities).finance).toBe(true);
   expect(nodeFeatures(node('BED', { unlocked: 0 }), capabilities).cultivation).toBe(false);
   for (const kind of ['forge', 'workshop', 'warehouse']) {
@@ -406,4 +407,14 @@ describe('archived world children', () => {
     expect(target.children.map(child => child.id)).toEqual([20]);
     expect(index.has(21)).toBe(false);
   });
+});
+
+
+it('hides all finance controls for a terminal node but keeps its items and crafting', () => {
+  const leaf = { ...node('CHEST'), has_finances: false, can_contain_nodes: false };
+  expect(tabsForNode(leaf, nodeFeatures(leaf, capabilities))).toEqual(['map', 'workshop']);
+  expect(nodeFeatures(leaf, capabilities).storage).toBe(true);
+  expect(tabForHash('#finance', tabsForNode(leaf, nodeFeatures(leaf, capabilities)))).toBe('map');
+  expect(parseWorldNode(leaf)).toMatchObject({ has_finances: false, can_contain_nodes: false });
+  expect(() => parseWorldNode({ ...leaf, can_contain_nodes: 'false' })).toThrow('invalid-world-response');
 });

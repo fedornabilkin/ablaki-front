@@ -26,7 +26,7 @@ export async function loadNodeEconomy(node: number, page: number) {
   const items = entries.items.map(value => { const item = record(value); return { id: id(item.id), kind: text(item.kind, 32), amount: creditAmount(item.amount), purpose: text(item.purpose), created_at: integer(item.created_at) }; });
   const total = integer(meta.totalCount), pageSize = integer(meta.perPage, 50, 50), currentPage = integer(meta.currentPage, 1, 1000000);
   if (integer(meta.pageCount) !== Math.ceil(total / pageSize) || new Set(items.map(i => i.id)).size !== items.length || id(r.node_id) !== node) invalid();
-  return { node_id: node, balances: b ? { budget: creditAmount(b.budget), reserved: creditAmount(b.reserved), available: creditAmount(b.available), treasury: creditAmount(b.treasury) } : null,
+  return { treasury_enabled: r.treasury_enabled === undefined ? true : boolean(r.treasury_enabled), node_id: node, balances: b ? { budget: creditAmount(b.budget), reserved: creditAmount(b.reserved), available: creditAmount(b.available), treasury: creditAmount(b.treasury) } : null,
     can_invest: boolean(r.can_invest), can_grant: boolean(r.can_grant), wallet_ready: boolean(r.wallet_ready), can_collect: collect, can_pay: pay, catching_up: catchingUp, rule, entries: { items, total, pageSize, currentPage } };
 }
 export async function loadObligations(node: number, page: number) {

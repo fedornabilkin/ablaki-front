@@ -8,12 +8,14 @@ import { loadNodeEconomy } from '@/services/api/worldEconomy';
 import { loadWorldHome } from '@/services/api/worldHome';
 const props = defineProps<{ node?: WorldNode; nodeId?: number; owner: number; session: number; revision: number }>();
 const available = ref<string | null>(null), reserved = ref<string | null>(null), treasury = ref<string | null>(null), failed = ref(false);
+const treasuryEnabled = ref(false);
 let generation = 0;
 watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, props.owner], async (value, oldValue) => {
   const current = ++generation;
   if (!oldValue || value[0] !== oldValue[0] || value[1] !== oldValue[1] || value[3] !== oldValue[3]) available.value = reserved.value = treasury.value = null;
   failed.value = false;
   let id = props.node?.id ?? props.nodeId;
+  if (props.node?.has_finances === false) { available.value = reserved.value = treasury.value = null; return; }
   if (props.node && !props.node.owned_by_me && !props.node.permissions.manage) return;
   if (!id) {
     try { id = (await loadWorldHome(props.owner, props.session))?.id; }
@@ -24,11 +26,12 @@ watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, prop
   if (current !== generation) return;
   const [economy] = results;
   if (economy.status === 'fulfilled' && economy.value?.balances) {
+    treasuryEnabled.value = economy.value.treasury_enabled;
     treasury.value = economy.value.balances.treasury;
     available.value = economy.value.balances.available; reserved.value = economy.value.balances.reserved;
   }
   failed.value = results.some(result => result.status === 'rejected');
-  if (economy.status === 'fulfilled' && !economy.value?.balances && (!props.node || props.node.owned_by_me)) {
+  if (economy.status === 'fulfilled' && economy.value?.has_finances !== false && !economy.value?.balances && (!props.node || props.node.owned_by_me)) {
     try { const building = await budget(id); if (current === generation) { available.value = building.available; reserved.value = building.reserved; } }
     catch { if (current === generation) failed.value = true; }
   }
@@ -40,14 +43,14 @@ table.hero-finances(v-if="available !== null || treasury !== null" :title="faile
   thead
     tr
       th(scope="col") Бюджет
-      th(scope="col") Казна
+      th(v-if="treasuryEnabled" scope="col") Казна
       th(scope="col") Резерв
   tbody
     tr
       td
         world-credits(v-if="available !== null" :value="available")
         template(v-else) —
-      td
+      td(v-if="treasuryEnabled")
         world-credits(v-if="treasury !== null" :value="treasury")
         template(v-else) —
       td
