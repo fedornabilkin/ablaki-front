@@ -1,6 +1,6 @@
 import type { WorldCapabilities, WorldNode } from './types';
 
-export type NodeTab = 'map' | 'cultivation' | 'workshop' | 'finance';
+export type NodeTab = 'map' | 'workshop' | 'finance';
 
 export interface NodeFeatureSet {
   storage: boolean;
@@ -12,7 +12,7 @@ export interface NodeFeatureSet {
 }
 
 export const tabLabels: Record<NodeTab, string> = {
-  map: 'Карта', cultivation: 'Выращивание', workshop: 'Вещи и крафт', finance: 'Казна',
+  map: 'Карта', workshop: 'Вещи и крафт', finance: 'Казна',
 };
 
 export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | null): NodeFeatureSet {
@@ -24,20 +24,20 @@ export function nodeFeatures(node: WorldNode, capabilities: WorldCapabilities | 
     manufacturing: active && Boolean(capabilities?.storage_v2) && (storage || extensions.has('public_workspace')),
     nights: active && storage && extensions.has('nights'),
     housing: active && storage && extensions.has('housing'),
-    finance: Boolean(node.permissions.manage || node.permissions.administer),
+    finance: node.has_finances !== false && Boolean(node.permissions.manage || node.permissions.administer),
     cultivation: active && Boolean(capabilities?.storage_v2) && extensions.has('cultivation'),
   };
 }
 
 export function tabsForNode(node: WorldNode, features: NodeFeatureSet): NodeTab[] {
   const tabs: NodeTab[] = ['map'];
-  if (features.cultivation) tabs.push('cultivation');
   if (features.storage || features.manufacturing) tabs.push('workshop');
   if (features.finance) tabs.push('finance');
   return tabs;
 }
 
 const anchorTabs: Record<string, NodeTab> = {
+  cultivation: 'map',
   manage: 'finance',
   life: 'map', shelter: 'map', nights: 'map', housing: 'map',
   supplies: 'workshop',

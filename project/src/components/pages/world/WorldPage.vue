@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldPresenceBadge from './WorldPresenceBadge.vue';
+import { useWorldPresence } from '@/hooks/useWorldPresence';
 import AppFacts from '@/components/AppFacts.vue';
 import SectionNav from '@/components/SectionNav.vue';
 import UserAvatar from '@/components/user/UserAvatar.vue';
@@ -33,6 +35,7 @@ const nodeId = computed(() => route.params.id === undefined ? null : Number(rout
 const invalidId = computed(() => nodeId.value !== null && (!Number.isSafeInteger(nodeId.value) || nodeId.value < 1 || nodeId.value > 2147483647));
 const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
+const presence = useWorldPresence(computed(() => world.node?.status === 'active' && world.capabilities?.world_write && (!nodeId.value || world.node.id === nodeId.value) ? world.node.id : null), session);
 const mapSelection = ref<{ x: number; y: number }[]>([]);
 const placementTab = ref<'objects' | 'items'>('objects'), itemsVisited = ref(false);
 watch([nodeId, session], () => { placementTab.value = 'objects'; itemsVisited.value = false; });
@@ -162,6 +165,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
           router-link.world-parent(v-if="world.node.parent_id" :to="`/world/nodes/${world.node.parent_id}`")
             font-awesome-icon(icon="arrow-left" aria-hidden="true")
             span {{ parentName }}
+          world-presence-badge(v-if="presence.enabled.value" :count="presence.counts.value[world.node.id] || 0" :here="presence.current.value?.node_id === world.node.id")
           span {{ nodeKind }} · №{{ world.node.id }}
           font-awesome-icon(:icon="statusIcons[world.node.status] || 'question-circle'" :title="statuses[world.node.status] || world.node.status" :aria-label="statuses[world.node.status] || world.node.status")
           font-awesome-icon(:icon="world.node.visibility === 'private' ? 'lock' : 'globe'" :title="world.node.visibility === 'private' ? 'Личная территория' : 'Открытая территория'")
@@ -171,7 +175,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
         world-node-extensions(slot="header" v-bind="extensionProps" @changed="changed([world.node.id])")
     world-start-panel.world-content-card(:node="world.node" :writable="Boolean(world.capabilities?.world_write)" :owner="owner" :session="session" :revision="world.dataRevision" @changed="changed([world.node.id])")
     .world-object-tabs
-      section-nav(label="Разделы объекта" connected :items="tabs.map(tab => ({ to: tabLink(tab), label: tabLabels[tab], icon: ({ map: 'map', cultivation: 'seedling', workshop: 'hammer', finance: 'coins' })[tab], active: activeTab === tab }))")
+      section-nav(label="Разделы объекта" connected :items="tabs.map(tab => ({ to: tabLink(tab), label: tab === 'finance' && world.node?.treasury_enabled === false ? 'Бюджет' : tabLabels[tab], icon: ({ map: 'map', cultivation: 'seedling', workshop: 'hammer', finance: 'coins' })[tab], active: activeTab === tab }))")
       section.world-panel.world-map-panel(v-if="tabs.includes('map')" v-show="activeTab === 'map'" aria-label="Карта и объекты")
         .world-panel-heading
           .world-map-heading
@@ -187,7 +191,7 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             world-help-hint(label="Параметры объекта" symbol="i")
               app-facts(:items="facts")
         .world-children
-          world-map(:active="activeTab === 'map'" :working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
+          world-map(:presence="presence.counts.value" :location-id="presence.current.value?.node_id" :active="activeTab === 'map'" :working-node-id="activeWork?.node_id" v-model:selection="mapSelection" :node="world.node" :map="world.map" :session="session" :writable="Boolean(world.capabilities?.world_write)" :command="command" @changed="changed")
             template(#information)
               world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active || world.node.details.last_build_id) && world.capabilities?.world_write" :active="activeTab === 'map'" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
               world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
@@ -195,22 +199,19 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
             template(#placement)
               .world-placement-tabs(v-if="world.node.owned_by_me")
                 .placement-tab-buttons(role="tablist" aria-label="Размещение на карте")
-                  button#placement-objects-tab(type="button" role="tab" :aria-selected="placementTab === 'objects'" aria-controls="placement-objects" @click="placementTab = 'objects'")
+                  button#placement-objects-tab(v-if="world.node.can_contain_nodes !== false" type="button" role="tab" :aria-selected="placementTab === 'objects'" aria-controls="placement-objects" @click="placementTab = 'objects'")
                     font-awesome-icon(icon="house" aria-hidden="true")
                     |  Объекты
-                  button#placement-items-tab(type="button" role="tab" :aria-selected="placementTab === 'items'" aria-controls="placement-items" @click="placementTab = 'items'; itemsVisited = true")
+                  button#placement-items-tab(type="button" role="tab" :aria-selected="placementTab === 'items' || world.node.can_contain_nodes === false" aria-controls="placement-items" @click="placementTab = 'items'; itemsVisited = true")
                     font-awesome-icon(icon="cubes" aria-hidden="true")
                     |  Предметы
-                #placement-objects(v-show="placementTab === 'objects'" role="tabpanel" aria-labelledby="placement-objects-tab")
+                #placement-objects(v-if="world.node.can_contain_nodes !== false" v-show="placementTab === 'objects'" role="tabpanel" aria-labelledby="placement-objects-tab")
                   world-build-palette(:node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
-                #placement-items(v-if="itemsVisited" v-show="placementTab === 'items'" role="tabpanel" aria-labelledby="placement-items-tab")
+                #placement-items(v-if="itemsVisited || world.node.can_contain_nodes === false" v-show="placementTab === 'items' || world.node.can_contain_nodes === false" role="tabpanel" aria-labelledby="placement-items-tab")
                   world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
       world-node-extensions(v-show="activeTab === 'map'" :active="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
-
-      section.world-tab-panel(v-if="visitedTabs.includes('cultivation') && features?.cultivation" v-show="activeTab === 'cultivation'" aria-label="Выращивание")
-        world-node-extensions(slot="cultivation" :active="activeTab === 'cultivation'" v-bind="extensionProps" @changed="changed([world.node.id])")
 
       section.world-tab-panel(v-if="visitedTabs.includes('workshop')" v-show="activeTab === 'workshop'" aria-label="Вещи и крафт")
         .world-section-title
@@ -327,4 +328,5 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 .world-object-tabs .world-tab.active { border-bottom-color: var(--primary); background: var(--primary-soft); }
 .world-object-tabs > .world-panel, .world-object-tabs > .world-tab-panel { border: 0; border-radius: 0 0 .85rem .85rem; background: transparent; }
 @media(max-width: 620px) { .world-object-tabs > .world-tabs { padding-inline: .4rem; }.world-object-tabs .world-tab { padding: .65rem .6rem; font-size: .85rem; } }
+@media(max-width: 400px) { .world-map-panel { padding: .75rem; } }
 </style>

@@ -7,7 +7,8 @@ export interface WorldOwnership { id?: number | null; user?: { id: number; usern
 export interface WorldNode {
   owner?: WorldOwnership;
   extensions?: string[];
-  map?: MapBounds; has_finances?: boolean;
+  map?: MapBounds; treasury_enabled?: boolean; has_finances?: boolean; can_contain_nodes?: boolean;
+  presence_count?: number; is_here?: boolean;
   id: number; type: NodeType; parent_id: number | null; root_id: number; code: string; name: string; label: string;
   status: string; visibility: 'public' | 'private'; revision: number; portable: boolean;
   coordinates: { x: number; y: number }; child_count: number;

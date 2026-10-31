@@ -53,6 +53,8 @@ vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ 
 vi.mock('vuex', () => ({ useStore: () => ({ state: { auth: { revision: 1 } }, getters: { 'auth/user': { id: 1 } }, dispatch: vi.fn() }) }));
 vi.mock('../src/hooks/useWorldCommand', () => ({ useWorldCommand: (_session: unknown, _owner: unknown, completed: unknown) => { mocks.runner.completed = completed; return mocks.runner; } }));
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
+// Presence has its own tests; these control scenarios use a renderer without document.
+vi.mock('../src/hooks/useWorldPresence', () => ({ useWorldPresence: () => ({ enabled: ref(false), counts: ref({}), current: ref(null) }) }));
 // These child panels are outside the scenarios below; avoid empty SSR-only client renders.
 vi.mock('../src/components/pages/world/WorldRepairPanel.vue', () => ({ default: { render: () => null } }));
 vi.mock('../src/components/pages/world/WorldNightsPanel.vue', () => ({ default: { render: () => null } }));
@@ -909,6 +911,26 @@ describe('one-click world actions', () => {
     expect(mocks.runner.submit).toHaveBeenCalledTimes(1);
     expect(mocks.runner.submit).toHaveBeenCalledWith('/beds/1/dig', {}, quote);
     expect(findView(view.root, node => node.tag === 'button' && viewText(node).includes('Вскопать'))!.props.disabled).toBe(false);
+  });
+  it('requires explicit personal contribution for watering and keeps a rejected payment visible', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mocks.cultivation.mockResolvedValue({ bed_id: 1, owner: true, dug: true, writable: true, server_time: now,
+      cycle: { id: 1, name: 'Морковь', ready_at: now + 900, expires_at: now + 86400, water_due_at: now, water_deadline_at: now + 900, can_water: true } });
+    mocks.crops.mockResolvedValue({ items: [], pageCount: 0 });
+    mocks.budget.mockResolvedValue({ available: '0.0000' });
+    mocks.cultivationPreview.mockResolvedValue({ ...quote, terms: { price_cr: '2.0000', payer_node_id: 4, materials: [{ name: 'Вода', quantity: 1, have: 4, available: true }] } });
+    const view = mount(WorldCultivationPanel, props); await flushView();
+    const water = () => findView(view.root, n => n.tag === 'button' && viewText(n).includes('Пора полить'))!;
+    expect(water().props.disabled).toBe(true);
+    expect(viewText(view.root)).toContain('В бюджете не хватает кредитов');
+    water().props.onClick(); await flushView(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    findView(view.root, n => n.tag === 'input' && viewText(n).includes('Баланс аккаунта'))!.props['onUpdate:checked'](true);
+    await flushView(); expect(water().props.disabled).toBe(false);
+    mocks.runner.submit.mockImplementation(async () => { mocks.runner.error.value = 'Не хватает кредитов.'; });
+    water().props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenCalledWith('/beds/1/water', { top_up: true }, expect.anything());
+    expect(viewText(view.root)).toContain('Не хватает кредитов.');
+    expect(mocks.cultivation).toHaveBeenCalledTimes(1);
   });
   it('collects supplies without an intermediate confirmation', async () => {
     mocks.supplies.mockResolvedValue({ starterAvailable: false, gatherAvailable: true, gatherAvailableAt: 99999999 });

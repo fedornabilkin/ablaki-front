@@ -3,8 +3,8 @@ import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton, NCheckbox } from 'naive-ui';
-import { creditCost, needsPersonalTopUp } from '@/entities/world/credits';
+import { NAlert, NButton } from 'naive-ui';
+import { needsPersonalTopUp } from '@/entities/world/credits';
 import { useWorldBudget } from '@/hooks/useWorldBudget';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { loadCultivation, loadCrops, previewCultivation, type CultivationAction } from '@/services/api/worldCultivation';
@@ -31,9 +31,10 @@ const materials = computed(() => (quote.value?.value.terms.materials ?? []) as {
 const tool = computed(() => quote.value?.value.terms.tool as { name: string; durability: number; wear: number; available: boolean } | undefined);
 const canConfirm = computed(() => materials.value.every(m => m.available) && tool.value?.available !== false && (quote.value?.value.terms.output as { fits?: boolean } | undefined)?.fits !== false);
 const primaryAction = computed<CultivationAction | null>(() => !state.value ? null : !cycle.value ? (state.value.dug ? 'sow' : 'dig') : now.value >= cycle.value.expires_at ? null : now.value >= cycle.value.ready_at ? 'harvest' : cycle.value.can_water ? 'water' : null);
-const ready = computed(() => quote.value?.action === primaryAction.value && canConfirm.value);
+const ready = computed(() => quote.value?.action === primaryAction.value && canConfirm.value && !paymentRequired.value);
 const cost = computed(() => [...materials.value.map(m => `${m.quantity} ${m.name}`), ...(tool.value ? [`${tool.value.name}: ${tool.value.wear} прочности`] : [])].join(', ') || 'бесплатно');
 const price = computed(() => typeof quote.value?.value.terms.price_cr === 'string' ? quote.value.value.terms.price_cr : '0');
+const paymentRequired = computed(() => !personalContribution.value && needsPersonalTopUp(price.value, availableBudget.value));
 const duration = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return s >= 3600 ? `${Math.floor(s / 3600)} ч ${Math.floor(s % 3600 / 60)} мин` : `${Math.floor(s / 60)} мин ${s % 60} с`; };
 const countdown = (seconds: number) => { const s = Math.max(0, Math.ceil(seconds)); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
 async function load(refreshFunds = true) {
@@ -61,7 +62,8 @@ async function confirm() {
   if (!quote.value || locked.value || !canConfirm.value) return;
   const q = quote.value; quote.value = null;
   await props.command.submit(`/beds/${props.bedId}/${q.action}`, q.input, q.value);
-  if (!disposed && !props.command.pending.value) await load();
+  if (props.command.error.value) error.value = props.command.error.value;
+  if (!disposed && !props.command.pending.value && !props.command.error.value) await load();
 }
 async function execute() {
   if (!ready.value || locked.value || !quote.value) return;
@@ -72,6 +74,7 @@ async function execute() {
     quote.value = { ...shown, value: fresh };
     if (JSON.stringify(fresh.terms) !== JSON.stringify(shown.value.terms)) { error.value = 'Условия изменились. Проверьте обновлённый расход ресурсов.'; return; }
     const result = await props.command.submit(`/beds/${props.bedId}/${shown.action}`, shown.input, fresh);
+    if (props.command.error.value) error.value = props.command.error.value;
     if (result && shown.action === 'dig' && typeof fresh.terms.worker_reward_cr === 'string') digReceipt.value = fresh.terms.worker_reward_cr;
     if (!disposed && !props.command.pending.value && !props.command.error.value) await load();
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
@@ -118,15 +121,16 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; clear
 <template lang="pug">
 section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prevent.stop="dropSeed")
   .cultivation-heading
-    div
-      h2 Выращивание
+    h2 Выращивание
+    world-help-hint(label="Как выращивать урожай")
       p Вскопайте землю, посадите семена и следите за сроками полива и сбора.
+      p Семена, вода и лопата — из рюкзака. Урожай попадёт в мини-склад, а при его отсутствии — в рюкзак.
+      p(v-if="state && !state.owner") Помогите владельцу вскопать грядку: оплата поступит из бюджета огорода на ваш баланс. Лопата нужна своя.
   n-alert(closable v-if="error" type="error") {{ error }}
   n-alert(closable v-if="digReceipt !== null" type="success" @close="digReceipt = null")
     | Грядка вскопана.
     template(v-if="Number(digReceipt) > 0")  Зачислено: #[world-credits(:value="digReceipt")].
   template(v-if="state")
-    p(v-if="!state.owner") Помогите владельцу вскопать грядку: оплата поступит из бюджета огорода на ваш баланс. Лопата нужна своя.
     p(v-if="typeof quote?.value.terms.worker_reward_cr === 'string' && Number(quote.value.terms.worker_reward_cr) > 0") Оплата: #[world-credits(:value="quote.value.terms.worker_reward_cr")].
     template(v-if="!cycle")
       .cultivation-card
@@ -139,19 +143,25 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
           .crop-tiles(aria-label="Культуры для посадки")
             button.crop-tile(v-for="entry in crops" :key="entry.id" type="button" :class="{ selected: selected === entry.id }" :aria-pressed="selected === entry.id" :disabled="locked" :draggable="!locked" @dragstart="dragSeed($event, entry.id)" @click="selected = entry.id")
               font-awesome-icon(icon="seedling" aria-hidden="true")
-              strong {{ entry.name }}
-              small Семян: {{ entry.seed_quantity }} · Урожай: {{ entry.yield_quantity }}
-              span {{ selected === entry.id ? (quote?.action === 'sow' ? (canConfirm ? 'Можно посадить' : 'Не хватает ресурсов') : 'Проверяем ресурсы…') : 'Выбрать культуру' }}
+              strong(:title="entry.name") {{ entry.name }}
+              small(:aria-label="`Семян: ${entry.seed_quantity}, урожай: ${entry.yield_quantity}`") {{ entry.seed_quantity }} → {{ entry.yield_quantity }}
           .cultivation-actions(v-if="pages > 1")
             n-button(:theme-overrides="worldActionButtonTheme" :disabled="page <= 1 || locked" @click="page--") Назад
             span {{ page }} / {{ pages }}
             n-button(:theme-overrides="worldActionButtonTheme" :disabled="page >= pages || locked" @click="page++") Далее
           template(v-if="crop")
-            p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }} · Рост: {{ duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds) }}
-            p(v-if="crop.water_quantity") Полив каждые {{ duration(crop.water_interval_seconds) }}, окно полива — {{ duration(crop.water_window_seconds) }}.
-            p Соберите урожай в течение {{ duration(crop.harvest_window_seconds) }} после созревания.
-          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Посадить семена
-      p Семена, вода и лопата — из рюкзака. Урожай попадёт в мини-склад, а при его отсутствии — в рюкзак.
+            .crop-summary
+              span(:title="`Время роста: ${duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds)}`")
+                font-awesome-icon(icon="clock" aria-hidden="true")
+                |  {{ duration(typeof quote?.value.terms.grow_seconds === 'number' ? quote.value.terms.grow_seconds : crop.grow_seconds) }}
+              world-help-hint(label="Полив и сбор урожая")
+                p Семян: {{ crop.seed_quantity }} · Урожай: {{ crop.yield_quantity }}.
+                p(v-if="crop.water_quantity") Полив каждые {{ duration(crop.water_interval_seconds) }}, окно полива — {{ duration(crop.water_window_seconds) }}.
+                p Соберите урожай в течение {{ duration(crop.harvest_window_seconds) }} после созревания.
+          n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute")
+            template(#icon)
+              font-awesome-icon(icon="seedling" aria-hidden="true")
+            | Посадить семена
     template(v-else)
       h3 {{ cycle.name }}
       n-alert(closable v-if="cycle.state === 'expired'" type="error") Урожай погиб: срок сбора истёк. Уберите остатки, чтобы подготовить новый посев.
@@ -175,13 +185,21 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
           template(#icon)
             font-awesome-icon(icon="times" aria-hidden="true")
           | Очистить грядку
-    .cultivation-card(v-if="quote" aria-live="polite")
-      h3 {{ labels[quote.action] }}
-      p(v-if="quote.action !== 'cancel'") Стоимость: {{ cost }}#[world-credits(:value="price ?? '0'" cost)].
+    .cultivation-cost(v-if="quote" aria-live="polite")
+      .cultivation-heading
+        span Расход ресурсов
+        world-help-hint(label="Ресурсы для действия")
+          p {{ labels[quote.action] }}: {{ cost }}.
+          p(v-if="tool") {{ tool.name }}: {{ tool.durability }} прочности. Расход: {{ tool.wear }}.
+      .cultivation-resources(v-if="quote.action !== 'cancel'")
+        span(v-for="(material, i) in materials" :key="i" :class="{ missing: !material.available }" :title="material.available ? 'Хватает' : 'Недостаточно'")
+          font-awesome-icon(:icon="material.available ? 'check' : 'times'" aria-hidden="true")
+          |  {{ material.name }} {{ material.have }}/{{ material.quantity }}
+        world-credits(:value="price ?? '0'" cost)
       world-payment-sources(v-if="quote.action !== 'cancel'" v-model:checked="personalContribution" :price="price" :available="availableBudget" :disabled="locked")
+      p.missing(v-if="quote.action !== 'cancel' && paymentRequired") В бюджете не хватает кредитов. Выберите «Баланс аккаунта» или пополните бюджет огорода.
       p(v-if="quote.action === 'cancel'") Посев будет убран без возврата семян и воды.
-      p(v-for="(material, i) in materials" :key="i" :class="{ missing: !material.available }") {{ material.name }}: {{ material.have }} / {{ material.quantity }} · {{ material.available ? 'Хватает' : 'Недостаточно' }}
-      p(v-if="tool" :class="{ missing: !tool.available }") {{ tool.name }}: {{ tool.durability }} прочности · {{ tool.available ? 'Доступна' : 'Нужна исправная лопата в рюкзаке' }}
+      p.missing(v-if="tool && !tool.available") Нужна исправная лопата в рюкзаке.
       p(v-if="quote.action === 'harvest'") Будет собрано: {{ quote.value.terms.output?.quantity }} шт.
       p.missing(v-if="!canConfirm") Проверьте ресурсы, лопату и свободные ячейки склада огорода.
       n-button(:theme-overrides="worldDangerButtonTheme" v-if="quote.action === 'cancel'" type="error" :disabled="locked || !canConfirm" @click="confirm")
@@ -192,13 +210,19 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
     n-button(:theme-overrides="worldActionButtonTheme" v-if="error && primaryAction" :disabled="locked" @click="preview(primaryAction)") Повторить расчёт
 </template>
 <style scoped>
-.cultivation-panel { display: grid; gap: 1rem; }
+.cultivation-panel { display: grid; gap: .75rem; min-width: 0; }
+.cultivation-panel h2 { margin: 0; font-size: 1rem; }.cultivation-panel h3 { margin: 0; font-size: .9rem; }
+.cultivation-panel p { margin: 0; font-size: .8rem; }
 .cultivation-dig { display: flex; align-items: center; gap: .5rem; }
-.crop-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .6rem; }.crop-tile { display: grid; gap: .4rem; padding: .8rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }.crop-tile.selected { outline: 2px solid var(--primary); }.crop-tile > svg { font-size: 1.4rem; color: var(--primary); }.crop-tile span, .crop-tile small { font-size: .75rem; color: var(--text-muted); }
+.crop-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.crop-tile { display: grid; align-content: start; gap: .35rem; min-width: 0; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }
+.crop-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: var(--bg-accent); }
+.crop-tile > svg { font-size: 1.1rem; color: var(--primary); }.crop-tile strong { font-size: .8rem; line-height: 1.35; overflow-wrap: anywhere; }.crop-tile small { font-size: .75rem; color: var(--text-muted); }
+.crop-summary, .cultivation-resources { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; font-size: .75rem; color: var(--text-muted); }.crop-summary { justify-content: space-between; }
+.cultivation-cost { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--border); font-size: .8rem; }
 .cultivation-heading, .cultivation-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
 .cultivation-metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; align-items: stretch; }.cultivation-timer { height: auto; min-height: 3.5rem; padding: .5rem; }.timer-label { display: grid; gap: .2rem; text-align: center; white-space: normal; }.timer-label strong { font-size: .9rem; font-variant-numeric: tabular-nums; }.timer-label small { font-size: .7rem; }.harvest-timer { grid-column: 1; grid-row: 1; }.water-timer { grid-column: 1; grid-row: 2; }.cultivation-death-timer { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .3rem; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; background: #e66a6808; }.cultivation-death-timer span { font-size: .75rem; color: var(--text-muted); }.cultivation-death-timer strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
-.cultivation-card { display: grid; gap: .65rem; border: 1px solid var(--border); border-radius: .75rem; padding: 1rem; }
-.cultivation-card strong { font-size: 1.35rem; }
+.cultivation-card { display: grid; gap: .65rem; border: 1px solid var(--border); border-radius: .65rem; padding: .6rem; min-width: 0; }
 .cultivation-card small, p { color: var(--text-muted); }
 .missing { color: #e66a68; }
 </style>

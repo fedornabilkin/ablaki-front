@@ -25,11 +25,11 @@ import WorldHarvestPanel from './WorldHarvestPanel.vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 
-const props = withDefaults(defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null; active?: boolean }>(), { active: true });
+const props = withDefaults(defineProps<{ node: WorldNode; map: WorldMapData | null; writable: boolean; command: WorldCommandRunner; selection?: MapPoint[]; session?: number; workingNodeId?: number | null; active?: boolean; presence?: Record<number, number>; locationId?: number | null }>(), { active: true });
 const emit = defineEmits<{ 'update:selection': [MapPoint[]]; changed: [ids: number[]] }>();
 const auth = useStore(), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const router = useRouter();
-const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
+const { available: availableBudget } = useWorldBudget(computed(() => props.node.owned_by_me && props.node.has_finances !== false ? props.node.id : null), computed(() => props.session ?? 0), computed(() => props.node.revision));
 const selected = ref<MapPoint[]>(props.selection ?? []), anchor = ref<MapPoint | null>(null);
 const topUp = ref(true), calculating = ref(false), error = ref(''), professionNotice = ref(''), droppedCrop = ref<{ id: number; sequence: number } | null>(null);
 const explorer = ref<Awaited<ReturnType<typeof loadExplorer>>>(null);
@@ -286,6 +286,10 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           font-awesome-icon(v-if="lockedBed(child)" icon="lock" x="64" y="8" width="14" height="14" aria-label="Недоступно")
           text(v-else-if="statuses[child.status]" :x="size / 2" y="69" text-anchor="middle" class="map-cell-status") {{ statuses[child.status] }}
           text(x="7" y="82" class="map-coordinate") {{ child.coordinates.x }}, {{ child.coordinates.y }}
+          g(v-if="presence?.[child.id] ?? child.presence_count" :aria-label="`Сейчас здесь: ${presence?.[child.id] ?? child.presence_count}`")
+            font-awesome-icon(icon="users" x="56" y="72" width="12" height="12" aria-hidden="true")
+            text(x="70" y="82" class="map-coordinate") {{ presence?.[child.id] ?? child.presence_count }}
+          circle(v-if="locationId === undefined ? child.is_here : locationId === child.id" cx="12" cy="13" r="5" class="map-location" aria-label="Вы здесь")
           title {{ child.label }} · {{ child.coordinates.x }}, {{ child.coordinates.y }}
         rect(v-if="marquee" v-bind="marquee" class="map-marquee")
     .world-map-placement
@@ -319,7 +323,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
       template(v-else-if="selected.length")
         span.world-map-kicker {{ point ? `Ячейка ${point.x}, ${point.y}` : `Выбрано ячеек: ${selected.length}` }}
         h3 {{ point && equipment(point) ? 'Занято оборудованием' : selectedState === 'open' ? 'Свободная ячейка' : allDiscovered ? (cellActionsAllowed ? 'Можно купить' : 'Исследованная ячейка') : point ? 'Не исследована' : 'Выбранная область' }}
-      template(v-else-if="node.status !== 'constructing' && !node.extensions?.includes('mining')")
+      template(v-else-if="node.status !== 'constructing' && !node.extensions?.some(feature => ['mining', 'cultivation'].includes(feature))")
         h3 Выберите ячейку
       section.map-cell-actions(v-if="cellActionsAllowed && selected.length && !selectedItem && (!selectedNode || lockedBed(selectedNode))")
         p.map-predecessor-notice(v-if="allClosed && requiredCells.length" role="status") Сначала исследуйте ячейки: {{ requiredCells.map(p => `${p.x}, ${p.y}`).join('; ') }}. Для диагонали нужны обе соседние стороны.
@@ -343,7 +347,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           world-payment-sources(v-model:checked="topUp" :price="price?.total" :available="gardenSelection ? garden?.garden?.available_budget : availableBudget" :disabled="blocked")
           n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="calculating" :disabled="blocked || !canBuy" @click="act('buy')") Купить {{ selected.length }}#[world-credits(:value="price?.total ?? '0'" cost)]
         n-button(:theme-overrides="worldActionButtonTheme" v-if="explorer && !isGarden && allClosed && !levelAllowed && !elixirAllowed && (!explorer.enrolled || explorer.next?.available)" :disabled="blocked" @click="progress") {{ explorer.enrolled ? `Повысить уровень до ${explorer.next?.level}` : 'Открыть профессию «Исследователь»' }}
-      world-help-hint.map-selection-help(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.includes('mining')" label="Как выбрать ячейки" symbol="!")
+      world-help-hint.map-selection-help(v-else-if="!selected.length && node.status !== 'constructing' && !node.extensions?.some(feature => ['mining', 'cultivation'].includes(feature))" label="Как выбрать ячейки" symbol="!")
         p Нажмите на ячейку или выделите несколько рамкой, с Shift или Ctrl. Доступные действия и стоимость появятся здесь.
       n-alert(closable v-if="error || gardenError" type="error" role="alert") {{ error || gardenError }}
       n-alert(closable v-if="professionNotice" type="success" role="status") {{ professionNotice }}
@@ -373,6 +377,7 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-object-tile > svg { color: var(--primary); font-size: 1.4rem; }
 .world-object-tile small { color: var(--text-muted); }
 .world-object-tile.active, .world-object-tile:focus-visible { outline: 2px solid var(--primary); background: var(--primary-soft); }
+.map-location { fill: var(--primary); stroke: var(--bg-base); stroke-width: 2; }
 .map-object { color: var(--primary); cursor: pointer; }
 .map-closed { fill: var(--bg-base); }
 .map-grid { fill: none; stroke: var(--border); stroke-width: 1; }

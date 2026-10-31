@@ -73,16 +73,17 @@ section.world-economy
           dd #[world-credits(:value="state.balances.reserved")]
           dt Доступно на развитие
           dd #[world-credits(:value="state.balances.available")]
-          dt Казна · не собрано
-          dd #[world-credits(:value="state.balances.treasury")]
+          dt(v-if="state.treasury_enabled || state.balances.treasury !== '0.0000'") Казна · не собрано
+          dd(v-if="state.treasury_enabled || state.balances.treasury !== '0.0000'") #[world-credits(:value="state.balances.treasury")]
         n-alert(closable v-if="state.catching_up" type="info") Расчёт потерь за прошедшее время ещё не завершён. Обновите данные немного позже, чтобы собрать казну.
         p(v-if="state.rule?.status === 'published'") Отчисления: {{ (state.rule.rate_bps ?? 0) / 100 }}% собранного дохода. Правило №{{ state.rule.revision }}.
         p(v-else) Правила отчислений и защиты казны ещё не опубликованы. Сбор дохода пока закрыт.
-        p(v-if="state.rule?.loss") Новые поступления защищены {{ state.rule.loss.protected_seconds / 3600 }} ч. Затем каждые {{ state.rule.loss.period_seconds / 3600 }} ч теряется {{ state.rule.loss.rate_bps / 100 }}% остатка. Для прежних поступлений сохраняются их условия.
+        p(v-if="state.treasury_enabled && state.rule?.loss") Новые поступления защищены {{ state.rule.loss.protected_seconds / 3600 }} ч. Затем каждые {{ state.rule.loss.period_seconds / 3600 }} ч теряется {{ state.rule.loss.rate_bps / 100 }}% остатка. Для прежних поступлений сохраняются их условия.
+        p(v-if="!state.treasury_enabled") Казна выключена. Новые поступления сразу переходят в бюджет с сохранением отчислений.
       p(v-else) Детали счетов доступны владельцу объекта.
       n-alert(closable v-if="!state.wallet_ready" type="info") Денежные операции мира ещё не открыты.
-      world-treasury-panel.world-finance-card(v-if="state.balances" :node-id="nodeId" :session="session" :can-collect="state.can_collect" :can-pay="state.can_pay" :command="command")
-      world-treasury-receipts.world-finance-card(v-if="state.balances" :node-id="nodeId" :session="session")
+      world-treasury-panel.world-finance-card(v-if="state.balances" :treasury-enabled="state.treasury_enabled" :node-id="nodeId" :session="session" :can-collect="state.can_collect" :can-pay="state.can_pay" :command="command")
+      world-treasury-receipts.world-finance-card(v-if="state.balances && (state.treasury_enabled || state.balances.treasury !== '0.0000')" :node-id="nodeId" :session="session")
       template(v-if="state.can_invest")
         section.world-finance-card
           .finance-summary-heading
