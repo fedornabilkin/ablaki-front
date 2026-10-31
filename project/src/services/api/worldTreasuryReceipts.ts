@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 import { creditAmount } from '@/entities/world/credits';
@@ -36,7 +36,7 @@ function receipt(value: unknown, now: number) {
 }
 
 export async function loadTreasuryReceipts(node: number, params: Record<string, unknown>) {
-  const r = record((await apiClient.get(config.makeApiUrl(`v1/world/nodes/${id(node)}/treasury-receipts`), { params })).data), meta = record(r._meta);
+  const r = record((await readApi(config.makeApiUrl(`v1/world/nodes/${id(node)}/treasury-receipts`), { params })).data), meta = record(r._meta);
   if (id(r.node_id) !== node || r.currency !== 'Cr' || typeof r.treasury_catching_up !== 'boolean' || !Array.isArray(r.items) || r.items.length > 20) return invalid();
   const now = integer(r.server_time), items = r.items.map(value => receipt(value, now));
   const total = integer(meta.totalCount), pageSize = integer(meta.perPage, 20, 20), currentPage = integer(meta.currentPage, 1, 1000000);

@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
@@ -26,7 +26,7 @@ export function gardenInput(action: GardenAction, value: unknown): Record<string
   return invalid();
 }
 export async function loadGarden(node: number) {
-  const r = record((await apiClient.get(url(node))).data);
+  const r = record((await readApi(url(node))).data);
   if (id(r.node_id) !== node) invalid();
   bool(r.cultivation_enabled);
   let offer = null, garden = null;

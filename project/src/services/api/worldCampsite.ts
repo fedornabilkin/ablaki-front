@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, parseWorldQuote, record } from './world';
 
@@ -9,7 +9,7 @@ const url = (node: number, action: string) => config.makeApiUrl(`v1/world/nodes/
 export type SupplyAction = 'starter' | 'gather';
 
 export async function loadCampsiteSupplies(node: number) {
-  const row = record((await apiClient.get(url(node, 'campsite'))).data);
+  const row = record((await readApi(url(node, 'campsite'))).data);
   const site = record(row.node), supplies = record(row.supplies);
   if (id(site.id) !== node) invalid();
   return { starterAvailable: bool(supplies.starter_available), gatherAvailable: bool(supplies.gather_available),

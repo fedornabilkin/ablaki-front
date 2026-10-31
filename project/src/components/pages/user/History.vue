@@ -2,27 +2,30 @@
 import SectionNav from '@/components/SectionNav.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
-import { computed } from 'vue';
+import { computed, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { NAlert, NCard, NSkeleton } from 'naive-ui';
+import { useStore } from 'vuex';
+import { NCard, NSkeleton } from 'naive-ui';
 import PageHeader from '@/components/PageHeader.vue';
 import RequestState from '@/components/RequestState.vue';
 import PagePager from '@/components/PagePager.vue';
 import ActionButton from '@/components/ActionButton.vue';
 import { historyPresentation } from '@/services/historyPresentation';
-import { list, emptyPage, field, date } from '@/services/api/portal';
+import { field, date } from '@/services/api/portal';
 import { usePageRequest } from '@/hooks/usePageRequest';
 import { useListQuery } from '@/hooks/useListQuery';
-import { historyTypes, type HistoryType } from '@/services/api/community';
-const route = useRoute();
+import { loadHistory, emptyHistory, type HistoryType } from '@/services/api/community';
+const route = useRoute(), auth = useStore();
 const rating = computed(() => route.path === '/rating');
+const availableTypes = shallowRef<HistoryType[]>([]);
+watch([rating, () => auth.state.auth.revision], () => { availableTypes.value = []; }, { flush: 'sync' });
 const { page, filters, params } = useListQuery({ type: '' });
-const types = usePageRequest(() => historyTypes(rating.value ? 'rating' : 'balance'), [] as HistoryType[], [rating]);
-const choices = computed(() => types.data.value.map(type => ({ value: type.value, ...historyPresentation(type.value), count: type.label.match(/ \(\d+\)$/)?.[0] || '' })));
 const { data, loading, error, refresh } = usePageRequest(() => {
   const { q: _search, ...query } = params.value;
-  return list(rating.value ? 'history/rating' : 'history/balance', page.value, query);
-}, emptyPage(), [rating, page, params]);
+  return loadHistory(rating.value ? 'rating' : 'balance', page.value, query);
+}, emptyHistory(), [rating, page, params, () => auth.state.auth.revision]);
+watch(data, value => { if (value.total !== null) availableTypes.value = value.types; }, { flush: 'sync' });
+const choices = computed(() => availableTypes.value.map(type => ({ value: type.value, ...historyPresentation(type.value), count: type.label.match(/ \(\d+\)$/)?.[0] || '' })));
 function change(value: unknown) { return value === null || value === undefined || !Number.isFinite(Number(value)) ? '—' : (Number(value) > 0 ? '+' : '') + field(value); }
 </script>
 <template lang="pug">
@@ -33,10 +36,7 @@ page-header(page-title="История")
     .history-types(role="group" aria-label="Тип операции")
       action-button(icon="scroll" label="Все" :aria-pressed="!filters.type" :type="!filters.type ? 'primary' : 'default'" @click="filters = { type: '' }")
       action-button(v-for="choice in choices" :key="choice.value" :icon="choice.icon" :label="choice.label + choice.count" :aria-pressed="filters.type === choice.value" :type="filters.type === choice.value ? 'primary' : 'default'" @click="filters = { type: filters.type === choice.value ? '' : choice.value }")
-      n-skeleton(v-if="types.loading.value" width="12rem" height="34px" aria-label="Загрузка типов операций")
-    n-alert.mb-3(v-if="types.error.value" type="warning")
-      | Не удалось загрузить типы операций.
-      action-button(icon="arrow-right" label="Повторить" text @click="types.refresh")
+      n-skeleton(v-if="loading && !choices.length" width="12rem" height="34px" aria-label="Загрузка типов операций")
     request-state(:loading="loading" :error="error" :empty="!data.items.length" @retry="refresh")
       article.record-row(v-for="entry in data.items" :key="entry.id")
         div

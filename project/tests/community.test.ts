@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../src/services/httpClient';
-import { giveCommentCredit, historyTypes, parseCommentGift, parseHistoryTypes } from '../src/services/api/community';
+import { giveCommentCredit, historyTypes, loadHistory, parseCommentGift, parseHistoryTypes } from '../src/services/api/community';
 
 afterEach(() => vi.restoreAllMocks());
 describe('community API', () => {
+  it('loads records and operation filters in one nested response', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({data: {contract_version: 1, history: {items: [{id: 8}], _meta: {totalCount: 1, perPage: 20, currentPage: 1, pageCount: 1}}, filters: {types: [{type: 'world', count: 1}]}}, headers: {}});
+    expect(await loadHistory('rating', 1)).toMatchObject({items: [{id: 8}], types: [{value: 'world', label: 'world (1)'}], total: 1});
+    expect(get).toHaveBeenCalledOnce();
+    expect(get).toHaveBeenCalledWith(expect.stringMatching(/history\/rating$/), {params: {page: 1, include: 'types', envelope: 1}});
+  });
   it('fetches account-specific operation types and retains server identifiers', async () => {
     const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: [{ type: 'forum_gift', count: '12' }, { type: 'everyday', label: 'Ежедневный бонус', count: 1 }] });
     expect(await historyTypes('balance')).toEqual([{ value: 'forum_gift', label: 'forum_gift (12)' }, { value: 'everyday', label: 'Ежедневный бонус (1)' }]);

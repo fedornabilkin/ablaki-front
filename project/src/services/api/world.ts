@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { creditAmount } from '@/entities/world/credits';
 import type { WorldCapabilities, WorldScreen, WorldTreeNode } from '@/entities/world/types';
@@ -158,11 +158,11 @@ const url = (path: string) => config.makeApiUrl(`v1/world${path}`);
 export async function loadWorldScreen(id: number | null): Promise<WorldScreen> {
   const path = id === null ? '' : `/nodes/${integer(id, 1)}/navigation`;
   const params = id === null ? { view: 'home', include: 'tree' } : { include: 'tree' };
-  return parseWorldScreen((await apiClient.get(url(path), { params })).data, id);
+  return parseWorldScreen((await readApi(url(path), { params })).data, id);
 }
-export async function loadWorld(params: Record<string, unknown> = {}) { return parseWorldRoot((await apiClient.get(url(''), { params: { ...params, envelope: 1 } })).data); }
-export async function loadWorldNavigation(id: number) { return parseWorldNavigation((await apiClient.get(url(`/nodes/${integer(id, 1)}/navigation`))).data); }
-export async function loadWorldChildren(id: number, params: Record<string, unknown>) { return parseWorldPage((await apiClient.get(url(`/nodes/${integer(id, 1)}/children`), { params: { ...params, envelope: 1 } })).data); }
+export async function loadWorld(params: Record<string, unknown> = {}) { return parseWorldRoot((await readApi(url(''), { params: { ...params, envelope: 1 } })).data); }
+export async function loadWorldNavigation(id: number) { return parseWorldNavigation((await readApi(url(`/nodes/${integer(id, 1)}/navigation`))).data); }
+export async function loadWorldChildren(id: number, params: Record<string, unknown>) { return parseWorldPage((await readApi(url(`/nodes/${integer(id, 1)}/children`), { params: { ...params, envelope: 1 } })).data); }
 export function parseWorldMap(value: unknown, id: number): WorldMapData | WorldPage {
   const row = record(value), nodeId = integer(id, 1);
   // Older servers return the paginated children contract from /map.
@@ -181,7 +181,7 @@ export function parseWorldMap(value: unknown, id: number): WorldMapData | WorldP
 }
 export async function loadWorldMap(id: number): Promise<WorldMapData> {
   const nodeId = integer(id, 1);
-  const mapped = parseWorldMap((await apiClient.get(url(`/nodes/${nodeId}/map`))).data, nodeId);
+  const mapped = parseWorldMap((await readApi(url(`/nodes/${nodeId}/map`))).data, nodeId);
   if ('node_id' in mapped) return mapped;
   const items = [...mapped.items];
   for (let page = 2; page <= mapped.pageCount; page++) {
@@ -193,7 +193,7 @@ export async function loadWorldMap(id: number): Promise<WorldMapData> {
   return { node_id: nodeId, items, cells: [], can_expand: false };
 }
 export async function loadExplorer() {
-  const data = record((await apiClient.get(url('/professions'), { params: { q: 'explorer' } })).data);
+  const data = record((await readApi(url('/professions'), { params: { q: 'explorer' } })).data);
   const rows = list(data.items, record, 20), p = rows.find(p => p.code === 'explorer');
   if (!p) return null;
   const next = p.next_level === null ? null : record(p.next_level);
@@ -209,7 +209,7 @@ export async function previewMapCell(id: number, action: 'explore' | 'buy', x: n
   return parseWorldQuote((await apiClient.post(url(`/nodes/${integer(id, 1)}/map-${action}-preview`), { x: integer(x, -1000000, 1000000), y: integer(y, -1000000, 1000000), top_up: boolean(topUp) })).data);
 }
 export async function loadWorldStatistics(id: number): Promise<{ type: NodeType; count: number }[]> {
-  const row = record((await apiClient.get(url(`/nodes/${integer(id, 1)}/statistics`))).data);
+  const row = record((await readApi(url(`/nodes/${integer(id, 1)}/statistics`))).data);
   return list(row.items, value => {
     const item = record(value);
     if (!nodeTypes.includes(item.type as NodeType)) invalid();
@@ -224,7 +224,7 @@ export async function sendWorldCommand(path: string, body: Record<string, unknow
 }
 export const isWorldCommandPath = (path: string): boolean => /^\/economy\/storage\/[1-9]\d*\/expand$/.test(path) || /^\/professions\/[1-9]\d*\/(enroll|level-up)$/.test(path) || /^\/beds\/[1-9]\d*\/(dig|sow|water|harvest|cancel)$/.test(path) || path === '/onboarding/join' || path === '/workspace/craft' || path === '/storage/recover' || path === '/storage/transfer' || path === '/storage/chest-repair' || /^\/nodes\/[1-9]\d*\/(move|archive|invest|budget-grant|supplies-starter|supplies-gather|collect|pay|finance-policy|order-publish|order-deliver|order-cancel|premises-publish|premises-buy|premises-withdraw|shelter-claim|shelter-deploy|shelter-fold|shelter-lodge|shelter-leave|shelter-repair|harvest-price|harvest-buy|harvest-withdraw|garden-publish|garden-withdraw|garden-buy|garden-expand|map-explore|map-buy|warehouse-expand|equipment-expand|housing-lodge|housing-leave|construction-pause|construction-resume|construction-cancel|building-pause|building-resume|building-repair|repair-contract|demolish)$/.test(path);
 export async function loadWorldOnboarding(): Promise<WorldOnboarding> {
-  const row = record((await apiClient.get(url('/onboarding'))).data);
+  const row = record((await readApi(url('/onboarding'))).data);
   return { world_id: integer(row.world_id, 1), joined: boolean(row.joined), starter_site_id: nullableId(row.starter_site_id), joined_at: nullableId(row.joined_at), grace_until: nullableId(row.grace_until), server_time: integer(row.server_time), join_available: boolean(row.join_available) };
 }
 export async function previewWorldJoin(settlement: number) { return parseWorldQuote((await apiClient.post(url('/onboarding/preview'), { settlement_id: integer(settlement, 1) })).data); }

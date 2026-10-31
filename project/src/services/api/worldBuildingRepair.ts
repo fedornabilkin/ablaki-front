@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
@@ -28,7 +28,7 @@ function cost(value: unknown) {
   return { condition_before, condition_after, restore, price, materials };
 }
 export async function loadBuildingRepair(node: number) {
-  const row = record((await apiClient.get(url(node))).data);
+  const row = record((await readApi(url(node))).data);
   if (id(row.node_id) !== node || !Array.isArray(row.reasons) || row.reasons.length > 32) return invalid();
   const reasons = row.reasons.map(text), available = bool(row.available), supported = bool(row.supported);
   const repair = row.repair === null ? null : cost(row.repair);

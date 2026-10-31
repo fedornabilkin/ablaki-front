@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount } from '@/entities/world/credits';
@@ -12,7 +12,7 @@ export function equipmentExpansionInput(value: unknown) {
   const r = record(value); return { quantity: integer(r.quantity, 1, 3), top_up: bool(r.top_up) };
 }
 export async function loadEquipmentExpansion(node: number) {
-  const r = record((await apiClient.get(url(node, 'equipment-expansion'))).data);
+  const r = record((await readApi(url(node, 'equipment-expansion'))).data);
   if (id(r.node_id) !== node) invalid();
   const supported = bool(r.supported), writable = bool(r.writable); let expansion = null;
   if (r.expansion !== null) {

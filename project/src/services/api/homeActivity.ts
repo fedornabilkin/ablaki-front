@@ -1,5 +1,5 @@
 import config from '@/config/config';
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import { list, record, type RecordData } from './portal';
 
 export interface PrizeFund { today: number; tomorrow: number; user_today: number | null; user_tomorrow: number | null; date: string; timezone: string; }
@@ -15,7 +15,7 @@ export function parsePrizeFund(value: unknown): PrizeFund {
     user_today: data.user_today === null ? null : amount(data.user_today), user_tomorrow: data.user_tomorrow === null ? null : amount(data.user_tomorrow) };
 }
 export async function prizeFund(authenticated: boolean): Promise<PrizeFund> {
-  const result = parsePrizeFund((await apiClient.get(config.makeApiUrl(`v1/bonus/${authenticated ? 'my-fund' : 'fund'}`))).data);
+  const result = parsePrizeFund((await readApi(config.makeApiUrl(`v1/bonus/${authenticated ? 'my-fund' : 'fund'}`))).data);
   if ((result.user_today !== null) !== authenticated || (result.user_tomorrow !== null) !== authenticated) throw new Error('invalid-response');
   return result;
 }

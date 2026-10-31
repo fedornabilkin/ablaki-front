@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 
@@ -9,7 +9,7 @@ function location(value: unknown): CharacterLocation {
   return { node_id: row.node_id === null ? null : integer(row.node_id, 1), revision: integer(row.revision) };
 }
 export async function loadPresence(node: number, signal?: AbortSignal) {
-  const row = record((await apiClient.get(url(node), { signal })).data);
+  const row = record((await readApi(url(node), { signal })).data);
   if (typeof row.enabled !== 'boolean' || !Array.isArray(row.items)) throw new Error('invalid-presence-response');
   const counts: Record<number, number> = {};
   for (const value of row.items) { const item = record(value); counts[integer(item.node_id, 1)] = integer(item.count); }

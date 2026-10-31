@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount } from '@/entities/world/credits';
@@ -34,7 +34,7 @@ export function validateConstructionPlan(value: unknown, materials: ReturnType<t
 export type ConstructionAction = 'pause' | 'resume' | 'cancel';
 export const constructionStatus = { constructing: 'Строится', paused: 'На паузе', completed: 'Завершено', cancelled: 'Отменено' } as const;
 export async function loadConstruction(node: number, params: Record<string, unknown>) {
-  const row = record((await apiClient.get(url(node), { params })).data), meta = record(row._meta);
+  const row = record((await readApi(url(node), { params })).data), meta = record(row._meta);
   if (id(row.node_id) !== node || typeof row.writable !== 'boolean' || !Array.isArray(row.items) || row.items.length > 20) return invalid();
   const items = row.items.map(value => {
     const r = record(value);

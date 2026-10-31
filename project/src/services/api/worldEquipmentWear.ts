@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 export const wearKinds = ['elapsed', 'location', 'work', 'repair'] as const;
@@ -11,7 +11,7 @@ type Exposure = typeof classes[number];
 const exposure = (value: unknown): Exposure => typeof value === 'string' && classes.includes(value as Exposure) ? value as Exposure : invalid();
 const kind = (value: unknown): WearKind => typeof value === 'string' && wearKinds.includes(value as WearKind) ? value as WearKind : invalid();
 export async function loadEquipmentWear(instance: number, params: Record<string, unknown>) {
-  const r = record((await apiClient.get(config.makeApiUrl(`v1/world/equipment/${id(instance)}/wear`), { params })).data), meta = record(r._meta);
+  const r = record((await readApi(config.makeApiUrl(`v1/world/equipment/${id(instance)}/wear`), { params })).data), meta = record(r._meta);
   if (id(r.instance_id) !== instance || typeof r.name !== 'string' || !r.name.trim() || !Array.isArray(r.items) || r.items.length > 20) invalid();
   const maximum = integer(r.max_durability, 1), durability = integer(r.durability, 0, maximum);
   const items = (r.items as unknown[]).map(value => {

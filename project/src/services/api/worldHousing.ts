@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 const invalid = (): never => { throw new Error('invalid-housing-response'); };
@@ -13,7 +13,7 @@ export function parseLodgingAssignment(value: unknown) {
   return { kind: r.kind as 'shelter' | 'house', node_id: id(r.node_id), interval_id: id(r.interval_id), started_at: integer(r.started_at) };
 }
 export async function loadHousing(node: number) {
-  const r = record((await apiClient.get(url(node, 'housing'))).data);
+  const r = record((await readApi(url(node, 'housing'))).data);
   if (id(r.node_id) !== node) invalid();
   const supported = bool(r.supported), active = bool(r.active), writable = bool(r.writable);
   let place = null, lodging = null;

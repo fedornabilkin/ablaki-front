@@ -1,6 +1,16 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
+import { build } from './simpleWorld';
+import { parseMvp } from './worldMvp';
+
+export async function loadCharacterOverview() {
+  const row = record((await readApi(config.makeApiUrl('v1/world/economy'), { params: { include: 'character' } })).data);
+  if (row.contract_version !== 1) throw new Error('invalid-world-response');
+  const character = record(row.character), construction = record(character.construction);
+  return { economy: parseMvp(row.economy), progression: parseProgression(character.progression),
+    work: construction.active === null ? null : build(construction.active) };
+}
 
 export function parseProgression(value: unknown) {
   const row = record(value);
@@ -20,4 +30,4 @@ export function parseProgression(value: unknown) {
   }
   return { craft: parse(row.craft), professions: parse(row.professions), ...(extractionWork ? {extractionWork} : {}) };
 }
-export async function loadProgression() { return parseProgression((await apiClient.get(config.makeApiUrl('v1/world/economy/progression'))).data); }
+export async function loadProgression() { return parseProgression((await readApi(config.makeApiUrl('v1/world/economy/progression'))).data); }

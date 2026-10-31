@@ -3,9 +3,10 @@ import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NSelect, NSpin } from 'naive-ui';
-import { loadMvp, milestoneLabels, type MvpState } from '@/services/api/worldMvp';
+import { milestoneLabels, type MvpState } from '@/services/api/worldMvp';
+import { loadCharacterOverview, type parseProgression } from '@/services/api/worldCharacter';
 import { loadWorldNavigation, loadWorldOnboarding, worldError } from '@/services/api/world';
-import { activeBuild, objects, type Build, type SimpleNode } from '@/services/api/simpleWorld';
+import { objects, type Build, type SimpleNode } from '@/services/api/simpleWorld';
 import { loadStorageList, loadStorageContents, type StorageHeader, type StorageView } from '@/services/api/worldStorage';
 import { loadHousing } from '@/services/api/worldHousing';
 import { loadNights } from '@/services/api/worldNights';
@@ -17,6 +18,7 @@ const auth = useStore(), route = useRoute();
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0)), session = computed(() => Number(auth.state.auth.revision));
 const name = computed(() => auth.getters['auth/user']?.username ?? auth.getters['auth/user']?.login ?? `Персонаж №${owner.value}`);
 const mvp = shallowRef<MvpState | null>(null), membership = shallowRef<Awaited<ReturnType<typeof loadWorldOnboarding>> | null>(null);
+const progression = shallowRef<ReturnType<typeof parseProgression> | null>(null);
 const housing = shallowRef<Awaited<ReturnType<typeof loadHousing>> | null>(null), nights = shallowRef<Awaited<ReturnType<typeof loadNights>> | null>(null);
 const residence = shallowRef<Awaited<ReturnType<typeof loadWorldNavigation>> | null>(null);
 const work = shallowRef<Build | null>(null), property = shallowRef<SimpleNode[]>([]), storages = shallowRef<StorageHeader[]>([]), contents = shallowRef<StorageView | null>(null);
@@ -36,15 +38,14 @@ async function loadProperty() {
 }
 async function load() {
   const current = ++generation; loading.value = true; errors.value = []; selectedStorage.value = null; storages.value = []; contents.value = null;
-  mvp.value = null; membership.value = null; housing.value = null; nights.value = null; residence.value = null; work.value = null; property.value = []; total.value = 0;
+  mvp.value = null; progression.value = null; membership.value = null; housing.value = null; nights.value = null; residence.value = null; work.value = null; property.value = []; total.value = 0;
   const accept = async <T,>(label: string, request: Promise<T>, save: (value: T) => void) => {
     try { const value = await request; if (current === generation) save(value); }
     catch (cause) { if (current === generation) errors.value.push(`${label}: ${worldError(cause)}`); }
   };
   await Promise.allSettled([
-    accept('Состояние мира', loadMvp(), value => {mvp.value = value;}),
+    accept('Состояние мира', loadCharacterOverview(), value => {mvp.value = value.economy; progression.value = value.progression; work.value = value.work;}),
     accept('Заселение', loadWorldOnboarding(), value => {membership.value = value;}),
-    accept('Строительство', activeBuild(), value => {work.value = value;}),
     loadProperty(),
   ]);
   if (current !== generation) return;
@@ -83,7 +84,7 @@ main.container.character-page
   n-spin(v-if="loading && !mvp" aria-label="Загрузка персонажа")
   .character-grid
     section.character-card
-      world-character-progress(:key="session" :session="session" :health="mvp?.health" :health-error="!loading && !mvp ? 'Не удалось загрузить здоровье. Нажмите Обновить.' : ''")
+      world-character-progress(:key="session" :session="session" :health="mvp?.health" :managed="true" :progression="progression" :pending="loading" :health-error="!loading && !mvp ? 'Не удалось загрузить персонажа. Нажмите Обновить.' : ''")
     section.character-card(v-if="membership")
       h2 Заселение и ночлег
       p {{ membership.joined ? 'В мире с ' + date(membership.joined_at) : 'Вы ещё не вступили в мир' }}

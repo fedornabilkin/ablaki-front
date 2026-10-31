@@ -8,7 +8,7 @@ import { loadStorageContents } from '../src/services/api/worldStorage';
 import { parseWorkspace } from '../src/services/api/worldWorkspace';
 import { parseMining } from '../src/services/api/worldMining';
 import { build, gatherState, startOverview } from '../src/services/api/simpleWorld';
-import { parseProgression } from '../src/services/api/worldCharacter';
+import { loadCharacterOverview, parseProgression } from '../src/services/api/worldCharacter';
 import { explorationPredecessors } from '../src/entities/world/mapSelection';
 
 const header = { id: 1, kind: 'backpack', name: 'Рюкзак', node_id: null, container_inventory_id: null, capacity: 100, revision: 3 };
@@ -17,6 +17,16 @@ function page(number: number, revision = 3) {
     slots: [], container: null, location: null, writable: true, server_time: 1, _meta: { totalCount: 2, perPage: 1, currentPage: number, pageCount: 2 } };
 }
 afterEach(() => vi.restoreAllMocks());
+it('loads economy, progression and active work from one validated character response', async () => {
+  const data = {contract_version: 1, economy: {enabled: true, server_time: 100, feedback_path: '/forum', health: {hp: 100, max_hp: 100, revision: 0, foods: []}, goals: [], quotas: []},
+    character: {progression: {craft: [{name: 'Дерево', level: 2, xp: 150}], professions: []}, construction: {active: null}}};
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({data});
+  expect(await loadCharacterOverview()).toMatchObject({economy: {enabled: true}, progression: {craft: [{name: 'Дерево', level: 2, xp: 150}]}, work: null});
+  expect(get).toHaveBeenCalledOnce();
+  expect(get).toHaveBeenCalledWith(expect.stringMatching(/world\/economy$/), {params: {include: 'character'}});
+  get.mockResolvedValue({data: {...data, contract_version: 2}});
+  await expect(loadCharacterOverview()).rejects.toThrow('invalid-world-response');
+});
 it('validates a completed construction receipt and keeps older build responses compatible', () => {
   const project = {id: 1, node_id: 2, owner_user_id: 3, required_seconds: 100, worked_seconds: 100, labor_budget: '10.0000', status: 'completed'};
   const result = {finished_at: 1000, participants: [{user_id: 3, name: 'Владелец', owner: true, seconds: 20, paid_cr: '0.0000'}, {user_id: 4, name: 'Строитель', owner: false, seconds: 80, paid_cr: '8.0000'}], labor_budget_cr: '10.0000', paid_cr: '8.0000', released_cr: '2.0000', object_price_cr: '5.0000', spent_cr: '13.0000', material_refund_percent: 0};

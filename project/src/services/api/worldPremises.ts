@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
@@ -28,7 +28,7 @@ function premises(value: unknown) {
   return { ...input, ...parseConstructionSpec(r), repair, repair_for_existing, exposure_class: r.exposure_class as 'covered' | 'indoor' };
 }
 export async function loadPremises(node: number, params: Record<string, unknown>) {
-  const r = record((await apiClient.get(url(node), { params })).data), meta = record(r._meta);
+  const r = record((await readApi(url(node), { params })).data), meta = record(r._meta);
   if (id(r.node_id) !== node || !Array.isArray(r.items) || r.items.length > 20) invalid();
   const items = (r.items as unknown[]).map(value => { const row = record(value); return { ...premises(row), id: id(row.id), template_revision_id: id(row.template_revision_id), requirements_status: parseRequirementStatus(row.requirements_status),
     budget_available: row.budget_available === null ? null : creditAmount(row.budget_available), can_afford: row.can_afford === null ? null : bool(row.can_afford) }; });

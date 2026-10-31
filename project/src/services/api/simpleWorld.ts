@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { record } from './world';
 
@@ -52,9 +52,9 @@ function page<T>(value: unknown, parse: (value: unknown) => T) {
   return { items: row.items.map(parse), total: number(meta.totalCount), pageSize: number(meta.perPage) };
 }
 const url = (path: string) => config.makeApiUrl(`v1/world/${path}`);
-export async function objects(params: Record<string, unknown>) { return page((await apiClient.get(url('objects'), { params: { envelope: 1, ...params } })).data, node); }
-export async function object(id: number) { return node((await apiClient.get(url(`objects/${id}`))).data); }
-export async function builds(params: Record<string, unknown>) { return page((await apiClient.get(url('builds'), { params: { envelope: 1, ...params } })).data, build); }
+export async function objects(params: Record<string, unknown>) { return page((await readApi(url('objects'), { params: { envelope: 1, ...params } })).data, node); }
+export async function object(id: number) { return node((await readApi(url(`objects/${id}`))).data); }
+export async function builds(params: Record<string, unknown>) { return page((await readApi(url('builds'), { params: { envelope: 1, ...params } })).data, build); }
 export async function templates(parent: number) {
   const parse = (value: unknown): Template => {
     const row = record(value);
@@ -69,7 +69,7 @@ export async function templates(parent: number) {
   };
   const result: Template[] = [];
   for (let current = 1; current <= 100; current++) {
-    const catalog = page((await apiClient.get(url('templates'), { params: { parent_id: parent, envelope: 1, page: current, 'per-page': 100 } })).data, parse);
+    const catalog = page((await readApi(url('templates'), { params: { parent_id: parent, envelope: 1, page: current, 'per-page': 100 } })).data, parse);
     if (!catalog.pageSize || !catalog.items.length && result.length < catalog.total) throw new Error('invalid-world-response');
     result.push(...catalog.items);
     if (result.length >= catalog.total) {
@@ -83,8 +83,7 @@ export async function command(path: string, body: Record<string, unknown>, key: 
   return record((await apiClient.post(url(path), body, { headers: { 'Idempotency-Key': key } })).data);
 }
 export async function startState() {
-  const row = record((await apiClient.get(url('start'))).data);
-  return row.node === null ? null : node(row.node);
+  return (await startOverview()).node;
 }
 export interface StarterFunding { amount_cr: string | null; available_places?: number; reserve_cr?: string; settlements?: {node_id: number; name: string; amount_cr: string; available_places: number}[]; status?: string; available?: boolean; message?: string; source_node_id?: number; destination_node_id?: number }
 function funding(value: unknown): StarterFunding | null {
@@ -94,15 +93,15 @@ function funding(value: unknown): StarterFunding | null {
   return { amount_cr: row.amount_cr === null ? null : money(row.amount_cr ?? row.amount), ...(row.available_places === undefined ? {} : {available_places: number(row.available_places)}), ...(row.reserve_cr === undefined ? {} : {reserve_cr: money(row.reserve_cr)}), ...(row.settlements === undefined ? {} : {settlements: (() => { if (!Array.isArray(row.settlements) || row.settlements.length > 1000) throw new Error('invalid-world-response'); return row.settlements.map(value => { const city = record(value); return {node_id: number(city.node_id), name: text(city.name), amount_cr: money(city.amount_cr), available_places: number(city.available_places)}; }); })()}), ...(row.status === undefined ? {} : {status: text(row.status)}), ...(row.available === undefined ? {} : {available: row.available}), ...(row.message === undefined ? {} : {message: text(row.message)}), ...(row.source_node_id === undefined ? {} : {source_node_id: number(row.source_node_id)}), ...(row.destination_node_id === undefined ? {} : {destination_node_id: number(row.destination_node_id)}) };
 }
 export async function startOverview(nodeId?: number) {
-  const row = record((await apiClient.get(url('start'), {params: nodeId ? {node_id: nodeId} : {}})).data);
+  const row = record((await readApi(url('start'), {params: nodeId ? {node_id: nodeId} : {}})).data);
   return {node: row.node === null ? null : node(row.node), funding: funding(row.funding), starter_funding: funding(row.starter_funding)};
 }
 export async function activeBuild() {
-  const row = record((await apiClient.get(url('builds/active'))).data);
+  const row = record((await readApi(url('builds/active'))).data);
   return row.build === null ? null : build(row.build);
 }
 export async function gatherState(id: number) {
-  const row = record((await apiClient.get(url(`objects/${id}/gather`))).data);
+  const row = record((await readApi(url(`objects/${id}/gather`))).data);
   if (row.gather_can_claim !== undefined && typeof row.gather_can_claim !== 'boolean') throw new Error('invalid-world-response');
   if (typeof row.gather_available !== 'boolean') throw new Error('invalid-world-response');
   if (row.gather_exhausted !== undefined && typeof row.gather_exhausted !== 'boolean') throw new Error('invalid-world-response');
@@ -118,6 +117,6 @@ function money(value: unknown): string {
   return String(value);
 }
 export async function budget(id: number) {
-  const row = record((await apiClient.get(url(`objects/${id}/budget`))).data);
+  const row = record((await readApi(url(`objects/${id}/budget`))).data);
   return { available: money(row.available), reserved: money(row.reserved) };
 }

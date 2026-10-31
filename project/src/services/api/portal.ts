@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 
 export type RecordData = Record<string, unknown> & { id: number };
@@ -47,14 +47,14 @@ export function pageData(data: unknown, headers: Record<string, unknown>): Page 
   return { items: data.map(record), total: total !== null && Number.isSafeInteger(total) && total >= 0 ? total : null, pageSize: Number.isSafeInteger(size) && size > 0 ? size : 20 };
 }
 export async function list(path: string, page = 1, params: Record<string, unknown> = {}): Promise<Page> {
-  const response = await apiClient.get(url(path), { params: { page, ...params, envelope: 1 } });
+  const response = await readApi(url(path), { params: { page, ...params, envelope: 1 } });
   return pageData(response.data, response.headers);
 }
 export async function detail(path: string): Promise<RecordData> {
-  return record((await apiClient.get(url(path))).data);
+  return record((await readApi(url(path))).data);
 }
 export async function onlineUsers(): Promise<RecordData[]> {
-  const response = await apiClient.get(url('users/online'), { params: { all: 1 } });
+  const response = await readApi(url('users/online'), { params: { all: 1 } });
   if (!Array.isArray(response.data)) throw new Error('invalid-response');
   return response.data.map(record);
 }
@@ -71,11 +71,13 @@ export async function mutate(path: string, method: 'post' | 'put' | 'patch' | 'd
   return checkMutation((await apiClient.request({ url: url(path), method, data })).data);
 }
 export async function startSaper(id: number) {
-  // Existing backend command uses GET; call only on an explicit user action.
-  return checkMutation((await apiClient.get(url(`saper/start/${id}`))).data);
+  return checkMutation((await apiClient.post(url(`saper/start/${id}`))).data);
+}
+export async function dailyRewardCommand(kind: 'bonus' | 'rating') {
+  return checkMutation((await apiClient.post(url(`${kind}/everyday`))).data);
 }
 export async function claimDaily(kind: 'bonus' | 'rating'): Promise<boolean> {
-  const data = checkMutation((await apiClient.get(url(`${kind}/everyday`))).data);
+  const data = await dailyRewardCommand(kind);
   if (data === true) return true;
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     if ('credit' in data && Number(data.credit) > 0) return true;

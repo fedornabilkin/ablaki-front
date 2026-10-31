@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { creditAmount, investmentAmount } from '@/entities/world/credits';
@@ -16,7 +16,7 @@ function page<T extends { id: number }>(value: unknown, parse: (value: unknown) 
   return { items, total, pageSize, currentPage };
 }
 export async function loadOrders(node: number, params: Record<string, unknown>) {
-  const r = record((await apiClient.get(url(node, 'orders'), { params })).data);
+  const r = record((await readApi(url(node, 'orders'), { params })).data);
   if (id(r.node_id) !== node) invalid();
   const list = page(r, value => {
     const row = record(value);
@@ -31,10 +31,10 @@ export async function loadOrders(node: number, params: Record<string, unknown>) 
 }
 export type StarterOrder = Awaited<ReturnType<typeof loadOrders>>['items'][number];
 export async function loadOrderItems(node: number, params: Record<string, unknown>) {
-  return page((await apiClient.get(url(node, 'order-items'), { params })).data, value => { const row = record(value); return { id: id(row.id), name: text(row.name, 120) }; });
+  return page((await readApi(url(node, 'order-items'), { params })).data, value => { const row = record(value); return { id: id(row.id), name: text(row.name, 120) }; });
 }
 export async function loadOrderStock(node: number, item: number, currentPage: number) {
-  const r = record((await apiClient.get(url(node, 'order-stock'), { params: { item_id: id(item), page: integer(currentPage, 1, 1000000) } })).data);
+  const r = record((await readApi(url(node, 'order-stock'), { params: { item_id: id(item), page: integer(currentPage, 1, 1000000) } })).data);
   if (id(r.item_id) !== item) invalid();
   return page(r, value => { const row = record(value); return { id: id(row.id), quantity: integer(row.quantity, 1, 2147483647), position: id(row.position) }; });
 }

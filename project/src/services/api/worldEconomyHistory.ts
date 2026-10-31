@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 
@@ -49,5 +49,5 @@ export function economyKindLabel(kind: string): string {
   return 'Операция экономики';
 }
 export async function loadEconomyHistory(source: string, page: number, q: unknown) {
-  return parseEconomyHistory((await apiClient.get(config.makeApiUrl('v1/world/economy/history'), { params: { source, page, q } })).data);
+  return parseEconomyHistory((await readApi(config.makeApiUrl('v1/world/economy/history'), { params: { source, page, q } })).data);
 }

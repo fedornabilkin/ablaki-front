@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { apiClient, readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record, parseWorldQuote } from './world';
 import { parseRepair } from './classicCraft';
@@ -36,8 +36,8 @@ export function parseStorageView(value: unknown): StorageView {
   return { storage: parseStorageHeader(r.storage), items, slots, container, location, total, pageSize, currentPage, pageCount, server_time: integer(r.server_time), writable: r.writable as boolean };
 }
 const url = (path: string) => config.makeApiUrl(`v1/world/${path}`);
-export async function loadStorageList(node: number | null) { const r = record((await apiClient.get(url('storages'), { params: node === null ? {} : { node_id: id(node) } })).data); return list(r.items, parseStorageHeader, 200); }
-export async function loadStorage(storage: number, page = 1) { return parseStorageView((await apiClient.get(url(`storage/${id(storage)}`), { params: { page } })).data); }
+export async function loadStorageList(node: number | null) { const r = record((await readApi(url('storages'), { params: node === null ? {} : { node_id: id(node) } })).data); return list(r.items, parseStorageHeader, 200); }
+export async function loadStorage(storage: number, page = 1) { return parseStorageView((await readApi(url(`storage/${id(storage)}`), { params: { page } })).data); }
 /** A cell grid must not present items on another API page as empty destinations. */
 export async function loadStorageContents(storage: number): Promise<StorageView> {
   const first = await loadStorage(storage);
@@ -53,7 +53,7 @@ export async function loadStorageContents(storage: number): Promise<StorageView>
 }
 export async function previewTransfer(input: TransferInput) { return parseWorldQuote((await apiClient.post(url('storage/transfer-preview'), input)).data); }
 export async function loadPlacementOptions(node: number, cell?: { x: number; y: number } | null) {
-  const r = record((await apiClient.get(url(`nodes/${id(node)}/placement-options`), cell ? { params: cell } : undefined)).data);
+  const r = record((await readApi(url(`nodes/${id(node)}/placement-options`), cell ? { params: cell } : undefined)).data);
   if (r.node_id !== node) invalid();
   return list(r.items, value => {
     const i = record(value), p = i.input === null ? null : record(i.input);
@@ -67,7 +67,7 @@ export async function previewChestRepair(storage: number, container: number) {
   return { quote, repair: parseRepair(quote.terms.repair) };
 }
 export async function loadRecovery(page: number) {
-  const r = record((await apiClient.get(url('storage/recovery'), { params: { page: integer(page, 1, 1000000) } })).data), meta = record(r._meta);
+  const r = record((await readApi(url('storage/recovery'), { params: { page: integer(page, 1, 1000000) } })).data), meta = record(r._meta);
   if (typeof r.writable !== 'boolean') invalid();
   const items = list(r.items, value => { const i = record(value); return { inventory_id: id(i.inventory_id), name: text(i.name, 120), quantity: integer(i.quantity, 1), node_id: id(i.node_id) }; }, 50);
   const total = integer(meta.totalCount), pageSize = integer(meta.perPage, 50, 50), currentPage = integer(meta.currentPage, 1, 1000000);

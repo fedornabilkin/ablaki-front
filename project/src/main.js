@@ -21,7 +21,7 @@ configureApiSession(() => store.getters['auth/token'], () => {
   if (route.matched.some(record => record.meta.requiresAuth)) {
     void router.replace({path: '/users/login', query: {redirect: route.fullPath}});
   }
-});
+}, () => Number(store.state.auth.revision));
 
 app.component('font-awesome-icon', FontAwesomeIcon)
 

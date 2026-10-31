@@ -1,3 +1,4 @@
+import { startSaper } from '../portal';
 import {apiClient as axios} from "@/services/httpClient";
 import config from "../../../config/config";
 
@@ -68,7 +69,7 @@ export const saper = {
 
   start: async (id) => {
     return new Promise((resolve, reject) => {
-      axios.get(`${baseUrlSaper}/start/${id}`)
+      startSaper(id).then(data => ({ data }))
         .then(res => {
           if (!(res.data?.errors ?? null)) {
             resolve(res.data);

@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/httpClient';
+import { readApi } from '@/services/httpClient';
 import config from '@/config/config';
 import { integer, record } from './world';
 import { creditAmount } from '@/entities/world/credits';
@@ -25,7 +25,7 @@ type Role = 'budget' | 'treasury';
 const role = (value: unknown): Role | null => value === null || value === 'budget' || value === 'treasury' ? value : invalid();
 
 export async function loadFinanceReport(node: number, params: Record<string, unknown>) {
-  const r = record((await apiClient.get(config.makeApiUrl(`v1/world/nodes/${id(node)}/finance-report`), { params })).data), meta = record(r._meta);
+  const r = record((await readApi(config.makeApiUrl(`v1/world/nodes/${id(node)}/finance-report`), { params })).data), meta = record(r._meta);
   if (id(r.node_id) !== node || r.currency !== 'Cr' || r.scope !== 'node_lifetime' || !Array.isArray(r.items) || r.items.length > 20) return invalid();
   const b = record(r.balances), reconciliation = record(r.reconciliation), totals = record(r.totals);
   const balances = (['budget', 'treasury'] as const).map(name => {

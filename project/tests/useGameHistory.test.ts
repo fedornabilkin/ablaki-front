@@ -5,7 +5,7 @@ import { historyKons, historyPeriod } from '../src/services/api/gameHistory';
 
 const context = vi.hoisted(() => ({ route: null as any, router: null as any, get: vi.fn() }));
 vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => context.router }));
-vi.mock('../src/services/httpClient', () => ({ apiClient: { get: context.get } }));
+vi.mock('../src/services/httpClient', () => ({ apiClient: { get: context.get }, readApi: context.get }));
 let scope: EffectScope;
 const flush = async () => { for (let i = 0; i < 5; i++) { await nextTick(); await Promise.resolve(); } };
 const response = { data: { items: [{ id: 1 }], _meta: { totalCount: 1, perPage: 20, currentPage: 1, pageCount: 1 } }, headers: {} };
