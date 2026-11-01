@@ -38,7 +38,7 @@ const waitingForPreview = ref(false);
 const calculation = shallowRef<(Awaited<ReturnType<typeof previewWorkspace>> & { input: WorkspaceInput }) | null>(null);
 let generation = 0, previewGeneration = 0, disposed = false;
 let previewTimer: ReturnType<typeof setTimeout> | undefined;
-const command = useWorldCommand(session, owner, result => { lastResult.value = result.craft_result ?? null; notice.value = 'Изготовление завершено.'; void auth.dispatch('auth/fetchData'); void load(recipe.value ?? undefined); });
+const command = useWorldCommand(session, owner, result => { lastResult.value = result.craft_result ?? null; notice.value = lastResult.value ? 'Изготовление завершено.' : 'Предыдущее действие подтверждено. Можно продолжить изготовление.'; void auth.dispatch('auth/fetchData'); void load(recipe.value ?? undefined); });
 const { busy, pending, error: commandError } = command;
 const blocked = computed(() => busy.value || !!pending.value || loading.value || calculating.value || waitingForPreview.value || !state.value?.writable || (state.value?.quota && (quantity.value ?? 0) > state.value.quota.remaining));
 const displayedTerms = computed(() => calculation.value && calculation.value.input.recipe_id === recipe.value
@@ -66,7 +66,13 @@ async function load(selected?: number) {
   } catch (cause) { if (generation === current && !disposed) { state.value = null; error.value = worldError(cause); } }
   finally { if (generation === current && !disposed) { loading.value = false; if (!error.value) schedulePreview(); } }
 }
-function changeRecipe(value: number) { if (busy.value || pending.value || loading.value) return; recipe.value = value; notice.value = ''; lastResult.value = null; void load(value); }
+function changeRecipe(value: number) { if (busy.value || loading.value) return; recipe.value = value; notice.value = ''; lastResult.value = null; void load(value); }
+async function retryPending() {
+  const result = await command.retry();
+  // A definitive rejection (for example an expired quote) clears the pending
+  // request too. Recalculate the current recipe so the form does not stay blocked.
+  if (!result && !pending.value && !disposed) await load(recipe.value ?? undefined);
+}
 async function preview() {
   waitingForPreview.value = false;
   if (busy.value || pending.value || loading.value || !state.value?.writable || !recipe.value || !output.value || !Number.isSafeInteger(quantity.value) || !quantity.value || quantity.value < 1 || quantity.value > 100 || selectedRecipe.value?.locked_reasons.length) { calculation.value = null; return; }
@@ -101,9 +107,9 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
   .workspace-navigation
     world-workspace-nav(:node-id="nodeId" manufacturing)
   n-alert(closable v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
-  n-alert(closable v-if="pending && !busy" type="info")
-    p Ответ на действие ещё не получен. Повтор отправит тот же запрос.
-    n-button(:theme-overrides="actionTheme" :loading="busy" @click="command.retry") Повторить запрос
+  n-alert(v-if="pending && !busy" type="info" role="status")
+    p Предыдущее действие не подтверждено. Проверьте его результат, чтобы продолжить изготовление. Повтор использует тот же запрос и не дублирует результат.
+    n-button(:theme-overrides="actionTheme" :loading="busy" @click="retryPending") Проверить предыдущее действие
   n-spin(v-if="loading && !state" aria-label="Загрузка мастерской")
   template(v-if="state")
     n-alert(closable v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
@@ -118,7 +124,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
         p.recipe-legend Выберите плитку. Материалы и оборудование подбираются автоматически; стоимость появится в панели справа.
         .recipe-tiles
           .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
-            button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading || Boolean(pending) || Boolean(entry.locked_reasons.length)" @click="changeRecipe(entry.id)")
+            button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading || Boolean(entry.locked_reasons.length)" @click="changeRecipe(entry.id)")
               font-awesome-icon(:icon="entry.icon || 'cube'" aria-hidden="true")
               strong {{ entry.name }}
               small ×{{ entry.quantity }} за партию
@@ -154,7 +160,8 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
             p(v-if="!sources.length || !output") Выберите хранилища в настройках ниже.
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
-          n-button(:theme-overrides="actionTheme" type="primary" block :loading="busy || calculating || waitingForPreview || loading" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft")
+          n-button(v-if="pending" :theme-overrides="actionTheme" type="primary" block :loading="busy" :disabled="busy || loading" @click="retryPending") Проверить предыдущее действие
+          n-button(v-else :theme-overrides="actionTheme" type="primary" block :loading="busy || calculating || waitingForPreview || loading" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft")
             | {{ displayedTerms ? 'Изготовить' : calculating || waitingForPreview || loading ? 'Рассчитываем…' : 'Изготовление недоступно' }}
             world-credits(v-if="displayedTerms" :value="displayedTerms.price" cost)
           n-alert.craft-result(v-if="notice" type="success" role="status")

@@ -540,6 +540,33 @@ describe('one-click crafting', () => {
     const button = () => findView(view.root, node => node.tag === 'button' && viewText(node).trim().startsWith('Изготовить'))!;
     return { ...view, button };
   }
+  it('keeps recipe browsing available after a failed world action and recovers from an expired request', async () => {
+    vi.useFakeTimers();
+    const previous = { path: '/nodes/33/map-explore', body: { request_key: 'same-request', cells: [{ x: 1, y: 0 }] } };
+    mocks.runner.pending.value = previous;
+    mocks.workspace.mockImplementation(async (_node: number, selected = 2) => ({ ...workspace(), recipe_id: selected, recipes: [...workspace().recipes, { ...workspace().recipes[0], id: 3, name: 'Палка' }] }));
+    mocks.preview.mockResolvedValue({ quote, terms });
+    const view = mount(WorldWorkspace); await flushView(); await vi.advanceTimersByTimeAsync(600); await flushView();
+    const tile = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Палка'))!;
+    expect(tile.props.disabled).toBeFalsy(); tile.props.onClick(); await flushView();
+    expect(mocks.workspace).toHaveBeenLastCalledWith(1, 3);
+    expect(mocks.runner.pending.value).toEqual(previous);
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(viewText(view.root)).toContain('Предыдущее действие не подтверждено');
+    const recovery = findView(view.root, n => n.tag === 'button' && n.props.block !== undefined && viewText(n).trim() === 'Проверить предыдущее действие')!;
+    expect(recovery.props.disabled).toBeFalsy();
+    mocks.runner.retry.mockImplementation(async () => { mocks.runner.pending.value = null; mocks.runner.error.value = 'Срок расчёта истёк.'; });
+    await recovery.props.onClick(); await flushView(); await vi.advanceTimersByTimeAsync(600); await flushView();
+    expect(mocks.runner.retry).toHaveBeenCalledTimes(1);
+    expect(mocks.preview).toHaveBeenLastCalledWith(expect.objectContaining({ recipe_id: 3 }));
+    expect(findView(view.root, n => n.tag === 'button' && viewText(n).startsWith('Изготовить'))!.props.disabled).toBeFalsy();
+  });
+  it('does not report a recovered map operation as a completed craft', async () => {
+    const view = await setup();
+    mocks.runner.completed({ changed_node_ids: [33] }); await flushView();
+    expect(viewText(view.root)).toContain('Предыдущее действие подтверждено');
+    expect(viewText(view.root)).not.toContain('Изготовление завершено');
+  });
   it('calculates on selection and crafts once with the visible price', async () => {
     const view = await setup(); expect(viewText(view.button())).toContain('5');
     const pending = deferred<any>(); mocks.preview.mockReturnValue(pending.promise);
