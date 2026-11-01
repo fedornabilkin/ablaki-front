@@ -12,7 +12,8 @@ import WorldChestRepair from './WorldChestRepair.vue';
 import WorldStorageGrid from './WorldStorageGrid.vue';
 import WorldStorageExpansion from './WorldStorageExpansion.vue';
 
-const props = defineProps<{ nodeId: number | null; node?: WorldNode; map?: WorldMapData | null; storageId?: number; session: number; revision?: number; writable: boolean; command: WorldCommandRunner }>();
+const props = defineProps<{ nodeId: number | null; node?: WorldNode; map?: WorldMapData | null; storageId?: number; session: number; revision?: number; writable: boolean; command: WorldCommandRunner; embedded?: boolean }>();
+const emit = defineEmits<{ changed: [] }>();
 const headers = shallowRef<StorageHeader[]>([]), view = shallowRef<StorageView | null>(null), targetView = shallowRef<StorageView | null>(null);
 const leftContext = shallowRef<StorageMapContext | null>(null), rightContext = shallowRef<StorageMapContext | null>(null);
 const destination = ref<number | null>(null), selected = ref<number | null>(null), quantity = ref<number | null>(1), instance = ref<number | null>(null);
@@ -97,7 +98,9 @@ async function load(chosen?: number) {
   try {
     const list = await loadStorageList(props.nodeId);
     if (disposed || current !== generation) return;
-    const id = chosen ?? props.storageId ?? (props.nodeId === null ? list.find(row => row.kind === 'backpack')?.id : list.find(row => row.kind === 'placement' && row.node_id === props.nodeId)?.id);
+    const nodeStorage = list.find(row => row.kind === 'stockpile' && row.node_id === props.nodeId)
+      ?? list.find(row => row.kind === 'placement' && row.node_id === props.nodeId);
+    const id = chosen ?? props.storageId ?? (props.nodeId === null ? list.find(row => row.kind === 'backpack')?.id : nodeStorage?.id);
     headers.value = list;
     const targets = list.filter(row => row.kind !== 'recovery' && row.id !== id);
     const next = targets.some(option => option.id === destination.value) ? destination.value : targets.find(option => option.kind === 'backpack')?.id ?? targets[0]?.id ?? null;
@@ -154,7 +157,7 @@ async function transfer(target: StorageView, position: number) {
     await props.command.submit('/storage/transfer', { ...payload }, quote);
     if (!disposed && current === operation) {
       if (pending.value || props.command.error.value) { rollback(); error.value = props.command.error.value; }
-      else { notice.value = 'Предметы перемещены.'; await refreshContents(); }
+      else { notice.value = 'Предметы перемещены.'; await refreshContents(); if (!disposed && current === operation) emit('changed'); }
     }
   } catch (cause) { rollback(); if (!disposed && current === operation) error.value = worldError(cause); }
   finally { if (!disposed && current === operation) transferring.value = false; }
@@ -197,7 +200,7 @@ onScopeDispose(() => { disposed = true; generation++; targetGeneration++; operat
 </script>
 <template lang="pug">
 section.world-storage(aria-label="Вещи и размещение" @keydown.esc="selected = null; cancelDrag()")
-  .storage-heading
+  .storage-heading(v-if="!embedded")
     h2 Вещи и размещение
     router-link.storage-page-link(v-if="!storageId && view" :to="link(view.storage.id)") На страницу хранилища →
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
@@ -205,10 +208,10 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
   p.storage-hint Перетащите вещь в свободную ячейку или на такую же стопку. Можно нажать на предмет, затем на подсвеченное место. Перенос — бесплатно; помещение в сундук расходует его прочность.
   .storage-panes
     section.storage-pane(v-for="(panel, index) in panels" :key="index" :aria-label="index === 0 ? 'Левое хранилище' : 'Правое хранилище'")
-      span.storage-eyebrow(v-if="index === 0") {{ storageId ? 'Левое хранилище' : 'Размещение в активной ноде' }}
-      h3(v-if="index === 0 && !storageId") Слоты ноды «{{ node?.label || panel.view?.location?.name || nodeId }}»
+      span.storage-eyebrow(v-if="index === 0 && panel.view?.storage.kind === 'placement'") Размещение в объекте
+      h3(v-if="index === 0 && !storageId && panel.view?.storage.kind === 'placement'") Слоты ноды «{{ node?.label || panel.view?.location?.name || nodeId }}»
       h3(v-else) {{ panel.view?.storage.name || 'Выберите хранилище' }}
-      .storage-choices(v-if="storageId || index === 1" role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
+      .storage-choices(v-if="storageId || index === 1 || panel.view?.storage.kind === 'stockpile'" role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
         app-popover(v-for="header in choices" :key="header.id" trigger="hover" placement="bottom" width="22rem" @update:show="value => { if (value) loadStoragePath(header); }")
           template(#trigger)
             span.storage-choice-trigger(@focusin="loadStoragePath(header)")
@@ -269,7 +272,10 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
 .storage-loading { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
 .storage-pane { background: var(--bg-surface); }
 .storage-status { min-height: 1.3em; margin: 0; color: var(--text-muted); font-size: .85rem; }
-@media(max-width: 700px) { .storage-panes { grid-template-columns: 1fr; } }
+@media(max-width: 700px) {
+  .storage-panes { grid-template-columns: 1fr; }
+  .storage-pane :deep(.storage-grid) { max-height: min(52vh, 32rem); overflow-y: auto; }
+}
 @media(max-width: 620px) {
   .world-storage { gap: .6rem; }
   .storage-heading { flex-wrap: wrap; }

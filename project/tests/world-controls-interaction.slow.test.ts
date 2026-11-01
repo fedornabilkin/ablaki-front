@@ -433,6 +433,43 @@ async function mountStorage() {
   return { ...view, session, writable, cell };
 }
 describe('direct storage controls', () => {
+  it('opens warehouse stock slots beside a full backpack and moves overflow items in both directions', async () => {
+    const backpack = storage(1), stock = storage(2), placement = storage(3);
+    backpack.storage.node_id = null; backpack.storage.capacity = 1;
+    backpack.items.push({ ...backpack.items[0], id: 11, item_id: 4, name: 'Камень', position: 2, quantity: 7 });
+    stock.storage = { ...stock.storage, kind: 'stockpile', name: 'Хозсклад · Склад', capacity: 50 };
+    placement.storage.kind = 'placement';
+    mocks.storageList.mockResolvedValue([placement.storage, backpack.storage, stock.storage]);
+    mocks.storage.mockImplementation(async id => structuredClone(id === 1 ? backpack : stock));
+    mocks.transfer.mockResolvedValue(quote);
+    mocks.runner.submit.mockImplementation(async () => {
+      if (backpack.items.some(row => row.id === 11)) {
+        stock.items = [{ ...backpack.items.pop()!, position: 1 }];
+      } else {
+        // Once space is available, the same item can be taken back.
+        backpack.items = [{ ...stock.items.pop()!, position: 1 }];
+      }
+    });
+    const changed = vi.fn();
+    const view = mount(WorldStoragePanel, () => ({ nodeId: 1, session: 1, writable: true, command: mocks.runner, onChanged: changed }));
+    await flushView();
+    const cell = (id: number, position: number) => findView(view.root, n => n.props['data-storage'] === id && n.props['data-position'] === position)!;
+    expect(findView(view.root, n => n.props['aria-label'] === 'Левое хранилище')?.children.some(n => viewText(n) === 'Хозсклад · Склад')).toBe(true);
+    expect(mocks.storage).not.toHaveBeenCalledWith(3);
+    expect(cell(2, 50)).toBeDefined();
+    cell(1, 2).props.onClick(); await flushView(); cell(2, 1).props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenLastCalledWith('/storage/transfer', { inventory_id: 11, source_storage_id: 1, destination_storage_id: 2, position: 1, quantity: 7, instance_id: null }, quote);
+    expect(viewText(cell(2, 1))).toContain('Камень');
+    expect(cell(1, 2)).toBeUndefined();
+    expect(changed).toHaveBeenCalledTimes(1);
+    backpack.items = []; await flushView();
+    // Refresh the view after the remaining stack is consumed elsewhere.
+    view.app.unmount();
+    const second = mount(WorldStoragePanel, () => ({ nodeId: 1, session: 1, writable: true, command: mocks.runner })); await flushView();
+    findView(second.root, n => n.props['data-storage'] === 2 && n.props['data-position'] === 1)!.props.onClick(); await flushView();
+    findView(second.root, n => n.props['data-storage'] === 1 && n.props['data-position'] === 1)!.props.onClick(); await flushView();
+    expect(mocks.runner.submit).toHaveBeenLastCalledWith('/storage/transfer', { inventory_id: 11, source_storage_id: 2, destination_storage_id: 1, position: 1, quantity: 7, instance_id: null }, quote);
+  });
   it('loads the object tree only on demand, reuses it and clears it when the session changes', async () => {
     const view = await mountStorage();
     const bed = {...storage(3).storage, kind: 'placement', name: 'Грядка · Размещение', node_id: 3};
@@ -1005,9 +1042,24 @@ describe('one-click world actions', () => {
 });
 
 describe('garden harvest purchase controls', () => {
+  it('offers the shared storage grid to owners and a compact link in the map inspector', async () => {
+    const stock = storage(2); stock.storage = { ...stock.storage, kind: 'stockpile', node_id: 10, name: 'Хозсклад · Склад' };
+    mocks.storageList.mockResolvedValue([storage(1).storage, stock.storage]);
+    mocks.storage.mockImplementation(async id => id === 1 ? storage(1) : stock);
+    mocks.harvest.mockResolvedValue({ owned_by_me: true, writable: true, allow_sales: false, capacity: 50, items: [], destinations: [], server_time: 100 });
+    const view = mount(WorldHarvestPanel, () => ({ nodeId: 10, session: 1, revision: 1, command: mocks.runner })); await flushView();
+    expect(findView(view.root, n => n.props['data-storage'] === 2)).toBeDefined();
+    expect(findView(view.root, n => n.props['data-storage'] === 1)).toBeDefined();
+    expect(findView(view.root, n => n.props.class === 'harvest-grid')).toBeUndefined();
+    view.app.unmount(); mocks.storageList.mockClear();
+    const embedded = mount(WorldHarvestPanel, () => ({ nodeId: 10, session: 1, revision: 1, command: mocks.runner, embedded: true })); await flushView();
+    expect(findView(embedded.root, n => n.tag === 'a' && n.props.to === '/world/nodes/10#workshop')).toBeDefined();
+    expect(mocks.storageList).not.toHaveBeenCalled();
+  });
   it('separates movement from sale controls and withdraws to the selected storage', async () => {
     mocks.harvest.mockResolvedValue({ owned_by_me: true, writable: true, allow_sales: true, capacity: 5, server_time: 100, destinations: [{ id: 9, name: 'Рюкзак', kind: 'backpack' }, { id: 10, name: 'Склад', kind: 'stockpile' }], items: [{ inventory_id: 5, position: 1, name: 'Морковь', quantity: 7, price: '2.5000', fresh_until: 1209700, spoiled: true }] });
     const view = mount(WorldHarvestPanel, () => ({ nodeId: 10, session: 1, revision: 1, command: mocks.runner })); await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Продажа')!.props.onClick(); await flushView();
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Морковь'))!.props.onClick(); await flushView();
     const movement = findView(view.root, n => n.props['aria-label'] === 'Перемещение урожая')!;
     const sales = findView(view.root, n => n.props['aria-label'] === 'Продажа урожая')!;
@@ -1027,6 +1079,7 @@ describe('garden harvest purchase controls', () => {
   }
   it('buys once at the displayed price and shows five storage cells', async () => {
     const view = await setup(), pending = deferred<any>(); mocks.harvestPreview.mockReturnValue(pending.promise);
+    expect(mocks.storageList).not.toHaveBeenCalled();
     expect(viewText(view.buy())).toContain('2.5');
     view.buy().props.onClick(); view.buy().props.onClick(); await flushView();
     expect(mocks.harvestPreview).toHaveBeenCalledTimes(1);

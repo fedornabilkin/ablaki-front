@@ -6,6 +6,8 @@ import WorldPaymentSources from './WorldPaymentSources.vue';
 import { computed, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import WorldHelpHint from './WorldHelpHint.vue';
+import ChoiceButtons from '@/components/ChoiceButtons.vue';
+import WorldStoragePanel from './WorldStoragePanel.vue';
 import { loadHarvest, previewHarvest, type HarvestAction } from '@/services/api/worldHarvest';
 import { worldError } from '@/services/api/world';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
@@ -14,6 +16,10 @@ const props = withDefaults(defineProps<{ nodeId: number; session: number; revisi
 const state = shallowRef<Awaited<ReturnType<typeof loadHarvest>> | null>(null);
 const selected = ref<number | null>(null), quantity = ref<number | null>(1), prices = reactive<Record<number, string>>({});
 const destination = ref<number | null>(null);
+const mode = ref('items');
+const modes = [{ value: 'items', label: 'Вещи', icon: 'cubes' }, { value: 'sales', label: 'Продажа', icon: 'coins' }];
+const ownerStorage = computed(() => state.value?.owned_by_me && !props.embedded);
+const showStorage = computed(() => ownerStorage.value && (mode.value === 'items' || !state.value?.allow_sales));
 const destinations = computed(() => state.value?.destinations?.map(row => ({ label: `${row.name} · №${row.id}`, value: row.id })) ?? []);
 const error = ref(''), loading = ref(false), saving = ref(false);
 let generation = 0, disposed = false, offset = 0;
@@ -58,7 +64,8 @@ async function act(action: HarvestAction, withdrawOffer = false) {
   } catch (cause) { if (!disposed && current === generation) error.value = worldError(cause); }
   finally { if (!disposed) saving.value = false; }
 }
-watch([() => props.nodeId, () => props.session], () => { checkedSpoilage.clear(); state.value = null; selected.value = null; destination.value = null; quantity.value = 1; if (props.active !== false) void load(); }, { immediate: true });
+watch([() => props.nodeId, () => props.session], () => { checkedSpoilage.clear(); mode.value = 'items'; state.value = null; selected.value = null; destination.value = null; quantity.value = 1; if (props.active !== false) void load(); }, { immediate: true });
+watch(mode, () => { selected.value = null; if (mode.value === 'sales') void load(); });
 watch(() => props.revision, () => { dirty = true; if (visible.value && props.active !== false && !saving.value) void load(); });
 function checkSpoilage() {
   if (!visible.value || props.active === false || locked.value || !state.value) return;
@@ -74,15 +81,20 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 <template lang="pug">
 section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-label="Продукция склада" :aria-busy="loading")
   .harvest-heading
-    component(:is="embedded ? 'h4' : 'h2'") {{ embedded ? 'Ресурсы мини-склада' : 'Продукция склада' }}
+    component(:is="embedded ? 'h4' : 'h2'") {{ embedded ? 'Ресурсы мини-склада' : state?.owned_by_me ? 'Вещи на складе' : 'Продукция склада' }}
     world-help-hint(label="Хранение и покупка ресурсов")
       p Покупки поступают в рюкзак, оплата — родительскому объекту склада.
       p(v-if="state?.npc_supply") Здесь продаётся сырьё, добытое игроками. Выручка возвращается в бюджеты стартовых объектов NPC для оплаты работы.
       p(v-else) Урожай после 14 суток хранения однократно теряет 30% количества.
-  p.harvest-capacity(v-if="state") {{ state.capacity }} ячеек{{ state.slot_limit ? ` · до ${state.slot_limit} шт. в ячейке` : '' }}
+  choice-buttons(v-if="ownerStorage && state?.allow_sales" v-model="mode" :options="modes" label="Режим склада" :disabled="saving || command.busy.value || !!command.pending.value")
+  router-link.harvest-inventory-link(v-if="embedded && state?.owned_by_me" :to="`/world/nodes/${nodeId}#workshop`")
+    font-awesome-icon(icon="exchange-alt" aria-hidden="true")
+    |  Переместить вещи
+  p.harvest-capacity(v-if="state && !showStorage") {{ state.capacity }} ячеек{{ state.slot_limit ? ` · до ${state.slot_limit} шт. в ячейке` : '' }}
   n-spin(v-if="loading && !state" size="small" aria-label="Загружаем ресурсы склада")
   n-alert(closable v-if="error" type="error") {{ error }}
-  .harvest-grid(v-if="state")
+  world-storage-panel(v-if="showStorage" embedded :node-id="nodeId" :session="session" :revision="revision" :command="command" :writable="!!state?.writable" @changed="load")
+  .harvest-grid(v-if="state && !showStorage")
     button.harvest-cell(v-for="cell in cells" :key="cell.position" type="button" :class="{ selected: cell.item?.inventory_id === selected }" @click="selected = cell.item?.inventory_id ?? null; quantity = 1")
       template(v-if="cell.item")
         font-awesome-icon(:icon="cell.item.icon || 'seedling'" aria-hidden="true")
@@ -92,7 +104,7 @@ section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-labe
           template(v-else) Не продаётся
         small(v-if="cell.item.fresh_until < 2147483647") {{ cell.item.spoiled ? 'Потеря при хранении учтена' : `Свежий до ${date(cell.item.fresh_until)}` }}
       span(v-else) Свободно
-  .harvest-actions(v-if="item")
+  .harvest-actions(v-if="item && !showStorage")
     h3 {{ item.name }}
     template(v-if="state?.owned_by_me")
       section.harvest-action-block(aria-label="Перемещение урожая")
