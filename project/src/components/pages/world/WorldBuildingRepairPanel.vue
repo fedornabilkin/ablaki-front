@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
@@ -38,7 +39,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-building-repair#building-repair
-  h2 Ремонт постройки
+  world-section-heading(title="Ремонт постройки" icon="wrench")
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить расчёт
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка условий ремонта")

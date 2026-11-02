@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import WorldPanel from './WorldPanel.vue';
+import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldDisclosure from './WorldDisclosure.vue';
 import ChoiceButtons from '@/components/ChoiceButtons.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { creditCost } from '@/entities/world/credits';
@@ -102,7 +105,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 </script>
 <template lang="pug">
 .container.workspace
-  world-workspace-hero(:title="state ? `Изготовление: ${state.name}` : 'Изготовление в объекте'" description="Создавайте предметы с оборудованием и ресурсами выбранного объекта." :parent-to="`/world/nodes/${nodeId}`")
+  world-workspace-hero(:title="state ? `Изготовление: ${state.name}` : 'Изготовление в объекте'" :parent-to="`/world/nodes/${nodeId}`")
     router-link(v-if="!state && craftHref !== route.path" :to="craftHref") Изготовление на своей стоянке
   .workspace-navigation
     world-workspace-nav(:node-id="nodeId" manufacturing)
@@ -114,14 +117,16 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
   template(v-if="state")
     n-alert(closable v-if="!state.writable" type="info") Мастерская временно доступна только для просмотра.
     .workspace-layout
-      section.recipe-catalog(aria-label="Рецепты мастерской")
-        .workspace-section-heading
-          span.workspace-eyebrow Рецепты объекта
-          n-input.recipe-search(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
-        .recipe-filters
+      world-panel.recipe-catalog(aria-label="Рецепты мастерской")
+        world-section-heading.recipe-heading(title="Рецепты объекта" icon="scroll")
+          world-help-hint(label="Как изготовить предмет")
+            p Выберите рецепт. Материалы и оборудование подберутся автоматически. Проверьте расход ресурсов и нажмите «Изготовить».
+        n-input.recipe-search(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
+          template(#prefix)
+            font-awesome-icon(icon="search" aria-hidden="true")
+        world-disclosure.recipe-filters(label="Фильтры рецептов" icon="list-check" :indicator="category !== 'all' || availability !== 'all' ? 'Выбраны' : undefined")
           choice-buttons(v-model="category" :options="categories" label="Группа предметов" mobile-icons)
           choice-buttons(v-model="availability" :options="availabilityOptions" label="Доступность изготовления")
-        p.recipe-legend Выберите плитку. Материалы и оборудование подбираются автоматически; стоимость появится в панели справа.
         .recipe-tiles
           .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
             button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading || Boolean(entry.locked_reasons.length)" @click="changeRecipe(entry.id)")
@@ -137,7 +142,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
               p(v-for="reason in entry.locked_reasons" :key="reason") {{ reason }}
               p Выполните указанные условия и обновите мастерскую.
         p(v-if="!filteredRecipes.length") Рецептов по этому запросу нет.
-      aside.craft-command(aria-label="Изготовление выбранного предмета" aria-live="polite")
+      world-panel.craft-command(as="aside" aria-label="Изготовление выбранного предмета" aria-live="polite")
         world-quota-notice(v-if="state.quota" :quota="state.quota" :requested="quantity ?? 1" :server-time="state.server_time")
         template(v-if="selectedRecipe")
           .selected-heading
@@ -153,7 +158,9 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
                 span {{ material.have }} / {{ material.quantity }}
             p.craft-summary
               span(:class="{ missing: !displayedTerms.output.fits }" :title="displayedTerms.output.name") ×{{ displayedTerms.output.quantity }}
-              span +{{ displayedTerms.experience }} XP
+              span
+                font-awesome-icon(icon="star" aria-hidden="true")
+                |  +{{ displayedTerms.experience }} XP
               span {{ state.storages.find(s => s.id === output)?.name }}
             p.missing(v-for="reason in (calculating || waitingForPreview ? [] : displayedTerms.reasons)" :key="reason") {{ reason }}
           template(v-else)
@@ -162,6 +169,8 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
           n-button(v-if="pending" :theme-overrides="actionTheme" type="primary" block :loading="busy" :disabled="busy || loading" @click="retryPending") Проверить предыдущее действие
           n-button(v-else :theme-overrides="actionTheme" type="primary" block :loading="busy || calculating || waitingForPreview || loading" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft")
+            template(#icon)
+              font-awesome-icon(icon="hammer" aria-hidden="true")
             | {{ displayedTerms ? 'Изготовить' : calculating || waitingForPreview || loading ? 'Рассчитываем…' : 'Изготовление недоступно' }}
             world-credits(v-if="displayedTerms" :value="displayedTerms.price" cost)
           n-alert.craft-result(v-if="notice" type="success" role="status")
@@ -172,8 +181,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
               p(v-if="lastResult.price !== '0.0000'") Кредиты: #[world-credits(:value="lastResult.price")]
               p Опыт: +{{ lastResult.experience }} XP
           n-button(:theme-overrides="actionTheme" v-if="error && !calculation" :disabled="blocked" @click="preview") Повторить расчёт
-          details.craft-settings
-            summary Материалы, инструменты и место результата
+          world-disclosure.craft-settings(label="Материалы и оборудование" icon="toolbox")
             label Источники материалов — по порядку
               n-select(v-model:value="sources" :options="storageOptions" multiple :disabled="busy || loading || Boolean(pending)" placeholder="До 20 хранилищ")
             label Куда положить результат
@@ -185,25 +193,42 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
         p(v-else) Выберите рецепт для изготовления.
 </template>
 <style scoped>
-.recipe-filters { display: grid; gap: .6rem; }
-.workspace { display: grid; gap: 1.25rem; max-width: 1320px; padding-block: 1.5rem 3rem; }
-.workspace-navigation { padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
-.workspace-section-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }.recipe-search { width: min(55%, 22rem); }.workspace-eyebrow { color: var(--primary); text-transform: uppercase; font-size: .72rem; letter-spacing: .1em; font-weight: 700; }
-.workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1rem; align-items: start; }
-.recipe-catalog { min-width: 0; padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }.recipe-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: .85rem; padding: 3px; }
-.recipe-tile { display: grid; gap: .4rem; justify-items: start; align-content: start; min-height: 145px; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; }.recipe-tile > svg { font-size: 1.7rem; color: var(--primary); }.recipe-tile span, .recipe-tile small { font-size: .75rem; color: var(--text-muted); }.recipe-tile.ready span { color: var(--success, #249653); }.recipe-tile.selected { outline: 2px solid var(--primary); background: var(--primary-soft); }.recipe-tile:focus-visible { outline: 2px solid var(--primary); }.recipe-tile:disabled { cursor: default; opacity: .6; }
-.craft-command { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--bg-surface); position: sticky; top: 1rem; }.craft-command p, .selected-heading h2 { margin: 0; }.selected-heading { display: flex; align-items: center; gap: .6rem; }.selected-heading h2 { font-size: 1.2rem; }.selected-heading > svg { color: var(--primary); font-size: 1.6rem; }
-.material-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }.material-tile { display: grid; gap: .3rem; padding: .6rem; border: 1px solid var(--border); border-radius: .4rem; font-size: .8rem; }.craft-settings summary { cursor: pointer; color: var(--text-muted); }.craft-settings label, .craft-settings p { margin-top: .7rem; }
-@media(max-width: 760px) { .workspace-layout { grid-template-columns: 1fr; }.craft-command { position: static; }.recipe-tiles { max-height: 45vh; overflow: auto; padding: 3px; } }
-.workspace label { display: grid; gap: .4rem; }
-.craft-command > .n-button { margin-block: .3rem; }.craft-settings { padding-top: .85rem; border-top: 1px solid var(--border); }.craft-command { padding: 1.25rem; gap: 1rem; top: calc(var(--site-header-height, 0px) + 1rem); }
-.recipe-tile.ready { background: linear-gradient(135deg, rgba(54, 173, 106, .13), transparent 85%), var(--bg-surface); }
-.recipe-tile.shortage { background: linear-gradient(135deg, rgba(208, 48, 80, .10), transparent 85%), var(--bg-surface); }
-.recipe-tile.locked { background: repeating-linear-gradient(135deg, transparent 0 7px, rgba(128,128,128,.09) 7px 14px), var(--bg-surface); }
-.recipe-tile.selected { outline: none; border-color: var(--border); }
-.recipe-legend { color: var(--text-muted); margin-block: .75rem 1rem; line-height: 1.5; }
+ .workspace { display: grid; gap: 1rem; max-width: 1320px; padding-block: 1rem 3rem; }
+.workspace-navigation { min-width: 0; padding: .25rem; border-bottom: 1px solid var(--border); }
+.workspace-layout { display: grid; gap: 1rem; align-items: start; min-width: 0; }
+.recipe-catalog { display: grid; gap: .75rem; }
+.recipe-search { width: 100%; }
+.recipe-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: 3px; max-height: 24rem; max-height: min(52svh, 28rem); overflow-y: auto; scrollbar-width: thin; }
+.recipe-tile-wrap { position: relative; min-width: 0; }
+.recipe-tile { display: grid; gap: .4rem; justify-items: start; align-content: start; width: 100%; height: 100%; min-height: 8rem; padding: .85rem; border: 1px solid var(--border); border-radius: .7rem; background: transparent; color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.4; transition: border-color 160ms ease, background-color 160ms ease; }
+.recipe-tile > svg { font-size: 1.3rem; color: var(--text-muted); }
+.recipe-tile span, .recipe-tile small { font-size: .8125rem; color: var(--text-muted); }
+.recipe-tile:hover:not(:disabled) { background: var(--bg-surface-2, #242424); }
+.recipe-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.recipe-tile.selected > svg { color: var(--primary); }
+.recipe-tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.recipe-tile:disabled { cursor: default; color: var(--text-muted); }
+.recipe-tile.locked > svg { margin-right: 2rem; }
+.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .15rem; right: .15rem; z-index: 1; }
+.craft-command { display: grid; gap: 1rem; }
+.craft-command p, .selected-heading h2 { margin: 0; }
+.selected-heading { display: flex; align-items: center; gap: .5rem; }
+.selected-heading h2 { min-width: 0; flex: 1; font-size: 1.05rem; overflow-wrap: anywhere; }
+.selected-heading > svg { color: var(--text-muted); font-size: 1.25rem; }
+.selected-heading .batch-count { width: 6.5rem; flex: 0 0 6.5rem; }
+.material-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.material-tile { display: grid; grid-template-columns: auto 1fr; gap: .35rem .5rem; padding: .65rem; border-radius: .5rem; background: var(--bg-surface-2, #242424); font-size: .8125rem; }
+.material-tile > svg { color: var(--text-muted); }.material-tile > strong { overflow-wrap: anywhere; }.material-tile > span { grid-column: 2; }
+.workspace label { display: grid; gap: .4rem; font-size: .875rem; }
+.craft-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .75rem; font-size: .875rem; color: var(--text-muted); }
+.craft-summary > span:last-child { overflow-wrap: anywhere; }
 .missing { color: var(--error, #d03050); font-weight: 600; }
-.selected-heading h2 { min-width: 0; flex: 1; overflow-wrap: anywhere; }.selected-heading .batch-count { width: 7rem; flex: 0 0 7rem; }.craft-summary { display: flex; align-items: baseline; gap: .4rem; font-size: .8rem; }.craft-summary > span + span::before { content: '·'; margin-right: .4rem; }.craft-summary > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media(max-width: 620px) { .workspace-section-heading { gap: .5rem; }.recipe-search { width: 55%; }.recipe-catalog, .craft-command { padding: 1rem; } }
-.recipe-tile-wrap { position: relative; min-width: 0; }.recipe-tile-wrap > .recipe-tile { width: 100%; height: 100%; padding-right: 1.9rem; }.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .4rem; right: .4rem; z-index: 1; }.craft-result p { margin-top: .35rem; }.craft-command :deep(.world-credits) { margin-left: .5rem; }
+.craft-result p { margin-top: .35rem; }.craft-command :deep(.world-credits) { margin-left: .5rem; }
+@media(min-width: 760px) {
+  .workspace-layout { grid-template-columns: minmax(0, 1fr) minmax(290px, 350px); }
+  .craft-command { position: sticky; top: calc(var(--site-header-height, 0px) + 1rem); }
+  .recipe-tiles { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); max-height: none; overflow: visible; }
+}
+@media(min-width: 1100px) { .recipe-catalog { grid-template-columns: minmax(0, 1fr) minmax(16rem, 45%); align-items: center; }.recipe-catalog > :not(.recipe-heading):not(.recipe-search) { grid-column: 1 / -1; } }
+@media(prefers-reduced-motion: reduce) { .recipe-tile { transition: none; } }
 </style>

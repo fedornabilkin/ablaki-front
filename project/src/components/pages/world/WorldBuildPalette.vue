@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
+
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
@@ -60,8 +62,7 @@ onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
 section.build-palette(v-if="loading || choices.length || error" aria-label="Доступные объекты")
-  .palette-heading
-    h3 Можно построить здесь
+  world-section-heading.palette-heading(title="Постройки" icon="house" level="h3")
     world-help-hint(label="Как начать строительство")
       p Выберите свободную открытую ячейку на карте, затем объект.
       p Цена списывается из бюджета текущего объекта. При нехватке кредитов можно добавить разницу с личного баланса. Материалы нужны отдельно; труд владельца бесплатный.
@@ -94,8 +95,9 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
 </template>
 <style scoped>
 .placement-notice { margin-bottom: 1rem; }
-.build-tile:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
-.build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .4rem; top: .4rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { padding-right: 1.3rem; }
+
+.build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .15rem; top: .15rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { overflow-wrap: anywhere; font-size: .875rem; }.build-tile > svg { margin-right: 2rem; }
 .palette-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }
-.build-palette { margin-top: 1rem; }.build-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }.build-tile-wrap { display: grid; }.build-tile { display: grid; gap: .4rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; width: 100%; }.build-tile:hover { border-color: var(--primary); }.build-tile:disabled { opacity: .55; cursor: default; }.build-tile svg { color: var(--primary); font-size: 1.4rem; }.build-tile small, .build-tile span { color: var(--text-muted); font-size: .8rem; }
+.build-palette { margin-top: 1rem; }.build-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }.build-tile-wrap { display: grid; }.build-tile { display: grid; gap: .4rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; width: 100%; }.build-tile:hover { border-color: var(--primary); }.build-tile:disabled { opacity: .55; cursor: default; }.build-tile svg { color: var(--text-muted); font-size: 1.4rem; }.build-tile small, .build-tile span { color: var(--text-muted); font-size: .8rem; }
+@media(min-width: 760px) { .build-tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
 </style>

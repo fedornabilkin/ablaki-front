@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
@@ -80,8 +81,7 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 </script>
 <template lang="pug">
 section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-label="Продукция склада" :aria-busy="loading")
-  .harvest-heading
-    component(:is="embedded ? 'h4' : 'h2'") {{ embedded ? 'Ресурсы мини-склада' : state?.owned_by_me ? 'Вещи на складе' : 'Продукция склада' }}
+  world-section-heading.harvest-heading(icon="box" :level="embedded ? 'h3' : 'h2'" :title="embedded ? 'Ресурсы мини-склада' : state?.owned_by_me ? 'Вещи на складе' : 'Продукция склада'")
     world-help-hint(label="Хранение и покупка ресурсов")
       p Покупки поступают в рюкзак, оплата — родительскому объекту склада.
       p(v-if="state?.npc_supply") Здесь продаётся сырьё, добытое игроками. Выручка возвращается в бюджеты стартовых объектов NPC для оплаты работы.
@@ -136,8 +136,8 @@ section.harvest-panel(:class="{ 'harvest-panel--embedded': embedded }" aria-labe
 </template>
 <style scoped>
 .harvest-panel { display: grid; gap: .75rem; min-width: 0; padding: 1.25rem; }.harvest-panel--embedded { padding: 0; }.harvest-panel p, .harvest-cell small { color: var(--text-muted); }
-.harvest-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; }.harvest-cell { display: grid; gap: .5rem; align-content: start; min-height: 8rem; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--bg-surface); color: var(--text); cursor: pointer; }.harvest-cell.selected { outline: 2px solid var(--primary); }.harvest-cell svg { font-size: 1.5rem; color: var(--primary); }.harvest-cell span, .harvest-cell small { font-size: .8rem; }.harvest-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }.harvest-actions h3 { flex-basis: 100%; }.harvest-actions label { display: grid; gap: .4rem; max-width: 12rem; }
-@media(max-width: 650px) { .harvest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.harvest-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }.harvest-cell { display: grid; gap: .5rem; align-content: start; min-height: 8rem; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--bg-surface); color: var(--text); cursor: pointer; }.harvest-cell.selected { outline: 2px solid var(--primary); }.harvest-cell svg { font-size: 1.3rem; color: var(--text-muted); }.harvest-cell span, .harvest-cell small { font-size: .8rem; }.harvest-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }.harvest-actions h3 { flex-basis: 100%; }.harvest-actions label { display: grid; gap: .4rem; max-width: 12rem; }
+@media(min-width: 760px) { .harvest-grid { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); } }
 .harvest-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 .harvest-actions h3 { grid-column: 1 / -1; margin: 0; }
 .harvest-action-block { display: grid; align-content: start; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .5rem; min-width: 0; }

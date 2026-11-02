@@ -7,9 +7,9 @@ const props = withDefaults(defineProps<{ nodeId?: number; manufacturing?: boolea
 const route = useRoute();
 const links = computed(() => [
   ...workspaceSections.map(section => ({ label: section.title, icon: section.icon, to: { path: `/world/workspace/${section.id}`, query: workspaceQuery(props.nodeId) }, active: route.meta.workspaceSection === section.id })),
-  ...(props.nodeId && props.showManufacturing ? [{ label: 'Изготовление в этом объекте', icon: 'hammer', to: `/world/workspace/${props.nodeId}`, active: Boolean(props.manufacturing) }] : []),
+  ...(props.nodeId && props.showManufacturing ? [{ label: 'Изготовление', icon: 'hammer', to: `/world/workspace/${props.nodeId}`, active: Boolean(props.manufacturing) }] : []),
 ]);
 </script>
 <template lang="pug">
-section-nav.workspace-sections(label="Разделы мастерской" :items="links")
+section-nav.workspace-sections(label="Разделы мастерской" :items="links" compact)
 </template>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
-import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldNeutralButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -54,9 +55,11 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-economy
-  .finance-toolbar(v-if="state?.balances")
-    h3 Счета объекта
-    n-button(:theme-overrides="worldActionButtonTheme" size="small" :loading="loading" :disabled="busy" @click="load") Обновить
+  world-section-heading.finance-toolbar(v-if="state?.balances" title="Счета объекта" icon="coins" level="h3")
+    n-button(:theme-overrides="worldNeutralButtonTheme" size="small" :loading="loading" :disabled="busy" @click="load")
+      template(#icon)
+        font-awesome-icon(icon="rotate" aria-hidden="true")
+      | Обновить
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка счетов")
   template(v-else-if="state")

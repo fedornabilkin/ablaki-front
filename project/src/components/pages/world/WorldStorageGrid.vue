@@ -26,26 +26,26 @@ const exposure: Record<string, string> = { outdoor: 'На улице', covered: 
         button.storage-cell(type="button" :data-storage="view.storage.id" :data-position="cell.position" :data-drop="(cell.available && destinations.includes(cell.position)) ? 'true' : undefined" :class="{ selected: cell.item?.id === selected, locked: !cell.available, purchase: cell.purchase, occupied: !!cell.object, destination: (cell.available && destinations.includes(cell.position)), dragging: dragging === cell.item?.id, 'drop-target': target === `${view.storage.id}:${cell.position}` }" :disabled="blocked || (!cell.item && (!cell.available || !!cell.object))" :aria-pressed="Boolean(cell.item && selected === cell.item.id)" :aria-label="`${cell.item ? cell.item.name + ', ' + cell.item.quantity + ' шт.' : cell.object?.label || 'Пустое место'}, ячейка ${cell.position}. ${cell.object ? 'Недоступно для размещения' : cell.purchase ? 'К покупке' : cell.available ? 'Доступна' : 'Закрыта'}`" @click="emit('choose', cell.position)" @pointerdown="emit('down', $event, cell.position)" @pointermove="emit('move', $event)" @pointerup="emit('up', $event)" @pointercancel="emit('cancel')" @lostpointercapture="emit('cancel')")
           item-cell-content(v-if="cell.item || !cell.available" :icon="cell.item?.icon || (cell.object ? nodeIcons[cell.object.type] : cell.purchase ? 'bag-shopping' : 'lock')" :quantity="cell.item?.quantity" :marker="cell.position" :name="cell.item?.name || cell.object?.label || (cell.purchase ? 'К покупке' : 'Закрыто')")
           strong.cell-price(v-if="cell.purchase && cell.price !== null") #[world-credits(:value="cell.price")]
-          small.cell-state(v-if="cell.item || !cell.available") {{ cell.object ? 'Недоступно для размещения' : cell.purchase ? `${cell.point?.x}, ${cell.point?.y}` : !cell.available ? (cell.item ? 'Можно забрать' : 'Недоступно') : cell.exposure ? exposure[cell.exposure] : 'В наличии' }}
+          small.cell-state(v-if="!cell.available || cell.exposure") {{ cell.object ? 'Недоступно для размещения' : cell.purchase ? `${cell.point?.x}, ${cell.point?.y}` : !cell.available ? (cell.item ? 'Можно забрать' : 'Недоступно') : cell.exposure ? exposure[cell.exposure] : 'В наличии' }}
       slot(v-if="cell.item && cell.item.id === selected && !dragging" name="selected-item")
     slot(v-if="page === pages" name="after-cells")
   router-link(v-if="context && cells.some(cell => cell.purchase)" :to="`/world/nodes/${context.map.node_id}#map`") Купить ячейки на карте
   nav.cell-pages(v-if="pages > 1" aria-label="Страницы ячеек")
-    button.world-action(type="button" :disabled="page <= 1 || blocked" @click="page--") ← Назад
+    button(type="button" :disabled="page <= 1 || blocked" @click="page--") ← Назад
     span {{ page }} / {{ pages }}
-    button.world-action(type="button" :disabled="page >= pages || blocked" @click="page++") Далее →
+    button(type="button" :disabled="page >= pages || blocked" @click="page++") Далее →
 </template>
 <style scoped>
-.storage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: .45rem; padding: 3px; }
-.storage-cell { display: flex; flex-direction: column; gap: .4rem; min-height: 100px; min-width: 0; padding: .55rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--bg-base); color: var(--text); text-align: left; cursor: pointer; touch-action: none; user-select: none; }
+.storage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: 3px; }
+.storage-cell { display: flex; flex-direction: column; gap: .4rem; min-height: 6.5rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--bg-base); color: var(--text); text-align: left; cursor: pointer; touch-action: none; user-select: none; }
 .cell-top { display: flex; justify-content: space-between; gap: .3rem; align-items: center; }
 .cell-top svg { color: var(--primary); font-size: 1.25rem; }
-.cell-top strong, .cell-state { font-size: .7rem; }.cell-name { font-size: .8rem; overflow-wrap: anywhere; }.cell-state { margin-top: auto; color: var(--text-muted); }
-.storage-cell.selected { background: var(--primary-soft); }.storage-cell.destination { border-style: dashed; border-color: var(--primary); }
+.cell-top strong, .cell-state { font-size: .8125rem; }.cell-name { font-size: .8rem; overflow-wrap: anywhere; }.cell-state { margin-top: auto; color: var(--text-muted); }
+.storage-cell.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }.storage-cell.destination { border-style: dashed; border-color: var(--primary); }
 .storage-cell.occupied:disabled { opacity: 1; cursor: default; }.storage-cell.occupied .cell-state { color: var(--text-muted); }
-.storage-cell.purchase:disabled { border-color: var(--primary); background: var(--primary-soft); opacity: 1; }.cell-price { color: var(--primary); font-size: .85rem; }
+.storage-cell.purchase:disabled { border-style: dashed; opacity: 1; }.cell-price { color: var(--primary); font-size: .85rem; }
 .storage-cell.drop-target { outline: 3px solid var(--primary); background: var(--primary-soft); }.storage-cell.dragging { opacity: .45; }.storage-cell.locked { background: var(--bg-surface); border-style: solid; }.storage-cell:focus-visible { outline: 2px solid var(--primary); }.storage-cell:disabled { cursor: default; opacity: .6; }
-.cell-pages { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }.cell-pages button { padding: .4rem; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .3rem; }
-.storage-cell.locked:disabled { background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgba(128,128,128,.09) 7px 14px); }
+.cell-pages { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }.cell-pages button { min-height: 2.75rem; padding: .4rem; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .3rem; }
+@media(min-width: 760px) { .storage-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); } }
 @media(pointer: coarse) { .storage-cell { touch-action: pan-y; } }
 </style>

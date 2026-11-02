@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
+
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
-import { worldActionButtonTheme, worldDangerButtonTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldDangerButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton } from 'naive-ui';
 import { needsPersonalTopUp } from '@/entities/world/credits';
@@ -126,8 +128,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; clear
 </script>
 <template lang="pug">
 section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prevent.stop="dropSeed")
-  .cultivation-heading
-    h2 {{ !state || cycle ? 'Выращивание' : state.dug ? 'Грядка готова к посадке' : 'Подготовка земли' }}
+  world-section-heading.cultivation-heading(icon="seedling" :title="!state || cycle ? 'Выращивание' : state.dug ? 'Грядка готова к посадке' : 'Подготовка земли'")
     world-help-hint(label="Как выращивать урожай")
       p Вскопайте землю, посадите семена и следите за сроками полива и сбора.
       p Семена, вода и лопата — из рюкзака. Урожай попадёт в мини-склад, а при его отсутствии — в рюкзак.
@@ -172,11 +173,11 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
       n-alert(closable v-else-if="cycle.water_missed" type="warning") Полив пропущен. Урожай уменьшен вдвое; рост продолжается.
       n-alert(closable v-if="cycle.event_loss_bps" type="warning") Погодные события уменьшили урожай на {{ cycle.event_loss_bps / 100 }}%. Защита теплицы уже учтена.
       .cultivation-metrics
-        n-button.cultivation-timer.harvest-timer(:theme-overrides="worldActionButtonTheme" :type="primaryAction === 'harvest' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'harvest' || !ready" @click="execute")
+        n-button.cultivation-timer.harvest-timer(:theme-overrides="worldNeutralButtonTheme" :type="primaryAction === 'harvest' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'harvest' || !ready" @click="execute")
           .timer-label
             span Собрать
             strong {{ now < cycle.ready_at ? countdown(cycle.ready_at - now) : cycle.state === 'expired' ? 'Урожай погиб' : 'Урожай созрел' }}
-        n-button.cultivation-timer.water-timer(v-if="cycle.water_due_at && cycle.water_due_at < cycle.ready_at" :theme-overrides="worldActionButtonTheme" :type="primaryAction === 'water' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'water' || !ready" @click="execute")
+        n-button.cultivation-timer.water-timer(v-if="cycle.water_due_at && cycle.water_due_at < cycle.ready_at" :theme-overrides="worldNeutralButtonTheme" :type="primaryAction === 'water' ? 'primary' : 'default'" :disabled="locked || primaryAction !== 'water' || !ready" @click="execute")
           .timer-label
             span Полить
             strong {{ waterTimer }}
@@ -215,16 +216,16 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
 <style scoped>
 .cultivation-panel { display: grid; gap: .75rem; min-width: 0; }
 .cultivation-panel h2 { margin: 0; font-size: 1rem; }.cultivation-panel h3 { margin: 0; font-size: .9rem; }
-.cultivation-panel p { margin: 0; font-size: .8rem; }
+.cultivation-panel p { margin: 0; font-size: .875rem; }
 .cultivation-dig { display: flex; align-items: center; gap: .5rem; }
 .crop-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
-.crop-tile { display: grid; align-content: start; gap: .35rem; min-width: 0; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }
-.crop-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: var(--bg-accent); }
-.crop-tile > svg { font-size: 1.1rem; color: var(--primary); }.crop-tile strong { font-size: .8rem; line-height: 1.35; overflow-wrap: anywhere; }.crop-tile small { font-size: .75rem; color: var(--text-muted); }
-.crop-summary, .cultivation-resources { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; font-size: .75rem; color: var(--text-muted); }.crop-summary { justify-content: space-between; }
-.cultivation-cost { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--border); font-size: .8rem; }
+.crop-tile { display: grid; align-content: start; gap: .35rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }
+.crop-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: transparent; }
+.crop-tile > svg { font-size: 1.1rem; color: var(--text-muted); }.crop-tile strong { font-size: .875rem; line-height: 1.35; overflow-wrap: anywhere; }.crop-tile small { font-size: .8125rem; color: var(--text-muted); }
+.crop-summary, .cultivation-resources { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; font-size: .8125rem; color: var(--text-muted); }.crop-summary { justify-content: space-between; }
+.cultivation-cost { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--border); font-size: .875rem; }
 .cultivation-heading, .cultivation-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
-.cultivation-metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; align-items: stretch; }.cultivation-timer { height: auto; min-height: 3.5rem; padding: .5rem; }.timer-label { display: grid; gap: .2rem; text-align: center; white-space: normal; }.timer-label strong { font-size: .9rem; font-variant-numeric: tabular-nums; }.timer-label small { font-size: .7rem; }.harvest-timer { grid-column: 1; grid-row: 1; }.water-timer { grid-column: 1; grid-row: 2; }.cultivation-death-timer { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .3rem; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; background: #e66a6808; }.cultivation-death-timer span { font-size: .75rem; color: var(--text-muted); }.cultivation-death-timer strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.cultivation-metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; align-items: stretch; }.cultivation-timer { height: auto; min-height: 3.5rem; padding: .5rem; }.timer-label { display: grid; gap: .2rem; text-align: center; white-space: normal; }.timer-label strong { font-size: .9rem; font-variant-numeric: tabular-nums; }.timer-label small { font-size: .7rem; }.harvest-timer { grid-column: 1; grid-row: 1; }.water-timer { grid-column: 1; grid-row: 2; }.cultivation-death-timer { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .3rem; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; background: transparent; }.cultivation-death-timer span { font-size: .8125rem; color: var(--text-muted); }.cultivation-death-timer strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
 p { color: var(--text-muted); }
 .missing { color: #e66a68; }
 </style>

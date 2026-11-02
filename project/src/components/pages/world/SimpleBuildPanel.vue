@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
@@ -141,8 +142,7 @@ onScopeDispose(() => { disposed = true; epoch++; halt(); clearInterval(animation
 </script>
 <template lang="pug">
 section.build-information(v-if="resultVisible || !project || project.status === 'building' || error || runner.error.value || uncertain" aria-label="Строительство")
-  .build-heading
-    h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
+  world-section-heading.build-heading(:title="repairing ? 'Ремонт' : 'Строительство'" icon="hammer" level="h3")
     world-help-hint(label="Условия строительных работ")
       p Бюджет помощников: #[world-credits(:value="project?.labor_budget ?? '0'")] . Владелец работает бесплатно.
       p Время учитывается, пока эта страница открыта и есть связь с сервером.

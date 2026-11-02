@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NSpin } from 'naive-ui';
@@ -41,7 +42,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-shelter#shelter(v-if="!existingOnly || state?.deployment")
-  h2 Шалаш и ночлег
+  world-section-heading(title="Шалаш и ночлег" icon="tent")
   p Один бесплатный шалаш на аккаунт. Он даёт одно место ночлега, но не защищает станции и сундуки. Установка не занимает площадь капитальных построек.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить состояние
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}

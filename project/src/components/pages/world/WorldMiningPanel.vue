@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSelect, NCheckbox, NSpin } from 'naive-ui';
@@ -104,8 +105,7 @@ onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 </script>
 <template lang="pug">
 section.mining-panel(aria-label="Получение ресурсов")
-  .mining-heading
-    h3 Получение ресурсов
+  world-section-heading.mining-heading(title="Получение ресурсов" icon="mountain" level="h3")
     world-help-hint(label="Как учитывается добыча")
       p Работа учитывается при открытой странице и связи с сервером; после обрыва — не более 60 секунд. Выдачу ресурсов подтверждает сервер.
       p(v-if="selected?.cooldown_seconds") Восстановление источника после получения: {{ formatDuration(selected.cooldown_seconds) }}.

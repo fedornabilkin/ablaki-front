@@ -25,20 +25,22 @@ const cells = computed(() => inventoryCells(props.slots, props.count));
   slot
 </template>
 <style scoped>
-.inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: .45rem; }
-.inventory-cell { min-width: 0; min-height: 100px; border-radius: .4rem; overflow: hidden; }
+.inventory-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.inventory-cell { min-width: 0; min-height: 6.5rem; border-radius: .4rem; overflow: hidden; }
 .slot-item, .empty-slot { box-sizing: border-box; width: 100%; height: 100%; border-radius: .4rem; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text); }
-.slot-item { position: relative; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: .4rem; padding: .55rem; cursor: grab; touch-action: none; user-select: none; overflow: hidden; }
+.slot-item { position: relative; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: .4rem; padding: .75rem; cursor: grab; touch-action: none; user-select: none; overflow: hidden; }
 .slot-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .15rem; min-width: 0; }
 .slot-top > svg { font-size: .85rem; color: #d6b685; flex-shrink: 0; }
 .slot-name { font-size: .76rem; font-weight: 600; line-height: 1.15; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .slot-count { font-size: .65rem; line-height: 1; }
 .slot-item.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 .slot-item.dragging { opacity: .4; }.empty-slot { background: #ffffff03; border-style: dashed; cursor: pointer; }
-.locked { opacity: .7; }.locked .empty-slot { color: #a98c61; background: #322c23; }
+.locked { opacity: .7; }.locked .empty-slot { color: var(--text-muted); background: var(--bg-surface); }
 .slot-item .slot-lock { position: absolute; left: .2rem; top: 1.1rem; font-size: .5rem; }
 .matching .slot-item { background: #3b3523; box-shadow: inset 0 0 0 1px #d6b68580; }
-.drop-target { outline: 2px solid #4ade80; }.drop-target .slot-item, .drop-target .empty-slot { background: #203329; }
+.drop-target { outline: 2px solid var(--primary); }.drop-target .slot-item, .drop-target .empty-slot { background: var(--primary-soft); }
 button:disabled { cursor: default; opacity: .6; }button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
+@media(min-width: 760px) { .inventory-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); } }
+@media(pointer: coarse) { .slot-item { touch-action: pan-y; } }
 </style>

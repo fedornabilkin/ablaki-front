@@ -189,10 +189,10 @@ watch(() => props.state, cancel);
 @media(max-width: 850px) {
   .craft-inventory { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .inventory-scroll :deep(.inventory-grid) { max-height: 55dvh; overflow: auto; padding: 3px; }
-  .inventory-details { position: sticky; top: calc(var(--site-header-height, 60px) + 8px); }
-  .chest-panel { order: -1; }.selected-item, .chest-panel { padding: .4rem; gap: .5rem; }
+  .inventory-details { position: static; }
+  .chest-panel { order: -1; }.selected-item, .chest-panel { padding: 1rem; gap: .75rem; }
   .durability-label { display: none; }.chest-header { font-size: .75rem; gap: .3rem; margin: 0; }
-  .mobile-transfer-hint { display: block; }.chest-panel .mobile-transfer-hint { font-size: .65rem; }
+  .mobile-transfer-hint { display: block; }.chest-panel .mobile-transfer-hint { font-size: .8125rem; }
   .use-item { flex-direction: column; }.inventory-status { font-size: .75rem; }
 }
 </style>

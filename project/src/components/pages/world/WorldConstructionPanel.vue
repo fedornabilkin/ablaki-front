@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme, worldDangerButtonTheme } from '@/entities/world/theme';
 import { formatCredits } from '@/entities/world/credits';
@@ -45,7 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-construction#construction
-  h2 Строительство
+  world-section-heading(title="Строительство" icon="hammer")
   p Материалы и кредиты зарезервированы до завершения. Ночлег и оборудование в новой постройке станут доступны после окончания работ.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить стройки
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}

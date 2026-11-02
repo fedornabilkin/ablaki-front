@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import { loadKitchen } from '@/services/api/worldKitchen';
@@ -32,8 +33,7 @@ onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
 section.kitchen-panel(aria-label="Полевая кухня")
-  .kitchen-heading
-    h3 Полевая кухня
+  world-section-heading.kitchen-heading(title="Полевая кухня" icon="utensils" level="h3")
     world-help-hint(label="Расписание питания")
       p Завтрак 06:00–10:00 · обед 12:00–16:00 · ужин 18:00–22:00, время Москвы.
       p Один приём пищи в каждом окне на всех кухнях мира. Выберите готовую порцию из рюкзака; здесь она восстанавливает больше здоровья. Ограничение повторов еды из рюкзака не применяется, пищевое расстройство и ночная болезнь сохраняются до выздоровления.

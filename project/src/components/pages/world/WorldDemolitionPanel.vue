@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NCheckbox, NSpin } from 'naive-ui';
@@ -35,7 +36,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-demolition#demolition
-  h2 Снос постройки
+  world-section-heading(title="Снос постройки" icon="hammer")
   p Перед сносом заберите имущество, отмените ночлег и завершите финансовые обязательства. Бюджеты и казны здания и комнаты должны быть пустыми.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить условия сноса
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}

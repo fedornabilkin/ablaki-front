@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
@@ -46,7 +47,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 <template lang="pug">
 section.world-orders#settlement-orders
   world-quota-notice(v-if="state?.quota" :quota="state.quota")
-  h2 Заказы поселения
+  world-section-heading(title="Заказы поселения" icon="clipboard-check")
   world-help-hint(label="Как работают заказы поселения")
     p Заказ задаёт цену и предельное количество сырья. При сдаче сырьё списывается из рюкзака, а выплата поступает в казну вашей стоянки; выполнить заказ сверх остатка нельзя.
   p Сдавайте собранное сырьё и получайте оплату в казну своей стоянки. Количество и бюджет каждого заказа ограничены.

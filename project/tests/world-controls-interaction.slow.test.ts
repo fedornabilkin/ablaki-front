@@ -454,7 +454,8 @@ describe('direct storage controls', () => {
     const view = mount(WorldStoragePanel, () => ({ nodeId: 1, session: 1, writable: true, command: mocks.runner, onChanged: changed }));
     await flushView();
     const cell = (id: number, position: number) => findView(view.root, n => n.props['data-storage'] === id && n.props['data-position'] === position)!;
-    expect(findView(view.root, n => n.props['aria-label'] === 'Левое хранилище')?.children.some(n => viewText(n) === 'Хозсклад · Склад')).toBe(true);
+    const leftPane = findView(view.root, n => n.props['aria-label'] === 'Левое хранилище')!;
+    expect(viewText(findView(leftPane, n => n.tag === 'h3')!)).toContain('Хозсклад · Склад');
     expect(mocks.storage).not.toHaveBeenCalledWith(3);
     expect(cell(2, 50)).toBeDefined();
     cell(1, 2).props.onClick(); await flushView(); cell(2, 1).props.onClick(); await flushView();

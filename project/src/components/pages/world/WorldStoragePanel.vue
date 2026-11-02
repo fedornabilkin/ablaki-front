@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldDisclosure from './WorldDisclosure.vue';
+import WorldPanel from './WorldPanel.vue';
+
 import AppPopover from '@/components/AppPopover.vue';
 import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -200,33 +204,34 @@ onScopeDispose(() => { disposed = true; generation++; targetGeneration++; operat
 </script>
 <template lang="pug">
 section.world-storage(aria-label="Вещи и размещение" @keydown.esc="selected = null; cancelDrag()")
-  .storage-heading(v-if="!embedded")
-    h2 Вещи и размещение
-    router-link.storage-page-link(v-if="!storageId && view" :to="link(view.storage.id)") На страницу хранилища →
+  world-section-heading.storage-heading(v-if="!embedded" title="Вещи и размещение" icon="box")
+    router-link.storage-page-link(aria-label="Открыть страницу хранилища" v-if="!storageId && view" :to="link(view.storage.id)")
+      font-awesome-icon(icon="arrow-right" aria-hidden="true")
+      span Открыть
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   p.storage-status(role="status") {{ transferring ? 'Сохраняем перемещение…' : notice }}
-  p.storage-hint Перетащите вещь в свободную ячейку или на такую же стопку. Можно нажать на предмет, затем на подсвеченное место. Перенос — бесплатно; помещение в сундук расходует его прочность.
+  world-disclosure.storage-hint(label="Как переместить предмет" icon="exchange-alt")
+    p Нажмите на предмет, затем на подсвеченное место. Можно также перетащить вещь в свободную ячейку или на такую же стопку. Перенос бесплатный; помещение в сундук расходует его прочность.
   .storage-panes
-    section.storage-pane(v-for="(panel, index) in panels" :key="index" :aria-label="index === 0 ? 'Левое хранилище' : 'Правое хранилище'")
-      span.storage-eyebrow(v-if="index === 0 && panel.view?.storage.kind === 'placement'") Размещение в объекте
-      h3(v-if="index === 0 && !storageId && panel.view?.storage.kind === 'placement'") Слоты ноды «{{ node?.label || panel.view?.location?.name || nodeId }}»
-      h3(v-else) {{ panel.view?.storage.name || 'Выберите хранилище' }}
-      .storage-choices(v-if="storageId || index === 1 || panel.view?.storage.kind === 'stockpile'" role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
-        app-popover(v-for="header in choices" :key="header.id" trigger="hover" placement="bottom" width="22rem" @update:show="value => { if (value) loadStoragePath(header); }")
-          template(#trigger)
-            span.storage-choice-trigger(@focusin="loadStoragePath(header)")
-              n-button(:theme-overrides="header.id === panel.view?.storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" size="small" :title="`${storageName(header)} · ${header.node_id ? 'объект №' + header.node_id : 'хранилище №' + header.id}`" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="chooseStorage(index, header.id)") {{ storageName(header) }}
-          .storage-choice-path
-            strong {{ storageName(header) }}
-            small {{ header.node_id ? 'Объект №' + header.node_id : 'Хранилище №' + header.id }}
-            p(v-if="!header.node_id") Личное хранилище персонажа.
-            p(v-else-if="pathLoading.includes(header.node_id)") Загружаем расположение…
-            p(v-else-if="pathErrors.includes(header.node_id)") Не удалось загрузить расположение.
-            ol(v-else-if="storagePaths[header.node_id]" aria-label="Расположение хранилища")
-              li(v-for="(ancestor, depth) in storagePaths[header.node_id]" :key="ancestor.id" :style="{ paddingLeft: `${depth * .6}rem` }")
-                span(aria-hidden="true") {{ depth ? '↳ ' : '' }}
-                | {{ ancestor.label }}
-                small №{{ ancestor.id }}
+    world-panel.storage-pane(v-for="(panel, index) in panels" :key="index" :aria-label="index === 0 ? 'Левое хранилище' : 'Правое хранилище'")
+      world-section-heading(level="h3" :icon="panel.view?.storage.kind === 'backpack' ? 'bag-shopping' : panel.view?.storage.kind === 'placement' ? 'map' : 'box'" :title="index === 0 && !storageId && panel.view?.storage.kind === 'placement' ? `Размещение: ${node?.label || panel.view?.location?.name || nodeId}` : panel.view?.storage.name || 'Выберите хранилище'")
+      world-disclosure(v-if="storageId || index === 1 || panel.view?.storage.kind === 'stockpile'" label="Сменить хранилище" icon="exchange-alt")
+        .storage-choices(role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
+          app-popover(v-for="header in choices" :key="header.id" trigger="hover" placement="bottom" width="22rem" @update:show="value => { if (value) loadStoragePath(header); }")
+            template(#trigger)
+              span.storage-choice-trigger(@focusin="loadStoragePath(header)")
+                n-button(:theme-overrides="header.id === panel.view?.storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" size="small" :title="`${storageName(header)} · ${header.node_id ? 'объект №' + header.node_id : 'хранилище №' + header.id}`" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="chooseStorage(index, header.id)") {{ storageName(header) }}
+            .storage-choice-path
+              strong {{ storageName(header) }}
+              small {{ header.node_id ? 'Объект №' + header.node_id : 'Хранилище №' + header.id }}
+              p(v-if="!header.node_id") Личное хранилище персонажа.
+              p(v-else-if="pathLoading.includes(header.node_id)") Загружаем расположение…
+              p(v-else-if="pathErrors.includes(header.node_id)") Не удалось загрузить расположение.
+              ol(v-else-if="storagePaths[header.node_id]" aria-label="Расположение хранилища")
+                li(v-for="(ancestor, depth) in storagePaths[header.node_id]" :key="ancestor.id" :style="{ paddingLeft: `${depth * .6}rem` }")
+                  span(aria-hidden="true") {{ depth ? '↳ ' : '' }}
+                  | {{ ancestor.label }}
+                  small №{{ ancestor.id }}
       .storage-loading(v-if="panel.loading" role="status" aria-label="Загрузка слотов хранилища")
         n-skeleton(v-for="slot in 6" :key="slot" height="100px" :sharp="false")
       template(v-else-if="panel.view")
@@ -254,35 +259,26 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
 <style scoped>
 .world-storage { display: grid; gap: .75rem; min-width: 0; }.storage-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }.storage-heading h2 { margin: 0; }.storage-hint { margin: 0; color: var(--text-muted); font-size: .85rem; }
 .transfer-controls { position: relative; display: grid; gap: .6rem; min-width: 0; width: 100%; color: var(--text); }
-.transfer-item { padding-right: 2rem; }
-.transfer-close { position: absolute; right: -.25rem; top: -.25rem; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: .4rem; background: transparent; color: var(--text-muted); cursor: pointer; }
+.transfer-item { padding-right: 2.75rem; min-height: 2.25rem; }
+.transfer-close { position: absolute; right: -.25rem; top: -.25rem; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: .4rem; background: transparent; color: var(--text-muted); cursor: pointer; }
 .transfer-close:hover { color: var(--text); background: var(--primary-soft); }
 .transfer-close:focus-visible { outline: 2px solid var(--primary); }
 .transfer-close:disabled { cursor: default; opacity: .5; }
 .transfer-quantity { display: flex; align-items: center; gap: .5rem; }.transfer-quantity :deep(.n-input-number) { min-width: 0; flex: 1; }
 .transfer-controls > small { color: var(--text-muted); font-size: .75rem; }
-.storage-panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }.storage-pane { display: grid; align-content: start; gap: .6rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .6rem; }.storage-pane h3 { margin: 0; }.storage-pane label { display: grid; gap: .35rem; }
-.storage-choices { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }.storage-choices :deep(button) { max-width: 100%; height: auto; min-height: 2rem; padding-block: .35rem; }.storage-choices :deep(.n-button__content) { white-space: normal; overflow-wrap: anywhere; }
+.storage-panes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }.storage-pane { display: grid; align-content: start; gap: .6rem; min-width: 0;  }.storage-pane h3 { margin: 0; }.storage-pane label { display: grid; gap: .35rem; }
+.storage-choices { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }.storage-choices :deep(button) { max-width: 100%; height: auto; min-height: 2.75rem; padding-block: .35rem; }.storage-choices :deep(.n-button__content) { white-space: normal; overflow-wrap: anywhere; }
 .storage-choice-trigger { display: inline-flex; min-width: 0; max-width: 100%; }
 .storage-choice-path { display: grid; gap: .35rem; color: var(--text); }.storage-choice-path small { color: var(--text-muted); font-size: .75rem; }.storage-choice-path p { margin: 0; font-size: .8rem; }
 .storage-choice-path ol { list-style: none; margin: .35rem 0 0; padding: 0; }.storage-choice-path li { overflow-wrap: anywhere; font-size: .8rem; }.storage-choice-path li small { margin-left: .4rem; }
-.storage-page-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: .4rem .8rem; border-radius: .375rem; background: var(--primary); color: var(--text-on-acc); font-size: .875rem; }
-.storage-page-link:hover { background: var(--primary-press); color: var(--text-on-acc); }
+.storage-page-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: .4rem .8rem; border-radius: .375rem; gap: .5rem; color: var(--text-muted); font-size: .875rem; }
+.storage-page-link:hover { color: var(--primary); }
 .storage-eyebrow { color: var(--primary); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .storage-loading { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
 .storage-pane { background: var(--bg-surface); }
 .storage-status { min-height: 1.3em; margin: 0; color: var(--text-muted); font-size: .85rem; }
-@media(max-width: 700px) {
-  .storage-panes { grid-template-columns: 1fr; }
-  .storage-pane :deep(.storage-grid) { max-height: min(52vh, 32rem); overflow-y: auto; }
-}
-@media(max-width: 620px) {
-  .world-storage { gap: .6rem; }
-  .storage-heading { flex-wrap: wrap; }
-  .storage-heading h2 { font-size: 1.1rem; }
-  .storage-page-link { min-height: 2.5rem; padding: .3rem .5rem; font-size: .8rem; }
-  .storage-pane { padding: .6rem; gap: .4rem; }
-  .storage-pane h3 { font-size: 1rem; }
-  .storage-status:empty { display: none; }
-}
+@media(min-width: 760px) { .storage-panes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media(max-width: 759px) { .storage-pane :deep(.storage-grid) { max-height: min(52svh, 32rem); overflow-y: auto; } }
+.storage-status:empty { display: none; }
+.storage-hint p { margin: 0; font-size: .875rem; line-height: 1.5; color: var(--text-muted); }
 </style>

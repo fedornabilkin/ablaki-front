@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
@@ -45,7 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.warehouse-panel
-  h2 Вместимость склада
+  world-section-heading(title="Вместимость склада" icon="box")
   n-alert(closable v-if="error" type="error") {{ error }}
   template(v-if="state")
     p Занято {{ state.used }} из {{ state.capacity }} ячеек. Максимум после расширения: {{ state.limit }}.

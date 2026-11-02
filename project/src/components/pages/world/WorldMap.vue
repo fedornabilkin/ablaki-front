@@ -380,42 +380,42 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-object-tile small { color: var(--text-muted); }
 .world-object-tile.active, .world-object-tile:focus-visible { outline: 2px solid var(--primary); background: var(--primary-soft); }
 .map-location { fill: var(--primary); stroke: var(--bg-base); stroke-width: 2; }
-.map-object { color: var(--primary); cursor: pointer; }
+.map-object { color: var(--text); cursor: pointer; }
 .map-closed { fill: var(--bg-base); }
 .map-grid { fill: none; stroke: var(--border); stroke-width: 1; }
-.map-fog-stripe { stroke: var(--text-muted); stroke-opacity: .22; stroke-width: 3; }
+.map-fog-stripe { stroke: var(--text-muted); stroke-opacity: .06; stroke-width: 3; }
 .map-coordinate { fill: var(--text-muted); font-size: 10px; }
 .map-cell { pointer-events: none; }
-.map-open { fill: var(--primary-soft); stroke: var(--border); }
+.map-open { fill: var(--bg-surface); stroke: var(--border); }
 .map-discovered { fill: var(--bg-surface); stroke: var(--border); }
 .map-price { fill: var(--primary); font-size: 12px; font-weight: 700; }
 .map-selected { fill: var(--primary-soft); fill-opacity: .35; stroke: var(--primary); stroke-width: 3; pointer-events: none; }
-.map-footprint { fill: var(--primary-soft); stroke: var(--primary); }
-.map-object rect { fill: var(--bg-surface); stroke: var(--primary); }
-.map-object.owned rect { fill: var(--primary-soft); }
+.map-footprint { fill: var(--bg-surface-2, #242424); stroke: var(--text-muted); }
+.map-object rect { fill: var(--bg-surface); stroke: var(--text-muted); }
+.map-object.owned rect { fill: var(--bg-surface-2, #242424); }
 .map-footprint.locked { fill: var(--bg-base); stroke: var(--border); stroke-dasharray: 5 3; }
 .map-object.locked { color: var(--text-muted); }
 .map-object.locked rect { fill: var(--bg-base); stroke: var(--border); stroke-dasharray: 4 3; }
 .map-object.locked text { fill: var(--text-muted); }
-.map-object.active rect { stroke-width: 3; }
-.map-object text { fill: var(--primary); pointer-events: none; }
+.map-object.active rect { stroke: var(--primary); stroke-width: 3; fill: var(--primary-soft); }.map-object.active { color: var(--primary); }
+.map-object text { fill: var(--text); pointer-events: none; }
 .map-object-symbol { font-size: 27px; }
 .map-object-label { font-size: 11px; fill: var(--text); }
 .map-equipment-surface { fill: var(--primary-soft); stroke: var(--primary); }
 .map-equipment-icon { color: white; }
 .map-equipment-label { fill: white; }
 .world-map-hint { margin: .55rem 0; color: var(--text-muted); font-size: .8rem; }
-.world-map-inspector { position: relative; display: grid; gap: .75rem; min-height: 13rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-surface); }
+.world-map-inspector { font-size: .875rem; position: relative; display: grid; gap: .75rem; min-height: 4rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--bg-surface); }
 .map-cell-information { position: relative; display: grid; gap: .75rem; min-width: 0; }
 .world-inspector-close:hover { background: var(--primary-soft); color: var(--primary-hover); }
-.world-inspector-close { position: absolute; top: .35rem; right: .45rem; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border: 0; border-radius: .375rem; background: transparent; color: var(--primary); font-size: 1.6rem; cursor: pointer; }
+.world-inspector-close { position: absolute; top: .35rem; right: .45rem; width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border: 0; border-radius: .375rem; background: transparent; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; }
 .world-map-inspector h3, .world-map-inspector p { margin: 0; }
 .world-map-kicker { color: var(--primary); font-size: .8rem; font-weight: 700; }
-.world-selected-heading { display: flex; align-items: center; gap: .5rem; }
+.world-selected-heading { padding-right: 2.75rem; display: flex; align-items: center; gap: .5rem; }
 .world-map-inspector dl { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; margin: 0; }
 .world-map-inspector dt { color: var(--text-muted); }
 .world-map-inspector dd { margin: 0; text-align: right; }
-.world-map-open { display: block; padding: .65rem; border-radius: .4rem; background: var(--primary); color: white; text-align: center; }
+.world-map-open { display: block; padding: .65rem; border-radius: .4rem; border: 1px solid var(--border); color: var(--text); min-height: 2.75rem; text-align: center; }
 .map-total { font-size: 1.5rem; font-weight: 700; }
 @media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; }.world-map-main { display: contents; }.world-map-window { grid-row: 1; }.world-map-inspector { grid-row: 2; }.world-map-placement { grid-row: 3; } }
 </style>

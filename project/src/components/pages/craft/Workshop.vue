@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldDisclosure from '../world/WorldDisclosure.vue';
+import ChoiceButtons from '@/components/ChoiceButtons.vue';
 import AppPopover from '@/components/AppPopover.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
@@ -6,7 +8,7 @@ import { formatCredits } from '@/entities/world/credits';
 import { computed, ref, watch, onMounted, onScopeDispose, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
-import { NAlert, NButton, NInput, NPagination, NModal, NSelect } from 'naive-ui';
+import { NAlert, NButton, NInput, NPagination, NModal } from 'naive-ui';
 import CraftRoadmap from './CraftRoadmap.vue';
 import CraftRecipeDetail from './CraftRecipeDetail.vue';
 import CraftInventory from './CraftInventory.vue';
@@ -123,7 +125,7 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
       world-workspace-nav(:node-id="nodeId")
       n-button.hide-controls(v-if="mapMode" quaternary circle size="small" aria-label="Скрыть управление" title="Скрыть управление" @click="showControls = false")
         font-awesome-icon(icon="eye-slash")
-  aside.skills(v-if="state && (tab === 'recipes' || mapMode)" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
+  aside.skills(v-if="state && mapMode" v-show="showControls || !mapMode" aria-label="Фильтр по ремеслу")
     .skill(v-for="c in state.categories" :key="c.id" :class="{active: category === c.id}")
       app-popover(trigger="hover")
         template(#trigger)
@@ -155,9 +157,9 @@ onScopeDispose(() => { historyRevision++; observer?.disconnect(); window.removeE
         n-button(:loading="slotCommand.busy.value" @click="slotCommand.retry") Проверить результат
       section.workshop-content(v-if="tab === 'recipes'" aria-label="Список рецептов")
         n-input(v-model:value="search" placeholder="Название предмета" aria-label="Поиск рецепта")
-        .recipe-filters
-          n-select(v-model:value="category" :options="[{value: 0, label: 'Все группы'}, ...state.categories.map(c => ({value: c.id, label: c.name}))]" placeholder="Все группы" aria-label="Группа предметов")
-          n-select(v-model:value="availability" :options="availabilityOptions" aria-label="Доступность изготовления")
+        world-disclosure.recipe-filters(label="Фильтры рецептов" icon="list-check" :indicator="category || availability !== 'all' ? 'Выбраны' : undefined")
+          choice-buttons(:model-value="String(category || 0)" :options="[{value: '0', label: 'Все группы', icon: 'cubes'}, ...state.categories.map(c => ({value: String(c.id), label: c.name, icon: craftIcons[c.code] || 'cube'}))]" label="Группа предметов" mobile-icons @update:model-value="category = Number($event)")
+          choice-buttons(v-model="availability" :options="availabilityOptions" label="Доступность изготовления")
         .item-grid
           article.list-recipe(v-for="r in filtered" :key="r.id" :class="{ ready: readyRecipes.has(r.id), locked: r.locked_reasons.length > 0, shortage: !readyRecipes.has(r.id) && !r.locked_reasons.length }")
             font-awesome-icon.recipe-lock(v-if="r.locked_reasons.length" icon="lock" title="Рецепт закрыт")
@@ -207,19 +209,19 @@ app-dialog(icon="cube" v-model:show="showItem" :title="rawItem?.name" :style="{w
     p(v-else) Рецепт этого предмета пока недоступен.
 </template>
 <style scoped lang="scss">
-.recipe-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+.recipe-filters { margin-top: .75rem; }
 .workshop:not(.map-mode) { max-width: 1320px; margin-inline: auto; padding: 1.5rem 12px 3rem; gap: 1.25rem; }
 .workshop .workshop-controls { width: 100%; display: grid; gap: 1rem; }
-.workspace-navigation { display: flex; align-items: start; justify-content: space-between; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
+.workspace-navigation { display: flex; align-items: start; justify-content: space-between; gap: .75rem; min-width: 0; padding: .25rem; border-bottom: 1px solid var(--border); }
 .workshop:not(.map-mode) .workshop-main { padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg-surface); }
 .workshop.map-mode { max-width: none; margin-inline: 0; }
 .workshop.map-mode .workshop-controls { width: min(960px, calc(100% - var(--recipe-width) - 36px)); }
-.workshop .skill-icon, .workshop .item-heading svg { color: var(--primary); }
+.workshop .skill-icon, .workshop .item-heading svg { color: var(--text-muted); }
 .workspace-navigation .hide-controls { position: static; flex-shrink: 0; }
-.list-recipe > a:last-child { display: inline-flex; align-self: start; margin-top: auto; padding: .45rem .65rem; border: 1px solid var(--border); border-radius: .4rem; }
+.list-recipe > a:last-child { display: inline-flex; align-self: start; margin-top: auto; min-height: 2.75rem; align-items: center; padding: .45rem .65rem; border: 1px solid var(--border); border-radius: .4rem; }
 .list-recipe > a:last-child:hover { border-color: var(--primary); background: var(--primary-soft); }
 .history-table { margin-top: 1.25rem; }
-@media(max-width: 760px) { .workshop.map-mode .workshop-controls { width: 100%; }.workshop:not(.map-mode) .workshop-main { padding: 1rem; }.workshop .item-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } }
+@media(max-width: 760px) { .workshop.map-mode .workshop-controls { width: 100%; }.workshop:not(.map-mode) .workshop-main { padding: 1rem; }.workshop .item-grid { gap: .65rem; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .workshop:has(.workshop-main > .workshop-content), .workshop:has(.workshop-main > .craft-inventory) { max-width: 1320px; margin-inline: auto; }
 .workshop:not(:has(.skills)) .workshop-main { grid-column: 1 / 4; }
 .workshop-intro > a { grid-column: 1 / -1; }
@@ -230,7 +232,7 @@ app-dialog(icon="cube" v-model:show="showItem" :title="rawItem?.name" :style="{w
 .skill-numbers { display: flex; gap: .3rem; }
 .workshop-controls { grid-column: 1 / 4; grid-row: 1; min-width: 0; width: min(960px, 100%); }
 .map-mode .workshop-controls { position: absolute; top: 0; left: 12px; width: min(960px, calc(100% - var(--recipe-width) - 36px)); z-index: 2; max-height: 45%; overflow-y: auto; scrollbar-width: thin; }
-.workshop-intro { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 135px; gap: .3rem .6rem; padding: .4rem 2rem .4rem .6rem; border: 1px solid var(--border); border-radius: 0 0 .8rem .8rem; background: linear-gradient(120deg, #34291e, var(--bg-surface) 65%); }
+.workshop-intro { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 135px; gap: .3rem .6rem; padding: .4rem 2rem .4rem .6rem; border: 1px solid var(--border); border-radius: 0 0 .8rem .8rem; background: var(--bg-surface); }
 .intro-heading { grid-column: 1; display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; }.intro-heading h1 { margin: 0; font-size: 1.05rem; }.hide-controls { position: absolute; top: 2px; right: 2px; }.slot-stat { white-space: nowrap; }
 .intro-description { grid-column: 1; margin: 0; color: var(--text-muted); font-size: .8rem; }
 .intro-actions { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }.intro-tools { display: flex; align-items: center; gap: .65rem; margin-left: auto; }
@@ -243,10 +245,8 @@ small { color: var(--text-muted); font-size: .75rem; }.craft-description { max-w
 .restore-controls, .restore-recipe { position: absolute; top: 0; z-index: 3; }.restore-controls { left: 12px; }.restore-recipe { right: 12px; top: 0; }
 .workshop-main { grid-column: 2 / 4; grid-row: 2; display: grid; gap: .75rem; min-width: 0; }.workshop-messages { display: grid; gap: .5rem; }.workshop-messages.floating { position: absolute; z-index: 4; left: 12px; bottom: 12px; max-width: min(440px, calc(100% - 24px)); max-height: 35%; overflow: auto; }
 .workshop-content { min-width: 0; }.item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .75rem; margin-top: 1rem; }
-.list-recipe { position: relative; padding: 1rem; border: 1px solid var(--border); background: var(--bg-surface); border-radius: .6rem; display: flex; flex-direction: column; gap: .6rem; color: var(--text); text-align: left; overflow: hidden; cursor: pointer; }.list-recipe > span { color: var(--text-muted); }.item-heading { display: flex; align-items: center; gap: .6rem; padding-right: 16px; }.item-heading svg { color: #d6b685; flex-shrink: 0; }
-.list-recipe.ready { background: linear-gradient(135deg, #2496531f, var(--bg-surface) 80%); }
-.list-recipe.shortage { background: linear-gradient(135deg, #d030501a, var(--bg-surface) 80%); }
-.list-recipe.locked { background: repeating-linear-gradient(135deg, transparent 0 8px, #ffffff06 8px 16px), var(--bg-surface); }
+.list-recipe { position: relative; padding: .85rem; border: 1px solid var(--border); background: var(--bg-surface); border-radius: .7rem; font-size: .875rem; display: flex; flex-direction: column; gap: .6rem; color: var(--text); text-align: left; overflow: hidden; cursor: pointer; }.list-recipe > span { color: var(--text-muted); }.item-heading { display: flex; align-items: center; gap: .6rem; padding-right: 16px; }.item-heading svg { color: #d6b685; flex-shrink: 0; }
+
 .recipe-lock { position: absolute; top: .65rem; right: .65rem; color: var(--text-muted); }
 .recipe-select { font: inherit; color: inherit; text-align: left; border: 0; background: transparent; padding: 0 16px 0 0; cursor: pointer; }.recipe-select:focus-visible { outline: 2px solid var(--primary); }.list-recipe > .n-button { margin-top: auto; }.list-recipe { cursor: default; }
 .history-table { overflow: auto; margin: 1rem 0; }.history-table table { width: 100%; border-collapse: collapse; }.history-table th, .history-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -257,8 +257,8 @@ button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media(max-width: 760px) {
   .workshop, .workshop.map-mode { display: flex; flex-direction: column; height: auto; min-height: 0; overflow: visible; gap: .5rem; }
   .workshop-controls, .map-mode .workshop-controls { position: relative; inset: auto; width: 100%; max-height: none; order: 0; }
-  .skills, .map-mode .skills { position: relative; inset: auto; width: 100%; max-height: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .25rem; order: 1; }
-  .skill-select { flex-direction: row; gap: .3rem; padding: .4rem .25rem; font-size: .7rem; }.skill-icon { font-size: .9rem; }.skill-select .skill-name { display: none; }.skill-numbers { flex-direction: column; gap: .15rem; }.skill-select small { font-size: .6rem; white-space: nowrap; }
+  .skills, .map-mode .skills { position: relative; inset: auto; width: 100%; max-height: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem; order: 1; }
+  .skill-select { flex-direction: row; gap: .3rem; min-height: 2.75rem; padding: .6rem; font-size: .8125rem; }.skill-icon { font-size: .9rem; }.skill-select .skill-name { display: block; font-size: .8125rem; }.skill-numbers { flex-direction: column; gap: .15rem; }.skill-select small { font-size: .75rem; white-space: nowrap; }
   .map-stage { position: relative; inset: auto; width: 100%; height: clamp(240px, 42svh, 420px); flex: none; order: 2; }
   .map-mode .floating-recipe { position: relative; inset: auto; width: 100%; max-height: none; overflow: visible; order: 3; }
   .workshop-main { width: 100%; order: 3; }

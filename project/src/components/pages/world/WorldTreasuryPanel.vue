@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
@@ -51,8 +52,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-treasury
-  .treasury-heading(v-if="treasuryEnabled !== false || canCollect")
-    h3 Собрать доход
+  world-section-heading.treasury-heading(v-if="treasuryEnabled !== false || canCollect" title="Собрать доход" icon="coins" level="h3")
     world-help-hint(label="Как работает сбор дохода")
       p Собранные поступления переводятся из казны в бюджет объекта, доступный для расходов и развития. Отчисления резервируются в бюджете и оплачиваются отдельным действием.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}

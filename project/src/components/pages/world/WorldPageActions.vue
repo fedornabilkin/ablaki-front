@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { useWorldStore } from '@/store/world';
 import type { WorldNode } from '@/entities/world/types';
+import WorldDisclosure from './WorldDisclosure.vue';
 import WorldHeroFinances from './WorldHeroFinances.vue';
 import WorldMvpProgress from './WorldMvpProgress.vue';
 import WorldChecklist from './WorldChecklist.vue';
@@ -27,14 +28,16 @@ function changed() {
 <template lang="pug">
 .world-page-actions(v-if="owner")
   world-hero-finances(:node="node" :node-id="nodeId" :owner="owner" :session="session" :revision="world.dataRevision")
-  world-mvp-progress(:owner="owner" :session="session" :revision="world.dataRevision + refresh" :writable="world.capabilities?.world_write ?? true" @changed="changed" @snapshot="snapshot = $event")
-  world-checklist(:owner="owner" :session="session" :snapshot="snapshot" @refresh="refresh++")
-  world-character-button(:key="session" :session="session" :health="snapshot.state?.health" :health-error="snapshot.error")
+  world-disclosure.character-tools(label="Персонаж и задачи" icon="user")
+    .character-tools-actions
+      world-mvp-progress(:owner="owner" :session="session" :revision="world.dataRevision + refresh" :writable="world.capabilities?.world_write ?? true" @changed="changed" @snapshot="snapshot = $event")
+      world-checklist(:owner="owner" :session="session" :snapshot="snapshot" @refresh="refresh++")
+      world-character-button(:key="session" :session="session" :health="snapshot.state?.health" :health-error="snapshot.error")
 </template>
 <style scoped>
-.world-page-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .65rem; margin-left: auto; }
-@media (max-width: 620px) {
-  .world-page-actions { justify-content: flex-start; align-items: center; gap: .5rem; margin-left: 0; }
-  .world-page-actions > .hero-finances { flex-basis: 100%; }
-}
+ .world-page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1.25rem; }
+.world-page-actions > .hero-finances { flex-basis: 100%; }
+.character-tools { width: 100%; }
+.character-tools-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+@media(min-width: 1000px) { .world-page-actions { min-width: 16rem; }.character-tools { max-width: 26rem; } }
 </style>
