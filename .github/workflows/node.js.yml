@@ -7,6 +7,10 @@ on:
     branches: [master]
   workflow_dispatch:
     inputs:
+      force_full:
+        description: Rebuild and publish even without source changes (for changed variables or recovery)
+        type: boolean
+        default: false
       target:
         description: Deployment target
         type: choice
@@ -64,6 +68,8 @@ jobs:
     outputs:
       source_sha: ${{ steps.source.outputs.sha }}
       api_url: ${{ steps.build-config.outputs.api_url }}
+      publish: ${{ steps.plan.outputs.publish }}
+      base: ${{ steps.plan.outputs.base }}
     defaults:
       run:
         working-directory: project
@@ -72,6 +78,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.configuration.outputs.checkout_ref }}
+          fetch-depth: 0
 
       - name: Record exact source commit
         id: source
@@ -90,7 +97,16 @@ jobs:
           cache: npm
           cache-dependency-path: project/package-lock.json
 
+      - name: Select checks from the published version
+        id: plan
+        run: node ../automation/deploy/release-plan.mjs
+        env:
+          PUBLISHED_URL: ${{ vars[needs.configuration.outputs.health_variable] }}
+          DEPLOY_ENABLED: ${{ needs.configuration.outputs.deploy_enabled }}
+          FORCE_FULL: ${{ inputs.force_full }}
+
       - name: Install dependencies
+        if: steps.plan.outputs.checks == 'true'
         run: npm ci
 
       - name: Check deployment script syntax
@@ -102,19 +118,22 @@ jobs:
         run: node --test ../automation/deploy/*.test.mjs
 
       - name: Validate API URL
+        if: steps.plan.outputs.checks == 'true'
         id: build-config
         run: node ../automation/deploy/deployment-target.mjs validate-build
 
       - name: Run mandatory unit tests (full suite before production)
+        if: steps.plan.outputs.checks == 'true'
         shell: bash
         run: |
-          if [[ "$DEPLOY_TARGET" = test ]]; then
+          if [[ "$DEPLOY_TARGET" = test && '${{ steps.plan.outputs.publish }}' = true ]]; then
             npm run test:unit -- tests/auth.test.ts tests/httpClient.test.ts
           else
             npm run test:full
           fi
 
       - name: Build frontend
+        if: steps.plan.outputs.checks == 'true'
         run: npm run build
         env:
           VITE_CRAFT_MOCK: '0'
@@ -123,7 +142,7 @@ jobs:
           VITE_WS_URL: ${{ vars[needs.configuration.outputs.ws_variable] }}
 
       - name: Upload frontend artifact
-        if: needs.configuration.outputs.deploy_enabled == 'true'
+        if: steps.plan.outputs.publish == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: frontend-${{ needs.configuration.outputs.target }}-${{ steps.source.outputs.sha }}
@@ -134,7 +153,7 @@ jobs:
   deploy:
     name: Deploy frontend (${{ needs.configuration.outputs.target }})
     needs: [configuration, frontend]
-    if: needs.configuration.outputs.deploy_enabled == 'true'
+    if: needs.frontend.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ needs.configuration.outputs.environment }}
@@ -146,6 +165,7 @@ jobs:
       DEPLOY_ROOT: ${{ needs.configuration.outputs.deploy_root }}
       WEB_ROOT: ${{ needs.configuration.outputs.web_root }}
       SOURCE_SHA: ${{ needs.frontend.outputs.source_sha }}
+      RELEASE_BASE: ${{ needs.frontend.outputs.base }}
       DEPLOY_HOST: ${{ secrets[format('{0}HOST', needs.configuration.outputs.secret_prefix)] }}
       DEPLOY_PORT: ${{ secrets[format('{0}PORT', needs.configuration.outputs.secret_prefix)] }}
       DEPLOY_USER: ${{ secrets[format('{0}USER', needs.configuration.outputs.secret_prefix)] }}
@@ -222,6 +242,7 @@ jobs:
         shell: bash
         run: |
           started=$SECONDS
+          [[ -z "$RELEASE_BASE" || "$RELEASE_BASE" =~ ^[a-f0-9]{40}$ ]]
           archive="frontend-$SOURCE_SHA.tar.gz"
           remote_dir="$DEPLOY_ROOT/incoming/$SOURCE_SHA"
           options=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
@@ -239,7 +260,7 @@ jobs:
           else
             ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$remote_dir'"
             scp "${options[@]}" -P "$DEPLOY_PORT" "release/$archive" "release/$archive.sha256" release/frontend-deploy.sh "$DEPLOY_USER@$DEPLOY_HOST:$remote_dir/"
-            ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "bash '$remote_dir/frontend-deploy.sh' --target '$DEPLOY_TARGET' --deploy-root '$DEPLOY_ROOT' --web-root '$WEB_ROOT' --sha '$SOURCE_SHA' --archive '$remote_dir/$archive' --healthcheck-url '$HEALTHCHECK_URL'"
+            ssh "${options[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "bash '$remote_dir/frontend-deploy.sh' --target '$DEPLOY_TARGET' --deploy-root '$DEPLOY_ROOT' --web-root '$WEB_ROOT' --sha '$SOURCE_SHA' --base '$RELEASE_BASE' --archive '$remote_dir/$archive' --healthcheck-url '$HEALTHCHECK_URL'"
           fi
           printf '### Frontend ready: `%s`\n\nPublished and HTTP checked in %s seconds. Extended tests continue separately.\n' "$SOURCE_SHA" "$((SECONDS-started))" >> "$GITHUB_STEP_SUMMARY"
 

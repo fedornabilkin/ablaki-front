@@ -23,6 +23,33 @@ test('known production and test pairs pass path selection but stop at the absent
     assert.match(result.stderr, /Invalid Git commit SHA/);
   }
 });
+
+test('a changed published base stops activation before archive extraction or rsync', { skip: unavailable }, () => {
+  const fixture = mkdtempSync(join(realpathSync.native(tmpdir()), 'ablaki-published-base-'));
+  const posix = path => path.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
+  try {
+    const deploy = join(fixture, 'deploy'), web = join(fixture, 'web'), bin = join(fixture, 'bin');
+    const incoming = join(deploy, 'incoming');
+    mkdirSync(incoming, { recursive: true }); mkdirSync(web); mkdirSync(bin);
+    for (const name of ['curl', 'flock', 'rsync']) writeFileSync(join(bin, name), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    writeFileSync(join(web, 'deploy-version.txt'), 'c'.repeat(40));
+    writeFileSync(join(web, 'index.html'), 'keep current site');
+    const archive = join(incoming, 'release.tar.gz');
+    writeFileSync(archive, 'must not be read'); writeFileSync(`${archive}.sha256`, '');
+    const localScript = join(fixture, 'deploy.sh');
+    writeFileSync(localScript, readFileSync(script, 'utf8').replaceAll('/opt/ablaki-frontend', posix(deploy)).replaceAll('/var/www/ablakin.ru', posix(web)));
+    const result = spawnSync(bash, [localScript, '--target', 'production', '--deploy-root', posix(deploy), '--web-root', posix(web),
+      '--sha', 'b'.repeat(40), '--base', 'a'.repeat(40), '--archive', posix(archive), '--healthcheck-url', 'https://site.invalid'],
+      { encoding: 'utf8', env: { ...process.env, PATH: `${posix(bin)}:/usr/bin:/bin` } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Published version changed during checks/);
+    assert.equal(readFileSync(join(web, 'index.html'), 'utf8'), 'keep current site');
+    assert.equal(existsSync(join(deploy, 'releases', 'b'.repeat(40))), false);
+  } finally {
+    assert.match(fixture, /ablaki-published-base-/);
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
 test('nginx test templates serve the direct static root without a default server or API proxy', () => {
   for (const name of ['test-frontend.http.conf.example', 'test-frontend.https.conf.example']) {
     const config = readFileSync(new URL(`./nginx/${name}`, import.meta.url), 'utf8');
