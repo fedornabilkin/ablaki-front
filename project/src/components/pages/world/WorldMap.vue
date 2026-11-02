@@ -417,5 +417,5 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-map-inspector dd { margin: 0; text-align: right; }
 .world-map-open { display: block; padding: .65rem; border-radius: .4rem; border: 1px solid var(--border); color: var(--text); min-height: 2.75rem; text-align: center; }
 .map-total { font-size: 1.5rem; font-weight: 700; }
-@media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; }.world-map-main { display: contents; }.world-map-window { grid-row: 1; }.world-map-inspector { grid-row: 2; }.world-map-placement { grid-row: 3; } }
+@media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; }.world-map-main { display: contents; }.world-map-window { grid-row: 1; height: auto; aspect-ratio: 1; max-height: 28rem; }.world-map-inspector { grid-row: 2; }.world-map-placement { grid-row: 3; } }
 </style>
