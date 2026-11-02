@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_full:
-        description: Rebuild and publish even without source changes (for changed variables or recovery)
+        description: Force a release; use a new commit for changed build variables
         type: boolean
         default: false
       target:
