@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   configuration:
@@ -104,6 +105,7 @@ jobs:
           PUBLISHED_URL: ${{ vars[needs.configuration.outputs.health_variable] }}
           DEPLOY_ENABLED: ${{ needs.configuration.outputs.deploy_enabled }}
           FORCE_FULL: ${{ inputs.force_full }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Install dependencies
         if: steps.plan.outputs.checks == 'true'

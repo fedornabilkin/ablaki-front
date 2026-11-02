@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyChanges, changedFiles, publishedBase } from './release-plan.mjs';
+import { classifyChanges, changedFiles, publishedBase, publishedFromActions } from './release-plan.mjs';
 
 test('documentation skips publishing; tests still run; unknown base keeps all checks', () => {
   assert.deepEqual(classifyChanges(['docs/plan/a.md', 'AGENTS.md']), { checks: false, publish: false });
@@ -30,4 +30,17 @@ test('diff covers failed intermediate releases and both ends of a rename', () =>
     assert.deepEqual(changedFiles(base, 'HEAD', cwd).sort(), ['app.js', 'docs/archive.md']);
     assert.equal(changedFiles('f'.repeat(40), 'HEAD', cwd), null);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test('Actions fallback ignores failed publications and uses the artifact source SHA, not the workflow branch', async () => {
+  const responses = [
+    { workflow_runs: [{ id: 3, head_sha: 'c'.repeat(40) }, { id: 2, head_sha: 'b'.repeat(40) }, { id: 1, head_sha: 'a'.repeat(40) }] },
+    { jobs: [{ name: 'Deploy frontend (test)', conclusion: 'failure' }] },
+    { jobs: [{ name: 'Deploy frontend (test)', conclusion: 'success' }] },
+    { artifacts: [{ name: `frontend-test-${'d'.repeat(40)}` }] },
+  ];
+  const result = await publishedFromActions({ repository: 'fixture/frontend', token: 'fixture', target: 'test', runId: '3' }, async () => ({ ok: true, json: async () => responses.shift() }));
+  assert.equal(result, 'd'.repeat(40));
+  assert.equal(responses.length, 0);
+  await assert.rejects(publishedFromActions({ repository: 'fixture/frontend', token: 'fixture', target: 'test' }, async () => ({ ok: false })));
 });
