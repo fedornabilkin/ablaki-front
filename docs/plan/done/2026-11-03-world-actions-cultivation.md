@@ -19,4 +19,6 @@
 Готовность: действия доступны без раскрытия, таймер соответствует текущему этапу, вода и урожай изменяются только подтверждённой серверной командой.
 
 ## Группа D: Публикация
-- [ ] D1. Проверить итоговую ревизию в CI и выпустить совместимые backend/frontend; подтвердить результат.
+- [x] D1. Проверить итоговую ревизию в CI и выпустить совместимые backend/frontend; подтвердить результат.
+
+Frontend `af177ee`: [test](https://github.com/fedornabilkin/ablaki-front/actions/runs/41677581647), [production](https://github.com/fedornabilkin/ablaki-front/actions/runs/41683486342). Backend `d6d6f96`: [production](https://github.com/fedornabilkin/ablaki/actions/runs/41682623715). Все обязательные проверки успешны. SHA production frontend подтверждён через deploy-version.txt, /world и публичный API отвечают HTTP 200. Визуальные ограничения проверки перечислены в отчёте interface-consistency.
