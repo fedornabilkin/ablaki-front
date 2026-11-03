@@ -1040,6 +1040,44 @@ describe('one-click world actions', () => {
     expect(findView(view.root, n => n.tag === 'button' && String(n.props.class).includes('harvest-timer'))!.props.disabled).toBe(false);
     expect(mocks.runner.submit).not.toHaveBeenCalled();
   });
+  it('keeps the next action visible through both waterings, growth and harvest', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
+    const bed = { bed_id: 1, owner: true, writable: true, dug: false, server_time: 100, cycle: { id: 1, name: 'Морковь', ready_at: 120, expires_at: 200, water_due_at: 100, water_deadline_at: 110, watering_step: 1, watering_total: 2, can_water: true, water_missed: false } };
+    mocks.cultivation.mockResolvedValue(bed); mocks.crops.mockResolvedValue({ items: [], pageCount: 0 }); mocks.cultivationPreview.mockResolvedValue(quote);
+    const view = mount(WorldCultivationPanel, props); await flushView();
+    const action = () => findView(view.root, n => n.tag === 'button' && String(n.props.class).includes('cultivation-timer'))!;
+    expect(viewText(view.root)).toContain('Первый полив'); expect(action().props.disabled).toBe(false);
+    mocks.cultivation.mockResolvedValue({ ...bed, cycle: { ...bed.cycle, water_due_at: 110, water_deadline_at: 120, watering_step: 2, can_water: false } });
+    action().props.onClick(); await flushView();
+    expect(viewText(view.root)).toContain('Ожидание второго полива'); expect(viewText(action())).toContain('00:00:10'); expect(action().props.disabled).toBe(true);
+    mocks.cultivation.mockResolvedValue({ ...bed, server_time: 110, cycle: { ...bed.cycle, water_due_at: 110, water_deadline_at: 120, watering_step: 2, can_water: true } });
+    await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(viewText(view.root)).toContain('Второй полив'); expect(action().props.disabled).toBe(false);
+    mocks.cultivation.mockResolvedValue({ ...bed, server_time: 110, cycle: { ...bed.cycle, water_due_at: null, water_deadline_at: null, watering_step: null, can_water: false } });
+    action().props.onClick(); await flushView();
+    expect(viewText(view.root)).toContain('Урожай растёт'); expect(viewText(action())).toContain('Собрать'); expect(action().props.disabled).toBe(true);
+    mocks.cultivation.mockResolvedValue({ ...bed, server_time: 120, cycle: { ...bed.cycle, water_due_at: null, water_deadline_at: null, can_water: false } });
+    await vi.advanceTimersByTimeAsync(10_000); await flushView();
+    expect(viewText(view.root)).toContain('Урожай созрел'); expect(viewText(action())).toContain('00:01:20'); expect(action().props.disabled).toBe(false);
+    mocks.cultivation.mockResolvedValue({ ...bed, server_time: 120, cycle: null });
+    action().props.onClick(); await flushView();
+    expect(viewText(view.root)).toContain('Подготовка земли');
+    expect(mocks.runner.submit.mock.calls.map(call => call[0])).toEqual(['/beds/1/water', '/beds/1/water', '/beds/1/harvest']);
+  });
+  it('retries a failed deadline refresh and does not leave the watering button stuck', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
+    const bed = { bed_id: 1, owner: true, writable: true, dug: false, server_time: 100, cycle: { id: 1, name: 'Морковь', ready_at: 200, expires_at: 300, water_due_at: 101, water_deadline_at: 190, can_water: false } };
+    mocks.cultivation.mockResolvedValueOnce(bed).mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ ...bed, server_time: 106, cycle: { ...bed.cycle, can_water: true } });
+    mocks.crops.mockResolvedValue({ items: [], pageCount: 0 }); mocks.cultivationPreview.mockResolvedValue(quote);
+    const view = mount(WorldCultivationPanel, props); await flushView();
+    await vi.advanceTimersByTimeAsync(1000); await flushView();
+    expect(viewText(view.root)).toContain('Обновить грядку');
+    const water = () => findView(view.root, n => n.tag === 'button' && String(n.props.class).includes('water-timer'))!;
+    expect(water().props.disabled).toBe(true);
+    await vi.advanceTimersByTimeAsync(5000); await flushView();
+    expect(mocks.cultivation).toHaveBeenCalledTimes(3); expect(water().props.disabled).toBe(false);
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
 });
 
 describe('garden harvest purchase controls', () => {
@@ -1378,7 +1416,7 @@ describe('world construction, character and compact controls', () => {
     findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Не хватает ресурсов')!.props.onClick(); await flushView();
     expect(viewText(catalogue())).toContain('Верстак'); expect(viewText(catalogue())).not.toContain('Доска'); expect(mocks.workspace).toHaveBeenCalledTimes(1);
   });
-  it('separates bed information from compact watering and harvest timers', async () => {
+  it('shows one next action with its timer beside bed information', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
     const bed = {...node,id: 12,type: 'BED',extensions: ['cultivation'],coordinates: {x: 1,y: 0},details: {unlocked: 1}};
     mocks.cultivation.mockResolvedValue({bed_id: 12,owner: true,dug: true,writable: true,server_time: 100,cycle: {id: 1,name: 'Морковь',state: 'growing',ready_at: 200,expires_at: 400,water_due_at: 110,water_deadline_at: 150,can_water: false}});
@@ -1388,10 +1426,10 @@ describe('world construction, character and compact controls', () => {
     expect(findView(info, n => n.props['aria-label'] === 'Грядка')).toBeUndefined();
     const cultivation = findView(view.root, n => n.props['aria-label'] === 'Грядка')!;
     const harvest = findView(cultivation, n => n.tag === 'button' && String(n.props.class).includes('harvest-timer'))!;
-    expect(viewText(harvest)).toContain('Собрать'); expect(harvest.props.disabled).toBe(true);
+    expect(harvest).toBeUndefined();
     const water = findView(cultivation, n => n.tag === 'button' && String(n.props.class).includes('water-timer'))!;
     expect(viewText(water)).toContain('00:00:10'); await vi.advanceTimersByTimeAsync(1000); expect(viewText(water)).toContain('00:00:09');
-    expect(findView(cultivation, n => n.props.class === 'cultivation-death-timer')).toBeDefined();
+    expect(findView(cultivation, n => n.props.class === 'cultivation-death-timer')).toBeUndefined();
   });
   it('shows only the watering action and deadline, and disables it before a delayed refresh', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
@@ -1405,9 +1443,10 @@ describe('world construction, character and compact controls', () => {
     expect(water().props.disabled).toBe(false);
     mocks.cultivation.mockReturnValue(new Promise(() => {}));
     await vi.advanceTimersByTimeAsync(2000); await flushView();
-    expect(viewText(water()).replace(/\s+/g, ' ').trim()).toBe('Полить 00:00:00');
-    expect(water().props.disabled).toBe(true);
-    water().props.onClick(); await flushView();
+    expect(water()).toBeUndefined();
+    const harvest = findView(view.root, n => n.tag === 'button' && String(n.props.class).includes('harvest-timer'))!;
+    expect(harvest.props.disabled).toBe(true);
+    harvest.props.onClick(); await flushView();
     expect(mocks.runner.submit).not.toHaveBeenCalled();
   });
   it('loads progression only when the person icon is opened and displays shared health', async () => {

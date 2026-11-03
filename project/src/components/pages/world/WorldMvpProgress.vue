@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldActionBadge from './WorldActionBadge.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
@@ -47,11 +48,10 @@ watch(() => props.revision, refresh);
 onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
-span.mvp-tasks-trigger
+world-action-badge(:count="remainingTasks" :aria-label="remainingTasks !== null ? `Осталось заданий: ${remainingTasks}` : 'Задания'")
   n-button.mvp-tasks-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
     template(#icon)
       font-awesome-icon(icon="list-check" aria-hidden="true")
-  span.tasks-badge(v-if="remainingTasks !== null && remainingTasks > 0" :aria-label="`Осталось заданий: ${remainingTasks}`") {{ remainingTasks }}
 app-dialog(icon="list-check" v-model:show="show" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
  .mvp-progress(:aria-busy="loading")
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
@@ -144,8 +144,6 @@ app-dialog(icon="list-check" v-model:show="show" title="Мой путь в ми�
       | Сообщить о проблеме на форуме
 </template>
 <style scoped>
-.mvp-tasks-trigger { position: relative; display: inline-flex; flex-shrink: 0; }
-.tasks-badge { position: absolute; z-index: 1; right: -.4rem; top: -.4rem; display: inline-grid; place-items: center; box-sizing: border-box; min-width: 1.2rem; height: 1.2rem; border-radius: 1rem; padding-inline: .2rem; background: var(--primary); color: var(--primary-contrast, #171717); border: 2px solid var(--bg-surface); font-size: .7rem; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; pointer-events: none; }
 .mvp-progress { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; min-width: 0; max-height: 75vh; overflow-y: auto; padding: .15rem; }.mvp-progress h3, .mvp-progress p { margin: 0; }
 .journey-tab { display: inline-flex; align-items: center; gap: .4rem; }
 .journey-heading, .journey-reward { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }.journey-heading h3 { font-size: 1.1rem; }.journey-heading > strong { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary); }.journey-eyebrow { color: var(--text-muted); font-size: .75rem; }

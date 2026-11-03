@@ -95,6 +95,9 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
 </template>
 <style scoped>
 .placement-notice { margin-bottom: 1rem; }
+.build-tile:not(:disabled) { border-color: rgba(255, 154, 61, .65); background: color-mix(in srgb, var(--primary) 12%, var(--bg-surface)); box-shadow: inset 0 0 0 1px rgba(255, 154, 61, .08); }
+.build-tile:not(:disabled) > svg { color: var(--primary); }
+.build-tile:not(:disabled):hover { background: color-mix(in srgb, var(--primary) 20%, var(--bg-surface)); border-color: var(--primary); }
 
 .build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .15rem; top: .15rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { overflow-wrap: anywhere; font-size: .875rem; }.build-tile > svg { margin-right: 2rem; }
 .palette-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }

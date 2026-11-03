@@ -18,6 +18,7 @@ import WorldSectionHeading from '../../src/components/pages/world/WorldSectionHe
 import WorldDisclosure from '../../src/components/pages/world/WorldDisclosure.vue';
 import WorldPanel from '../../src/components/pages/world/WorldPanel.vue';
 import WorldHero from '../../src/components/pages/world/WorldHero.vue';
+import WorldActionBadge from '../../src/components/pages/world/WorldActionBadge.vue';
 
 // Exercise the actual client template and its handlers without requiring a browser installation.
 export function clientView(component: any, file: string) {
@@ -41,6 +42,7 @@ clientView(WorldSectionHeading, 'components/pages/world/WorldSectionHeading.vue'
 clientView(WorldDisclosure, 'components/pages/world/WorldDisclosure.vue');
 clientView(WorldPanel, 'components/pages/world/WorldPanel.vue');
 clientView(WorldHero, 'components/pages/world/WorldHero.vue');
+clientView(WorldActionBadge, 'components/pages/world/WorldActionBadge.vue');
 export interface ViewNode { tag: string; props: Record<string, any>; style: Record<string, string>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
 function element(tag: string): ViewNode { return { tag, props: {}, style: { display: '' }, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
 const renderer = createRenderer<ViewNode, ViewNode>({

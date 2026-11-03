@@ -39,29 +39,26 @@ watch(() => [props.node?.id ?? props.nodeId, props.session, props.revision, prop
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-table.hero-finances(v-if="available !== null || treasury !== null" :title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-label="Финансы объекта" aria-live="polite")
-  thead
-    tr
-      th(scope="col") Бюджет
-      th(v-if="treasuryEnabled" scope="col") Казна
-      th(scope="col") Резерв
-  tbody
-    tr
-      td
-        world-credits(v-if="available !== null" :value="available")
-        template(v-else) —
-      td(v-if="treasuryEnabled")
-        world-credits(v-if="treasury !== null" :value="treasury")
-        template(v-else) —
-      td
-        world-credits(v-if="reserved !== null" :value="reserved")
-        template(v-else) —
+dl.hero-finances(v-if="available !== null || treasury !== null" :title="failed ? 'Не удалось загрузить часть финансовых данных' : undefined" aria-label="Финансы объекта" aria-live="polite")
+  .hero-finances__item
+    dt Бюджет
+    dd
+      world-credits(v-if="available !== null" :value="available")
+      template(v-else) —
+  .hero-finances__item(v-if="treasuryEnabled")
+    dt Казна
+    dd
+      world-credits(v-if="treasury !== null" :value="treasury")
+      template(v-else) —
+  .hero-finances__item
+    dt Резерв
+    dd
+      world-credits(v-if="reserved !== null" :value="reserved")
+      template(v-else) —
 </template>
 <style scoped>
-.hero-finances { width: auto; margin: 0; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.hero-finances th, .hero-finances td { padding: .2rem .75rem; text-align: right; white-space: nowrap; }
-.hero-finances th { color: var(--text-muted); font-size: .75rem; font-weight: 500; border-bottom: 1px solid var(--border); }
-.hero-finances td { font-size: .9rem; font-weight: 650; }
-.hero-finances th:first-child, .hero-finances td:first-child { padding-left: 0; text-align: left; }
-.hero-finances th:last-child, .hero-finances td:last-child { padding-right: 0; }
+.hero-finances { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin: 0; font-variant-numeric: tabular-nums; }
+.hero-finances__item { display: grid; gap: .2rem; }
+.hero-finances dt { color: var(--text-muted); font-size: .75rem; }
+.hero-finances dd { margin: 0; font-size: .9rem; font-weight: 650; }
 </style>

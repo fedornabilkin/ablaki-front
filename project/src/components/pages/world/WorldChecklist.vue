@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldActionBadge from './WorldActionBadge.vue';
 import ChoiceButtons from '@/components/ChoiceButtons.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
@@ -64,11 +65,10 @@ onMounted(() => window.addEventListener('storage', sync));
 onScopeDispose(() => window.removeEventListener('storage', sync));
 </script>
 <template lang="pug">
-n-button.world-checklist-button(:theme-overrides="worldActionButtonTheme" size="small" title="Чеклист проверки MVP" aria-label="Чеклист проверки MVP" @click="show = true")
-  template(#icon)
-    font-awesome-icon(icon="clipboard-check" aria-hidden="true")
-  | Чеклист
-  span.checklist-badge(v-if="key") {{ counts.pass }}/{{ checklistItems.length }}
+world-action-badge(:count="key ? checklistItems.length - counts.pass : null")
+  n-button.world-checklist-button(:theme-overrides="worldActionButtonTheme" size="small" :title="`Чеклист: осталось ${checklistItems.length - counts.pass}`" aria-label="Чеклист проверки MVP" :aria-description="key ? `Осталось закрыть: ${checklistItems.length - counts.pass}` : 'Загрузка чеклиста'" @click="show = true")
+    template(#icon)
+      font-awesome-icon(icon="clipboard-check" aria-hidden="true")
 app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MVP" class="world-checklist-modal" :style="{ width: 'min(56rem, calc(100vw - 1.5rem))' }")
   .world-checklist(:aria-busy="snapshot.loading")
     p.checklist-intro Результаты и комментарии сохраняются в этом браузере отдельно для каждого пользователя и нового мира. Подтверждённые этапы отмечаются автоматически; любой результат можно уточнить вручную.
@@ -107,7 +107,6 @@ app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MV
     p.checklist-footer(v-if="key") Начало проверки: {{ date(run.startedAt) }} · {{ storageError ? 'Не сохранено в браузере' : 'Сохраняется автоматически' }}
 </template>
 <style scoped>
-.checklist-badge { margin-left: .45rem; font-size: .7rem; font-variant-numeric: tabular-nums; }
 .world-checklist { display: grid; gap: .65rem; max-height: 75vh; overflow-y: auto; padding: .15rem; }
 .checklist-intro, .checklist-item p, .checklist-footer, .checklist-result small { color: var(--text-muted); font-size: .8rem; line-height: 1.5; margin: 0; }
 .checklist-summary, .checklist-item-heading, .checklist-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .6rem; }
