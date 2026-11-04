@@ -2,6 +2,7 @@
 import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldDisclosure from './WorldDisclosure.vue';
 import WorldPanel from './WorldPanel.vue';
+import WorldHelpHint from './WorldHelpHint.vue';
 
 import AppPopover from '@/components/AppPopover.vue';
 import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
@@ -204,23 +205,26 @@ onScopeDispose(() => { disposed = true; generation++; targetGeneration++; operat
 </script>
 <template lang="pug">
 section.world-storage(aria-label="Вещи и размещение" @keydown.esc="selected = null; cancelDrag()")
-  world-section-heading.storage-heading(v-if="!embedded" title="Вещи и размещение" icon="box")
+  world-section-heading.storage-heading(v-if="!embedded" title="Хранилища" icon="box")
     router-link.storage-page-link(aria-label="Открыть страницу хранилища" v-if="!storageId && view" :to="link(view.storage.id)")
       font-awesome-icon(icon="arrow-right" aria-hidden="true")
       span Открыть
+    world-help-hint(label="Как переместить предмет")
+      p Нажмите на предмет, затем на подсвеченное место. Можно также перетащить вещь в свободную ячейку или на такую же стопку. Перенос бесплатный; помещение в сундук расходует его прочность.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   p.storage-status(role="status") {{ transferring ? 'Сохраняем перемещение…' : notice }}
-  world-disclosure.storage-hint(label="Как переместить предмет" icon="exchange-alt")
-    p Нажмите на предмет, затем на подсвеченное место. Можно также перетащить вещь в свободную ячейку или на такую же стопку. Перенос бесплатный; помещение в сундук расходует его прочность.
   .storage-panes
     world-panel.storage-pane(v-for="(panel, index) in panels" :key="index" :aria-label="index === 0 ? 'Левое хранилище' : 'Правое хранилище'")
       world-section-heading(level="h3" :icon="panel.view?.storage.kind === 'backpack' ? 'bag-shopping' : panel.view?.storage.kind === 'placement' ? 'map' : 'box'" :title="index === 0 && !storageId && panel.view?.storage.kind === 'placement' ? `Размещение: ${node?.label || panel.view?.location?.name || nodeId}` : panel.view?.storage.name || 'Выберите хранилище'")
       world-disclosure(v-if="storageId || index === 1 || panel.view?.storage.kind === 'stockpile'" label="Сменить хранилище" icon="exchange-alt")
         .storage-choices(role="group" :aria-label="index === 0 ? 'Выбор левого хранилища' : 'Выбор правого хранилища'")
-          app-popover(v-for="header in choices" :key="header.id" trigger="hover" placement="bottom" width="22rem" @update:show="value => { if (value) loadStoragePath(header); }")
+          app-popover(v-for="header in choices" :key="header.id" trigger="click" placement="bottom" width="22rem" @update:show="value => { if (value) loadStoragePath(header); }")
             template(#trigger)
               span.storage-choice-trigger(@focusin="loadStoragePath(header)")
-                n-button(:theme-overrides="header.id === panel.view?.storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" size="small" :title="`${storageName(header)} · ${header.node_id ? 'объект №' + header.node_id : 'хранилище №' + header.id}`" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="chooseStorage(index, header.id)") {{ storageName(header) }}
+                n-button(:theme-overrides="header.id === panel.view?.storage.id ? worldActionButtonTheme : worldNeutralButtonTheme" size="small" :title="`${storageName(header)} · ${header.node_id ? 'объект №' + header.node_id : 'хранилище №' + header.id}`" :aria-pressed="header.id === panel.view?.storage.id" :disabled="blocked || header.id === (index === 0 ? destination : view?.storage.id)" @click="chooseStorage(index, header.id)")
+                  template(#icon)
+                    font-awesome-icon(:icon="header.kind === 'backpack' ? 'bag-shopping' : header.kind === 'placement' ? 'map' : 'box'" aria-hidden="true")
+                  | {{ storageName(header) }}
             .storage-choice-path
               strong {{ storageName(header) }}
               small {{ header.node_id ? 'Объект №' + header.node_id : 'Хранилище №' + header.id }}
@@ -278,7 +282,7 @@ section.world-storage(aria-label="Вещи и размещение" @keydown.esc
 .storage-pane { background: var(--bg-surface); }
 .storage-status { min-height: 1.3em; margin: 0; color: var(--text-muted); font-size: .85rem; }
 @media(min-width: 760px) { .storage-panes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media(max-width: 759px) { .storage-pane :deep(.storage-grid) { max-height: min(52svh, 32rem); overflow-y: auto; } }
+@media(max-width: 47.99rem) { .storage-pane { border-inline: 0; border-radius: 0; }.storage-heading, .storage-status { padding-inline: .75rem; }.storage-page-link > span { display: none; } }
 .storage-status:empty { display: none; }
 .storage-hint p { margin: 0; font-size: .875rem; line-height: 1.5; color: var(--text-muted); }
 </style>

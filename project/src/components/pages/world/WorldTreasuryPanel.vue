@@ -65,8 +65,7 @@ section.world-treasury
     p В казне останется: #[world-credits(:value="collection.treasury_after")]
     n-alert(closable v-if="collection.more_pending" type="info") Поступлений много. После подтверждения можно собрать следующую партию.
     n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="busy || Boolean(pending) || !canCollect" @click="collect") Подтвердить сбор
-  .treasury-heading
-    h3 Отчисления родительскому объекту
+  world-section-heading(title="Отчисления родителю" icon="exchange-alt" level="h3")
     world-help-hint(label="Как работают отчисления родительскому объекту")
       p Выполненные выплаты переводят часть бюджета в казну родительского объекта по опубликованным правилам.
   n-spin(v-if="loading" aria-label="Загрузка обязательств")
@@ -89,6 +88,7 @@ section.world-treasury
 </template>
 <style scoped>
 .world-treasury { display: grid; gap: .75rem; }
+.world-treasury > .n-button { justify-self: start; max-width: 100%; min-height: 2.75rem; }
 .treasury-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.treasury-heading h3 { margin: 0; }
 .obligations { list-style: none; padding: 0; display: grid; gap: .75rem; }
 .obligations li { border: 1px solid var(--border); border-radius: .4rem; padding: .75rem; }

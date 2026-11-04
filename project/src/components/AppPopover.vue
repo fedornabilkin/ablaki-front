@@ -14,6 +14,8 @@ n-popover.app-popover(v-bind="$attrs" to="body" :show-arrow="false" :flip="true"
     slot(:name="name" v-bind="slotProps || {}")
 </template>
 <style>
+/* Position corrections must be immediate; only the popover surface animates. */
+.app-popover-anchor { transition-property: none !important; }
 .app-popover.n-popover { border-radius: .75rem; outline: 1px solid var(--border); outline-offset: -1px; padding: .75rem; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
 .app-popover .n-popover__content { min-width: 0; max-width: 100%; }
 .app-popover-content > :first-child { margin-top: 0; }

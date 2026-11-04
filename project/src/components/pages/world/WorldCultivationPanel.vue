@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldPanel from './WorldPanel.vue';
+import WorldSlotGrid from './WorldSlotGrid.vue';
 import { cultivationStage } from '@/entities/world/cultivation';
 
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
@@ -129,7 +131,7 @@ watch([visible, () => props.active], () => { if (!visible.value || props.active 
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; clearInterval(timer); });
 </script>
 <template lang="pug">
-section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prevent.stop="dropSeed")
+world-panel.cultivation-panel(inset aria-label="Грядка" @dragover.prevent @drop.prevent.stop="dropSeed")
   world-section-heading.cultivation-heading(icon="seedling" :title="stage?.title ?? 'Выращивание'")
     world-help-hint(label="Как выращивать урожай")
       p Вскопайте землю, посадите семена, полейте сразу и повторно по таймеру, затем соберите урожай.
@@ -143,11 +145,14 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
     p(v-if="typeof quote?.value.terms.worker_reward_cr === 'string' && Number(quote.value.terms.worker_reward_cr) > 0") Оплата: #[world-credits(:value="quote.value.terms.worker_reward_cr")].
     template(v-if="!cycle")
       .cultivation-dig(v-if="!state.dug")
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute") Вскопать
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :disabled="locked || !ready" @click="execute")
+          template(#icon)
+            font-awesome-icon(icon="hammer" aria-hidden="true")
+          | Вскопать
         world-help-hint(label="Расход прочности лопаты" symbol="!")
           p {{ tool ? `Расходуется ${tool.wear} ед. прочности лопаты. ${tool.available ? 'Лопата доступна.' : 'Нужна исправная лопата в рюкзаке.'}` : 'Для перекопки нужна исправная лопата в рюкзаке.' }}
       template(v-else-if="state.owner")
-        .crop-tiles(aria-label="Культуры для посадки")
+        world-slot-grid.crop-tiles(label="Культуры для посадки")
           button.crop-tile(v-for="entry in crops" :key="entry.id" type="button" :class="{ selected: selected === entry.id }" :aria-pressed="selected === entry.id" :disabled="locked" :draggable="!locked" @dragstart="dragSeed($event, entry.id)" @click="selected = entry.id")
             font-awesome-icon(icon="seedling" aria-hidden="true")
             strong(:title="entry.name") {{ entry.name }}
@@ -217,15 +222,15 @@ section.cultivation-panel(aria-label="Грядка" @dragover.prevent @drop.prev
 .cultivation-panel h2 { margin: 0; font-size: 1rem; }.cultivation-panel h3 { margin: 0; font-size: .9rem; }
 .cultivation-panel p { margin: 0; font-size: .875rem; }
 .cultivation-dig { display: flex; align-items: center; gap: .5rem; }
-.crop-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
-.crop-tile { display: grid; align-content: start; gap: .35rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; }
-.crop-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: transparent; }
+.crop-tile { display: grid; align-content: start; gap: .35rem; min-width: 0; min-height: 7.5rem; padding: .65rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-base); text-align: left; cursor: pointer; }
+.crop-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: var(--primary-soft); }
+.crop-tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .crop-tile > svg { font-size: 1.1rem; color: var(--text-muted); }.crop-tile strong { font-size: .875rem; line-height: 1.35; overflow-wrap: anywhere; }.crop-tile small { font-size: .8125rem; color: var(--text-muted); }
 .crop-summary, .cultivation-resources { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; font-size: .8125rem; color: var(--text-muted); }.crop-summary { justify-content: space-between; }
 .cultivation-cost { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--border); font-size: .875rem; }
 .cultivation-heading, .cultivation-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
-.cultivation-current { display: grid; gap: .4rem; }
-.cultivation-timer { width: 100%; height: auto; min-height: 3.25rem; padding: .65rem .85rem; }
+.cultivation-current { display: grid; justify-items: start; gap: .4rem; }
+.cultivation-timer { width: auto; max-width: 100%; height: auto; min-height: 3.25rem; padding: .65rem .85rem; }
 .timer-label { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .6rem; white-space: normal; }
 .timer-label strong { font-size: .9rem; font-variant-numeric: tabular-nums; }
 .cultivation-current > small { color: var(--text-muted); font-size: .75rem; text-align: center; }

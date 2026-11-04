@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
@@ -45,8 +46,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.finance-policy
-  .policy-heading
-    h3 Правила казны и отчислений
+  world-section-heading(title="Правила казны и отчислений" icon="cog" level="h3")
     world-help-hint(label="Как применяются правила казны")
       p Новая ставка применяется к последующим сборам. Суммы и получатели существующих обязательств сохраняются. Защита и потери меняются только для новых поступлений.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
@@ -71,7 +71,8 @@ section.finance-policy
 </template>
 <style scoped>
 .policy-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.policy-heading h3 { margin: 0; }
-.finance-policy { border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; }
-label { display: grid; gap: .3rem; margin-block: .75rem; max-width: 36rem; }
+.finance-policy { display: grid; gap: .75rem; min-width: 0; }
+.finance-policy > .n-button { justify-self: start; max-width: 100%; min-height: 2.75rem; }
+label { display: grid; gap: .3rem; max-width: 36rem; font-size: .875rem; }
 summary { cursor: pointer; }
 </style>

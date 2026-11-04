@@ -5,7 +5,7 @@ import AppDialog from '@/components/AppDialog.vue';
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NInput, NModal, NProgress, NSelect, NSpin } from 'naive-ui';
 import { checklistItems, checklistKey, checklistStatus, emptyChecklist, emptyEntry, observeChecklist, readChecklist, saveChecklist, type ChecklistId, type ChecklistResult, type ChecklistRun } from '@/entities/world/checklist';
-import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldNeutralButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
 import { milestoneLabels } from '@/services/api/worldMvp';
 import type { MvpState } from '@/services/api/worldMvp';
 
@@ -75,7 +75,7 @@ onScopeDispose(() => window.removeEventListener('storage', sync));
 </script>
 <template lang="pug">
 world-action-badge(:count="key ? remaining : null")
-  n-button.world-checklist-button(:theme-overrides="worldActionButtonTheme" size="small" :title="`Чеклист: осталось ${remaining}`" aria-label="Чеклист проверки MVP" :aria-description="key ? `Осталось закрыть: ${remaining}` : 'Загрузка чеклиста'" @click="show = true")
+  n-button.world-checklist-button(:theme-overrides="worldNeutralButtonTheme" size="small" :title="`Чеклист: осталось ${remaining}`" aria-label="Чеклист проверки MVP" :aria-description="key ? `Осталось закрыть: ${remaining}` : 'Загрузка чеклиста'" @click="show = true")
     template(#icon)
       font-awesome-icon(icon="clipboard-check" aria-hidden="true")
 app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MVP" class="world-checklist-modal" :style="{ width: 'min(56rem, calc(100vw - 1.5rem))' }")

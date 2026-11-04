@@ -8,6 +8,7 @@ import { loadWorldScreen } from '@/services/api/world';
 import type { WorldNode } from '@/entities/world/types';
 import { workspaceSections, workspaceNode } from '@/entities/world/workspaceNavigation';
 const route = useRoute();
+const worldSection = computed(() => route.path === '/world' || route.path.startsWith('/world/'));
 const world = useWorldStore();
 const auth = useStore(), navigation = ref<WorldNode[]>([]);
 const nodePage = computed(() => route.path === '/world' || /^\/world\/nodes\/[^/]+$/.test(route.path));
@@ -35,16 +36,20 @@ const items = computed(() => {
 });
 </script>
 <template lang="pug">
-nav.breadcrumbs.container(aria-label="Хлебные крошки")
+nav.breadcrumbs.container(v-if="items.length" :class="{ 'breadcrumbs--world': worldSection }" aria-label="Хлебные крошки")
   ol
     li(v-for="(item, index) in items" :key="index")
-      span.separator(v-if="index" aria-hidden="true") / 
-      router-link(v-if="item.to" :to="item.to") {{ item.title }}
+      font-awesome-icon.separator(v-if="index" icon="chevron-right" aria-hidden="true")
+      router-link(v-if="item.to" :to="item.to" :title="item.title") {{ item.title }}
       span(v-else aria-current="page") {{ item.title }}
 </template>
 <style scoped>
-.breadcrumbs { padding-top: .75rem; }
-ol { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; margin: 0; font-size: .85rem; }
-li { display: flex; align-items: center; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
+.breadcrumbs { padding-top: .65rem; }
+.breadcrumbs--world { max-width: 1320px; }
+ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .45rem; padding: 0; margin: 0; font-size: .75rem; line-height: 1.5; }
+li { display: inline-flex; align-items: center; gap: .45rem; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+li a { display: inline-block; max-width: 24ch; padding-block: .4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.separator { flex: none; font-size: .5rem; opacity: .7; }
 .separator, [aria-current] { color: var(--text-muted); }
+@media(min-width: 64rem) { .breadcrumbs { padding-top: .85rem; } ol { font-size: .8125rem; } }
 </style>

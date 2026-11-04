@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldPanel from './WorldPanel.vue';
+import WorldDisclosure from './WorldDisclosure.vue';
+import WorldActionBar from './WorldActionBar.vue';
 import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSelect, NCheckbox, NSpin } from 'naive-ui';
@@ -21,6 +24,7 @@ const state = ref<MiningState | null>(null), error = ref('');
 const quota = computed(() => state.value?.quota ? {kind: 'extraction_daily', maximum: state.value.quota.maximum, remaining: state.value.quota.remaining,
   restoresAt: state.value.quota.restores_at, serverTime: state.value.server_time, grossRemaining: null} : null);
 const selectedDestination = ref<'backpack' | 'mini_storage'>('backpack');
+function selectDestination(value: string) { if (value === 'backpack' || value === 'mini_storage') selectedDestination.value = value; }
 const storageOptions = computed(() => state.value?.output_storages ?? []);
 const hasMiniStorage = computed(() => storageOptions.value.some(storage => storage.kind === 'stockpile'));
 const effectiveDestination = computed(() => state.value?.output_destination ?? (state.value?.action_code && storageOptions.value.find(storage => storage.id === state.value?.output_storage_id)?.kind === 'stockpile' ? 'mini_storage' : selectedDestination.value));
@@ -104,7 +108,7 @@ watch(foreground, active => { if (!active) return; if (!state.value && !reading.
 onScopeDispose(() => { disposed = true; generation++; clearInterval(timer); });
 </script>
 <template lang="pug">
-section.mining-panel(aria-label="Получение ресурсов")
+world-panel.mining-panel(inset aria-label="Получение ресурсов")
   world-section-heading.mining-heading(title="Получение ресурсов" icon="mountain" level="h3")
     world-help-hint(label="Как учитывается добыча")
       p Работа учитывается при открытой странице и связи с сервером; после обрыва — не более 60 секунд. Выдачу ресурсов подтверждает сервер.
@@ -124,7 +128,7 @@ section.mining-panel(aria-label="Получение ресурсов")
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-button(v-if="error" size="small" :loading="reading" :disabled="reading || runner.busy.value || !!runner.pending.value" @click="load") Обновить состояние
   n-alert(v-if="saved" type="success" closable @close="saved = ''") {{ saved }}
-  section.mine-employment(v-if="state?.employment?.owner")
+  world-disclosure.mine-employment(v-if="state?.employment?.owner" label="Работа для других игроков" icon="users")
     .mining-heading
       h4 Работа для других игроков
       world-help-hint(label="Условия найма шахтёров")
@@ -145,9 +149,7 @@ section.mining-panel(aria-label="Получение ресурсов")
         n-select(:value="selected?.code" :options="options" :disabled="state.working || !!state.action_code || runner.busy.value || !!runner.pending.value" aria-label="Ресурс для добычи" @update:value="selectedAction = $event")
         p(v-if="selected") {{ selected.output.map(item => `${item.name} × ${item.quantity}`).join(', ') }}
         p(v-if="!state.action_code && (selected?.available_at ?? 0) > serverNow") Следующая партия доступна: {{ new Date((selected?.available_at ?? 0) * 1000).toLocaleString('ru-RU') }}.
-        .mining-destinations(v-if="storageOptions.length" role="group" aria-label="Куда поступит добыча")
-          n-button(v-if="storageOptions.some(storage => storage.kind === 'backpack')" size="small" :theme-overrides="effectiveDestination === 'backpack' ? worldActionButtonTheme : worldNeutralButtonTheme" :aria-pressed="effectiveDestination === 'backpack'" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" @click="selectedDestination = 'backpack'") Рюкзак
-          n-button(v-if="hasMiniStorage || effectiveDestination === 'mini_storage'" size="small" :theme-overrides="effectiveDestination === 'mini_storage' ? worldActionButtonTheme : worldNeutralButtonTheme" :aria-pressed="effectiveDestination === 'mini_storage'" :disabled="!!state.action_code || runner.busy.value || !!runner.pending.value" @click="selectedDestination = 'mini_storage'") Мини-склад
+        world-action-bar(v-if="storageOptions.length" label="Куда поступит добыча" :items="[{ id: 'backpack', label: 'Рюкзак', icon: 'bag-shopping', visible: storageOptions.some(storage => storage.kind === 'backpack') }, { id: 'mini_storage', label: 'Мини-склад', icon: 'box', visible: hasMiniStorage || effectiveDestination === 'mini_storage' }].filter(item => item.visible).map(item => ({ ...item, hint: `Добыча поступит: ${item.label}.`, active: effectiveDestination === item.id, disabled: !!state.action_code || runner.busy.value || !!runner.pending.value }))" @select="selectDestination")
         n-alert(closable v-if="state.blocked_message" type="warning") {{ state.blocked_message }}. Заработанная партия сохранена.
       template(v-else)
         p Работников: {{ state.workers }}. Добыто: {{ state.produced_quantity }} ед. руды.
@@ -155,11 +157,14 @@ section.mining-panel(aria-label="Получение ресурсов")
       p.mining-unavailable(v-if="unavailable" role="status") {{ unavailable }}
       .mining-progress(v-if="progress.required_seconds > 0")
         world-work-progress(:snapshot="progress" :identity="`${nodeId}.${state.work_id ?? state.action_code ?? 'idle'}.${state.produced_quantity}`" :syncing="runner.busy.value" @check="checkProgress")
-      n-button(:theme-overrides="worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="(runner.busy.value && !checking) || (needsQuotaRefresh && reading)" :disabled="actionBlocked" @click="submitAction") {{ actionLabel }}
+      n-button(:theme-overrides="state.working ? worldNeutralButtonTheme : worldActionButtonTheme" :type="state.working ? 'default' : 'primary'" :loading="(runner.busy.value && !checking) || (needsQuotaRefresh && reading)" :disabled="actionBlocked" @click="submitAction")
+        template(#icon)
+          font-awesome-icon(:icon="state.working ? 'pause' : 'hammer'" aria-hidden="true")
+        | {{ actionLabel }}
 </template>
 <style scoped>
 .mining-destinations { display: flex; flex-wrap: wrap; gap: .4rem; }
-.mine-employment { display: grid; gap: .65rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; }.mine-employment h4 { margin: 0; }.mine-employment label { display: grid; grid-template-columns: 1fr minmax(5rem, 9rem); align-items: center; gap: .5rem; }
+.mine-employment h4 { margin: 0; }.mine-employment label { display: grid; grid-template-columns: 1fr minmax(5rem, 9rem); align-items: center; gap: .5rem; }.mine-employment :deep(.n-button) { justify-self: start; max-width: 100%; }
 .mining-panel { display: grid; gap: .75rem; }.mining-panel p, .mining-panel h3 { margin: 0; }
 .mining-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }
 .mining-unavailable { color: var(--error, #d03050); font-size: .85rem; }

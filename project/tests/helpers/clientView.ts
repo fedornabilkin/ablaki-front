@@ -19,6 +19,11 @@ import WorldDisclosure from '../../src/components/pages/world/WorldDisclosure.vu
 import WorldPanel from '../../src/components/pages/world/WorldPanel.vue';
 import WorldHero from '../../src/components/pages/world/WorldHero.vue';
 import WorldActionBadge from '../../src/components/pages/world/WorldActionBadge.vue';
+import WorldActionBar from '../../src/components/pages/world/WorldActionBar.vue';
+import WorldCatalogFilters from '../../src/components/pages/world/WorldCatalogFilters.vue';
+import WorldCatalogGrid from '../../src/components/pages/world/WorldCatalogGrid.vue';
+import WorldSlotGrid from '../../src/components/pages/world/WorldSlotGrid.vue';
+import WorldStat from '../../src/components/pages/world/WorldStat.vue';
 
 // Exercise the actual client template and its handlers without requiring a browser installation.
 export function clientView(component: any, file: string) {
@@ -43,6 +48,11 @@ clientView(WorldDisclosure, 'components/pages/world/WorldDisclosure.vue');
 clientView(WorldPanel, 'components/pages/world/WorldPanel.vue');
 clientView(WorldHero, 'components/pages/world/WorldHero.vue');
 clientView(WorldActionBadge, 'components/pages/world/WorldActionBadge.vue');
+clientView(WorldActionBar, 'components/pages/world/WorldActionBar.vue');
+clientView(WorldCatalogFilters, 'components/pages/world/WorldCatalogFilters.vue');
+clientView(WorldCatalogGrid, 'components/pages/world/WorldCatalogGrid.vue');
+clientView(WorldSlotGrid, 'components/pages/world/WorldSlotGrid.vue');
+clientView(WorldStat, 'components/pages/world/WorldStat.vue');
 export interface ViewNode { tag: string; props: Record<string, any>; style: Record<string, string>; children: ViewNode[]; parent: ViewNode | null; text?: string; setPointerCapture: (id: number) => void; getBoundingClientRect: () => { height: number } }
 function element(tag: string): ViewNode { return { tag, props: {}, style: { display: '' }, children: [], parent: null, setPointerCapture() {}, getBoundingClientRect: () => ({ height: 0 }) }; }
 const renderer = createRenderer<ViewNode, ViewNode>({

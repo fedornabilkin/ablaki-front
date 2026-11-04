@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldCatalogFilters from './WorldCatalogFilters.vue';
+import WorldCatalogGrid from './WorldCatalogGrid.vue';
 
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
@@ -16,10 +18,18 @@ import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { formatDuration } from '@/entities/world/duration';
-import { creditCost } from '@/entities/world/credits';
 const props = defineProps<{ node: WorldNode; map: WorldMapData | null; selection: MapPoint[]; owner: number; session: number; revision: number; writable: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const choices = ref<Template[]>([]), project = ref<Build | null>(null), open = ref(false), error = ref(''), loading = ref(false), name = ref('');
+const search = ref(''), group = ref('all'), readyOnly = ref(false);
+const groups = [
+  { value: 'all', label: 'Все', icon: 'cubes' },
+  { value: 'buildings', label: 'Здания', icon: 'house' },
+  { value: 'land', label: 'Участки', icon: 'seedling' },
+  { value: 'storage', label: 'Склады', icon: 'box' },
+];
+const groupFor = (item: Template) => item.kind === 'CHEST' ? 'storage' : item.kind === 'PLOT' || item.kind === 'BED' ? 'land' : 'buildings';
+const filteredChoices = computed(() => choices.value.filter(item => item.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()) && (group.value === 'all' || groupFor(item) === group.value) && (!readyOnly.value || item.available === true)));
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.${props.node.id}.placement`), computed(() => props.session));
 const placed = ref<number | null>(null), chosen = ref<Template | null>(null), position = ref<MapPoint | null>(null);
 const { available: budgetAvailable, error: budgetError, refresh: refreshBudget } = useWorldBudget(computed(() => props.node.owned_by_me ? props.node.id : null), computed(() => props.session), computed(() => props.revision));
@@ -35,7 +45,7 @@ watch(() => [props.node.id, props.session, props.revision], async () => {
   catch (cause) { if (current === generation) error.value = worldError(cause); }
   finally { if (current === generation) loading.value = false; }
 }, { immediate: true });
-watch([() => props.node.id, () => props.session], () => { placed.value = null; choices.value = []; open.value = false; project.value = null; chosen.value = null; position.value = null; }, { flush: 'sync' });
+watch([() => props.node.id, () => props.session], () => { placed.value = null; choices.value = []; open.value = false; project.value = null; chosen.value = null; position.value = null; search.value = ''; group.value = 'all'; readyOnly.value = false; }, { flush: 'sync' });
 function icon(item: Template) { return ({ PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube', ROOM: 'house' } as Record<string, string>)[item.kind ?? ''] ?? 'house'; }
 function reason(item: Template) { return item.compatible === false ? item.unavailable_reason : !props.node.owned_by_me ? 'Требуются права владельца.' : props.node.status !== 'active' ? 'Сначала завершите строительство.' : !cell.value ? 'Выберите одну свободную открытую ячейку.' : item.unavailable_reason || 'Ресурсы и оборудование доступны.'; }
 function accept(result: Record<string, unknown> | undefined) {
@@ -61,7 +71,7 @@ async function retry() { const current = generation; const result = await runner
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-section.build-palette(v-if="loading || choices.length || error" aria-label="Доступные объекты")
+section.build-palette(aria-label="Каталог построек")
   world-section-heading.palette-heading(title="Постройки" icon="house" level="h3")
     world-help-hint(label="Как начать строительство")
       p Выберите свободную открытую ячейку на карте, затем объект.
@@ -73,35 +83,32 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
     router-link(:to="`/world/nodes/${placed}#map`") Перейти к строительству →
   n-alert(closable v-if="error || runner.error.value" type="error") {{ error || runner.error.value }}
   n-button(:theme-overrides="worldActionButtonTheme" v-if="runner.pending.value && !runner.busy.value" @click="retry") Повторить запрос
-  .build-tiles(v-if="loading && !choices.length" role="status" aria-label="Загрузка плиток")
+  world-catalog-filters(v-model:search="search" v-model:group="group" v-model:ready="readyOnly" :groups="groups" :count="filteredChoices.length" :total="choices.length")
+  world-catalog-grid.build-tiles(label="Постройки" v-if="loading && !choices.length" role="status" aria-label="Загрузка плиток")
     n-skeleton(v-for="index in 6" :key="index" height="120px" :sharp="false")
-  .build-tiles(v-else)
-    .build-tile-wrap(v-for="item in choices" :key="item.id")
+  world-catalog-grid.build-tiles(label="Постройки" v-else)
+    .build-tile-wrap.catalog-tile-wrap(v-for="item in filteredChoices" :key="item.id")
       .tile-information
         world-help-hint(:label="`Описание: ${item.name}`" symbol="i")
           p {{ item.description || item.name }}
           p {{ reason(item) }}
+          p {{ item.material_summary || 'Материалы не нужны' }}
           p Трудоёмкость: {{ formatDuration(item.build_seconds) }} реального времени работы. Владелец работает бесплатно; помощникам выделяется отдельный бюджет.
-      button.build-tile(type="button" :class="{ unavailable: item.available !== true, ready: item.available === true && node.owned_by_me && writable && node.status === 'active' }" :disabled="blocked || !cell || item.available !== true" @click="choose(item)")
+      button.build-tile.catalog-tile(type="button" :class="{ unavailable: item.compatible === false, shortage: item.compatible !== false && item.available !== true, ready: item.available === true && node.owned_by_me && writable && node.status === 'active' }" :disabled="blocked || !cell || item.available !== true" :title="reason(item)" @click="choose(item)")
         font-awesome-icon(:icon="icon(item)" aria-hidden="true")
         strong {{ item.name }}
-        small {{ item.material_summary || 'Материалы не нужны' }}
         .build-costs
           world-credits(v-if="item.economy" :value="item.economy.price_cr" cost)
           span.build-duration
             font-awesome-icon(icon="clock" aria-hidden="true")
             |  {{ formatDuration(item.build_seconds) }}
+  p.palette-empty(v-if="!loading && !filteredChoices.length") По этим фильтрам построек нет.
   build-settings-modal(v-model:show="open" :project="project" :name="name" :owner="owner" :session="session" :draft="draft" :budget-error="budgetError" :creating="runner.busy.value" :creation-error="runner.error.value" :creation-pending="!!runner.pending.value" @refresh-budget="refreshBudget" @create="create" @saved="emit('changed')")
 </template>
 <style scoped>
-.placement-notice { margin-bottom: 1rem; }
-.build-tile.ready { border-color: #bc8b4e66; background: linear-gradient(145deg, #bc8b4e18, transparent); }
-.build-tile:not(:disabled) { border-color: rgba(255, 154, 61, .65); background: color-mix(in srgb, var(--primary) 12%, var(--bg-surface)); box-shadow: inset 0 0 0 1px rgba(255, 154, 61, .08); }
-.build-tile:not(:disabled) > svg { color: var(--primary); }
-.build-tile:not(:disabled):hover { background: color-mix(in srgb, var(--primary) 20%, var(--bg-surface)); border-color: var(--primary); }
-
-.build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .15rem; top: .15rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { overflow-wrap: anywhere; font-size: .875rem; }.build-tile > svg { margin-right: 2rem; }
-.palette-heading { margin: 0; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }
-.build-palette { min-width: 0; display: grid; gap: .75rem; }.build-tiles { max-height: 30rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 2px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }.build-tile-wrap { display: grid; }.build-tile { display: grid; gap: .4rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; width: 100%; }.build-tile:hover { border-color: var(--primary); }.build-tile:disabled { cursor: default; color: var(--text-muted); }.build-tile.unavailable { background: repeating-linear-gradient(135deg, #ffffff06 0 6px, transparent 6px 12px); }.build-tile svg { color: var(--text-muted); font-size: 1.4rem; }.build-tile small, .build-tile span { color: var(--text-muted); font-size: .8rem; }
-
+.build-palette { display: grid; gap: .75rem; min-width: 0; }
+.tile-information { position: absolute; right: .1rem; top: .1rem; z-index: 1; }
+.build-costs { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .6rem; color: var(--text-muted); font-size: .75rem; }
+.build-duration svg { margin-right: .2rem; }
+.palette-empty { margin: 0; color: var(--text-muted); font-size: .8125rem; }
 </style>

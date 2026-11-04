@@ -21,8 +21,11 @@ describe('popover viewport', () => {
     let anchor = { x: -110, y: 413 };
     const style = { translate: '', maxWidth: '', maxHeight: '' };
     const followerStyle = { translate: '' };
+    const anchorClasses = new Set<string>();
+    const follower = { style: followerStyle, classList: { add: (name: string) => anchorClasses.add(name), remove: (name: string) => anchorClasses.delete(name) } };
+    vi.stubGlobal('getComputedStyle', (element: typeof follower) => element.style);
     const popover = Object.assign(new EventTarget(), {
-      style, isConnected: true, parentElement: { style: followerStyle },
+      style, isConnected: true, parentElement: follower,
       getBoundingClientRect: () => {
         const [x = 0, y = 0] = followerStyle.translate.split(' ').map(value => parseFloat(value) || 0);
         const width = Math.min(358, Number(style.maxWidth.match(/, ([\d.]+)px/)?.[1] ?? 358));
@@ -42,12 +45,14 @@ describe('popover viewport', () => {
       expect(rect.bottom).toBeLessThanOrEqual(viewport.offsetTop + viewport.height - 16);
     };
     expectInside();
+    expect(anchorClasses.has('app-popover-anchor')).toBe(true);
     // A library render can reset its follower styles between positioning passes.
     followerStyle.translate = ''; browser.dispatchEvent(new Event('resize')); flush(); expectInside();
     anchor = { x: 290, y: -100 }; browser.dispatchEvent(new Event('scroll')); flush(); expectInside();
     viewport.width = documentElement.clientWidth = 320; browser.dispatchEvent(new Event('resize')); flush(); expectInside();
     viewport.height = 300; viewport.offsetTop = 120; viewport.dispatchEvent(new Event('resize')); flush(); expectInside();
     disconnect.mockClear(); scope.stop(); expect(disconnect).toHaveBeenCalledTimes(2);
+    expect(anchorClasses.size).toBe(0); expect(followerStyle.translate).toBe('');
     browser.dispatchEvent(new Event('scroll')); expect(frames.size).toBe(0);
   });
 });

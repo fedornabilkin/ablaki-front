@@ -611,7 +611,7 @@ describe('one-click crafting', () => {
     expect(mocks.runner.pending.value).toEqual(previous);
     expect(mocks.runner.submit).not.toHaveBeenCalled();
     expect(viewText(view.root)).toContain('Предыдущее действие не подтверждено');
-    const recovery = findView(view.root, n => n.tag === 'button' && n.props.block !== undefined && viewText(n).trim() === 'Проверить предыдущее действие')!;
+    const recovery = findView(view.root, n => n.tag === 'button' && viewText(n).trim() === 'Проверить предыдущее действие')!;
     expect(recovery.props.disabled).toBeFalsy();
     mocks.runner.retry.mockImplementation(async () => { mocks.runner.pending.value = null; mocks.runner.error.value = 'Срок расчёта истёк.'; });
     await recovery.props.onClick(); await flushView(); await vi.advanceTimersByTimeAsync(600); await flushView();
@@ -800,7 +800,7 @@ describe('map controls', () => {
       node_id: 1, items: [], cells: [{x: 1, y: 0, state: 'open'}], can_expand: true, bounds: { x: -2, y: -2, width: 5, height: 5 }, exploration: { allowed: true, level, elixir_quantity: elixirs, max_level_per_node: 3, reason: '' },
     } }));
     await flushView();
-    const button = findView(view.root, element => element.tag === 'button' && viewText(element).includes('Исследовать'))!;
+    const button = findView(view.root, element => element.tag === 'button' && viewText(element).includes('Исследовать 1'))!;
     expect(button.props.disabled).toBe(false);
     button.props.onClick(); await flushView();
     const input = { cells: [{ x: 2, y: 0 }], top_up: false, use_elixir: useElixir };
@@ -812,7 +812,7 @@ describe('map controls', () => {
       node_id: 1, items: [], cells: [], can_expand: true, exploration: { allowed: true, level: 1, elixir_quantity: 0, max_level_per_node: 3, reason: '' },
     } }));
     await flushView();
-    const button = findView(view.root, element => element.tag === 'button' && viewText(element).includes('Исследовать'))!;
+    const button = findView(view.root, element => element.tag === 'button' && viewText(element).includes('Исследовать 1'))!;
     expect(button.props.disabled).toBe(true);
     button.props.onClick(); await flushView();
     expect(mocks.mapPreview).not.toHaveBeenCalled();
@@ -890,7 +890,7 @@ describe('map permissions and embedded mini-storage', () => {
     mocks.harvest.mockResolvedValue(stock());
     const view = mount(WorldMap, () => ({node: {...node, owned_by_me: false}, map: map(), selection: [child().coordinates], writable: true, command: mocks.runner, session: 1})); await flushView();
     expect(mocks.harvest).toHaveBeenCalledWith(2); expect(viewText(view.root)).toContain('5 ячеек · до 100 шт. в ячейке');
-    expect(findView(view.root, n => n.props.class === 'harvest-grid')!.children.filter(n => findView(n, child => child.tag === 'button' && String(child.props.class).includes('harvest-cell')))).toHaveLength(5);
+    expect(findView(view.root, n => n.props['aria-label'] === 'Ячейки склада')!.children.filter(n => findView(n, child => child.tag === 'button' && String(child.props.class).includes('harvest-cell')))).toHaveLength(5);
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Камень'))!.props.onClick(); await flushView();
     const input = {inventory_id: 21, quantity: 1}, q = {...quote, terms: {node_id: 2, inventory_id: 21, total: '1.0000', fits: true}};
     mocks.harvestPreview.mockResolvedValue({input, quote: q});
@@ -926,7 +926,9 @@ describe('map permissions and embedded mini-storage', () => {
     const progress = findView(mining, n => n.props.class === 'mining-progress')!;
     const limit = findView(mining, n => n.props.class === 'mining-quota')!;
     const action = findView(mining, n => n.tag === 'button' && viewText(n).includes('Приостановить добычу'))!;
-    expect(mining.children.indexOf(limit)).toBe(1);
+    const heading = findView(mining, n => String(n.props.class).includes('world-section-heading'))!;
+    expect(heading).toBeDefined();
+    expect(mining.children.indexOf(limit)).toBeGreaterThan(mining.children.indexOf(heading));
     expect(viewText(limit)).toContain('Добыч за день осталось: 18 / 20');
     expect(mining.children.indexOf(progress)).toBeGreaterThan(mining.children.indexOf(limit));
     expect(mining.children.indexOf(action)).toBe(mining.children.indexOf(progress) + 1);
@@ -1109,7 +1111,7 @@ describe('garden harvest purchase controls', () => {
     const view = mount(WorldHarvestPanel, () => ({ nodeId: 10, session: 1, revision: 1, command: mocks.runner })); await flushView();
     expect(findView(view.root, n => n.props['data-storage'] === 2)).toBeDefined();
     expect(findView(view.root, n => n.props['data-storage'] === 1)).toBeDefined();
-    expect(findView(view.root, n => n.props.class === 'harvest-grid')).toBeUndefined();
+    expect(findView(view.root, n => n.props['aria-label'] === 'Ячейки склада')).toBeUndefined();
     view.app.unmount(); mocks.storageList.mockClear();
     const embedded = mount(WorldHarvestPanel, () => ({ nodeId: 10, session: 1, revision: 1, command: mocks.runner, embedded: true })); await flushView();
     expect(findView(embedded.root, n => n.tag === 'a' && n.props.to === '/world/nodes/10#workshop')).toBeDefined();
@@ -1145,7 +1147,7 @@ describe('garden harvest purchase controls', () => {
     const input = { inventory_id: 5, quantity: 1 }, q = { ...quote, terms: { total: '2.5000', fits: true } };
     pending.resolve({ input, quote: q }); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/10/harvest-buy', input, q);
-    expect(findView(view.root, n => n.props.class === 'harvest-grid')?.children.filter(n => findView(n, child => child.tag === 'button' && String(child.props.class).includes('harvest-cell')))).toHaveLength(5);
+    expect(findView(view.root, n => n.props['aria-label'] === 'Ячейки склада')?.children.filter(n => findView(n, child => child.tag === 'button' && String(child.props.class).includes('harvest-cell')))).toHaveLength(5);
     expect(viewText(view.root).match(/Свободно/g)).toHaveLength(4);
   });
   it('refreshes a changed price and keeps its explanation visible without paying', async () => {
@@ -1383,12 +1385,14 @@ describe('world construction, character and compact controls', () => {
     active.value = true; await flushView();
     expect(viewText(view.root)).not.toContain('Строительство завершено');
   });
-  it('keeps city links as tiles alongside the starting steps', async () => {
+  it('keeps city links as tiles and starting steps in the help popover', async () => {
     mocks.startState.mockResolvedValue(null);
     mocks.startFunding = {available: true, available_places: 3, amount_cr: null, message: 'Есть места', settlements: [{node_id: 4, name: 'Североград', available_places: 2, amount_cr: '250.0000'}, {node_id: 5, name: 'Южный', available_places: 1, amount_cr: '100.0000'}]};
     const view = mount(WorldStartPanel, () => ({node: {...node,type: 'REGION'}, owner: 1, session: 1, writable: true})); await flushView();
     const layout = findView(view.root, n => n.props.class === 'start-layout')!;
-    expect(layout.children.some(n => n.tag === 'ol')).toBe(true);
+    expect(findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Первые шаги')).toBeDefined();
+    expect(findView(view.root, n => n.tag === 'ol' && n.props.class === 'start-steps')).toBeDefined();
+    expect(findView(layout, n => n.tag === 'ol')).toBeUndefined();
     expect(findView(layout, n => n.tag === 'a' && n.props.to === '/world/nodes/4')?.props.class).toBe('start-city');
     expect(viewText(layout)).toContain('Североград'); expect(viewText(layout)).toContain('Южный');
   });
@@ -1433,8 +1437,13 @@ describe('world construction, character and compact controls', () => {
     const group = findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Дерево')!;
     group.props.onClick(); await flushView(); expect(group.props['aria-pressed']).toBe(true);
     expect(viewText(catalogue())).toContain('Доска'); expect(viewText(catalogue())).not.toContain('Слиток');
-    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Не хватает ресурсов')!.props.onClick(); await flushView();
-    expect(viewText(catalogue())).toContain('Верстак'); expect(viewText(catalogue())).not.toContain('Доска'); expect(mocks.workspace).toHaveBeenCalledTimes(1);
+    const available = findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Доступно')!;
+    available.props.onClick(); await flushView();
+    expect(available.props['aria-pressed']).toBe(true);
+    expect(viewText(catalogue())).toContain('Доска'); expect(viewText(catalogue())).not.toContain('Верстак');
+    available.props.onClick(); await flushView();
+    expect(available.props['aria-pressed']).toBe(false);
+    expect(viewText(catalogue())).toContain('Верстак'); expect(mocks.workspace).toHaveBeenCalledTimes(1);
   });
   it('shows one next action with its timer beside bed information', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(100_000));
@@ -1473,7 +1482,7 @@ describe('world construction, character and compact controls', () => {
     mocks.progression.mockResolvedValue({craft: [{name: 'Дерево',level: 2,xp: 125}],professions: []});
     const view = mount(WorldCharacterButton, () => ({session: 1,health: mvp().health})); await flushView(); expect(mocks.progression).not.toHaveBeenCalled();
     findView(view.root, n => typeof n.props['onUpdate:show'] === 'function')!.props['onUpdate:show'](true); await flushView();
-    expect(mocks.progression).toHaveBeenCalledTimes(1); expect(viewText(view.root)).toContain('Здоровье: 75 / 100'); expect(viewText(view.root)).toContain('Дерево');
+    expect(mocks.progression).toHaveBeenCalledTimes(1); expect(viewText(findView(view.root, n => n.props['aria-label'] === 'Здоровье')!)).toContain('75 / 100'); expect(viewText(view.root)).toContain('Дерево');
     expect(findView(view.root, n => n.tag === 'a' && n.props.to === '/world/character')).toBeDefined();
   });
   it('ignores an old account progression reply', async () => {
@@ -1487,7 +1496,7 @@ describe('world construction, character and compact controls', () => {
     mocks.objects.mockResolvedValue({items: [{id: 2,name: 'Моя шахта',status: 'active'}],total: 1,pageSize: 20});
     mocks.storageList.mockResolvedValue([]); mocks.nights.mockRejectedValue(new Error('offline'));
     const view = mount(WorldCharacterPage); await flushView();
-    expect(viewText(view.root)).toContain('Здоровье: 75 / 100'); expect(viewText(view.root)).toContain('Моя шахта'); expect(viewText(view.root)).toContain('Ночи: Ошибка запроса');
+    expect(viewText(findView(view.root, n => n.props['aria-label'] === 'Здоровье')!)).toContain('75 / 100'); expect(viewText(view.root)).toContain('Моя шахта'); expect(viewText(view.root)).toContain('Ночи: Ошибка запроса');
     expect(mocks.objects).toHaveBeenCalledWith({owner_user_id: 1,page: 1,'per-page': 20}); expect(mocks.runner.submit).not.toHaveBeenCalled();
     expect(mocks.character).toHaveBeenCalledOnce(); expect(mocks.progression).not.toHaveBeenCalled(); expect(mocks.activeBuild).not.toHaveBeenCalled();
   });

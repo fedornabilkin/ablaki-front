@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldPanel from './WorldPanel.vue';
+import WorldStat from './WorldStat.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
 import { loadKitchen } from '@/services/api/worldKitchen';
@@ -32,7 +34,7 @@ watch(now, () => { if (now.value >= nextWindowCheck && !loading.value && state.v
 onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
-section.kitchen-panel(aria-label="Полевая кухня")
+world-panel.kitchen-panel(aria-label="Полевая кухня")
   world-section-heading.kitchen-heading(title="Полевая кухня" icon="utensils" level="h3")
     world-help-hint(label="Расписание питания")
       p Завтрак 06:00–10:00 · обед 12:00–16:00 · ужин 18:00–22:00, время Москвы.
@@ -42,16 +44,20 @@ section.kitchen-panel(aria-label="Полевая кухня")
   n-spin(v-if="loading && !state" size="small")
   template(v-if="state")
     strong {{ state.current ? `${state.current.name}${state.used ? ' уже использован' : ''}` : 'Сейчас перерыв' }}
-    p Здоровье: {{ state.health.hp }} / {{ state.health.maximum }}
+    world-stat.kitchen-health(label="Здоровье" icon="plus") {{ state.health.hp }} / {{ state.health.maximum }}
     p(v-if="!open && state.next") {{ state.next.name }} через #[world-countdown(:until="state.next.startsAt" :server-time="state.serverTime")]
     .kitchen-menu
       article(v-for="food in state.health.foods" :key="food.code")
         strong {{ food.name }}
         span +{{ food.kitchenRestore }} HP · порций {{ food.quantity }}
-        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="runner.busy.value" :disabled="!writable || !open || !food.quantity || runner.busy.value || !!runner.pending.value || loading" @click="eat(food.code)") Поесть
+        n-button(:theme-overrides="worldActionButtonTheme" type="primary" :loading="runner.busy.value" :disabled="!writable || !open || !food.quantity || runner.busy.value || !!runner.pending.value || loading" @click="eat(food.code)")
+          template(#icon)
+            font-awesome-icon(icon="utensils" aria-hidden="true")
+          | Поесть
     n-button(v-if="runner.pending.value" :disabled="runner.busy.value" @click="eat()") Проверить результат
     p(v-if="notice" role="status") {{ notice }}
 </template>
 <style scoped>
-.kitchen-panel { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--bg-surface); }.kitchen-heading { display: flex; align-items: center; justify-content: space-between; }.kitchen-panel h3, .kitchen-panel p { margin: 0; }.kitchen-menu { display: grid; grid-template-columns: repeat(auto-fit,minmax(12rem,1fr)); gap: .75rem; }.kitchen-menu article { display: grid; gap: .6rem; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; }.kitchen-menu span { color: var(--text-muted); font-size: .85rem; }
+.kitchen-panel h3, .kitchen-panel p { margin: 0; }.kitchen-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 15rem)); gap: .75rem; }.kitchen-menu article { display: grid; gap: .6rem; padding: .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-base); }.kitchen-menu span { color: var(--text-muted); font-size: .85rem; }.kitchen-menu .n-button { justify-self: start; }.kitchen-health { max-width: 15rem; }
+@media(max-width: 47.99rem) { .kitchen-panel { border-inline: 0; border-radius: 0; } }
 </style>

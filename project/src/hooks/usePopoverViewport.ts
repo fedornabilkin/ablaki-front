@@ -14,9 +14,9 @@ export function usePopoverViewport(content: Ref<HTMLElement | null>) {
       if (!popover?.isConnected) return;
       // The follower may be attached after the slot's first render.
       if (follower !== popover.parentElement) {
-        if (follower) follower.style.translate = '';
+        if (follower) { follower.style.translate = ''; follower.classList.remove('app-popover-anchor'); }
         position.disconnect(); follower = popover.parentElement;
-        if (follower) follower.style.translate = '';
+        if (follower) { follower.classList.add('app-popover-anchor'); follower.style.translate = ''; }
         if (follower) position.observe(follower, { attributes: true, attributeFilter: ['style'] });
       }
       const left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0;
@@ -25,7 +25,7 @@ export function usePopoverViewport(content: Ref<HTMLElement | null>) {
       popover.style.maxWidth = `min(32rem, ${Math.max(0, width - 32)}px)`;
       popover.style.maxHeight = `min(36rem, ${Math.max(0, height - 32)}px)`;
       const rect = popover.getBoundingClientRect();
-      const [appliedX = 0, appliedY = 0] = (follower?.style.translate ?? '').split(' ').map(value => parseFloat(value) || 0);
+      const [appliedX = 0, appliedY = 0] = (follower ? getComputedStyle(follower).translate : '').split(' ').map(value => parseFloat(value) || 0);
       const originX = rect.left - appliedX, originY = rect.top - appliedY;
       const x = Math.max(left + 16, Math.min(originX, left + width - 16 - rect.width)) - originX;
       const y = Math.max(top + 16, Math.min(originY, top + height - 16 - rect.height)) - originY;
@@ -46,7 +46,7 @@ export function usePopoverViewport(content: Ref<HTMLElement | null>) {
     onCleanup(() => {
       resize.disconnect(); position.disconnect(); cancelAnimationFrame(frame);
       popover.style.translate = '';
-      if (follower) follower.style.translate = '';
+      if (follower) { follower.style.translate = ''; follower.classList.remove('app-popover-anchor'); }
       window.removeEventListener('resize', schedule);
       window.removeEventListener('scroll', schedule, { capture: true });
       viewport?.removeEventListener('resize', schedule);

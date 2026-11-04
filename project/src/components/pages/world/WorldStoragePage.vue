@@ -32,4 +32,5 @@ const { error, pending, busy } = command;
 </template>
 <style scoped>
 .world-storage-page { display: grid; gap: 1rem; padding-block: 1rem 3rem; max-width: 1320px; }
+@media(max-width: 47.99rem) { .world-storage-page > :deep(.world-storage) { margin-inline: -.75rem; } }
 </style>

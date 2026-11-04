@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import WorldActionBadge from './WorldActionBadge.vue';
+import WorldActionBar from './WorldActionBar.vue';
 import AppDialog from '@/components/AppDialog.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { NAlert, NButton, NModal, NProgress, NSpin, NTabs, NTabPane } from 'naive-ui';
-import { worldActionButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { NAlert, NButton, NProgress, NSpin } from 'naive-ui';
+import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { loadMvp, milestoneLabels, type MvpState } from '@/services/api/worldMvp';
 import { isClosedTestError, worldError } from '@/services/api/world';
-import { formatCredits } from '@/entities/world/credits';
 import WorldCountdown from './WorldCountdown.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
 import WorldDevelopmentRoute from './WorldDevelopmentRoute.vue';
@@ -16,6 +16,13 @@ const props = defineProps<{ owner: number; session: number; revision: number; wr
 const emit = defineEmits<{ changed: []; snapshot: [value: { state: MvpState | null; loading: boolean; error: string }] }>();
 const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(false), loading = ref(false);
 const show = ref(false), tab = ref('development');
+const sections = computed(() => [
+  ...(state.value?.development ? [{ id: 'development', label: 'Развитие', icon: 'flag' }] : []),
+  { id: 'camp', label: 'Лагерь', icon: 'tent' },
+  { id: 'resources', label: 'Ресурсы', icon: 'cubes' },
+  { id: 'quotas', label: 'Лимиты', icon: 'clock' },
+  { id: 'health', label: 'Здоровье', icon: 'apple-alt' },
+].map(item => ({ ...item, active: tab.value === item.id, hint: item.label })));
 watch([state, loading, error], () => emit('snapshot', { state: state.value, loading: loading.value, error: error.value }), { flush: 'sync' });
 const activeGoal = computed(() => state.value?.goals.find(goal => goal.code === (tab.value === 'resources' ? 'day-2' : 'day-1')));
 const orderedSteps = computed(() => [...(activeGoal.value?.steps ?? [])].sort((a, b) => Number(a.completed) - Number(b.completed)));
@@ -49,7 +56,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 world-action-badge(:count="remainingTasks" :aria-label="remainingTasks !== null ? `Осталось заданий: ${remainingTasks}` : 'Задания'")
-  n-button.mvp-tasks-button(:theme-overrides="worldActionButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
+  n-button.mvp-tasks-button(:theme-overrides="worldNeutralButtonTheme" size="small" title="Задания" aria-label="Задания" @click="show = true")
     template(#icon)
       font-awesome-icon(icon="list-check" aria-hidden="true")
 app-dialog(icon="list-check" v-model:show="show" title="Мой путь в мире" :style="{ width: 'min(50rem, calc(100vw - 1.5rem))' }")
@@ -59,32 +66,7 @@ app-dialog(icon="list-check" v-model:show="show" title="Мой путь в ми�
   n-button(v-if="error" :loading="loading" :disabled="loading" @click="load") Повторить загрузку
   n-spin(v-if="loading && !state" size="small")
   n-button(v-if="runner.pending.value" :loading="runner.busy.value" @click="act()") Проверить результат запроса
-  n-tabs(v-if="state?.enabled" v-model:value="tab" type="segment" animated)
-    n-tab-pane(v-if="state.development" name="development" tab="Развитие")
-      template(#tab)
-        span.journey-tab(title="Развитие" aria-label="Развитие")
-          font-awesome-icon(icon="flag" aria-hidden="true")
-          span.journey-tab-label Развитие
-    n-tab-pane(name="camp" tab="Лагерь")
-      template(#tab)
-        span.journey-tab(title="Лагерь" aria-label="Лагерь")
-          font-awesome-icon(icon="tent" aria-hidden="true")
-          span.journey-tab-label Лагерь
-    n-tab-pane(name="resources" tab="Ресурсы")
-      template(#tab)
-        span.journey-tab(title="Ресурсы" aria-label="Ресурсы")
-          font-awesome-icon(icon="cubes" aria-hidden="true")
-          span.journey-tab-label Ресурсы
-    n-tab-pane(name="quotas" tab="Лимиты")
-      template(#tab)
-        span.journey-tab(title="Лимиты" aria-label="Лимиты")
-          font-awesome-icon(icon="clock" aria-hidden="true")
-          span.journey-tab-label Лимиты
-    n-tab-pane(name="health" tab="Здоровье")
-      template(#tab)
-        span.journey-tab(title="Здоровье" aria-label="Здоровье")
-          font-awesome-icon(icon="apple-alt" aria-hidden="true")
-          span.journey-tab-label Здоровье
+  world-action-bar(v-if="state?.enabled" label="Задания и состояние" :items="sections" @select="tab = $event")
   template(v-if="state?.enabled")
     template(v-if="tab === 'development'")
       world-development-route(v-if="state.development" :route="state.development" @navigate="show = false")

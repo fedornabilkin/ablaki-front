@@ -2,51 +2,68 @@
 import WorldPanel from './WorldPanel.vue';
 import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldDisclosure from './WorldDisclosure.vue';
-import ChoiceButtons from '@/components/ChoiceButtons.vue';
+import WorldCatalogFilters from './WorldCatalogFilters.vue';
+import WorldCatalogGrid from './WorldCatalogGrid.vue';
+import WorldActionBar from './WorldActionBar.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
-import { creditCost } from '@/entities/world/credits';
 import { projectCraftTerms } from '@/entities/world/craftPreview';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import WorldHelpHint from './WorldHelpHint.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
 import WorldCredits from './WorldCredits.vue';
-import type { CraftResult } from '@/entities/world/types';
+import type { CraftResult, WorldCommandResult } from '@/entities/world/types';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
+import { NAlert, NButton, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
 import WorldWorkspaceNav from './WorldWorkspaceNav.vue';
-import { useWorldCommand } from '@/hooks/useWorldCommand';
+import { useWorldCommand, type WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { useWorldPresence } from '@/hooks/useWorldPresence';
 import { worldError } from '@/services/api/world';
 import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { loadWorkspace, previewWorkspace, type WorkspaceInput } from '@/services/api/worldWorkspace';
 const route = useRoute(), router = useRouter(), auth = useStore();
+const props = withDefaults(defineProps<{ embedded?: boolean; contextNodeId?: number; active?: boolean; revision?: number; command?: WorldCommandRunner }>(), { embedded: false, active: true });
+const emit = defineEmits<{ changed: [] }>();
 const actionTheme = computed(() => route.path.startsWith('/world/') ? worldActionButtonTheme : undefined);
-const nodeId = computed(() => Number(route.params.id ?? route.query.node));
+const nodeId = computed(() => props.contextNodeId ?? Number(route.params.id ?? route.query.node));
 const session = computed(() => Number(auth.state.auth.revision)), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const craftHref = useCampsiteCraft(session);
 const state = shallowRef<Awaited<ReturnType<typeof loadWorkspace>> | null>(null), loading = ref(false), calculating = ref(false), error = ref(''), notice = ref('');
-useWorldPresence(computed(() => state.value?.writable && state.value.node_id === nodeId.value ? nodeId.value : null), session, { enter: false });
+useWorldPresence(computed(() => !props.embedded && state.value?.writable && state.value.node_id === nodeId.value ? nodeId.value : null), session, { enter: false });
 const recipe = ref<number | null>(null), quantity = ref<number | null>(1), sources = ref<number[]>([]), output = ref<number | null>(null), equipment = ref<Record<number, number | null>>({});
 const search = ref('');
 const category = ref('all'), availability = ref('all');
 const categoryIcons: Record<string, string> = { 'Деревообработка': 'tree', 'Ткачество': 'shirt', 'Каменное дело': 'mountain', 'Кузнечное дело': 'hammer', 'Алхимия': 'flask', 'Огород': 'seedling' };
 const categories = computed(() => [{value: 'all', label: 'Все группы', icon: 'cubes'}, ...[...new Set(state.value?.recipes.map(r => r.category ?? 'Прочее') ?? [])].map(name => ({value: name, label: name, icon: categoryIcons[name] || state.value?.recipes.find(r => (r.category ?? 'Прочее') === name)?.icon || 'cube'}))]);
-const availabilityOptions = [{value: 'all', label: 'Все'}, {value: 'ready', label: 'Хватает ресурсов'}, {value: 'shortage', label: 'Не хватает ресурсов'}, {value: 'locked', label: 'Закрытые'}];
 const lastResult = ref<CraftResult | null>(null);
 const useObjectBudget = ref(false);
 const waitingForPreview = ref(false);
 const calculation = shallowRef<(Awaited<ReturnType<typeof previewWorkspace>> & { input: WorkspaceInput }) | null>(null);
 let generation = 0, previewGeneration = 0, disposed = false;
 let previewTimer: ReturnType<typeof setTimeout> | undefined;
-const command = useWorldCommand(session, owner, result => { lastResult.value = result.craft_result ?? null; notice.value = lastResult.value ? 'Изготовление завершено.' : 'Предыдущее действие подтверждено. Можно продолжить изготовление.'; void auth.dispatch('auth/fetchData'); void load(recipe.value ?? undefined); });
+function completed(result: WorldCommandResult) {
+  lastResult.value = result.craft_result ?? null;
+  notice.value = lastResult.value ? 'Изготовление завершено.' : 'Предыдущее действие подтверждено. Можно продолжить изготовление.';
+  void load(recipe.value ?? undefined);
+  if (!props.command) { void auth.dispatch('auth/fetchData'); emit('changed'); }
+}
+// Embedded crafting shares the map's pending request and retry state.
+const command = props.command ?? useWorldCommand(session, owner, completed);
 const { busy, pending, error: commandError } = command;
-const blocked = computed(() => busy.value || !!pending.value || loading.value || calculating.value || waitingForPreview.value || !state.value?.writable || (state.value?.quota && (quantity.value ?? 0) > state.value.quota.remaining));
+const blocked = computed(() => !props.active || busy.value || !!pending.value || loading.value || calculating.value || waitingForPreview.value || !state.value?.writable || (state.value?.quota && (quantity.value ?? 0) > state.value.quota.remaining));
 const displayedTerms = computed(() => calculation.value && calculation.value.input.recipe_id === recipe.value
   ? projectCraftTerms(calculation.value.terms, calculation.value.input.quantity, quantity.value ?? 0) : null);
 const selectedRecipe = computed(() => state.value?.recipes.find(r => r.id === recipe.value));
+const parentRecipe = ref<number | null>(null);
+const relatedActions = computed(() => {
+  const ids = new Set((selectedRecipe.value?.materials ?? []).map(material => material.recipe_id).filter((id): id is number => !!id && id !== recipe.value));
+  return [
+    ...(parentRecipe.value && parentRecipe.value !== recipe.value ? [{ id: 'return', label: 'К исходному рецепту', icon: 'arrow-left', to: recipeLink(parentRecipe.value) }] : []),
+    ...(state.value?.recipes.filter(entry => ids.has(entry.id)).slice(0, 4).map(entry => ({ id: String(entry.id), label: entry.name, icon: entry.icon || 'cube', to: recipeLink(entry.id) })) ?? []),
+  ];
+});
 const storageOptions = computed(() => state.value?.storages.map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
 const outputOptions = computed(() => state.value?.storages.filter(s => s.output_allowed).map(s => ({ label: `${s.name} №${s.id}`, value: s.id })) ?? []);
 const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())
@@ -54,7 +71,7 @@ const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.t
   && (availability.value === 'all' || availability.value === 'ready' && r.available && !r.locked_reasons.length || availability.value === 'shortage' && !r.available && !r.locked_reasons.length || availability.value === 'locked' && r.locked_reasons.length)) ?? []);
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
 function invalidate(clear = false) { clearTimeout(previewTimer); previewGeneration++; if (clear) calculation.value = null; calculating.value = false; waitingForPreview.value = false; }
-function schedulePreview() { invalidate(); if (loading.value || disposed || selectedRecipe.value?.locked_reasons.length) return; waitingForPreview.value = true; previewTimer = setTimeout(() => { void preview(); }, 600); }
+function schedulePreview() { invalidate(); if (!props.active || loading.value || disposed || selectedRecipe.value?.locked_reasons.length) return; waitingForPreview.value = true; previewTimer = setTimeout(() => { void preview(); }, 600); }
 watch([quantity, sources, output, equipment, useObjectBudget], schedulePreview, { deep: true, flush: 'sync' });
 async function load(selected?: number) {
   const current = ++generation; invalidate(true); error.value = ''; loading.value = true;
@@ -70,17 +87,20 @@ async function load(selected?: number) {
   finally { if (generation === current && !disposed) { loading.value = false; if (!error.value) schedulePreview(); } }
 }
 function materialRecipe(item: number) { return selectedRecipe.value?.materials?.find(material => material.item_id === item)?.recipe_id ?? null; }
-function recipeLink(value: number) { return { path: route.path, query: { ...route.query, recipe_id: String(value) }, hash: route.hash }; }
+function recipeLink(value: number) { return { path: route.path, query: { ...route.query, recipe_id: String(value) }, hash: props.embedded ? '#craft' : route.hash }; }
 function changeRecipe(value: number) { if (busy.value || loading.value) return; void router.push(recipeLink(value)); }
 async function retryPending() {
+  const context = nodeId.value, revision = session.value;
   const result = await command.retry();
+  if (disposed || context !== nodeId.value || revision !== session.value) return;
+  if (result && props.command && !disposed) completed(result);
   // A definitive rejection (for example an expired quote) clears the pending
   // request too. Recalculate the current recipe so the form does not stay blocked.
   if (!result && !pending.value && !disposed) await load(recipe.value ?? undefined);
 }
 async function preview() {
   waitingForPreview.value = false;
-  if (busy.value || pending.value || loading.value || !state.value?.writable || !recipe.value || !output.value || !Number.isSafeInteger(quantity.value) || !quantity.value || quantity.value < 1 || quantity.value > 100 || selectedRecipe.value?.locked_reasons.length) { calculation.value = null; return; }
+  if (!props.active || busy.value || pending.value || loading.value || !state.value?.writable || !recipe.value || !output.value || !Number.isSafeInteger(quantity.value) || !quantity.value || quantity.value < 1 || quantity.value > 100 || selectedRecipe.value?.locked_reasons.length) { calculation.value = null; return; }
   if (!sources.value.length || sources.value.length > 20 || state.value.equipment.some(e => !equipment.value[e.item_id])) { calculation.value = null; return; }
   const input: WorkspaceInput = { node_id: nodeId.value, recipe_id: recipe.value, quantity: quantity.value, source_storage_ids: [...sources.value], output_storage_id: output.value, equipment_instance_ids: state.value.equipment.map(e => equipment.value[e.item_id] as number).sort((a, b) => a - b) };
   if (useObjectBudget.value && displayedTerms.value?.price !== '0.0000') input.use_object_budget = true;
@@ -92,25 +112,37 @@ async function preview() {
 async function craft() {
   if (!calculation.value || blocked.value || calculation.value.terms.reasons.length) return;
   const shown = calculation.value, current = ++previewGeneration;
+  const context = nodeId.value, revision = session.value;
   calculating.value = true; error.value = '';
   try {
     const fresh = await previewWorkspace(shown.input);
     if (disposed || current !== previewGeneration) return;
     calculation.value = { ...fresh, input: shown.input };
     if (JSON.stringify(fresh.terms) !== JSON.stringify(shown.terms)) { error.value = 'Условия изготовления изменились. Проверьте обновлённую стоимость и материалы.'; return; }
-    await command.submit('/workspace/craft', { ...shown.input }, fresh.quote);
+    const result = await command.submit('/workspace/craft', { ...shown.input }, fresh.quote);
+    if (result && props.command && !disposed && context === nodeId.value && revision === session.value) completed(result);
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; search.value = ''; }, { flush: 'sync' });
-watch([nodeId, session, owner, () => route.query.recipe_id], () => { notice.value = ''; lastResult.value = null; const requested = Number(route.query.recipe_id); void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined); }, { immediate: true, flush: 'sync' });
+watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; search.value = ''; parentRecipe.value = null; }, { flush: 'sync' });
+watch([nodeId, session, owner, () => route.query.recipe_id], () => {
+  notice.value = ''; lastResult.value = null;
+  const requested = Number(route.query.recipe_id);
+  if (requested !== recipe.value && selectedRecipe.value?.materials?.some(material => material.recipe_id === requested)) parentRecipe.value = recipe.value;
+  else if (requested !== parentRecipe.value) parentRecipe.value = null;
+  void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined);
+}, { immediate: true, flush: 'sync' });
+watch([() => props.active, () => props.revision], () => {
+  if (!props.active) invalidate();
+  else if (props.embedded && !loading.value && !calculating.value && !busy.value && !pending.value) void load(recipe.value ?? undefined);
+});
 onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 </script>
 <template lang="pug">
-.container.workspace
-  world-workspace-hero(:title="state ? `Изготовление: ${state.name}` : 'Изготовление в объекте'" :parent-to="`/world/nodes/${nodeId}`")
+.workspace(:class="{ container: !embedded, 'workspace-embedded': embedded }")
+  world-workspace-hero(v-if="!embedded" :title="state ? `Изготовление: ${state.name}` : 'Изготовление в объекте'" :parent-to="`/world/nodes/${nodeId}`")
     router-link(v-if="!state && craftHref !== route.path" :to="{ path: craftHref, query: route.query }") Изготовление на своей стоянке
-  .workspace-navigation
+  .workspace-navigation(v-if="!embedded")
     world-workspace-nav(:node-id="nodeId" manufacturing)
   n-alert(closable v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
   n-alert(v-if="pending && !busy" type="info" role="status")
@@ -124,15 +156,10 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
         world-section-heading.recipe-heading(title="Рецепты объекта" icon="scroll")
           world-help-hint(label="Как изготовить предмет")
             p Выберите рецепт. Материалы и оборудование подберутся автоматически. Проверьте расход ресурсов и нажмите «Изготовить».
-        n-input.recipe-search(v-model:value="search" clearable placeholder="Найти рецепт" aria-label="Найти рецепт")
-          template(#prefix)
-            font-awesome-icon(icon="search" aria-hidden="true")
-        world-disclosure.recipe-filters(label="Фильтры рецептов" icon="list-check" :indicator="category !== 'all' || availability !== 'all' ? 'Выбраны' : undefined")
-          choice-buttons(v-model="category" :options="categories" label="Группа предметов" mobile-icons)
-          choice-buttons(v-model="availability" :options="availabilityOptions" label="Доступность изготовления")
-        .recipe-tiles
-          .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
-            button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available && !entry.locked_reasons.length, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading" @click="changeRecipe(entry.id)")
+        world-catalog-filters(v-model:search="search" v-model:group="category" :ready="availability === 'ready'" @update:ready="availability = $event ? 'ready' : 'all'" :groups="categories" :count="filteredRecipes.length" :total="state.recipes.length")
+        world-catalog-grid.recipe-tiles(label="Рецепты объекта")
+          .recipe-tile-wrap.catalog-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
+            button.recipe-tile.catalog-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available && !entry.locked_reasons.length, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading" @click="changeRecipe(entry.id)")
               font-awesome-icon(:icon="entry.icon || 'cube'" aria-hidden="true")
               strong {{ entry.name }}
               small ×{{ entry.quantity }} за партию
@@ -153,7 +180,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
           .selected-heading
             font-awesome-icon(:icon="selectedRecipe.icon || 'cube'" aria-hidden="true")
             h2 {{ selectedRecipe.name }}
-            n-input-number.batch-count(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading || Boolean(pending)" aria-label="Количество партий")
+            n-input-number.batch-count(v-model:value="quantity" :min="1" :max="100" :precision="0" :disabled="busy || loading" aria-label="Количество партий")
           world-payment-sources(v-model:checked="useObjectBudget" :mode="state.object_budget_payment ? 'budget-choice' : 'personal'" :price="displayedTerms?.price" :disabled="busy || Boolean(pending)")
           template(v-if="displayedTerms")
             .material-tiles
@@ -179,8 +206,8 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
             p(v-if="!sources.length || !output") Выберите хранилища в настройках ниже.
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
-          n-button(v-if="pending" :theme-overrides="actionTheme" type="primary" block :loading="busy" :disabled="busy || loading" @click="retryPending") Проверить предыдущее действие
-          n-button(v-else :theme-overrides="actionTheme" type="primary" block :loading="busy || calculating || waitingForPreview || loading" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft")
+          n-button(v-if="pending" :theme-overrides="actionTheme" type="primary" :loading="busy" :disabled="busy || loading" @click="retryPending") Проверить предыдущее действие
+          n-button(v-else :theme-overrides="actionTheme" type="primary" :loading="busy || calculating || waitingForPreview || loading" :disabled="blocked || !calculation || Boolean(calculation.terms.reasons.length)" @click="craft")
             template(#icon)
               font-awesome-icon(icon="hammer" aria-hidden="true")
             | {{ displayedTerms ? 'Изготовить' : calculating || waitingForPreview || loading ? 'Рассчитываем…' : 'Изготовление недоступно' }}
@@ -195,59 +222,51 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
           n-button(:theme-overrides="actionTheme" v-if="error && !calculation" :disabled="blocked" @click="preview") Повторить расчёт
           world-disclosure.craft-settings(label="Материалы и оборудование" icon="toolbox")
             label Источники материалов — по порядку
-              n-select(v-model:value="sources" :options="storageOptions" multiple :disabled="busy || loading || Boolean(pending)" placeholder="До 20 хранилищ")
+              n-select(v-model:value="sources" :options="storageOptions" multiple :disabled="busy || loading" placeholder="До 20 хранилищ")
             label Куда положить результат
-              n-select(v-model:value="output" :options="outputOptions" :disabled="busy || loading || Boolean(pending)")
+              n-select(v-model:value="output" :options="outputOptions" :disabled="busy || loading")
             label(v-for="role in state.equipment" :key="role.item_id") {{ role.is_station ? 'Станция' : 'Инструмент' }}: {{ role.name }}
-              n-select(v-model:value="equipment[role.item_id]" :options="role.candidates.map(c => ({ label: `Прочность ${c.durability}/${c.max_durability} · ${exposure[c.exposure_class]}`, value: c.instance_id }))" :disabled="busy || loading || Boolean(pending)" placeholder="Нет доступного экземпляра")
+              n-select(v-model:value="equipment[role.item_id]" :options="role.candidates.map(c => ({ label: `Прочность ${c.durability}/${c.max_durability} · ${exposure[c.exposure_class]}`, value: c.instance_id }))" :disabled="busy || loading" placeholder="Нет доступного экземпляра")
             p(v-for="unit in displayedTerms?.equipment ?? []" :key="unit.instance_id") Износ за работу: {{ unit.wear }} · прочность {{ unit.durability }}/{{ unit.max_durability }}
             router-link(:to="`/world/nodes/${nodeId}#workshop`") Разместить вещи и оборудование →
         p(v-else) Выберите рецепт для изготовления.
+      world-action-bar.recipe-shortcuts(v-if="relatedActions.length && !busy && !pending && !loading" label="Связанные рецепты" :items="relatedActions")
 </template>
 <style scoped>
- .workspace { display: grid; gap: 1rem; max-width: 1320px; padding-block: 1rem 3rem; }
+.workspace { display: grid; gap: 1rem; max-width: 1320px; padding-block: 1rem 3rem; }
+.workspace.workspace-embedded { padding-block: 0; }
 .workspace-navigation { min-width: 0; padding: .25rem; border-bottom: 1px solid var(--border); }
-.workspace-layout { display: grid; gap: 1rem; align-items: start; min-width: 0; }
-.recipe-catalog { display: grid; gap: .75rem; }
-.recipe-search { width: 100%; }
-.recipe-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: 3px; max-height: 24rem; max-height: min(52svh, 28rem); overflow-y: auto; scrollbar-width: thin; }
-.recipe-tile-wrap { position: relative; min-width: 0; }
-.recipe-tile { display: grid; gap: .4rem; justify-items: start; align-content: start; width: 100%; height: 100%; min-height: 8rem; padding: .85rem; border: 1px solid var(--border); border-radius: .7rem; background: transparent; color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.4; transition: border-color 160ms ease, background-color 160ms ease; }
-.recipe-tile > svg { font-size: 1.3rem; color: var(--text-muted); }
-.recipe-tile span, .recipe-tile small { font-size: .8125rem; color: var(--text-muted); }
-.recipe-tile.ready { background: linear-gradient(145deg, #4ebc8530, #4ebc8505); border-color: #4ebc8555; }
-.recipe-tile.shortage { background: linear-gradient(145deg, #d5677130, #d5677105); border-color: #d5677155; }
-.recipe-tile.locked { background: repeating-linear-gradient(135deg, #ffffff06 0 6px, transparent 6px 12px); }
-.recipe-tile:hover:not(:disabled) { border-color: var(--primary); }
-.recipe-ingredients { display: grid; gap: .2rem; }
+.workspace-layout { display: grid; gap: .75rem; align-items: start; min-width: 0; }
+.workspace .recipe-catalog, .workspace .craft-command { display: grid; gap: .75rem; padding: .85rem; border-radius: 0; border-inline: 0; }
+.recipe-catalog { grid-row: 3; }
+.craft-command { grid-row: 1; background: linear-gradient(145deg, var(--primary-soft), var(--bg-surface) 40%); }
+.recipe-shortcuts { grid-row: 2; padding-inline: .75rem; }
+.recipe-tile span { font-size: .75rem; color: var(--text-muted); }
+.recipe-ingredients { display: grid; gap: .15rem; }
 .recipe-ingredients .missing { color: #e6a0a8; }
-.material-tile > a { grid-column: 1 / -1; padding-block: .3rem; }
-.material-tile > span { white-space: nowrap; }
-.recipe-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
-.recipe-tile.selected > svg { color: var(--primary); }
-.recipe-tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
-.recipe-tile:disabled { cursor: default; color: var(--text-muted); }
-.recipe-tile.locked > svg { margin-right: 2rem; }
-.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .15rem; right: .15rem; z-index: 1; }
-.craft-command { display: grid; gap: 1rem; }
+.recipe-tile-wrap :deep(.recipe-lock-info) { position: absolute; top: .1rem; right: .1rem; z-index: 1; }
 .craft-command p, .selected-heading h2 { margin: 0; }
-.selected-heading { display: flex; align-items: center; gap: .5rem; }
-.selected-heading h2 { min-width: 0; flex: 1; font-size: 1.05rem; overflow-wrap: anywhere; }
-.selected-heading > svg { color: var(--text-muted); font-size: 1.25rem; }
+.selected-heading { display: flex; align-items: center; gap: .6rem; }
+.selected-heading h2 { min-width: 0; flex: 1; font-size: 1.15rem; overflow-wrap: anywhere; }
+.selected-heading > svg { color: var(--primary); font-size: 1.5rem; }
 .selected-heading .batch-count { width: 6.5rem; flex: 0 0 6.5rem; }
-.material-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
-.material-tile { display: grid; grid-template-columns: auto 1fr; gap: .35rem .5rem; padding: .65rem; border-radius: .5rem; background: var(--bg-surface-2, #242424); font-size: .8125rem; }
-.material-tile > svg { color: var(--text-muted); }.material-tile > strong { min-width: 0; overflow-wrap: anywhere; }.material-tile > span { grid-column: 2; }
+.material-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 27rem; gap: .6rem; }
+.material-tile { display: grid; grid-template-columns: auto 1fr; min-width: 0; gap: .35rem .5rem; padding: .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-surface); font-size: .8125rem; }
+.material-tile.missing { border-color: #d5677155; background: linear-gradient(145deg, #d5677118, transparent); }
+.material-tile > svg { color: var(--text-muted); }.material-tile > strong { min-width: 0; overflow-wrap: anywhere; }
+.material-tile > span { grid-column: 1 / -1; font-variant-numeric: tabular-nums; }
+.material-tile > a { grid-column: 1 / -1; min-height: 2rem; display: inline-flex; align-items: center; }
 .workspace label { display: grid; gap: .4rem; font-size: .875rem; }
 .craft-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .75rem; font-size: .875rem; color: var(--text-muted); }
 .craft-summary > span:last-child { overflow-wrap: anywhere; }
-.missing { color: var(--error, #d03050); font-weight: 600; }
+.missing { color: #e6a0a8; font-weight: 500; }
+.craft-command > .n-button { justify-self: start; max-width: 100%; min-height: 2.75rem; }
 .craft-result p { margin-top: .35rem; }.craft-command :deep(.world-credits) { margin-left: .5rem; }
-@media(min-width: 760px) {
-  .workspace-layout { grid-template-columns: minmax(0, 1fr) minmax(290px, 350px); }
-  .craft-command { position: sticky; top: calc(var(--site-header-height, 0px) + 1rem); }
-  .recipe-tiles { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); max-height: none; overflow: visible; }
+@media(min-width: 48rem) {
+  .workspace-layout { grid-template-columns: minmax(0, 1.65fr) minmax(18rem, 1fr); gap: .75rem 1rem; }
+  .workspace .recipe-catalog, .workspace .craft-command { border: 1px solid var(--border); border-radius: .65rem; }
+  .recipe-catalog { grid-column: 2; grid-row: 1 / 3; }
+  .craft-command { grid-column: 1; grid-row: 1; }
+  .recipe-shortcuts { grid-column: 1; grid-row: 2; padding-inline: 0; }
 }
-@media(min-width: 1100px) { .recipe-catalog { grid-template-columns: minmax(0, 1fr) minmax(16rem, 45%); align-items: center; }.recipe-catalog > :not(.recipe-heading):not(.recipe-search) { grid-column: 1 / -1; } }
-@media(prefers-reduced-motion: reduce) { .recipe-tile { transition: none; } }
 </style>

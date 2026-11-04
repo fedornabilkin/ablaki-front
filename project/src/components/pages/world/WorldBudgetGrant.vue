@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
-import { worldActionButtonTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
@@ -39,8 +40,7 @@ async function confirm() {
 </script>
 <template lang="pug">
 section.world-budget-grant#budget-grant(aria-label="Перевод в бюджет дочернего объекта")
-  .grant-heading
-    h3 Направить бюджет дочернему объекту
+  world-section-heading(title="Передать дочернему объекту" icon="exchange-alt" level="h3")
     world-help-hint(label="Как работает перевод в дочерний бюджет")
       p Кредиты переходят из свободной части бюджета этого объекта в бюджет выбранной дочерней ноды. Казна и личный баланс не затрагиваются; обратный перевод автоматически не выполняется.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
@@ -48,7 +48,7 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
   n-button(v-if="receipt" @click="receipt = null") Новый перевод
   .grant-options(v-if="!receipt && options.length")
     span Быстрый выбор:
-    n-button(:theme-overrides="worldActionButtonTheme" v-for="child in options" :key="child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
+    n-button(v-for="child in options" :key="child.id" :theme-overrides="destination === child.id ? worldActionButtonTheme : worldNeutralButtonTheme" :aria-pressed="destination === child.id" size="small" @click="destination = child.id") {{ child.label }} · №{{ child.id }}
   label(v-if="!receipt") ID получателя
     n-input-number(v-model:value="destination" :min="1" :max="2147483647" :precision="0" placeholder="Дочерний объект или свой огород")
   label(v-if="!receipt") Сумма
@@ -64,7 +64,8 @@ section.world-budget-grant#budget-grant(aria-label="Перевод в бюдже
 </template>
 <style scoped>
 .grant-heading { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.grant-heading h3 { margin: 0; }
-.world-budget-grant { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; }
+.world-budget-grant { display: grid; gap: .75rem; min-width: 0; }
+.world-budget-grant > .n-button { justify-self: start; max-width: 100%; min-height: 2.75rem; }
 .world-budget-grant label { display: grid; gap: .3rem; max-width: 34rem; }
 .grant-options { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .grant-quote { padding: 1rem; border: 1px solid var(--primary); border-radius: .5rem; }

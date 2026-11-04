@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppPopover from '@/components/AppPopover.vue';
+import WorldSlotGrid from './WorldSlotGrid.vue';
 import ItemCellContent from '@/components/ItemCellContent.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { computed, ref, watch } from 'vue';
@@ -7,7 +8,6 @@ import { computed, ref, watch } from 'vue';
 import type { StorageView } from '@/services/api/worldStorage';
 import { storageCells, type StorageMapContext } from '@/entities/world/storageInteraction';
 import { nodeIcons } from '@/entities/world/types';
-import { formatCredits } from '@/entities/world/credits';
 const props = defineProps<{ view: StorageView; context?: StorageMapContext | null; selected: number | null; blocked: boolean; dragging?: number | null; target?: string | null; destinations: number[] }>();
 const emit = defineEmits<{ choose: [position: number]; down: [event: PointerEvent, position: number]; move: [event: PointerEvent]; up: [event: PointerEvent]; cancel: [] }>();
 const page = ref(1);
@@ -20,7 +20,7 @@ const exposure: Record<string, string> = { outdoor: 'На улице', covered: 
 </script>
 <template lang="pug">
 .storage-grid-panel
-  .storage-grid(role="group" :aria-label="view.storage.name")
+  world-slot-grid.storage-grid(:label="view.storage.name")
     app-popover(v-for="cell in cells" :key="cell.position" trigger="manual" placement="bottom" :show="Boolean(cell.item && cell.item.id === selected && !dragging && $slots['selected-item'])" width="22rem")
       template(#trigger)
         button.storage-cell(type="button" :data-storage="view.storage.id" :data-position="cell.position" :data-drop="(cell.available && destinations.includes(cell.position)) ? 'true' : undefined" :class="{ selected: cell.item?.id === selected, locked: !cell.available, purchase: cell.purchase, occupied: !!cell.object, destination: (cell.available && destinations.includes(cell.position)), dragging: dragging === cell.item?.id, 'drop-target': target === `${view.storage.id}:${cell.position}` }" :disabled="blocked || (!cell.item && (!cell.available || !!cell.object))" :aria-pressed="Boolean(cell.item && selected === cell.item.id)" :aria-label="`${cell.item ? cell.item.name + ', ' + cell.item.quantity + ' шт.' : cell.object?.label || 'Пустое место'}, ячейка ${cell.position}. ${cell.object ? 'Недоступно для размещения' : cell.purchase ? 'К покупке' : cell.available ? 'Доступна' : 'Закрыта'}`" @click="emit('choose', cell.position)" @pointerdown="emit('down', $event, cell.position)" @pointermove="emit('move', $event)" @pointerup="emit('up', $event)" @pointercancel="emit('cancel')" @lostpointercapture="emit('cancel')")
@@ -36,16 +36,14 @@ const exposure: Record<string, string> = { outdoor: 'На улице', covered: 
     button(type="button" :disabled="page >= pages || blocked" @click="page++") Далее →
 </template>
 <style scoped>
-.storage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: 3px; }
-.storage-cell { display: flex; flex-direction: column; gap: .4rem; min-height: 6.5rem; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--bg-base); color: var(--text); text-align: left; cursor: pointer; touch-action: none; user-select: none; }
+.storage-cell { display: flex; flex-direction: column; gap: .4rem; min-height: 7.5rem; min-width: 0; width: 100%; padding: .65rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-base); color: var(--text); text-align: left; cursor: pointer; touch-action: none; user-select: none; }
 .cell-top { display: flex; justify-content: space-between; gap: .3rem; align-items: center; }
 .cell-top svg { color: var(--primary); font-size: 1.25rem; }
 .cell-top strong, .cell-state { font-size: .8125rem; }.cell-name { font-size: .8rem; overflow-wrap: anywhere; }.cell-state { margin-top: auto; color: var(--text-muted); }
-.storage-cell.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }.storage-cell.destination { border-style: dashed; border-color: var(--primary); }
+.storage-cell.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: var(--primary-soft); }.storage-cell.destination { border-style: dashed; border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--bg-base)); }
 .storage-cell.occupied:disabled { opacity: 1; cursor: default; }.storage-cell.occupied .cell-state { color: var(--text-muted); }
 .storage-cell.purchase:disabled { border-style: dashed; opacity: 1; }.cell-price { color: var(--primary); font-size: .85rem; }
 .storage-cell.drop-target { outline: 3px solid var(--primary); background: var(--primary-soft); }.storage-cell.dragging { opacity: .45; }.storage-cell.locked { background: var(--bg-surface); border-style: solid; }.storage-cell:focus-visible { outline: 2px solid var(--primary); }.storage-cell:disabled { cursor: default; opacity: .6; }
 .cell-pages { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }.cell-pages button { min-height: 2.75rem; padding: .4rem; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: .3rem; }
-@media(min-width: 760px) { .storage-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); } }
 @media(pointer: coarse) { .storage-cell { touch-action: pan-y; } }
 </style>
