@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { NAlert, NButton, NSpin } from 'naive-ui';
@@ -35,8 +36,7 @@ onScopeDispose(() => { disposed = true; generation++; });
 </script>
 <template lang="pug">
 section.world-housing#housing
-  .housing-heading
-    h3 Ночлег
+  world-section-heading.housing-heading(title="Ночлег" icon="bed" level="h3")
     world-help-hint(label="Как назначается ночлег")
       p Разместите кровать в исправном крытом объекте и назначьте ночлег одним нажатием. Плата не взимается; прежний ночлег при смене закрывается в той же операции.
       p Назначение сохраняется до отмены или перемещения кровати. Для защиты нужно оставаться в одном исправном укрытии всю ночь; прошлые ночи и здоровье не пересчитываются.

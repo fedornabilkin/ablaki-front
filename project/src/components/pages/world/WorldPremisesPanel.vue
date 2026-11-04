@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
 import WorldCreditInput from './WorldCreditInput.vue';
@@ -58,7 +59,7 @@ onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
 section.world-premises#premises
-  h2 Помещения и жильё
+  world-section-heading(title="Помещения и жильё" icon="house")
   p Помещение можно купить готовым или построить по опубликованным условиям. Оплата — из бюджета площадки. Станции и сундуки переносятся в готовую комнату отдельно.
   n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить предложения
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}

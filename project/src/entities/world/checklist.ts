@@ -8,7 +8,7 @@ export const checklistItems = [
   { id: 'tools', group: 'Лагерь', title: 'Получить молоток и лопату', detail: 'Оба инструмента засчитаны в начальном маршруте.', steps: ['hammer_crafted', 'shovel_crafted'] },
   { id: 'camp', group: 'Лагерь', title: 'Построить шалаш и огород', detail: 'Оба объекта завершены.', steps: ['shelter_built', 'garden_built'] },
   { id: 'harvest', group: 'Лагерь', title: 'Подготовить грядку и собрать урожай', detail: 'Грядка, посев и первый сбор моркови подтверждены.', steps: ['bed_dug', 'carrot_sown', 'carrot_harvested'] },
-  { id: 'mine', group: 'Ресурсы', title: 'Построить шахту и добыть сырьё', detail: 'Добыты камень, уголь и руда.', steps: ['mine_built', 'stone_mined', 'coal_mined', 'ore_mined'] },
+  { id: 'mine', group: 'Ресурсы', title: 'Построить шахту и добыть сырьё', detail: 'Шахта построена и завершена хотя бы одна добыча сырья в своей шахте.', steps: ['mine_built', 'mine_resources_mined'] },
   { id: 'metal', group: 'Ресурсы', title: 'Получить первый металл', detail: 'Кузница, верстак, печь и первый слиток засчитаны.', steps: ['forge_built', 'bench_crafted', 'furnace_crafted', 'ingot_crafted'] },
   { id: 'rewards', group: 'Ресурсы', title: 'Получить награды обоих этапов', detail: 'Обе награды получены, повторного начисления нет.', special: 'rewards' },
   { id: 'supply-floor', group: 'Проверки MVP', title: 'Проверить минимальное снабжение, песок и глину', detail: 'После исчерпания основного запаса доступен минимум; постройка добычи уменьшает выдачу на 50%.' },
@@ -54,14 +54,16 @@ export function parseChecklist(raw: string): ChecklistRun {
 }
 export function observeChecklist(run: ChecklistRun, state: MvpState | null, now = Date.now()): ChecklistRun {
   if (!state?.enabled) return run;
-  const completed = new Set(state.goals.flatMap(goal => goal.steps.filter(step => step.completed).map(step => step.code)));
+  const completed = new Set([...state.goals.flatMap(goal => goal.steps), ...(state.checklistSteps ?? [])].filter(step => step.completed).map(step => step.code));
+  // Compatibility with a server deployed before the complete checklist projection.
+  if (!state.checklistSteps?.length && ['stone_mined', 'coal_mined', 'ore_mined'].every(step => completed.has(step))) completed.add('mine_resources_mined');
   let next = run;
   for (const item of checklistItems) {
     const success = 'steps' in item ? item.steps.every(step => completed.has(step))
       : 'special' in item && (item.special === 'starter' ? state.starterPaid : ['day-1', 'day-2'].every(code => state.goals.some(goal => goal.code === code && goal.claimed)));
     if (!success || run.entries[item.id]?.autoAt != null) continue;
     if (next === run) next = { ...run, updatedAt: now, entries: { ...run.entries } };
-    next.entries[item.id] = { ...(run.entries[item.id] ?? emptyEntry()), autoAt: now, updatedAt: now };
+    next.entries[item.id] = { ...(run.entries[item.id] ?? emptyEntry()), result: run.entries[item.id]?.result === 'fail' ? 'fail' : 'auto', autoAt: now, updatedAt: now };
   }
   return next;
 }

@@ -10,6 +10,10 @@ const text = (value: unknown, max = 255) => typeof value === 'string' && value.l
 const boolean = (value: unknown) => typeof value === 'boolean' ? value : invalid();
 const list = <T>(value: unknown, parse: (entry: unknown) => T, max = 100): T[] => Array.isArray(value) && value.length <= max ? value.map(parse) : invalid();
 const reasons = (value: unknown) => list(value, entry => text(entry, 1000));
+function material(value: unknown) {
+  const row = record(value);
+  return { item_id: id(row.item_id), name: text(row.name, 120), quantity: integer(row.quantity, 1), have: integer(row.have), available: boolean(row.available), recipe_id: row.recipe_id == null ? null : id(row.recipe_id) };
+}
 function unit(value: unknown) {
   const r = record(value);
   if (!['carried', 'outdoor', 'covered', 'indoor'].includes(String(r.exposure_class))) invalid();
@@ -18,7 +22,7 @@ function unit(value: unknown) {
 }
 export function parseWorkspace(value: unknown) {
   const r = record(value);
-  const recipes = list(r.recipes, value => { const row = record(value); return { id: id(row.id), name: text(row.name, 120), category: row.category === undefined ? 'Прочее' : text(row.category, 120), icon: row.icon === undefined ? 'cube' : text(row.icon, 64), quantity: integer(row.quantity, 1, 1000), locked_reasons: reasons(row.locked_reasons), available: row.available === undefined ? false : boolean(row.available), availability_reasons: row.availability_reasons === undefined ? [] : reasons(row.availability_reasons) }; }, 2000);
+  const recipes = list(r.recipes, value => { const row = record(value); return { id: id(row.id), name: text(row.name, 120), category: row.category === undefined ? 'Прочее' : text(row.category, 120), icon: row.icon === undefined ? 'cube' : text(row.icon, 64), quantity: integer(row.quantity, 1, 1000), materials: row.materials === undefined ? [] : list(row.materials, material), locked_reasons: reasons(row.locked_reasons), available: row.available === undefined ? false : boolean(row.available), availability_reasons: row.availability_reasons === undefined ? [] : reasons(row.availability_reasons) }; }, 2000);
   const equipment = list(r.equipment, value => { const row = record(value); const item = id(row.item_id), station = boolean(row.is_station), candidates = list(row.candidates, unit);
     if (candidates.some(candidate => candidate.item_id !== item || candidate.is_station !== station) || new Set(candidates.map(c => c.instance_id)).size !== candidates.length) invalid();
     return { item_id: item, name: text(row.name, 120), is_station: station, candidates };

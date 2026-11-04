@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({ mvp: vi.fn(), storage: vi.fn(), storagePreview
 vi.mock('naive-ui', () => {
   const block = (tag: string) => ({ setup: (_: unknown, { slots, attrs }: any) => () => h(tag, attrs, slots.default?.()) });
   const modal = { props: { show: Boolean }, setup: (props: any, { slots }: any) => () => props.show ? h('section', { role: 'dialog' }, slots.default?.()) : null };
-  return { NModal: modal, NPopover: block('div'), NSpin: block('span'), NTabs: block('div'), NTabPane: block('div'), NAlert: block('aside'), NButton: block('button'), NProgress: block('progress'), NInputNumber: block('input'), NCheckbox: block('input') };
+  const popover = { setup: (_: unknown, { slots }: any) => () => h('div', [slots.trigger?.(), slots.default?.()]) };
+  return { NModal: modal, NPopover: popover, NSpin: block('span'), NTabs: block('div'), NTabPane: block('div'), NAlert: block('aside'), NButton: block('button'), NProgress: block('progress'), NInputNumber: block('input'), NCheckbox: block('input') };
 });
 vi.mock('../src/hooks/useSimpleWorldCommand', () => ({ useSimpleWorldCommand: () => mocks.runner }));
 vi.mock('../src/services/api/worldMvp', () => ({ loadMvp: mocks.mvp, milestoneLabels: {} }));
@@ -49,7 +50,7 @@ describe('economy panel load recovery', () => {
     expect(findView(view.root, n => n.tag === 'button' && viewText(n) === 'Ожидает резерва')!.props.disabled).toBe(true);
     expect(viewText(view.root)).toContain('Награда ожидает резерва');
     expect(findView(view.root, n => n.tag === 'a' && viewText(n).includes('Сообщить'))!.props.to).toBe('/forum');
-    findView(view.root, n => n.props.type === 'segment')!.props['onUpdate:value']('health'); await flushView();
+    findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Здоровье')!.props.onClick(); await flushView();
     const eat = findView(view.root, n => n.tag === 'button' && viewText(n) === 'Поесть')!;
     expect(eat.props.disabled).toBe(false); expect(eat.props.type).toBe('primary');
     eat.props.onClick(); await flushView();
@@ -72,16 +73,17 @@ describe('economy panel load recovery', () => {
     mocks.mvp.mockResolvedValue({ enabled: true, feedback: '/forum/read/80', personalCredits: '250.0000', goals: [goal('day-1'), goal('day-2')], quotas: [{ kind: 'extraction_daily', maximum: 20, remaining: 12, restoresAt: 100, grossRemaining: null }], health: { hp: 85, maximum: 100, revision: 2, foods: [{ code: 'carrot', name: 'Морковь', restore: 15, quantity: 2 }] } });
     const view = mountView(WorldMvpProgress, () => ({ owner: 1, session: 1, revision: 1, writable: true })); app = view.app;
     findView(view.root, node => node.tag === 'button' && node.props['aria-label'] === 'Задания')!.props.onClick(); await flushView();
-    const tabs = findView(view.root, node => node.props.type === 'segment')!;
-    expect(tabs.children.map(child => child.props.tab).filter(Boolean)).toEqual(['Лагерь', 'Ресурсы', 'Лимиты', 'Здоровье']);
+    const tabs = findView(view.root, node => node.props['aria-label'] === 'Задания и состояние')!;
+    const tab = (label: string) => findView(tabs, node => node.tag === 'button' && node.props['aria-label'] === label)!;
+    for (const label of ['Лагерь', 'Ресурсы', 'Лимиты', 'Здоровье']) expect(tab(label)).toBeDefined();
     expect(viewText(view.root)).toContain('Первый лагерь');
-    tabs.props['onUpdate:value']('resources'); await flushView(); expect(viewText(view.root)).toContain('Ресурсы и первый металл');
-    tabs.props['onUpdate:value']('quotas'); await flushView(); expect(viewText(view.root)).toContain('12 / 20');
-    tabs.props['onUpdate:value']('health'); await flushView(); expect(viewText(view.root)).toContain('85 / 100'); expect(viewText(view.root)).toContain('Морковь');
-    tabs.props['onUpdate:value']('camp'); await flushView();
+    tab('Ресурсы').props.onClick(); await flushView(); expect(viewText(view.root)).toContain('Ресурсы и первый металл');
+    tab('Лимиты').props.onClick(); await flushView(); expect(viewText(view.root)).toContain('12 / 20');
+    tab('Здоровье').props.onClick(); await flushView(); expect(viewText(view.root)).toContain('85 / 100'); expect(viewText(view.root)).toContain('Морковь');
+    tab('Лагерь').props.onClick(); await flushView();
     const action = findView(view.root, node => node.tag === 'a' && viewText(node).includes('К действию'))!;
     expect(action.props.to).toBe('/world/nodes/5'); action.props.onClick(); await flushView();
-    expect(findView(view.root, node => node.props.role === 'dialog')).toBeUndefined(); expect(mocks.mvp).toHaveBeenCalledOnce();
+    expect(findView(view.root, node => node.props.role === 'dialog')).toBeUndefined(); expect(mocks.mvp).toHaveBeenCalledTimes(2);
   });
   it('shows a failed initial route request and recovers without a game command', async () => {
     mocks.mvp.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ enabled: true, feedback: '/forum/read/80', goals: [], quotas: [], health: { hp: 100, maximum: 100, foods: [] } });

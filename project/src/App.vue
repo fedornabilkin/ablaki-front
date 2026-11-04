@@ -30,6 +30,7 @@ n-config-provider(:theme="darkTheme" :theme-overrides="themeOverrides" :locale="
 <style>
 .n-modal { align-self: flex-start !important; margin: 3.5rem auto 1.5rem !important; max-height: calc(100dvh - 5rem); transform-origin: center top !important; }
 .n-modal.n-card { overflow-y: auto; }
+.n-modal.n-card, .n-modal.n-dialog, .n-dialog { outline: 1px solid rgba(255, 255, 255, .22); outline-offset: -1px; box-shadow: 0 .4rem 1.8rem rgba(0, 0, 0, .32), 0 2px 6px rgba(0, 0, 0, .2); }
 .n-message { position: relative; overflow: hidden; padding-bottom: 12px; }
 .n-message, .n-notification {
   border: 1px solid var(--primary);

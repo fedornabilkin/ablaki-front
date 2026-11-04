@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldPanel from './WorldPanel.vue';
+import WorldSlotGrid from './WorldSlotGrid.vue';
+import WorldHelpHint from './WorldHelpHint.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 import { worldActionButtonTheme } from '@/entities/world/theme';
-import { discountedCredits, formatCredits, creditCost, needsPersonalTopUp } from '@/entities/world/credits';
+import { discountedCredits } from '@/entities/world/credits';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { NAlert, NButton, NCheckbox, NInputNumber, NSpin } from 'naive-ui';
+import { NAlert, NButton, NInputNumber, NSpin } from 'naive-ui';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import { loadEquipmentExpansion, previewEquipmentExpansion } from '@/services/api/worldEquipmentExpansion';
 import { worldError } from '@/services/api/world';
@@ -44,18 +48,21 @@ async function preview() {
 onScopeDispose(() => { disposed = true; generation++; previewGeneration++; });
 </script>
 <template lang="pug">
-section.equipment-expansion
-  h2 Места оборудования
-  n-button(:theme-overrides="worldActionButtonTheme" :loading="loading" :disabled="busy || Boolean(pending)" @click="load") Обновить места
+world-panel.equipment-expansion
+  world-section-heading(title="Места оборудования" icon="toolbox")
+    n-button(quaternary :loading="loading" :disabled="busy || Boolean(pending)" aria-label="Обновить места" title="Обновить места" @click="load")
+      template(#icon)
+        font-awesome-icon(icon="rotate" aria-hidden="true")
+    world-help-hint(label="Расширение мест оборудования")
+      p Станцию или сундук нужно разместить отдельно. Новые места сохраняют защиту помещения и не увеличивают его площадь.
   n-alert(closable v-if="error" type="error" role="alert") {{ error }}
   n-spin(v-if="loading" aria-label="Загрузка расширений")
   template(v-else-if="state")
     p(v-if="!state.supported") Условия покупки этого помещения не предусматривают дополнительные места.
     template(v-else-if="state.expansion")
       p Доступно {{ state.expansion.unlocked }} из {{ state.expansion.limit }} мест; {{ state.expansion.initial }} включено в покупку. Свободный бюджет комнаты: #[world-credits(:value="state.available")] .
-      p Станцию или сундук нужно разместить отдельно. Новые места сохраняют защиту помещения и не увеличивают его площадь.
-      ul.places
-        li(v-for="place in state.expansion.places" :key="place.position")
+      world-slot-grid.places(label="Места оборудования")
+        .equipment-place(v-for="place in state.expansion.places" :key="place.position")
           font-awesome-icon(:icon="place.unlocked ? 'industry' : 'lock'" aria-hidden="true")
           strong Место {{ place.position }}
           span(v-if="place.unlocked") Доступно
@@ -72,6 +79,6 @@ section.equipment-expansion
 </template>
 <style scoped>
 .equipment-expansion { display: grid; gap: .75rem; }
-.places { padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: .6rem; }.places li { display: grid; gap: .5rem; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; }.places svg { color: var(--primary); font-size: 1.5rem; }.places span { color: var(--text-muted); font-size: .8rem; }
+.equipment-place { display: grid; align-content: start; gap: .5rem; min-height: 7.5rem; padding: .65rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--bg-base); font-size: .8125rem; }.places svg { color: var(--primary); font-size: 1.3rem; }.places span { color: var(--text-muted); font-size: .75rem; }
 label { display: grid; gap: .3rem; max-width: 28rem; }
 </style>

@@ -13,5 +13,5 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 </template>
 <style scoped>
 .choice-buttons { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }.with-icon { margin-left: .4rem; }
-@media(max-width: 620px) { .choice-buttons .n-button { min-height: 2.5rem; }.mobile-icons { flex-wrap: nowrap; gap: .25rem; overflow-x: auto; }.mobile-icons .n-button { flex: 1 0 2rem; min-width: 2rem; padding-inline: .4rem; }.mobile-icons .with-icon { display: none; } }
+@media(max-width: 620px) { .choice-buttons .n-button { min-height: 2.75rem; }.mobile-icons { flex-wrap: nowrap; gap: .25rem; overflow-x: auto; }.mobile-icons .n-button { flex: 1 0 2.75rem; min-width: 2.75rem; padding-inline: .4rem; }.mobile-icons .with-icon { display: none; } }
 </style>

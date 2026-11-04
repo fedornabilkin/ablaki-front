@@ -31,12 +31,14 @@ import {
   faGraduationCap,
   faAdjust,
   faAppleAlt,
+  faCarrot,
   faCrosshairs,
   faArrowAltCircleRight,
   faArrowDown,
   faArrowUp,
   faArrowRight,
   faArrowLeft,
+  faChevronRight,
   faCheck,
   faPencilAlt,
   faClone,
@@ -93,8 +95,8 @@ export class IconManager {
   constructor() {
     library.add(faCalendarDays);
     library.add(faCompass, faHandHolding, faClock, faRotate, faListCheck, faClipboardCheck, faFlag, faUtensils, faInfoCircle);
-    library.add(faFlask);
-    library.add(faBars, faBomb);
+    library.add(faFlask, faCarrot);
+    library.add(faBars, faBomb, faChevronRight);
     library.add(faUser, faUsers, faDice, faHouse, faTent, faCity, faSeedling, faStore, faIndustry, faLandmark, faUserCheck, faSignInAlt, faSignOutAlt, faPlus, faIdCard, faStar, faCoins, faTrophy, faComments, faComment, faCrown, faPaperPlane, faEllipsisV, faQuestionCircle, faDollarSign, faGraduationCap, faAdjust, faAppleAlt, faCrosshairs, faArrowAltCircleRight, faArrowDown, faArrowUp, faArrowRight, faArrowLeft, faCheck, faPencilAlt, faClone, faEye, faEyeSlash, faExclamationCircle, faExclamation, faFileExcel, faCogs, faCog, faSpinner, faExchangeAlt, faPowerOff, faLock, faSearch, faCircle, faCheckCircle, faTrashAlt, faBan, faTimesCircle, faBox, faTimes, faSun, faMoon, faHammer, faTree, faCube, faCubes, faLink, faScroll, faFire, faBed, faPause, faLeaf, faGlobe, faMap, faDoorOpen, faFireFlameCurved, faGem, faBullseye, faToolbox, faMountain, faGripLines, faWrench, faRing, faAnchor, faBottleWater, faPenNib, faShirt, faShoePrints, faShield, faShieldHalved, faCartShopping, faBagShopping);
   }
 }

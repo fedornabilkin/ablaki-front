@@ -11,6 +11,19 @@ const mvp = () => ({ enabled: true, server_time: 100, feedback_path: '/forum/rea
   quotas: [{ kind: 'extraction_daily', maximum: 20, remaining: 19, restores_at: 86400 }] });
 
 describe('persistent world acceptance checklist', () => {
+  it('completes mining from the full server projection even if the funded reward omits that step', () => {
+    const state = parseMvp({ ...mvp(), checklist_steps: [
+      { code: 'mine_built', completed: true, quantity: 1, required: 1 },
+      { code: 'mine_resources_mined', completed: true, quantity: 3, required: 1 },
+    ] });
+    const run = emptyChecklist(1000);
+    run.entries.mine = { ...emptyEntry(), result: 'pending' };
+    const observed = observeChecklist(run, state, 1200);
+    expect(checklistStatus(observed.entries.mine)).toBe('pass');
+    state.checklistSteps[1].completed = false;
+    expect(checklistStatus(observeChecklist(emptyChecklist(), state).entries.mine)).toBe('pending');
+    expect(() => parseMvp({ ...mvp(), checklist_steps: [{ code: 'mine_built', completed: 'yes', quantity: 1, required: 1 }] })).toThrow();
+  });
   it('separates accounts and recreated worlds, rejects unsafe identifiers', () => {
     expect(checklistKey(1, '1:100')).not.toBe(checklistKey(2, '1:100'));
     expect(checklistKey(1, '1:100')).not.toBe(checklistKey(1, '1:101'));

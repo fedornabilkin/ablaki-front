@@ -17,9 +17,14 @@ sha=''
 archive=''
 healthcheck_url=''
 target='production'
+base=''
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --base)
+      base="${2:-}"
+      shift 2
+      ;;
     --target)
       target="${2:-}"
       shift 2
@@ -68,6 +73,7 @@ esac
 [[ "$deploy_root" != *..* && "$web_root" != *..* ]] || die 'Paths must not contain ..'
 [[ "$deploy_root" != '/' && "$web_root" != '/' ]] || die 'Root filesystem cannot be a deployment target'
 [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || die 'Invalid Git commit SHA'
+[[ -z "$base" || "$base" =~ ^[0-9a-f]{40}$ ]] || die 'Invalid published base SHA'
 healthcheck_url_pattern='^https://[A-Za-z0-9._:-]+/?$'
 if [[ "$target" = test ]]; then
   healthcheck_url_pattern='^https?://[A-Za-z0-9._:-]+/?$'
@@ -109,6 +115,12 @@ state_dir="$deploy_root/releases"
 current_marker="$state_dir/.current"
 exec 9>"$state_dir/.deploy.lock"
 flock -n 9 || die 'Another frontend deployment is already running'
+
+# A newer publication while CI was running invalidates the selected change set.
+if [[ -n "$base" ]]; then
+  actual=$(tr -d '\r\n' < "$web_root/deploy-version.txt")
+  [[ "$actual" = "$base" || "$actual" = "$sha" ]] || die 'Published version changed during checks; rerun the release'
+fi
 
 archive_dir="$(dirname "$archive")"
 archive_name="$(basename "$archive")"

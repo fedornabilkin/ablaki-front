@@ -25,9 +25,10 @@ const panels = computed(() => {
 });
 </script>
 <template lang="pug">
-.world-node-extensions
+.world-node-extensions(:class="{ 'world-node-extensions--content': slot === 'content' && panels.length }")
   component(v-for="(panel, index) in panels" :key="`${node.id}:${panel.feature}:${index}`" :is="panel.component" v-bind="panel.props" @changed="emit('changed')")
 </template>
 <style scoped>
 .world-node-extensions { display: contents; }
+.world-node-extensions--content { display: grid; gap: .75rem; margin-top: .75rem; min-width: 0; }
 </style>

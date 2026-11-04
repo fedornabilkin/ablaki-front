@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldStat from './WorldStat.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { NButton, NProgress, NSpin } from 'naive-ui';
 import { loadProgression } from '@/services/api/worldCharacter';
@@ -21,9 +23,9 @@ onScopeDispose(() => { generation++; });
 </script>
 <template lang="pug">
 section.character-progress(aria-label="Состояние персонажа")
-  h4 Персонаж
+  world-section-heading(title="Персонаж" icon="user" level="h3")
   template(v-if="health")
-    p.character-health Здоровье: {{ health.hp }} / {{ health.maximum }}
+    world-stat(label="Здоровье" icon="apple-alt") {{ health.hp }} / {{ health.maximum }}
     n-progress(type="line" :percentage="100 * health.hp / health.maximum" :show-indicator="false" :status="health.hp < 60 ? 'error' : 'success'")
     p(v-if="health.disorderUntil") Пищевое расстройство до {{ new Date(health.disorderUntil * 1000).toLocaleString('ru-RU') }}
   p(v-else-if="healthError") {{ healthError }}

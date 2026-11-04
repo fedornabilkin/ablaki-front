@@ -8,7 +8,6 @@ import { loadEconomyStorage, previewEconomyStorage, type EconomyStorageState } f
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
 import type { WorldQuote } from '@/entities/world/types';
 import { worldError } from '@/services/api/world';
-import { formatCredits, creditCost } from '@/entities/world/credits';
 import WorldPaymentSources from './WorldPaymentSources.vue';
 const props = defineProps<{ storage: number; session: number; revision: number; writable: boolean; command: WorldCommandRunner; cell?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
@@ -75,11 +74,11 @@ component(v-if="state?.options.length || error || loadingState || receipt" :is="
 .storage-expansion { display: grid; gap: .5rem; min-width: 0; }.storage-expansion p { margin: 0; }.storage-expansion-options { display: flex; flex-wrap: wrap; gap: .5rem; }
 .slot-quantity { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }.slot-quantity :deep(.n-input-number) { max-width: 9rem; }
 .storage-expansion-popover { position: relative; width: 100%; color: var(--text); gap: .6rem; }
-.storage-expansion-popover > strong { padding-right: 2rem; }
-.storage-add-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; min-width: 0; min-height: 100px; padding: .55rem; border: 1px dashed var(--primary); border-radius: .5rem; background: var(--primary-soft); color: var(--primary); cursor: pointer; }
+.storage-expansion-popover > strong { padding-right: 2.75rem; }
+.storage-add-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; min-width: 0; width: 100%; min-height: 7.5rem; padding: .65rem; border: 1px dashed var(--primary); border-radius: .6rem; background: var(--primary-soft); color: var(--primary); cursor: pointer; }
 .storage-add-cell svg { font-size: 1.5rem; }.storage-add-cell span { font-size: .75rem; }
 .storage-add-cell:disabled { opacity: .5; cursor: default; }.storage-add-cell:focus-visible, .expansion-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.expansion-close { position: absolute; top: -.25rem; right: -.25rem; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: .4rem; color: var(--text-muted); background: transparent; cursor: pointer; }
+.expansion-close { position: absolute; top: -.25rem; right: -.25rem; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: .5rem; color: var(--text-muted); background: transparent; cursor: pointer; }
 .expansion-close:hover { color: var(--text); background: var(--primary-soft); }
 @media(max-width: 620px) { .slot-quantity { flex-wrap: wrap; gap: .4rem; } }
 </style>

@@ -29,24 +29,24 @@ const session = computed(() => store.state.auth.revision);
 <style scoped lang="scss">
 .account-overview { display: flex; justify-content: flex-end; align-items: center; min-width: 0; width: 100%; }
 .identity-metrics { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: .25rem .65rem; min-width: 0; margin-left: auto; }
-.account-login { font-weight: 700; text-align: right; white-space: nowrap; flex-shrink: 0; }
+.account-login { display: none; font-weight: 650; text-align: right; white-space: nowrap; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 .account-metrics { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: .25rem; }
 .metric-link { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.75rem; padding: .25rem .35rem; border-radius: .5rem; color: var(--primary); }
 .metric-link:hover { background: var(--primary-soft); }
-.metric-link :deep(strong) { font-size: .95rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metric-link :deep(strong) { font-size: .8125rem; font-variant-numeric: tabular-nums; }
 .metric-link svg { font-size: .75rem; }
 .daily-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .bonus-button { overflow: hidden; height: 1.75rem; padding-inline: .55rem; font-size: .75rem; }
 .compact .metric-link { min-height: 2rem; padding-inline: .25rem; }
-.compact .metric-link :deep(strong) { font-size: .85rem; }
 .bonus-shine { position: absolute; pointer-events: none; top: -50%; bottom: -50%; left: -80%; width: 45%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent); transform: skewX(-20deg); animation: bonus-shine 6s ease-in-out infinite; }
 .bonus-button:nth-child(2) .bonus-shine { animation-delay: 1s; }
 @keyframes bonus-shine { 25%, 100% { left: 160%; } }
 @media (prefers-reduced-motion: reduce) { .bonus-shine { animation: none; display: none; } }
-@media (min-width: 48rem) { .metric-link { padding-inline: .6rem; } }
+@media (min-width: 64rem) { .metric-link { padding-inline: .4rem; } .account-login { display: inline; font-size: .8125rem; } }
 @media (max-width: 47.99rem) {
-  .identity-metrics { gap: .2rem; overflow-x: auto; }
-  .metric-link { gap: .2rem; padding-inline: .15rem; min-height: 2rem; white-space: nowrap; }
+  .identity-metrics { gap: .2rem; }
+  .account-metrics { flex-wrap: wrap; gap: 0 .15rem; }
+  .metric-link { gap: .2rem; padding-inline: .1rem; min-height: 2.75rem; white-space: nowrap; }
   .metric-link :deep(strong) { font-size: .75rem; overflow-wrap: normal; }
   .account-login { font-size: .8rem; }
 }

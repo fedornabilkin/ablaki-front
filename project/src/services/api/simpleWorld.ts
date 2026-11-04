@@ -5,7 +5,7 @@ import { record } from './world';
 export interface SimpleNode { id: number; parent_id: number | null; name: string; hierarchy_level: number; node_type: string; building_kind: string | null; owner_user_id: number | null; status: string; revision: number }
 export interface BuildResult { finished_at: number; participants: { user_id: number; name: string; owner: boolean; seconds: number; paid_cr: string }[]; labor_budget_cr: string; paid_cr: string; released_cr: string; object_price_cr: string; spent_cr: string; material_refund_percent: number }
 export interface Build { result?: BuildResult; id: number; node_id: number; owner_user_id: number; status: string; required_seconds: number; worked_seconds: number; labor_budget: string; parent_id?: number; can_reduce_budget?: boolean; minimum_labor_budget?: string; builder_limit?: number | null; job_kind?: string; initial_condition?: number; max_condition?: number; condition?: number; funding_node_id?: number; budget_available?: string; world_time_rate?: number; server_time?: number; live_work?: { accounted_at: number; last_seen_at: number }[] }
-export interface Template { id: number; name: string; description?: string; build_seconds: number; minimum_labor_budget?: string; material_summary: string; kind?: string; available?: boolean; unavailable_reason?: string; world_build_seconds?: number; world_time_rate?: number; economy?: { profile_version: number; price_cr: string; terms_digest: string } }
+export interface Template { id: number; name: string; description?: string; build_seconds: number; minimum_labor_budget?: string; material_summary: string; kind?: string; available?: boolean; compatible?: boolean; unavailable_reason?: string; world_build_seconds?: number; world_time_rate?: number; economy?: { profile_version: number; price_cr: string; terms_digest: string } }
 const number = (value: unknown): number => {
   const result = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (typeof result !== 'number' || !Number.isSafeInteger(result) || result < 0) throw new Error('invalid-world-response');
@@ -55,13 +55,14 @@ const url = (path: string) => config.makeApiUrl(`v1/world/${path}`);
 export async function objects(params: Record<string, unknown>) { return page((await readApi(url('objects'), { params: { envelope: 1, ...params } })).data, node); }
 export async function object(id: number) { return node((await readApi(url(`objects/${id}`))).data); }
 export async function builds(params: Record<string, unknown>) { return page((await readApi(url('builds'), { params: { envelope: 1, ...params } })).data, build); }
-export async function templates(parent: number) {
+export async function templates(parent: number, fullCatalog = false) {
   const parse = (value: unknown): Template => {
     const row = record(value);
+    if (row.compatible !== undefined && typeof row.compatible !== 'boolean') throw new Error('invalid-world-response');
     if (row.available !== undefined && typeof row.available !== 'boolean') throw new Error('invalid-world-response');
     const economy = row.economy === undefined || row.economy === null ? undefined : record(row.economy);
     if (economy && (typeof economy.terms_digest !== 'string' || !/^[a-f0-9]{64}$/.test(economy.terms_digest))) throw new Error('invalid-world-response');
-    return { id: number(row.id), name: text(row.name), ...(row.description == null ? {} : { description: text(row.description) }), build_seconds: number(row.build_seconds), material_summary: text(row.material_summary), ...(row.kind === undefined ? {} : { kind: text(row.kind) }),
+    return { id: number(row.id), compatible: row.compatible === undefined ? true : row.compatible as boolean, name: text(row.name), ...(row.description == null ? {} : { description: text(row.description) }), build_seconds: number(row.build_seconds), material_summary: text(row.material_summary), ...(row.kind === undefined ? {} : { kind: text(row.kind) }),
       ...(row.minimum_labor_budget === undefined ? {} : { minimum_labor_budget: money(row.minimum_labor_budget) }),
       ...(row.available === undefined ? {} : { available: row.available as boolean, unavailable_reason: text(row.unavailable_reason) }),
       ...(row.world_build_seconds === undefined ? {} : { world_build_seconds: number(row.world_build_seconds), world_time_rate: number(row.world_time_rate) }),
@@ -69,7 +70,7 @@ export async function templates(parent: number) {
   };
   const result: Template[] = [];
   for (let current = 1; current <= 100; current++) {
-    const catalog = page((await readApi(url('templates'), { params: { parent_id: parent, envelope: 1, page: current, 'per-page': 100 } })).data, parse);
+    const catalog = page((await readApi(url('templates'), { params: { parent_id: parent, ...(fullCatalog ? { catalog: 1 } : {}), envelope: 1, page: current, 'per-page': 100 } })).data, parse);
     if (!catalog.pageSize || !catalog.items.length && result.length < catalog.total) throw new Error('invalid-world-response');
     result.push(...catalog.items);
     if (result.length >= catalog.total) {

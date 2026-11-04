@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import WorldCredits from './WorldCredits.vue';
+import WorldSectionHeading from './WorldSectionHeading.vue';
+import WorldPanel from './WorldPanel.vue';
 import AppDialog from '@/components/AppDialog.vue';
-import WorldCredits from '@/components/pages/world/WorldCredits.vue';
-import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { worldActionButtonTheme, worldDangerButtonTheme, worldNeutralButtonTheme } from '@/entities/world/theme';
 import WorldHelpHint from './WorldHelpHint.vue';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { NAlert, NButton, NModal, NProgress, NSpin, NTooltip } from 'naive-ui';
+import { NAlert, NButton, NProgress, NSpin, NTooltip } from 'naive-ui';
 import BuildSettingsModal from './modals/BuildSettingsModal.vue';
 import WorldBuildResults from './WorldBuildResults.vue';
 import { projectedBuildSeconds } from '@/entities/world/buildProgress';
@@ -13,7 +15,6 @@ import * as api from '@/services/api/simpleWorld';
 import { worldError } from '@/services/api/world';
 import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
-import { formatCredits } from '@/entities/world/credits';
 const props = withDefaults(defineProps<{ node: api.SimpleNode; owner: number; session: number; templateId?: number; embedded?: boolean; active?: boolean; showResult?: boolean }>(), { active: true, showResult: true });
 const emit = defineEmits<{ changed: [] }>();
 const router = useRouter(), project = ref<api.Build | null>(null);
@@ -140,9 +141,8 @@ watch(() => props.node.revision, () => { if (foreground.value && project.value &
 onScopeDispose(() => { disposed = true; epoch++; halt(); clearInterval(animation); clearInterval(sync); });
 </script>
 <template lang="pug">
-section.build-information(v-if="resultVisible || !project || project.status === 'building' || error || runner.error.value || uncertain" aria-label="Строительство")
-  .build-heading
-    h3 {{ repairing ? 'Ремонт' : 'Строительство' }}
+world-panel.build-information(inset v-if="resultVisible || !project || project.status === 'building' || error || runner.error.value || uncertain" aria-label="Строительство")
+  world-section-heading.build-heading(:title="repairing ? 'Ремонт' : 'Строительство'" icon="hammer" level="h3")
     world-help-hint(label="Условия строительных работ")
       p Бюджет помощников: #[world-credits(:value="project?.labor_budget ?? '0'")] . Владелец работает бесплатно.
       p Время учитывается, пока эта страница открыта и есть связь с сервером.
@@ -163,13 +163,13 @@ section.build-information(v-if="resultVisible || !project || project.status === 
         template(#icon)
           font-awesome-icon(icon="hammer")
         | {{ repairing ? 'Ремонтировать' : 'Строить' }}
-      n-button(:theme-overrides="worldActionButtonTheme" v-else :disabled="busy || uncertain" @click="stop")
+      n-button(:theme-overrides="worldNeutralButtonTheme" v-else :disabled="busy || uncertain" @click="stop")
         template(#icon)
           font-awesome-icon(icon="pause")
         | Остановить
       n-tooltip(v-if="owner === project.owner_user_id")
         template(#trigger)
-          n-button(:theme-overrides="worldActionButtonTheme" circle aria-label="Название и бюджет" :disabled="busy || uncertain" @click="settingsOpen = true")
+          n-button(:theme-overrides="worldNeutralButtonTheme" aria-label="Название и бюджет" :disabled="busy || uncertain" @click="settingsOpen = true")
             template(#icon)
               font-awesome-icon(icon="pencil-alt")
         | Название и бюджет
@@ -186,7 +186,7 @@ section.build-information(v-if="resultVisible || !project || project.status === 
     p Цена объекта не возвращается. Выполненная работа помощников будет оплачена, остаток трудового бюджета освобождён.
     n-alert(closable v-if="runner.error.value" type="error") {{ runner.error.value }}
     .build-actions
-      n-button(:theme-overrides="worldActionButtonTheme" :disabled="busy" @click="cancelOpen = false") Продолжить строительство
+      n-button(:theme-overrides="worldNeutralButtonTheme" :disabled="busy" @click="cancelOpen = false") Продолжить строительство
       n-button(:theme-overrides="worldActionButtonTheme" v-if="uncertain" :loading="busy" @click="retry") Повторить запрос
       n-button(:theme-overrides="worldDangerButtonTheme" type="error" v-else :loading="busy" :disabled="busy" @click="cancelBuild") Отменить
 </template>
