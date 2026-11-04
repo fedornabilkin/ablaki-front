@@ -43,7 +43,7 @@ const busy = computed(() => !props.writable || runner.busy.value || !!runner.pen
 const titles: Record<string, string> = { 'day-1': 'Первый лагерь', 'day-2': 'Ресурсы и первый металл' };
 const quotaLabels: Record<string, string> = { crafting_hourly: 'Изготовление за час', extraction_daily: 'Добыча сегодня', sales_daily: 'Продажи сегодня' };
 watch(() => [props.owner, props.session], () => { generation++; state.value = null; error.value = ''; show.value = false; tab.value = 'development'; if (props.owner) void load(); }, {immediate: true});
-watch(show, value => { if (value && !state.value && !error.value && !loading.value) void load(); });
+watch(show, value => { if (value && !error.value && !loading.value) refresh(); });
 watch(() => props.revision, refresh);
 onScopeDispose(() => { disposed = true; generation++; });
 </script>

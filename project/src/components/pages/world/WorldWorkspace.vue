@@ -12,7 +12,7 @@ import WorldQuotaNotice from './WorldQuotaNotice.vue';
 import WorldCredits from './WorldCredits.vue';
 import type { CraftResult } from '@/entities/world/types';
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { NAlert, NButton, NInput, NInputNumber, NSelect, NSpin } from 'naive-ui';
 import WorldWorkspaceHero from './WorldWorkspaceHero.vue';
@@ -22,7 +22,7 @@ import { useWorldPresence } from '@/hooks/useWorldPresence';
 import { worldError } from '@/services/api/world';
 import { useCampsiteCraft } from '@/hooks/useCampsiteCraft';
 import { loadWorkspace, previewWorkspace, type WorkspaceInput } from '@/services/api/worldWorkspace';
-const route = useRoute(), auth = useStore();
+const route = useRoute(), router = useRouter(), auth = useStore();
 const actionTheme = computed(() => route.path.startsWith('/world/') ? worldActionButtonTheme : undefined);
 const nodeId = computed(() => Number(route.params.id ?? route.query.node));
 const session = computed(() => Number(auth.state.auth.revision)), owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
@@ -54,7 +54,7 @@ const filteredRecipes = computed(() => state.value?.recipes.filter(r => r.name.t
   && (availability.value === 'all' || availability.value === 'ready' && r.available && !r.locked_reasons.length || availability.value === 'shortage' && !r.available && !r.locked_reasons.length || availability.value === 'locked' && r.locked_reasons.length)) ?? []);
 const exposure: Record<string, string> = { outdoor: 'на улице', covered: 'под навесом', indoor: 'в помещении', carried: 'в рюкзаке' };
 function invalidate(clear = false) { clearTimeout(previewTimer); previewGeneration++; if (clear) calculation.value = null; calculating.value = false; waitingForPreview.value = false; }
-function schedulePreview() { invalidate(); if (loading.value || disposed) return; waitingForPreview.value = true; previewTimer = setTimeout(() => { void preview(); }, 600); }
+function schedulePreview() { invalidate(); if (loading.value || disposed || selectedRecipe.value?.locked_reasons.length) return; waitingForPreview.value = true; previewTimer = setTimeout(() => { void preview(); }, 600); }
 watch([quantity, sources, output, equipment, useObjectBudget], schedulePreview, { deep: true, flush: 'sync' });
 async function load(selected?: number) {
   const current = ++generation; invalidate(true); error.value = ''; loading.value = true;
@@ -69,7 +69,9 @@ async function load(selected?: number) {
   } catch (cause) { if (generation === current && !disposed) { state.value = null; error.value = worldError(cause); } }
   finally { if (generation === current && !disposed) { loading.value = false; if (!error.value) schedulePreview(); } }
 }
-function changeRecipe(value: number) { if (busy.value || loading.value) return; recipe.value = value; notice.value = ''; lastResult.value = null; void load(value); }
+function materialRecipe(item: number) { return selectedRecipe.value?.materials?.find(material => material.item_id === item)?.recipe_id ?? null; }
+function recipeLink(value: number) { return { path: route.path, query: { ...route.query, recipe_id: String(value) }, hash: route.hash }; }
+function changeRecipe(value: number) { if (busy.value || loading.value) return; void router.push(recipeLink(value)); }
 async function retryPending() {
   const result = await command.retry();
   // A definitive rejection (for example an expired quote) clears the pending
@@ -100,13 +102,14 @@ async function craft() {
   } catch (cause) { if (!disposed && current === previewGeneration) error.value = worldError(cause); }
   finally { if (!disposed && current === previewGeneration) calculating.value = false; }
 }
-watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; notice.value = ''; lastResult.value = null; search.value = ''; const requested = Number(route.query.recipe_id); void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined); }, { immediate: true, flush: 'sync' });
+watch([nodeId, session, owner], () => { state.value = null; sources.value = []; output.value = null; equipment.value = {}; recipe.value = null; search.value = ''; }, { flush: 'sync' });
+watch([nodeId, session, owner, () => route.query.recipe_id], () => { notice.value = ''; lastResult.value = null; const requested = Number(route.query.recipe_id); void load(Number.isSafeInteger(requested) && requested > 0 ? requested : undefined); }, { immediate: true, flush: 'sync' });
 onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 </script>
 <template lang="pug">
 .container.workspace
   world-workspace-hero(:title="state ? `Изготовление: ${state.name}` : 'Изготовление в объекте'" :parent-to="`/world/nodes/${nodeId}`")
-    router-link(v-if="!state && craftHref !== route.path" :to="craftHref") Изготовление на своей стоянке
+    router-link(v-if="!state && craftHref !== route.path" :to="{ path: craftHref, query: route.query }") Изготовление на своей стоянке
   .workspace-navigation
     world-workspace-nav(:node-id="nodeId" manufacturing)
   n-alert(closable v-if="commandError || error" type="error" role="alert") {{ commandError || error }}
@@ -129,10 +132,12 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
           choice-buttons(v-model="availability" :options="availabilityOptions" label="Доступность изготовления")
         .recipe-tiles
           .recipe-tile-wrap(v-for="entry in filteredRecipes" :key="entry.id")
-            button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading || Boolean(entry.locked_reasons.length)" @click="changeRecipe(entry.id)")
+            button.recipe-tile(type="button" :class="{ selected: recipe === entry.id, ready: entry.available && !entry.locked_reasons.length, shortage: !entry.available && !entry.locked_reasons.length, locked: entry.locked_reasons.length }" :aria-pressed="recipe === entry.id" :disabled="busy || loading" @click="changeRecipe(entry.id)")
               font-awesome-icon(:icon="entry.icon || 'cube'" aria-hidden="true")
               strong {{ entry.name }}
               small ×{{ entry.quantity }} за партию
+              span.recipe-ingredients(v-if="entry.materials?.length")
+                span(v-for="material in entry.materials" :key="material.item_id" :class="{ missing: !material.available }") {{ material.name }} × {{ material.quantity }}
               span(v-if="entry.locked_reasons.length")
                 font-awesome-icon(icon="lock" aria-hidden="true")
                 |  Закрыто
@@ -156,6 +161,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
                 font-awesome-icon(icon="cubes" aria-hidden="true")
                 strong {{ material.name }}
                 span {{ material.have }} / {{ material.quantity }}
+                router-link(v-if="materialRecipe(material.item_id) && materialRecipe(material.item_id) !== recipe" :to="recipeLink(Number(materialRecipe(material.item_id)))") Изготовить
             p.craft-summary
               span(:class="{ missing: !displayedTerms.output.fits }" :title="displayedTerms.output.name") ×{{ displayedTerms.output.quantity }}
               span
@@ -164,6 +170,12 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
               span {{ state.storages.find(s => s.id === output)?.name }}
             p.missing(v-for="reason in (calculating || waitingForPreview ? [] : displayedTerms.reasons)" :key="reason") {{ reason }}
           template(v-else)
+            .material-tiles(v-if="selectedRecipe.materials?.length")
+              .material-tile(v-for="material in selectedRecipe.materials" :key="material.item_id" :class="{ missing: !material.available }")
+                font-awesome-icon(icon="cubes" aria-hidden="true")
+                strong {{ material.name }}
+                span {{ material.have }} / {{ material.quantity * (quantity ?? 1) }}
+                router-link(v-if="material.recipe_id && material.recipe_id !== recipe" :to="recipeLink(material.recipe_id)") Изготовить
             p.missing(v-for="reason in Array.from(new Set([...selectedRecipe.locked_reasons, ...selectedRecipe.availability_reasons]))" :key="reason") {{ reason }}
             p(v-if="!sources.length || !output") Выберите хранилища в настройках ниже.
             p.missing(v-for="role in state.equipment.filter(e => !equipment[e.item_id])" :key="role.item_id") Недоступно: {{ role.name }}
@@ -203,7 +215,14 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 .recipe-tile { display: grid; gap: .4rem; justify-items: start; align-content: start; width: 100%; height: 100%; min-height: 8rem; padding: .85rem; border: 1px solid var(--border); border-radius: .7rem; background: transparent; color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.4; transition: border-color 160ms ease, background-color 160ms ease; }
 .recipe-tile > svg { font-size: 1.3rem; color: var(--text-muted); }
 .recipe-tile span, .recipe-tile small { font-size: .8125rem; color: var(--text-muted); }
-.recipe-tile:hover:not(:disabled) { background: var(--bg-surface-2, #242424); }
+.recipe-tile.ready { background: linear-gradient(145deg, #4ebc8530, #4ebc8505); border-color: #4ebc8555; }
+.recipe-tile.shortage { background: linear-gradient(145deg, #d5677130, #d5677105); border-color: #d5677155; }
+.recipe-tile.locked { background: repeating-linear-gradient(135deg, #ffffff06 0 6px, transparent 6px 12px); }
+.recipe-tile:hover:not(:disabled) { border-color: var(--primary); }
+.recipe-ingredients { display: grid; gap: .2rem; }
+.recipe-ingredients .missing { color: #e6a0a8; }
+.material-tile > a { grid-column: 1 / -1; padding-block: .3rem; }
+.material-tile > span { white-space: nowrap; }
 .recipe-tile.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 .recipe-tile.selected > svg { color: var(--primary); }
 .recipe-tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
@@ -218,7 +237,7 @@ onScopeDispose(() => { disposed = true; generation++; invalidate(); });
 .selected-heading .batch-count { width: 6.5rem; flex: 0 0 6.5rem; }
 .material-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
 .material-tile { display: grid; grid-template-columns: auto 1fr; gap: .35rem .5rem; padding: .65rem; border-radius: .5rem; background: var(--bg-surface-2, #242424); font-size: .8125rem; }
-.material-tile > svg { color: var(--text-muted); }.material-tile > strong { overflow-wrap: anywhere; }.material-tile > span { grid-column: 2; }
+.material-tile > svg { color: var(--text-muted); }.material-tile > strong { min-width: 0; overflow-wrap: anywhere; }.material-tile > span { grid-column: 2; }
 .workspace label { display: grid; gap: .4rem; font-size: .875rem; }
 .craft-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .75rem; font-size: .875rem; color: var(--text-muted); }
 .craft-summary > span:last-child { overflow-wrap: anywhere; }

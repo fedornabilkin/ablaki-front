@@ -31,13 +31,13 @@ const blocked = computed(() => !props.writable || !props.node.owned_by_me || pro
 let generation = 0;
 watch(() => [props.node.id, props.session, props.revision], async () => {
   const current = ++generation; error.value = ''; loading.value = true;
-  try { const result = await templates(props.node.id); if (current === generation) choices.value = result; }
+  try { const result = await templates(props.node.id, true); if (current === generation) choices.value = result; }
   catch (cause) { if (current === generation) error.value = worldError(cause); }
   finally { if (current === generation) loading.value = false; }
 }, { immediate: true });
 watch([() => props.node.id, () => props.session], () => { placed.value = null; choices.value = []; open.value = false; project.value = null; chosen.value = null; position.value = null; }, { flush: 'sync' });
 function icon(item: Template) { return ({ PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube', ROOM: 'house' } as Record<string, string>)[item.kind ?? ''] ?? 'house'; }
-function reason(item: Template) { return !props.node.owned_by_me ? 'Требуются права владельца.' : props.node.status !== 'active' ? 'Сначала завершите строительство.' : !cell.value ? 'Выберите одну свободную открытую ячейку.' : item.unavailable_reason || 'Ресурсы и оборудование доступны.'; }
+function reason(item: Template) { return item.compatible === false ? item.unavailable_reason : !props.node.owned_by_me ? 'Требуются права владельца.' : props.node.status !== 'active' ? 'Сначала завершите строительство.' : !cell.value ? 'Выберите одну свободную открытую ячейку.' : item.unavailable_reason || 'Ресурсы и оборудование доступны.'; }
 function accept(result: Record<string, unknown> | undefined) {
   if (!result?.build) return;
   project.value = build(result.build);
@@ -82,7 +82,7 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
           p {{ item.description || item.name }}
           p {{ reason(item) }}
           p Трудоёмкость: {{ formatDuration(item.build_seconds) }} реального времени работы. Владелец работает бесплатно; помощникам выделяется отдельный бюджет.
-      button.build-tile(type="button" :disabled="blocked || !cell || item.available !== true" @click="choose(item)")
+      button.build-tile(type="button" :class="{ unavailable: item.available !== true, ready: item.available === true && node.owned_by_me && writable && node.status === 'active' }" :disabled="blocked || !cell || item.available !== true" @click="choose(item)")
         font-awesome-icon(:icon="icon(item)" aria-hidden="true")
         strong {{ item.name }}
         small {{ item.material_summary || 'Материалы не нужны' }}
@@ -95,12 +95,13 @@ section.build-palette(v-if="loading || choices.length || error" aria-label="До
 </template>
 <style scoped>
 .placement-notice { margin-bottom: 1rem; }
+.build-tile.ready { border-color: #bc8b4e66; background: linear-gradient(145deg, #bc8b4e18, transparent); }
 .build-tile:not(:disabled) { border-color: rgba(255, 154, 61, .65); background: color-mix(in srgb, var(--primary) 12%, var(--bg-surface)); box-shadow: inset 0 0 0 1px rgba(255, 154, 61, .08); }
 .build-tile:not(:disabled) > svg { color: var(--primary); }
 .build-tile:not(:disabled):hover { background: color-mix(in srgb, var(--primary) 20%, var(--bg-surface)); border-color: var(--primary); }
 
 .build-tile-wrap { position: relative; }.tile-information { position: absolute; right: .15rem; top: .15rem; z-index: 1; }.build-costs { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }.build-tile > strong { overflow-wrap: anywhere; font-size: .875rem; }.build-tile > svg { margin-right: 2rem; }
-.palette-heading { display: flex; align-items: start; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }
-.build-palette { margin-top: 1rem; }.build-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }.build-tile-wrap { display: grid; }.build-tile { display: grid; gap: .4rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; width: 100%; }.build-tile:hover { border-color: var(--primary); }.build-tile:disabled { opacity: .55; cursor: default; }.build-tile svg { color: var(--text-muted); font-size: 1.4rem; }.build-tile small, .build-tile span { color: var(--text-muted); font-size: .8rem; }
-@media(min-width: 760px) { .build-tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+.palette-heading { margin: 0; }.palette-heading h3 { margin: 0; }.build-tile .build-duration svg { font-size: .8rem; }
+.build-palette { min-width: 0; display: grid; gap: .75rem; }.build-tiles { max-height: 30rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 2px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }.build-tile-wrap { display: grid; }.build-tile { display: grid; gap: .4rem; padding: .85rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--text); background: var(--bg-surface); text-align: left; cursor: pointer; width: 100%; }.build-tile:hover { border-color: var(--primary); }.build-tile:disabled { cursor: default; color: var(--text-muted); }.build-tile.unavailable { background: repeating-linear-gradient(135deg, #ffffff06 0 6px, transparent 6px 12px); }.build-tile svg { color: var(--text-muted); font-size: 1.4rem; }.build-tile small, .build-tile span { color: var(--text-muted); font-size: .8rem; }
+
 </style>

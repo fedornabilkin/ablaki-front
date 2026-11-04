@@ -40,8 +40,6 @@ const session = computed(() => Number(auth.state.auth.revision));
 const owner = computed(() => Number(auth.getters['auth/user']?.id ?? 0));
 const presence = useWorldPresence(computed(() => world.node?.status === 'active' && world.capabilities?.world_write && (!nodeId.value || world.node.id === nodeId.value) ? world.node.id : null), session);
 const mapSelection = ref<{ x: number; y: number }[]>([]);
-const placementTab = ref<'objects' | 'items'>('objects'), itemsVisited = ref(false);
-watch([nodeId, session], () => { placementTab.value = 'objects'; itemsVisited.value = false; });
 const purchasedRoom = ref<number | null>(null);
 const activeWork = ref<Build | null>(null), workError = ref('');
 const pauseRunner = useSimpleWorldCommand(computed(() => `${owner.value}.pause-build`), session);
@@ -191,19 +189,10 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
               world-build-panel(v-if="(world.node.status === 'constructing' || world.node.details.repair_active || world.node.details.last_build_id) && world.capabilities?.world_write" :active="activeTab === 'map'" :node-id="world.node.id" :revision="world.dataRevision" :session="session" :owner="owner" @changed="changed([world.node.id])")
               world-repair-panel(v-if="!mapSelection.length" :node="world.node" :owner="owner" :session="session" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
               world-node-extensions(slot="map" :active="activeTab === 'map'" v-bind="extensionProps" @changed="changed([world.node.id])")
-            template(#placement)
-              .world-placement-tabs(v-if="world.node.owned_by_me")
-                .placement-tab-buttons(role="tablist" aria-label="Размещение на карте")
-                  button#placement-objects-tab(v-if="world.node.can_contain_nodes !== false" type="button" role="tab" :aria-selected="placementTab === 'objects'" aria-controls="placement-objects" @click="placementTab = 'objects'")
-                    font-awesome-icon(icon="house" aria-hidden="true")
-                    |  Объекты
-                  button#placement-items-tab(type="button" role="tab" :aria-selected="placementTab === 'items' || world.node.can_contain_nodes === false" aria-controls="placement-items" @click="placementTab = 'items'; itemsVisited = true")
-                    font-awesome-icon(icon="cubes" aria-hidden="true")
-                    |  Предметы
-                #placement-objects(v-if="world.node.can_contain_nodes !== false" v-show="placementTab === 'objects'" role="tabpanel" aria-labelledby="placement-objects-tab")
-                  world-build-palette(:node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
-                #placement-items(v-if="itemsVisited || world.node.can_contain_nodes === false" v-show="placementTab === 'items' || world.node.can_contain_nodes === false" role="tabpanel" aria-labelledby="placement-items-tab")
-                  world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
+            template(#objects)
+              world-build-palette(:node="world.node" :map="world.map" :selection="mapSelection" :owner="owner" :session="session" :revision="world.dataRevision" :writable="Boolean(world.capabilities?.world_write)" @changed="changed([world.node.id])")
+            template(#items)
+              world-placement-palette(:writable="Boolean(world.capabilities?.world_write)" :node="world.node" :map="world.map" :selection="mapSelection" :session="session" :revision="world.dataRevision" :command="command")
 
       world-node-extensions(v-show="activeTab === 'map'" :active="activeTab === 'map'" slot="content" v-bind="extensionProps" @changed="changed([world.node.id])")
 
@@ -248,11 +237,6 @@ function tabLink(tab: NodeTab) { return { path: route.path, query: route.query, 
 .world-storage-card { border: 0; padding: 0; }
 .world-inline-links { display: grid; gap: .75rem; }
 .world-inline-links .world-manufacturing-action { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.75rem; padding: .65rem .9rem; border-radius: .5rem; background: var(--primary); color: var(--primary-contrast, #171717); font-weight: 650; }
-.world-placement-tabs { margin-top: 1rem; }
-.placement-tab-buttons { display: flex; gap: .5rem; border-bottom: 1px solid var(--border); }
-.placement-tab-buttons button { min-height: 2.75rem; border: 0; border-bottom: 2px solid transparent; padding: .6rem .8rem; background: transparent; color: var(--text-muted); cursor: pointer; }
-.placement-tab-buttons button[aria-selected="true"] { border-bottom-color: var(--primary); color: var(--text); }
-.placement-tab-buttons button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media(min-width: 760px) {
   .world-panel, .world-tab-panel { padding: 1.25rem; }
   .world-content-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 27rem), 1fr)); }

@@ -122,6 +122,7 @@ beforeEach(() => {
   mocks.explorer.mockResolvedValue(null);
   mocks.runner = markRaw({ busy: ref(false), pending: ref(null), error: ref(''), submit: vi.fn().mockResolvedValue(undefined), retry: vi.fn() });
   mocks.route = reactive({ path: '/world/workspace/1', params: { id: '1' }, query: {} });
+  mocks.push.mockImplementation(async value => { if (typeof value === 'object') mocks.route.query = value.query; });
 });
 afterEach(() => { apps.forEach(app => app.unmount()); apps = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
@@ -194,7 +195,7 @@ describe('world acceptance checklist modal', () => {
     const passed = findView(view.root, n => n.tag === 'details' && String(n.props.class).includes('result-pass'))!;
     expect(passed.props.open).toBe(false);
     const row = findView(passed, n => n.props.class === 'checklist-result')!;
-    expect(row.children.some(n => n.tag === 'select')).toBe(true); expect(row.children.some(n => n.tag === 'input')).toBe(true);
+    expect(row.children.some(n => n.tag === 'select')).toBe(false); expect(row.children.some(n => n.tag === 'input')).toBe(true);
     findView(view.root, n => n.tag === 'button' && n.props['aria-label'] === 'Открытые')!.props.onClick(); await flushView();
     expect(findView(view.root, n => n.tag === 'details' && String(n.props.class).includes('result-pass'))).toBeUndefined();
     findView(view.root, n => n.props.role === 'tab' && viewText(n) === 'Лагерь')!.props.onClick(); await flushView();
@@ -208,7 +209,7 @@ describe('world acceptance checklist modal', () => {
     expect(viewText(view.root)).toContain('Пройдено 1 из');
     expect(parseChecklist(view.values.get(checklistKey(1,'1:100'))!).entries.starter!.autoAt).not.toBeNull();
     findView(view.root,n => n.tag === 'button' && viewText(n) === 'Обновить факты')!.props.onClick();
-    expect(view.refresh).toHaveBeenCalledOnce(); expect(mocks.runner.submit).not.toHaveBeenCalled();
+    expect(view.refresh).toHaveBeenCalledTimes(2); expect(mocks.runner.submit).not.toHaveBeenCalled();
     findView(view.root,n => n.tag === 'button' && viewText(n) === 'Сбросить отметки')!.props.onClick(); await flushView();
     findView(view.root,n => n.tag === 'button' && viewText(n) === 'Сбросить')!.props.onClick(); await flushView();
     expect(viewText(view.root)).toContain('Пройдено 1 из'); expect(mocks.runner.submit).not.toHaveBeenCalled();
@@ -265,7 +266,7 @@ describe('world panel request budgets', () => {
     findView(view.root,n => n.tag === 'button' && n.props['aria-label'] === 'Задания')!.props.onClick(); await flushView();
     mocks.runner.submit.mockResolvedValue({});
     findView(view.root,n => n.tag === 'button' && viewText(n) === 'Получить')!.props.onClick(); await flushView();
-    expect(mocks.mvp).toHaveBeenCalledTimes(2);
+    expect(mocks.mvp).toHaveBeenCalledTimes(3);
   });
   it('invalidates the parent once when construction stops', async () => {
     const project = {id: 5,node_id: 1,status: 'building',owner_user_id: 1,required_seconds: 120,worked_seconds: 0,labor_budget: '0'};
@@ -570,6 +571,25 @@ describe('direct storage controls', () => {
   });
 });
 describe('one-click crafting', () => {
+  it('opens a recipe link, publishes selection in the URL and follows back navigation without crafting', async () => {
+    mocks.route.query = { recipe_id: '3', view: 'craft' };
+    mocks.workspace.mockImplementation(async (_node: number, selected = 2) => ({ ...workspace(), recipe_id: selected, recipes: [
+      ...workspace().recipes,
+      { id: 3, name: 'Кирка', quantity: 1, available: false, locked_reasons: ['Нужна станция'], availability_reasons: [], materials: [{ item_id: 1, name: 'Железный слиток', quantity: 3, have: 1, available: false, recipe_id: 2 }] },
+    ] }));
+    const view = mount(WorldWorkspace); await flushView();
+    expect(mocks.workspace).toHaveBeenLastCalledWith(1, 3);
+    expect(viewText(view.root)).toContain('Железный слиток × 3');
+    const ingredient = findView(view.root, n => n.tag === 'a' && viewText(n) === 'Изготовить')!;
+    expect(ingredient.props.to.query).toEqual({ recipe_id: '2', view: 'craft' });
+    const board = findView(view.root, n => n.tag === 'button' && viewText(n).includes('Доска'))!;
+    board.props.onClick(); await flushView();
+    expect(mocks.push).toHaveBeenCalledWith({ path: '/world/workspace/1', query: { recipe_id: '2', view: 'craft' }, hash: undefined });
+    expect(mocks.workspace).toHaveBeenLastCalledWith(1, 2);
+    mocks.route.query = { recipe_id: '3', view: 'craft' }; await flushView();
+    expect(mocks.workspace).toHaveBeenLastCalledWith(1, 3);
+    expect(mocks.runner.submit).not.toHaveBeenCalled();
+  });
   function workspace(id = 1) { return { node_id: id, name: 'Усадьба', writable: true, server_time: 1, recipe_id: 2, recipes: [{ id: 2, name: 'Доска', icon: 'cube', quantity: 2, available: true, locked_reasons: [], availability_reasons: [] }], equipment: [], storages: [{ ...storage(1).storage, output_allowed: true }] }; }
   const terms = { price: '5.0000', experience: 10, reasons: [], materials: [{ item_id: 1, name: 'Бревно', have: 10, quantity: 2, available: true }], equipment: [], output: { item_id: 2, name: 'Доска', quantity: 2, storage_id: 1, fits: true } };
   async function setup() {
@@ -870,7 +890,7 @@ describe('map permissions and embedded mini-storage', () => {
     mocks.harvest.mockResolvedValue(stock());
     const view = mount(WorldMap, () => ({node: {...node, owned_by_me: false}, map: map(), selection: [child().coordinates], writable: true, command: mocks.runner, session: 1})); await flushView();
     expect(mocks.harvest).toHaveBeenCalledWith(2); expect(viewText(view.root)).toContain('5 ячеек · до 100 шт. в ячейке');
-    expect(findView(view.root, n => n.props.class === 'harvest-grid')!.children.filter(n => n.tag === 'button')).toHaveLength(5);
+    expect(findView(view.root, n => n.props.class === 'harvest-grid')!.children.filter(n => findView(n, child => child.tag === 'button' && String(child.props.class).includes('harvest-cell')))).toHaveLength(5);
     findView(view.root, n => n.tag === 'button' && viewText(n).includes('Камень'))!.props.onClick(); await flushView();
     const input = {inventory_id: 21, quantity: 1}, q = {...quote, terms: {node_id: 2, inventory_id: 21, total: '1.0000', fits: true}};
     mocks.harvestPreview.mockResolvedValue({input, quote: q});
@@ -1125,7 +1145,7 @@ describe('garden harvest purchase controls', () => {
     const input = { inventory_id: 5, quantity: 1 }, q = { ...quote, terms: { total: '2.5000', fits: true } };
     pending.resolve({ input, quote: q }); await flushView();
     expect(mocks.runner.submit).toHaveBeenCalledWith('/nodes/10/harvest-buy', input, q);
-    expect(findView(view.root, n => n.props.class === 'harvest-grid')?.children.filter(n => n.tag === 'button')).toHaveLength(5);
+    expect(findView(view.root, n => n.props.class === 'harvest-grid')?.children.filter(n => findView(n, child => child.tag === 'button' && String(child.props.class).includes('harvest-cell')))).toHaveLength(5);
     expect(viewText(view.root).match(/Свободно/g)).toHaveLength(4);
   });
   it('refreshes a changed price and keeps its explanation visible without paying', async () => {

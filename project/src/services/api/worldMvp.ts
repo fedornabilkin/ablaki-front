@@ -36,6 +36,7 @@ export function parseMvp(value: unknown) {
   };
   return { enabled: bool(row.enabled), feedback: '/forum', serverTime: integer(row.server_time),
     worldInstance,
+    checklistSteps: row.checklist_steps === undefined ? [] : list(row.checklist_steps).map(value => { const step = record(value); return { code: text(step.code), completed: bool(step.completed), quantity: integer(step.quantity), required: integer(step.required, 1), href: href(step.action_href) }; }),
     starterPaid: row.starter_funding == null ? false : record(row.starter_funding).status === 'paid',
     canFundGoals: row.can_fund_goals === undefined ? false : bool(row.can_fund_goals),
     personalCredits: row.personal_credit_cr === undefined ? null : creditAmount(row.personal_credit_cr),
@@ -80,6 +81,6 @@ export const milestoneLabels: Record<string, string> = {
   shelter_built: 'Построить шалаш', hammer_crafted: 'Получить молоток', gather_5_logs: 'Получить пять брёвен', gather_5_stones: 'Получить пять камней',
   campfire_placed: 'Разместить костёр', garden_built: 'Построить огород', shovel_crafted: 'Изготовить лопату', bed_dug: 'Вскопать грядку', carrot_sown: 'Посадить морковь',
   daily_supply_claimed: 'Получить ежедневное снабжение', carrot_harvested: 'Собрать морковь', mine_built: 'Построить шахту', stone_pickaxe_crafted: 'Получить каменную кирку',
-  stone_mined: 'Добыть камень в шахте', coal_mined: 'Добыть уголь', ore_mined: 'Добыть руду', forge_built: 'Построить кузницу',
+  mine_resources_mined: 'Добыть сырьё в своей шахте', stone_mined: 'Добыть камень в шахте', coal_mined: 'Добыть уголь', ore_mined: 'Добыть руду', forge_built: 'Построить кузницу',
   bench_crafted: 'Изготовить верстак', furnace_crafted: 'Изготовить плавильню', ingot_crafted: 'Изготовить слиток',
 };

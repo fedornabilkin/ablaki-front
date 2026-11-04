@@ -55,6 +55,7 @@ watch([() => props.map?.exploration?.allowed && props.node.owned_by_me, () => pr
 }, { immediate: true });
 const size = 88, key = (p: MapPoint) => `${p.x}:${p.y}`;
 const icons = { WORLD: 'globe', REGION: 'mountain', SETTLEMENT: 'city', BUILDING: 'house', ROOM: 'house', PLOT: 'seedling', BED: 'seedling', CHEST: 'box', PLACE: 'cube' };
+const myCampsite = (child: WorldNode) => props.node.type === 'SETTLEMENT' && child.type === 'PLOT' && child.owned_by_me;
 const statuses: Record<string, string> = { active: '', archived: 'Архив', planned: 'Запланирован', constructing: 'Строится', paused: 'На паузе', damaged: 'Повреждён', destroyed: 'Разрушен' };
 const drag = ref<{ start: MapPoint; end: MapPoint; x: number; y: number; moved: boolean; additive: boolean } | null>(null);
 let suppressClick = false;
@@ -248,8 +249,10 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 </script>
 
 <template lang="pug">
-.world-map-layout
+.world-map-layout(:class="{ 'has-catalogs': $slots.objects || $slots.items }")
   .world-map-main
+    .world-map-objects(v-if="$slots.objects")
+      slot(name="objects")
     .world-map-window
       .map-opening-indicator(v-if="openingNode !== null" role="status" aria-live="polite" aria-busy="true")
         n-spin(size="small")
@@ -277,13 +280,15 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           title Ячейка {{ cell.x }}, {{ cell.y }}
         rect(v-for="cell in selected" :key="`selected-${key(cell)}`" :x="position(cell).x + 2" :y="position(cell).y + 2" :width="size - 4" :height="size - 4" class="map-selected")
         polygon(v-for="child in nodes.filter(n => n.footprint)" :key="`shape-${child.id}`" :points="polygon(child)" class="map-footprint" :class="{ locked: lockedBed(child) }" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)")
-        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}${lockedBed(child) ? '. Закрыта' : statuses[child.status] ? '. ' + statuses[child.status] : ''}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
+        g(v-for="child in nodes" :key="child.id" :transform="`translate(${position(child.coordinates).x},${position(child.coordinates).y})`" class="map-object" :class="{ owned: child.owned_by_me, campsite: myCampsite(child), locked: lockedBed(child), active: selected.some(p => occupiesCell(child, p)) }" role="button" tabindex="0" :aria-label="`${nodeLabels[child.type]}: ${child.label}${myCampsite(child) ? '. Ваша стоянка' : ''}${lockedBed(child) ? '. Закрыта' : statuses[child.status] ? '. ' + statuses[child.status] : ''}`" @click.stop="selectNode(child, $event)" @dblclick.stop="openNode(child)" @keydown.enter.stop="openNode(child)" @keydown.space.prevent.stop="selectNode(child)" @dragover.prevent @drop.prevent.stop="dropSeed($event, child)")
           rect(x="3" y="3" :width="size - 6" :height="size - 6" rx="6")
+          font-awesome-icon(v-if="myCampsite(child)" icon="flag" x="9" y="8" width="14" height="14" aria-label="Ваша стоянка")
           font-awesome-icon(v-if="child.details.is_lodging" icon="bed" x="65" y="7" width="14" height="14" aria-label="Ваш ночлег")
           font-awesome-icon(:icon="icons[child.type]" x="32" y="8" width="24" height="24" aria-hidden="true")
           font-awesome-icon(v-if="child.status === 'constructing'" icon="hammer" x="64" y="8" width="16" height="16" aria-hidden="true")
           text(v-for="(line, index) in mapNameLines(child.label)" :key="index" :x="size / 2" :y="mapNameLines(child.label).length === 1 ? 53 : 46 + index * 12" text-anchor="middle" :textLength="Array.from(line).length >= 12 ? 72 : undefined" lengthAdjust="spacingAndGlyphs" class="map-object-label") {{ line }}
           font-awesome-icon(v-if="lockedBed(child)" icon="lock" x="64" y="8" width="14" height="14" aria-label="Недоступно")
+          text(v-else-if="myCampsite(child)" :x="size / 2" y="69" text-anchor="middle" class="map-home-label") Ваша стоянка
           text(v-else-if="statuses[child.status]" :x="size / 2" y="69" text-anchor="middle" class="map-cell-status") {{ statuses[child.status] }}
           text(x="7" y="82" class="map-coordinate") {{ child.coordinates.x }}, {{ child.coordinates.y }}
           g(v-if="presence?.[child.id] ?? child.presence_count" :aria-label="`Сейчас здесь: ${presence?.[child.id] ?? child.presence_count}`")
@@ -292,6 +297,8 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
           circle(v-if="locationId === undefined ? child.is_here : locationId === child.id" cx="12" cy="13" r="5" class="map-location" aria-label="Вы здесь")
           title {{ child.label }} · {{ child.coordinates.x }}, {{ child.coordinates.y }}
         rect(v-if="marquee" v-bind="marquee" class="map-marquee")
+    .world-map-items(v-if="$slots.items")
+      slot(name="items")
     .world-map-placement
       slot(name="placement")
   aside.world-map-inspector(aria-live="polite")
@@ -418,4 +425,29 @@ onScopeDispose(() => { generation++; gardenGeneration++; explorerGeneration++; }
 .world-map-open { display: block; padding: .65rem; border-radius: .4rem; border: 1px solid var(--border); color: var(--text); min-height: 2.75rem; text-align: center; }
 .map-total { font-size: 1.5rem; font-weight: 700; }
 @media (max-width: 760px) { .world-map-layout { grid-template-columns: 1fr; }.world-map-main { display: contents; }.world-map-window { grid-row: 1; height: auto; aspect-ratio: 1; max-height: 28rem; }.world-map-inspector { grid-row: 2; }.world-map-placement { grid-row: 3; } }
+.map-object.campsite > rect { fill: #1d4336; stroke: #8bd2ae; stroke-width: 3; }
+.map-object.campsite { color: #b8f0d1; }.map-home-label { fill: #b8f0d1; font-size: 10px; font-weight: 700; }
+.has-catalogs { grid-template-columns: minmax(0, 1fr); }
+.has-catalogs .world-map-main { display: grid; gap: 1rem; }
+.has-catalogs .world-map-window { grid-row: 1; }
+.has-catalogs .world-map-objects { grid-row: 2; }
+.has-catalogs .world-map-items { grid-row: 3; }
+.has-catalogs .world-map-placement:empty { display: none; }
+@media (min-width: 1100px) {
+  .has-catalogs .world-map-main { grid-template-columns: minmax(14rem, 1fr) minmax(20rem, 1.8fr) minmax(14rem, 1fr); align-items: start; }
+  .has-catalogs .world-map-objects { grid-area: 1 / 1; }
+  .has-catalogs .world-map-window { grid-area: 1 / 2; height: 34rem; }
+  .has-catalogs .world-map-items { grid-area: 1 / 3; }
+  .has-catalogs .world-map-inspector { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); align-items: start; }
+}
+@media (min-width: 1200px) {
+  .has-catalogs { grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem); }
+  .has-catalogs .world-map-main { grid-template-columns: minmax(9.5rem, 1fr) minmax(14rem, 1.5fr) minmax(9.5rem, 1fr); gap: .75rem; }
+  .has-catalogs .world-map-inspector { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .has-catalogs .world-map-main { display: contents; }
+  .has-catalogs .world-map-objects { grid-row: 3; }
+  .has-catalogs .world-map-items { grid-row: 4; }
+}
 </style>

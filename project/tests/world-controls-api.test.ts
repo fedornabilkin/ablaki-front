@@ -7,7 +7,7 @@ import { apiClient } from '../src/services/httpClient';
 import { loadStorageContents } from '../src/services/api/worldStorage';
 import { parseWorkspace } from '../src/services/api/worldWorkspace';
 import { parseMining } from '../src/services/api/worldMining';
-import { build, gatherState, startOverview } from '../src/services/api/simpleWorld';
+import { build, gatherState, startOverview, templates } from '../src/services/api/simpleWorld';
 import { loadCharacterOverview, parseProgression } from '../src/services/api/worldCharacter';
 import { explorationPredecessors } from '../src/entities/world/mapSelection';
 
@@ -89,11 +89,27 @@ describe('complete storage grids', () => {
   });
 });
 describe('workspace tile icons', () => {
+  it('requests the full construction catalogue explicitly and keeps unavailable entries', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { items: [
+      { id: 8, name: 'Буровая', build_seconds: 600, material_summary: 'Железо: 10', available: false, compatible: false, unavailable_reason: 'Нужна шахта' },
+    ], _meta: { totalCount: 1, perPage: 100 } } });
+    expect((await templates(83, true))[0]).toMatchObject({ compatible: false, available: false });
+    expect(get.mock.calls[0][1]?.params).toMatchObject({ parent_id: 83, catalog: 1 });
+    get.mockClear(); await templates(84);
+    expect(get.mock.calls[0][1]?.params).not.toHaveProperty('catalog');
+  });
   const workspace = { node_id: 1, name: 'Мастерская', recipe_id: 2, recipes: [{ id: 2, name: 'Доска', quantity: 2, locked_reasons: [], available: true, availability_reasons: [] }], equipment: [], storages: [{ ...header, output_allowed: true }], writable: true, server_time: 1 };
   it('uses the item icon and stays compatible with older workspace responses', () => {
     expect(parseWorkspace(workspace).recipes[0].icon).toBe('cube');
     expect(parseWorkspace({ ...workspace, recipes: [{ ...workspace.recipes[0], icon: 'tree' }] }).recipes[0].icon).toBe('tree');
     expect(() => parseWorkspace({ ...workspace, recipes: [{ ...workspace.recipes[0], icon: {} }] })).toThrow('invalid-workspace-response');
+  });
+  it('retains exact ingredients and recipe links and rejects invalid quantities', () => {
+    const material = { item_id: 4, name: 'Железный слиток', quantity: 3, have: 1, available: false, recipe_id: 8 };
+    const response = (value: unknown) => ({ ...workspace, recipes: [{ ...workspace.recipes[0], materials: [value] }] });
+    expect(parseWorkspace(response(material)).recipes[0].materials).toEqual([material]);
+    expect(() => parseWorkspace(response({ ...material, quantity: -1 }))).toThrow();
+    expect(() => parseWorkspace(response({ ...material, recipe_id: '../8' }))).toThrow();
   });
 });
 

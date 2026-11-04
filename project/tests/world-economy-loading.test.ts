@@ -81,7 +81,7 @@ describe('economy panel load recovery', () => {
     tabs.props['onUpdate:value']('camp'); await flushView();
     const action = findView(view.root, node => node.tag === 'a' && viewText(node).includes('К действию'))!;
     expect(action.props.to).toBe('/world/nodes/5'); action.props.onClick(); await flushView();
-    expect(findView(view.root, node => node.props.role === 'dialog')).toBeUndefined(); expect(mocks.mvp).toHaveBeenCalledOnce();
+    expect(findView(view.root, node => node.props.role === 'dialog')).toBeUndefined(); expect(mocks.mvp).toHaveBeenCalledTimes(2);
   });
   it('shows a failed initial route request and recovers without a game command', async () => {
     mocks.mvp.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ enabled: true, feedback: '/forum/read/80', goals: [], quotas: [], health: { hp: 100, maximum: 100, foods: [] } });

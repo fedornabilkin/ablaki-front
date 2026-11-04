@@ -6,6 +6,7 @@ import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { NAlert, NButton, NInput, NModal, NProgress, NSelect, NSpin } from 'naive-ui';
 import { checklistItems, checklistKey, checklistStatus, emptyChecklist, emptyEntry, observeChecklist, readChecklist, saveChecklist, type ChecklistId, type ChecklistResult, type ChecklistRun } from '@/entities/world/checklist';
 import { worldActionButtonTheme, worldDangerButtonTheme, worldModalTheme } from '@/entities/world/theme';
+import { milestoneLabels } from '@/services/api/worldMvp';
 import type { MvpState } from '@/services/api/worldMvp';
 
 const props = defineProps<{ owner: number; session: number; snapshot: { state: MvpState | null; loading: boolean; error: string } }>();
@@ -21,6 +22,14 @@ const options = [{ value: 'auto', label: 'По данным сервера' }, {
 const counts = computed(() => checklistItems.reduce((value, item) => { value[checklistStatus(run.value.entries[item.id])]++; return value; }, { pending: 0, pass: 0, fail: 0, skip: 0 }));
 const percent = computed(() => Math.floor(counts.value.pass * 100 / checklistItems.length));
 const automatic = (id: ChecklistId) => { const item = checklistItems.find(item => item.id === id)!; return 'steps' in item || 'special' in item; };
+const remaining = computed(() => checklistItems.filter(item => automatic(item.id) && checklistStatus(run.value.entries[item.id]) !== 'pass').length);
+function missing(id: ChecklistId) {
+  const item = checklistItems.find(row => row.id === id)!;
+  if (!('steps' in item)) return [];
+  const steps = new Map([...(props.snapshot.state?.goals.flatMap(goal => goal.steps) ?? []), ...(props.snapshot.state?.checklistSteps ?? [])].map(step => [step.code, step]));
+  return item.steps.filter(code => !steps.get(code)?.completed).map(code => ({ code, label: milestoneLabels[code] ?? code, ...steps.get(code) }));
+}
+watch(show, value => { if (value) emit('refresh'); });
 const date = (stamp: number) => new Date(stamp).toLocaleString('ru-RU');
 function persist() {
   if (!key.value) return;
@@ -65,13 +74,13 @@ onMounted(() => window.addEventListener('storage', sync));
 onScopeDispose(() => window.removeEventListener('storage', sync));
 </script>
 <template lang="pug">
-world-action-badge(:count="key ? checklistItems.length - counts.pass : null")
-  n-button.world-checklist-button(:theme-overrides="worldActionButtonTheme" size="small" :title="`Чеклист: осталось ${checklistItems.length - counts.pass}`" aria-label="Чеклист проверки MVP" :aria-description="key ? `Осталось закрыть: ${checklistItems.length - counts.pass}` : 'Загрузка чеклиста'" @click="show = true")
+world-action-badge(:count="key ? remaining : null")
+  n-button.world-checklist-button(:theme-overrides="worldActionButtonTheme" size="small" :title="`Чеклист: осталось ${remaining}`" aria-label="Чеклист проверки MVP" :aria-description="key ? `Осталось закрыть: ${remaining}` : 'Загрузка чеклиста'" @click="show = true")
     template(#icon)
       font-awesome-icon(icon="clipboard-check" aria-hidden="true")
 app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MVP" class="world-checklist-modal" :style="{ width: 'min(56rem, calc(100vw - 1.5rem))' }")
   .world-checklist(:aria-busy="snapshot.loading")
-    p.checklist-intro Результаты и комментарии сохраняются в этом браузере отдельно для каждого пользователя и нового мира. Подтверждённые этапы отмечаются автоматически; любой результат можно уточнить вручную.
+    p.checklist-intro Результаты и комментарии сохраняются в этом браузере отдельно для каждого пользователя и нового мира. Игровые этапы отмечаются автоматически по данным сервера. Группа «Проверки MVP» предназначена для ручной приёмки интерфейса и не входит в счётчик оставшихся игровых этапов.
     n-alert(v-if="storageError" type="warning") {{ storageError }}
     n-alert(v-if="snapshot.error" type="warning") {{ snapshot.error }} Сохранённые результаты остаются доступны.
     n-spin(v-if="snapshot.loading && !key" size="small")
@@ -100,8 +109,14 @@ app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MV
             span.checklist-status {{ statusLabels[checklistStatus(run.entries[item.id])] }}
           .checklist-item-body
             p {{ item.detail }}
+            ul.checklist-missing(v-if="automatic(item.id) && checklistStatus(run.entries[item.id]) !== 'pass'")
+              li(v-for="step in missing(item.id)" :key="step.code")
+                router-link(v-if="step.href" :to="step.href" @click="show = false") {{ step.label }}
+                span(v-else) {{ step.label }}
+                span(v-if="step.required")  · {{ step.quantity ?? 0 }} / {{ step.required }}
             .checklist-result
-              n-select(size="small" :value="run.entries[item.id]?.result ?? (automatic(item.id) ? 'auto' : 'pending')" :options="automatic(item.id) ? options : options.filter(option => option.value !== 'auto')" :placeholder="'Не проверено'" :aria-label="`Результат: ${item.title}`" @update:value="update(item.id, { result: $event })")
+              n-select(v-if="!automatic(item.id)" size="small" :value="run.entries[item.id]?.result ?? 'pending'" :options="options.filter(option => option.value !== 'auto')" placeholder="Не проверено" :aria-label="`Результат: ${item.title}`" @update:value="update(item.id, { result: $event })")
+              n-button(v-else-if="run.entries[item.id]?.result === 'fail'" size="small" @click="update(item.id, { result: 'auto' })") Вернуть автоматическую проверку
               n-input(size="small" :value="run.entries[item.id]?.note ?? ''" :maxlength="1500" placeholder="Результат или замечание" :aria-label="`Комментарий: ${item.title}`" @update:value="update(item.id, { note: $event })")
             small(v-if="run.entries[item.id]?.autoAt") Сервер подтвердил {{ date(run.entries[item.id]?.autoAt ?? 0) }}
     p.checklist-footer(v-if="key") Начало проверки: {{ date(run.startedAt) }} · {{ storageError ? 'Не сохранено в браузере' : 'Сохраняется автоматически' }}
@@ -117,5 +132,6 @@ app-dialog(icon="clipboard-check" v-model:show="show" title="Проверка MV
 .result-pass { border-left-color: #36ad6a; }.result-fail { border-left-color: #e14c60; }.result-skip { opacity: .75; }
 .checklist-status { font-size: .75rem; color: var(--text-muted); }.result-pass .checklist-status { color: #36ad6a; }.result-fail .checklist-status { color: #e14c60; }
 .checklist-result { display: grid; grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr); gap: .5rem; align-items: center; }
+.checklist-result > :only-child { grid-column: 1 / -1; }
 @media(max-width: 550px) { .checklist-result { grid-template-columns: minmax(7rem, .8fr) minmax(0, 1fr); }.checklist-item { padding: .5rem; } }
 </style>
