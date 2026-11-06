@@ -3,7 +3,6 @@ import OrdersPage from './OrdersPage.vue';
 import NewOrder from './NewOrder.vue';
 import MyOrdersPage from './MyOrdersPage.vue';
 import OrdersHistoryPage from './OrdersHistoryPage.vue';
-import MaterialsShop from './MaterialsShop.vue';
 
 export default Exchange;
 
@@ -12,5 +11,4 @@ export {
     MyOrdersPage,
     OrdersHistoryPage,
     NewOrder,
-    MaterialsShop,
 }
