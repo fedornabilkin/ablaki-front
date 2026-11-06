@@ -65,6 +65,21 @@ describe('Telegram chat approval', () => {
     await vi.advanceTimersByTimeAsync(10000);
     expect(flow.phase.value).toBe('expired'); expect(finish).not.toHaveBeenCalled(); expect(api.pollTelegram).toHaveBeenCalledOnce();
   });
+  it('replaces the pending code when signup consent changes and ignores its late approval', async () => {
+    let oldApproval!: (value: api.TelegramStatus) => void;
+    vi.mocked(api.pollTelegram).mockImplementationOnce(() => new Promise(resolve => { oldApproval = resolve; }));
+    const { flow, finish } = setup();
+    await flow.start(false);
+    const replacement = { ...request(), id: 'c'.repeat(43), display_code: '654321' };
+    vi.mocked(api.startTelegram).mockResolvedValueOnce(replacement);
+    await flow.start(true);
+    oldApproval({ status: 'approved', telegram: null }); await flush();
+    expect(api.cancelTelegram).toHaveBeenCalledWith({ request_id: request().id, browser_secret: request().browser_secret });
+    expect(api.startTelegram).toHaveBeenLastCalledWith('login', true, expect.any(AbortSignal));
+    expect(flow.request.value?.display_code).toBe('654321');
+    expect(flow.clock.value).toBe('5:00');
+    expect(finish).not.toHaveBeenCalled();
+  });
   it('keeps a browser proof for reload and resumes the same request', async () => {
     const old = setup(); await old.flow.start(false); old.scope.stop();
     const next = setup(); expect(next.flow.restore()).toBe(true);

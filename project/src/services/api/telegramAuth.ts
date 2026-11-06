@@ -16,6 +16,9 @@ export function validTelegramRequest(value: any): value is TelegramRequest {
 }
 export const telegramConfig = async (signal?: AbortSignal): Promise<boolean> => (await apiClient.get(url('config'), { signal })).data.telegram?.enabled === true;
 export const telegramIdentity = async (signal?: AbortSignal): Promise<{ username: string | null; connected: boolean } | null> => (await apiClient.get(url('identity'), { signal })).data.telegram;
+export const unlinkTelegram = async (password: string, signal?: AbortSignal): Promise<void> => {
+  await apiClient.post(url('unlink'), { password }, { signal });
+};
 export const startTelegram = async (purpose: TelegramPurpose, allowSignup: boolean, signal?: AbortSignal): Promise<TelegramRequest> => {
   const value = (await apiClient.post(url('start'), { purpose, allow_signup: allowSignup }, { signal })).data.request;
   if (!validTelegramRequest(value)) throw new Error('Не удалось подготовить вход через Telegram.');
