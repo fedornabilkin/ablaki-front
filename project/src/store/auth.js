@@ -5,8 +5,12 @@ import {
     logout as apiLogout,
     registration as apiRegistration,
 } from '../services/api';
+import {completeTelegram} from '../services/api/telegramAuth';
 
 const pendingProfiles = new WeakMap();
+const discardTelegramApproval = () => {
+    try { sessionStorage.removeItem('telegram-auth.pending'); } catch { /* Optional browser storage. */ }
+};
 const persistToken = token => {
     try {
         if (token) localStorage.setItem('token', token);
@@ -25,7 +29,7 @@ async function authenticate({commit, state}, request) {
     const revision = state.revision;
     try {
         const response = await request();
-        if (revision !== state.revision) throw new Error('Вход отменён');
+        if (revision !== state.revision) throw Object.assign(new Error('Вход отменён'), {code: 'AUTH_SUPERSEDED'});
         if (!response?.user?.id || typeof response.token !== 'string' || !response.token) {
             throw new Error('Сервер вернул некорректные данные входа');
         }
@@ -84,9 +88,14 @@ export const auth = {
     },
     actions: {
         login(context, {login, password}) {
+            discardTelegramApproval();
             return authenticate(context, () => apiLogin(login, password));
         },
+        loginTelegram(context, {proof, signal}) {
+            return authenticate(context, () => completeTelegram(proof, signal));
+        },
         loginKey(context, {key}) {
+            discardTelegramApproval();
             return authenticate(context, () => apiLoginKey(key));
         },
         async registration({commit, state}, payload) {
@@ -130,6 +139,7 @@ export const auth = {
             return request.promise;
         },
         clearData({commit}) {
+            discardTelegramApproval();
             commit('logout');
             persistToken('');
         },

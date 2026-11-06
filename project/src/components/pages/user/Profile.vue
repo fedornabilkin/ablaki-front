@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TelegramAuth from '@/components/auth/TelegramAuth.vue';
 import WorldCredits from '@/components/pages/world/WorldCredits.vue';
 import { formatCredits } from '@/entities/world/credits';
 import { computed, ref } from 'vue';
@@ -43,6 +44,8 @@ page-header(page-title="Профиль")
           router-link.nav-item(:to="'/wall/' + encodeURIComponent(field(user.username))") Моя стена
           router-link.nav-item(to="/forum/my") Мои темы
           router-link.nav-item(to="/users/logout") Выйти
+      n-card(title="Способы входа")
+        telegram-auth(purpose="link")
       .cards
         n-card(title="Баланс")
           .metric {{ formatAccountNumber(account.balance) }} Кг

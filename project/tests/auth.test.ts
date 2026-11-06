@@ -2,11 +2,13 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {createStore} from 'vuex';
 import {auth} from '../src/store/auth';
 import * as api from '../src/services/api';
+import {completeTelegram} from '../src/services/api/telegramAuth';
 import {createAuthGuard} from '../src/services/authGuard';
 
 vi.mock('../src/services/api', () => ({
     getProfile: vi.fn(), login: vi.fn(), loginKey: vi.fn(), logout: vi.fn(), registration: vi.fn(),
 }));
+vi.mock('../src/services/api/telegramAuth', () => ({completeTelegram: vi.fn()}));
 
 const deferred = () => {
     let resolve!: (value: unknown) => void;
@@ -27,6 +29,24 @@ beforeEach(() => {
 });
 
 describe('session lifecycle', () => {
+    it('uses the regular persisted session for a Telegram approval', async () => {
+        vi.mocked(completeTelegram).mockResolvedValue({user: {id: 8}, token: 'telegram-session'});
+        const store = makeStore();
+        await store.dispatch('auth/loginTelegram', {proof: {request_id: 'request', browser_secret: 'browser'}});
+        expect(store.getters['auth/isAuthenticated']).toBe(true);
+        expect(localStorage.getItem('token')).toBe('telegram-session');
+    });
+    it('does not restore a Telegram session after logout while completion is pending', async () => {
+        const response = deferred();
+        vi.mocked(completeTelegram).mockReturnValue(response.promise);
+        const store = makeStore();
+        const pending = store.dispatch('auth/loginTelegram', {proof: {}}).catch(error => error);
+        await store.dispatch('auth/clearData');
+        response.resolve({user: {id: 8}, token: 'late-telegram'});
+        expect((await pending).code).toBe('AUTH_SUPERSEDED');
+        expect(store.getters['auth/isAuthenticated']).toBe(false);
+        expect(localStorage.getItem('token')).toBeNull();
+    });
     it('renders public routes while restoration is pending but keeps protected routes waiting', async () => {
         localStorage.setItem('token', 'saved');
         const request = deferred();
