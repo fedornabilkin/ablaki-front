@@ -1,6 +1,7 @@
 <template>
   <div class="container login-page">
     <h1>Вход</h1>
+    <telegram-auth />
 
     <n-alert
       v-if="serverError"
@@ -61,6 +62,7 @@
 </template>
 
 <script>
+import TelegramAuth from '@/components/auth/TelegramAuth.vue';
 import {
   NSpin,
   NForm,
@@ -73,7 +75,7 @@ import {
 
 export default {
   name: 'Login',
-  components: {NSpin, NForm, NFormItem, NInput, NButton, NAlert},
+  components: {NSpin, NForm, NFormItem, NInput, NButton, NAlert, TelegramAuth},
   setup() {
     return {notification: useNotification()};
   },

@@ -2,6 +2,7 @@
     <div class="container page registration-page">
       <n-card>
         <template #header><h1>Регистрация</h1></template>
+        <telegram-auth signup />
         <n-alert
             title="Получив халявные кредиты и Кг, потрать их с максимальной выгодой, а не как закалялась сталь."
             type="info"
@@ -44,6 +45,7 @@
 </template>
 
 <script>
+import TelegramAuth from '@/components/auth/TelegramAuth.vue';
 import { computed, ref } from "vue";
 import {
   NAlert,
@@ -61,6 +63,7 @@ import { useRouter } from 'vue-router';
 
 export default {
     components: {
+        TelegramAuth,
         NAlert,
         NCard,
         NSpin,
