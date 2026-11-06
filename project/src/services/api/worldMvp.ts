@@ -3,6 +3,7 @@ import config from '@/config/config';
 import { integer, record } from './world';
 import { creditAmount } from '@/entities/world/credits';
 import { parseEconomyQuota } from './worldEconomyQuota';
+import { parseTelegramReward } from './telegramReward';
 
 const text = (value: unknown): string => { if (typeof value !== 'string' || value.length > 500) throw new Error('invalid-world-response'); return value; };
 const bool = (value: unknown): boolean => { if (typeof value !== 'boolean') throw new Error('invalid-world-response'); return value; };
@@ -36,6 +37,7 @@ export function parseMvp(value: unknown) {
   };
   return { enabled: bool(row.enabled), feedback: '/forum', serverTime: integer(row.server_time),
     worldInstance,
+    telegramReward: parseTelegramReward(row.telegram_reward),
     checklistSteps: row.checklist_steps === undefined ? [] : list(row.checklist_steps).map(value => { const step = record(value); return { code: text(step.code), completed: bool(step.completed), quantity: integer(step.quantity), required: integer(step.required, 1), href: href(step.action_href) }; }),
     starterPaid: row.starter_funding == null ? false : record(row.starter_funding).status === 'paid',
     canFundGoals: row.can_fund_goals === undefined ? false : bool(row.can_fund_goals),
