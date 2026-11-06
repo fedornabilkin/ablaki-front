@@ -43,3 +43,10 @@ export function discountedCredits(prices: string[], discountBps = 0): string {
   const total = gross - gross * BigInt(discountBps) / 10000n;
   return `${total / 10000n}.${String(total % 10000n).padStart(4, '0')}`;
 }
+
+/** Offer confirmations display the exact payable amount, with insignificant zeroes removed. */
+export function formatExactCredits(value: unknown): string {
+  const text = String(value ?? '');
+  if (!/^-?\d+(\.\d{1,4})?$/.test(text)) return '—';
+  return text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
+}
