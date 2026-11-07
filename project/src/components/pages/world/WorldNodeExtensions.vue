@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { WorldNode } from '@/entities/world/types';
 import type { WorldCommandRunner } from '@/hooks/useWorldCommand';
+import WorldMarketPanel from './WorldMarketPanel.vue';
 import WorldHeroGather from './WorldHeroGather.vue';
 import WorldMiningPanel from './WorldMiningPanel.vue';
 import WorldHarvestPanel from './WorldHarvestPanel.vue';
@@ -14,6 +15,7 @@ const panels = computed(() => {
   if (props.node.status !== 'active') return [];
   const common = { nodeId: props.node.id, session: props.session, owner: props.owner, writable: props.writable, command: props.command, revision: props.revision };
   const registry = [
+    { feature: 'market', slot: 'content', component: WorldMarketPanel, props: common },
     { feature: 'gather', slot: 'header', component: WorldHeroGather, props: common },
     { feature: 'mining', slot: 'map', component: WorldMiningPanel, props: { ...common, active: props.active } },
     { feature: 'harvest', slot: 'content', component: WorldHarvestPanel, props: { ...common, active: props.active } },
@@ -21,7 +23,7 @@ const panels = computed(() => {
     { feature: 'cultivation', slot: 'map', component: WorldCultivationPanel, props: { ...common, bedId: props.node.id, active: props.active } },
     { feature: 'equipment_expansion', slot: 'equipment', component: WorldEquipmentExpansionPanel, props: common },
   ];
-  return registry.filter(panel => panel.slot === props.slot && props.node.extensions?.includes(panel.feature) && (props.node.permissions.storage || panel.feature === 'kitchen' || panel.feature === 'cultivation' || panel.feature === 'harvest' || (panel.feature === 'mining' && (props.node.details.building_kind === 'mine' || props.node.extensions.includes('public_work')))));
+  return registry.filter(panel => panel.slot === props.slot && props.node.extensions?.includes(panel.feature) && (props.node.permissions.storage || panel.feature === 'market' || panel.feature === 'kitchen' || panel.feature === 'cultivation' || panel.feature === 'harvest' || (panel.feature === 'mining' && (props.node.details.building_kind === 'mine' || props.node.extensions.includes('public_work')))));
 });
 </script>
 <template lang="pug">

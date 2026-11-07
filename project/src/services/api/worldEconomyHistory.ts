@@ -42,7 +42,7 @@ export function parseEconomyHistory(value: unknown) {
 }
 export function economyKindLabel(kind: string): string {
   const exact: Record<string, string> = { transfer: 'Перевод кредитов', craft: 'Изготовление', craft_slots: 'Расширение инвентаря', world_storage: 'Расширение хранилища', world_invest: 'Взнос в бюджет',
-    mandatory_fee: 'Оплата действия', personal_investment: 'Личный взнос', starter_goal: 'Награда цели', order_payment: 'Сдача сырья', crop_purchase: 'Продажа урожая', unprotected_night: 'Ночь без защищённого места', 'world.start': 'Вступление в мир' };
+    mandatory_fee: 'Оплата действия', personal_investment: 'Личный взнос', starter_goal: 'Награда цели', order_payment: 'Сдача сырья', crop_purchase: 'Продажа урожая', market_trade: 'Сделка на рынке', market_burn: 'Доставка и комиссия рынка', 'world.market.trade': 'Торговля на рынке', 'market.output': 'Получение товара на рынке', 'market.sold': 'Продажа товара на рынке', unprotected_night: 'Ночь без защищённого места', 'world.start': 'Вступление в мир' };
   if (exact[kind]) return exact[kind];
   for (const [pattern, label] of [['build', 'Строительство и труд'], ['mining', 'Добыча ресурса'], ['source:', 'Получение ресурса'], ['crop', 'Огород и урожай'], ['cultivation', 'Огород и урожай'],
     ['food', 'Потребление еды'], ['goal', 'Стартовая цель'], ['expand', 'Расширение'], ['craft', 'Изготовление'], ['supplies', 'Получение снабжения'], ['map', 'Действие с картой'], ['transfer', 'Перемещение'], ['collect', 'Сбор казны'], ['housing', 'Назначение ночлега'], ['order', 'Оплаченный заказ'], ['budget', 'Бюджет объекта']]) if (kind.includes(pattern)) return label;

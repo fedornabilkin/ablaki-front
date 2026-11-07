@@ -9,6 +9,9 @@ import AppDialog from '@/components/AppDialog.vue';
 import AppPopover from '@/components/AppPopover.vue';
 import { completeTelegram, telegramConfig, telegramIdentity, unlinkTelegram, type TelegramPurpose } from '@/services/api/telegramAuth';
 import { useTelegramApproval } from '@/hooks/useTelegramApproval';
+import { useSimpleWorldCommand } from '@/hooks/useSimpleWorldCommand';
+import TelegramRewardCard from './TelegramRewardCard.vue';
+import { parseTelegramReward, type TelegramReward } from '@/services/api/telegramReward';
 
 const props = withDefaults(defineProps<{ purpose?: TelegramPurpose; signup?: boolean }>(), { purpose: 'login', signup: false });
 const emit = defineEmits<{ linked: []; unlinked: [] }>();
@@ -27,6 +30,8 @@ const unlinkPassword = ref('');
 const unlinkError = ref('');
 const unlinkBusy = ref(false);
 const unlinked = ref(false);
+const reward = ref<TelegramReward | null>(null);
+const rewardCommand = useSimpleWorldCommand(computed(() => `${store.state.auth.user?.id ?? 0}.telegram-reward`), computed(() => store.state.auth.revision));
 const setupAbort = new AbortController();
 const instructions = computed(() => [
   'Сравните код на сайте и в сообщении бота. Откройте Telegram и нажмите «Подтвердить». При первом обращении нажмите «Старт».',
@@ -40,7 +45,7 @@ const flow = useTelegramApproval(props.purpose,
   (proof, signal) => props.purpose === 'link' ? completeTelegram(proof, signal) : store.dispatch('auth/loginTelegram', { proof, signal }),
   () => {
     show.value = false;
-    if (props.purpose === 'link') { connected.value = true; connectedName.value = flow.username.value; unlinked.value = false; emit('linked'); return; }
+    if (props.purpose === 'link') { connected.value = true; connectedName.value = flow.username.value; unlinked.value = false; emit('linked'); void refreshIdentity(); return; }
     const redirect = route.query.redirect;
     void router.replace(typeof redirect === 'string' && /^\/(?![\/\\])/.test(redirect) ? redirect : '/');
   });
@@ -50,9 +55,7 @@ onMounted(async () => {
     enabled.value = await telegramConfig(setupAbort.signal);
     if (setupAbort.signal.aborted) return;
     if (props.purpose === 'link') {
-      const identity = await telegramIdentity(setupAbort.signal);
-      if (setupAbort.signal.aborted) return;
-      connected.value = identity?.connected === true; connectedName.value = identity?.username ?? null;
+      await refreshIdentity();
     }
     if (enabled.value && !connected.value && flow.restore()) show.value = true;
   } catch { if (!setupAbort.signal.aborted) setupError.value = 'Не удалось проверить доступность Telegram. Обновите страницу.'; }
@@ -62,7 +65,24 @@ onScopeDispose(() => setupAbort.abort());
 watch(() => store.state.auth.revision, () => {
   if (!['finishing', 'done'].includes(phase.value)) { flow.cancel(); show.value = false; }
   showUnlink.value = false; unlinkPassword.value = '';
+  reward.value = null;
 });
+async function refreshIdentity() {
+  const revision = store.state.auth.revision;
+  try {
+    const identity = await telegramIdentity(setupAbort.signal);
+    if (setupAbort.signal.aborted || revision !== store.state.auth.revision) return;
+    connected.value = identity?.connected === true; connectedName.value = identity?.username ?? null;
+    reward.value = identity?.reward ?? null;
+  } catch { if (!setupAbort.signal.aborted && revision === store.state.auth.revision) setupError.value = 'Не удалось обновить состояние Telegram. Обновите страницу.'; }
+}
+async function claimReward() {
+  const revision = store.state.auth.revision;
+  const result = rewardCommand.pending.value ? await rewardCommand.retry() : await rewardCommand.submit('economy/goals/claim', { code: 'telegram-link' });
+  if (result && !setupAbort.signal.aborted && revision === store.state.auth.revision) {
+    reward.value = parseTelegramReward(result.telegram_reward);
+  }
+}
 function close(value: boolean) { if (!value && phase.value !== 'finishing') { flow.cancel(); show.value = false; } }
 function open() {
   if (!ready.value || !enabled.value || phase.value === 'starting') return;
@@ -86,6 +106,7 @@ async function unlink() {
     if (setupAbort.signal.aborted || revision !== store.state.auth.revision) return;
     flow.cancel(); connected.value = false; connectedName.value = null;
     showUnlink.value = false; unlinked.value = true; emit('unlinked');
+    await refreshIdentity();
   } catch (cause: any) {
     if (!setupAbort.signal.aborted && revision === store.state.auth.revision) unlinkError.value = cause?.response?.data?.message || 'Не удалось отвязать Telegram. Попробуйте ещё раз.';
   } finally { unlinkPassword.value = ''; unlinkBusy.value = false; }
@@ -103,11 +124,14 @@ async function unlink() {
       | Отвязать
   template(v-else)
     p.telegram-note(v-if="unlinked" role="status") Telegram отвязан. Вход по паролю сохранён.
-    n-button.telegram-entry(:disabled="!enabled || !ready" :loading="!ready" size="large" @click="open")
+    n-button.telegram-entry(v-if="purpose !== 'link' || !reward || reward.claimed" :disabled="!enabled || !ready" :loading="!ready" size="large" @click="open")
       template(#icon)
         font-awesome-icon(:icon="faPaperPlane" aria-hidden="true")
       | {{ purpose === 'link' ? 'Подключить Telegram' : 'Войти через Telegram' }}
     p.telegram-note(v-if="ready && !enabled") {{ setupError || 'Вход через Telegram пока недоступен.' }}
+  telegram-reward-card(v-if="purpose === 'link' && reward" :reward="reward" :busy="rewardCommand.busy.value" :disabled="!ready || (!connected && !enabled) || !!rewardCommand.pending.value" @link="open" @claim="claimReward")
+  n-alert(v-if="purpose === 'link' && rewardCommand.error.value" type="warning") {{ rewardCommand.error.value }}
+  n-button(v-if="purpose === 'link' && rewardCommand.pending.value" :loading="rewardCommand.busy.value" @click="claimReward") Проверить получение подарка
   app-dialog(:show="show" :title="purpose === 'link' ? 'Подключить Telegram' : 'Вход через Telegram'" icon="paper-plane" :closable="phase !== 'finishing'" :mask-closable="phase !== 'finishing'" :close-on-esc="phase !== 'finishing'" @update:show="close")
     .telegram-content
       .telegram-layout
@@ -169,6 +193,7 @@ async function unlink() {
 .telegram-link { display: inline-flex; justify-self: start; align-items: center; gap: .5rem; padding: .8rem .7rem; border-radius: .5rem; background: var(--primary, #ff8000); color: #171717; text-decoration: none; font-weight: 600; font-size: .9rem; }
 .telegram-link:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .telegram-connected { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
+.telegram-connected + .telegram-reward { margin-top: .75rem; }
 @media (min-width: 640px) {
   .telegram-layout { grid-template-columns: minmax(13rem, .9fr) minmax(0, 1.1fr); gap: 1.5rem; }
   .telegram-instructions { display: block; }

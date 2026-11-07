@@ -51,6 +51,7 @@ onScopeDispose(() => { disposed = true; generation++; });
   app-dialog(icon="cubes" v-model:show="open" title="Ежедневный сбор сырья" :style="{ width: 'min(32rem, 94vw)' }")
     n-alert.gather-receipt(v-if="receipt" type="success" closable @close="receipt = ''") Получено: {{ receipt }}
     p Стартовый запас постепенно уменьшается. Построенная добыча сокращает соответствующую выдачу вдвое. После исчерпания запаса остаётся по одной единице каждого ресурса, включая песок и глину, раз в сутки.
+    p(v-if="state?.gather_items?.some(item => item.name.trim() === 'Морковь')") Каждый день — ещё одна морковь. Из неё можно изготовить две семечки без станка и снова посадить грядку.
     n-alert(v-if="state?.gather_minimum" type="info") Стартовый запас использован. Минимальный ежедневный сбор остаётся доступным.
     p(v-else) Осталось стартовых сборов: {{ state?.gather_remaining ?? 0 }} / {{ state?.gather_limit ?? 0 }}
     n-progress(v-if="!state?.gather_minimum" type="line" :percentage="progress" :show-indicator="false")

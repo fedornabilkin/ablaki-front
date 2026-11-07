@@ -12,6 +12,7 @@ import { isClosedTestError, worldError } from '@/services/api/world';
 import WorldCountdown from './WorldCountdown.vue';
 import WorldQuotaNotice from './WorldQuotaNotice.vue';
 import WorldDevelopmentRoute from './WorldDevelopmentRoute.vue';
+import TelegramRewardCard from '@/components/auth/TelegramRewardCard.vue';
 const props = defineProps<{ owner: number; session: number; revision: number; writable: boolean }>();
 const emit = defineEmits<{ changed: []; snapshot: [value: { state: MvpState | null; loading: boolean; error: string }] }>();
 const state = ref<MvpState | null>(null), error = ref(''), closedTest = ref(false), loading = ref(false);
@@ -20,13 +21,14 @@ const sections = computed(() => [
   ...(state.value?.development ? [{ id: 'development', label: 'Развитие', icon: 'flag' }] : []),
   { id: 'camp', label: 'Лагерь', icon: 'tent' },
   { id: 'resources', label: 'Ресурсы', icon: 'cubes' },
+  ...(state.value?.telegramReward ? [{ id: 'telegram', label: 'Подарок', icon: 'gift' }] : []),
   { id: 'quotas', label: 'Лимиты', icon: 'clock' },
   { id: 'health', label: 'Здоровье', icon: 'apple-alt' },
 ].map(item => ({ ...item, active: tab.value === item.id, hint: item.label })));
 watch([state, loading, error], () => emit('snapshot', { state: state.value, loading: loading.value, error: error.value }), { flush: 'sync' });
 const activeGoal = computed(() => state.value?.goals.find(goal => goal.code === (tab.value === 'resources' ? 'day-2' : 'day-1')));
 const orderedSteps = computed(() => [...(activeGoal.value?.steps ?? [])].sort((a, b) => Number(a.completed) - Number(b.completed)));
-const remainingTasks = computed(() => state.value?.development ? state.value.development.total - state.value.development.completed : state.value?.goals.reduce((total, goal) => total + (goal.claimed ? 0 : goal.steps.filter(step => !step.completed).length), 0) ?? null);
+const remainingTasks = computed(() => state.value ? (state.value.development ? state.value.development.total - state.value.development.completed : state.value.goals.reduce((total, goal) => total + (goal.claimed ? 0 : goal.steps.filter(step => !step.completed).length), 0)) + (state.value.telegramReward && !state.value.telegramReward.claimed ? 1 : 0) : null);
 const runner = useSimpleWorldCommand(computed(() => `${props.owner}.mvp`), computed(() => props.session));
 let generation = 0;
 let refreshQueued = false, disposed = false;
@@ -68,6 +70,7 @@ app-dialog(icon="list-check" v-model:show="show" title="Мой путь в ми�
   n-button(v-if="runner.pending.value" :loading="runner.busy.value" @click="act()") Проверить результат запроса
   world-action-bar(v-if="state?.enabled" label="Задания и состояние" :items="sections" @select="tab = $event")
   template(v-if="state?.enabled")
+    telegram-reward-card(v-if="state.telegramReward && (tab === 'telegram' || (tab === 'development' && !state.telegramReward.claimed))" :reward="state.telegramReward" :busy="runner.busy.value" :disabled="busy" @claim="act('economy/goals/claim', { code: 'telegram-link' })" @link="show = false; $router.push('/users/profile')")
     template(v-if="tab === 'development'")
       world-development-route(v-if="state.development" :route="state.development" @navigate="show = false")
       n-alert(v-if="state.targetStartCredits && !state.starterPaid" type="info") Стартовые #[world-credits(:value="state.targetStartCredits")] поступают из резерва города в бюджет стоянки. Перед заселением проверьте наличие резерва. Если вы уже в очереди, повторно заселяться не нужно.
