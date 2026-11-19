@@ -1,5 +1,7 @@
 # Рынок: интерфейс NPC и лотов игроков
 
+**19 ноября 2026.** Компактный рынок в карточке города опубликован. Выбор покупки и продажи, количество, итоговая цена и повтор команды уже работают. В очереди остаются серверные фильтры и страницы с состоянием в URL, личная история, пользовательские лоты и проверки полного маршрута. [Реализованный интерфейс](done/2026-11-06-world-npc-market.md) · [Выпуск](https://github.com/fedornabilkin/ablaki/blob/master/docs/plan/done/2026-11-07-full-package-release.md)
+
 ## Актуализация 2026-10-29
 
 Городской рынок/P2P остаются следующей очередью после приёмки MVP. Встроенные покупки из мини-склада и конечные заказы уже работают; это не полный UI ассортимента, лотов, комиссий, уведомлений и жалоб MUI. Использовать действующие DTO/runner и не создавать второй кошелёк.
@@ -7,7 +9,7 @@
 
 ## Цель и контекст
 
-Дата: 2026-10-16. Обозначение: `MUI`. Приоритет: второй этап после [экономики](2026-10-16-world-economy-content-ui.md). Основание — [bazar.md](../../../back/docs/tz/bazar.md), серверные планы [MKT](../../../back/docs/plan/2026-10-16-world-market.md) и [MKTOP](../../../back/docs/plan/2026-10-16-world-market-operations.md). Сначала доступен NPC, затем отдельно включается P2P.
+Дата: 2026-10-16. Обозначение: `MUI`. Приоритет: второй этап после [экономики](done/2026-10-16-world-economy-content-ui.md). Основание — [bazar.md](https://github.com/fedornabilkin/ablaki/blob/master/docs/tz/bazar.md), серверные планы [MKT](https://github.com/fedornabilkin/ablaki/blob/master/docs/plan/2026-10-16-world-market.md) и [MKTOP](https://github.com/fedornabilkin/ablaki/blob/master/docs/plan/2026-10-16-world-market-operations.md). Сначала доступен NPC, затем отдельно включается P2P.
 
 Используются Vue 3/Naive UI, общий транспорт, runner, ListFilters/useListQuery/PagePager и серверные данные. Существующие MaterialsShop/Exchange Orders относятся к старым сценариям и не считаются новым предметным рынком. `/transfer` сохраняется; покупки/пополнения кредитов и банка нет. Административные формы и права ведутся в MKTOP, здесь интерфейс участника.
 

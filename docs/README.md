@@ -1,6 +1,6 @@
 # Документация frontend
 
-Актуально на **4 ноября 2026**. Мир и интерфейс опубликованы на production. Последняя прикладная версия `ce831cc` от 4 ноября: 495 тестов и сборка прошли, опубликованный SHA подтверждён. **[Активные планы](plan/README.md)** содержат оставшуюся ручную приёмку и дальнейшее развитие.
+Сверено 19 ноября 2026. Прикладной пакет frontend `08298ca` опубликован 7 ноября, прошли 513 тестов и сборка. [Отчёт о выпуске](https://github.com/fedornabilkin/ablaki/blob/master/docs/plan/done/2026-11-07-full-package-release.md) · [Активные планы](plan/README.md)
 
 | Раздел | Содержание |
 | --- | --- |
@@ -11,7 +11,7 @@
 
 ## Текущий интерфейс
 
-- [Аудит крафта 7 ноября](reference/crafting-world.md): действующая мастерская мира сохранена, неиспользуемое демо удалено; проверено локально, без выкладки.
+- В опубликованном пакете 7 ноября сохранена мастерская мира и удалён неиспользуемый демонстрационный крафт. [Состав крафта](reference/crafting-world.md)
 
 - [Приёмка 4 ноября](plan/done/2026-11-04-world-acceptance-navigation.md): состав и ссылки рецептов, цветовые состояния, каталоги по сторонам карты, поповер покупки, своя стоянка и автоматический прогресс.
 
@@ -23,14 +23,14 @@
 
 ## Оставшиеся проверки
 
-[Ручная приёмка](plan/2026-10-29-manual-ui-acceptance.md), [UI:E2/E3](plan/2026-10-15-world-closed-test-ui.md) и [CONUI:E2/E3](plan/2026-10-16-world-economy-content-ui.md): два игрока, реальный API, 360/390/768/1280 px, клавиатура и фокус. Осмотры 2–3 ноября выполнены на настоящих компонентах с изолированными ответами; авторизованный IAB был недоступен. Это не полный ручной игровой маршрут.
+Маршруты интерфейса и экономики объединены в B1/B2 ручной приёмки. Открыты общий проход двух игроков с реальным API на четырёх ширинах, клавиатурная проверка и экспорт отчёта. [План приёмки](plan/2026-10-29-manual-ui-acceptance.md)
 
-[Общий план](../../back/docs/plan/2026-10-21-mvp-launch-readiness.md) относится к приёмке и эксплуатации уже включённого production. [Сквозные сроки выкладки](../../back/docs/plan/2026-10-19-test-deployment-optimization.md) пока не подтверждены серией десяти выпусков.
+[Общий план](https://github.com/fedornabilkin/ablaki/blob/master/docs/plan/2026-10-21-mvp-launch-readiness.md) относится к приёмке и эксплуатации уже включённого production. [Сквозные сроки выкладки](https://github.com/fedornabilkin/ablaki/blob/master/docs/plan/2026-10-19-test-deployment-optimization.md) пока не подтверждены серией десяти выпусков.
 
 ## Контракты и развитие
 
-- [Общие запросы API](reference/api-reads.md), [контракт мира](../../back/docs/architecture/simple-world-api.md), [экономика](../../back/docs/architecture/economy-runtime-api.md), [выращивание](../../back/docs/architecture/world-cultivation-states.md).
-- [Публикация frontend](operations/deployment-github-vps.md), [дорожная карта мира](plan/2026-09-26-world-frontend.md), [рынок](plan/2026-10-16-world-market-ui.md), [исходные ТЗ](../../back/docs/tz/README.md).
-- [Результат актуализации 4 ноября](plan/README.md#результат-актуализации), [предыдущая сверка](plan/done/2026-10-29-plan-refresh.md).
+- [Общие запросы API](reference/api-reads.md), [контракт мира](https://github.com/fedornabilkin/ablaki/blob/master/docs/architecture/simple-world-api.md), [экономика](https://github.com/fedornabilkin/ablaki/blob/master/docs/architecture/economy-runtime-api.md), [выращивание](https://github.com/fedornabilkin/ablaki/blob/master/docs/architecture/world-cultivation-states.md).
+- [Публикация frontend](operations/deployment-github-vps.md), [дорожная карта мира](plan/2026-09-26-world-frontend.md), [рынок](plan/2026-10-16-world-market-ui.md), [исходные ТЗ](https://github.com/fedornabilkin/ablaki/blob/master/docs/tz/README.md).
+- [Сверка 19 ноября и объединённая приёмка](plan/README.md#объединённая-приёмка), [предыдущая сверка](plan/done/2026-10-29-plan-refresh.md).
 
 Временные результаты, снимки и логи хранятся в общей `../temp/<задача>/`, вне Git. Датированные числа тестов в старых отчётах описывают соответствующий выпуск, а не текущую версию.
